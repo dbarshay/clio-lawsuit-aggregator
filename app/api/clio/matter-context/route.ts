@@ -6,16 +6,21 @@ import { getCustomFieldValue } from "@/lib/matterHelpers";
 async function getContactName(contactId: number | string | null | undefined) {
   if (!contactId) return null;
 
-  const res = await clioFetch(
-    `/api/v4/contacts/${contactId}.json?fields=id,name`
-  );
-
-  if (!res.ok) {
-    return null;
-  }
+  const res = await clioFetch(`/api/v4/contacts/${contactId}.json?fields=id,name`);
+  if (!res.ok) return null;
 
   const json = await res.json();
   return json?.data?.name ?? null;
+}
+
+const DENIAL_REASON_LABELS: Record<string, string> = {
+  "12497975": "Medical Necessity (IME)",
+  "12498065": "Fee Schedule / Coding",
+};
+
+function getDenialReasonLabel(value: any) {
+  if (value == null || value === "") return null;
+  return DENIAL_REASON_LABELS[String(value)] || String(value);
 }
 
 export async function GET(req: NextRequest) {
@@ -35,8 +40,6 @@ export async function GET(req: NextRequest) {
       "display_number",
       "description",
       "status",
-      "created_at",
-      "updated_at",
       "client",
       "custom_field_values{value,custom_field}",
     ].join(",");
@@ -65,6 +68,7 @@ export async function GET(req: NextRequest) {
 
     const patientId = getCustomFieldValue(matter, MATTER_CF.PATIENT);
     const insurerId = getCustomFieldValue(matter, MATTER_CF.INSURANCE_COMPANY);
+    const rawDenialReason = getCustomFieldValue(matter, MATTER_CF.DENIAL_REASON);
 
     const [patientName, insurerName] = await Promise.all([
       getContactName(patientId),
@@ -83,7 +87,7 @@ export async function GET(req: NextRequest) {
       claimAmount: getCustomFieldValue(matter, MATTER_CF.CLAIM_AMOUNT),
       dosStart: getCustomFieldValue(matter, MATTER_CF.DOS_START),
       dosEnd: getCustomFieldValue(matter, MATTER_CF.DOS_END),
-      denialReason: getCustomFieldValue(matter, MATTER_CF.DENIAL_REASON),
+      denialReason: getDenialReasonLabel(rawDenialReason),
       indexNumber: getCustomFieldValue(matter, MATTER_CF.INDEX_AAA_NUMBER),
       settledAmount: getCustomFieldValue(matter, MATTER_CF.SETTLED_AMOUNT),
 
@@ -91,10 +95,12 @@ export async function GET(req: NextRequest) {
         matter,
         MATTER_CF.PAYMENT_VOLUNTARY
       ),
+
       balancePresuit: getCustomFieldValue(
         matter,
         MATTER_CF.BALANCE_PRESUIT
       ),
+
       masterLawsuitId: getCustomFieldValue(
         matter,
         MATTER_CF.MASTER_LAWSUIT_ID
@@ -104,10 +110,12 @@ export async function GET(req: NextRequest) {
         id: patientId,
         name: patientName,
       },
+
       insurer: {
         id: insurerId,
         name: insurerName,
       },
+
       client: {
         id: matter?.client?.id ?? null,
         name: matter?.client?.name ?? null,
@@ -117,11 +125,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       matter: normalized,
-      rawCustomFieldValues: matter.custom_field_values,
     });
   } catch (error: any) {
     return NextResponse.json(
-      { ok: false, error: error.message || "Unknown error" },
+      {
+        ok: false,
+        error: error?.message || "Unknown error",
+        stack: error?.stack || null,
+      },
       { status: 500 }
     );
   }

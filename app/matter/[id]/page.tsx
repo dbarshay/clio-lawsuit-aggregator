@@ -156,18 +156,18 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
 
   const thStyle: React.CSSProperties = {
     border: "1px solid #bfbfbf",
-    padding: "10px 8px",
+    padding: "8px 8px",
     textAlign: "center",
     verticalAlign: "middle",
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: 700,
     background: "#f3f3f3",
   };
 
   const tdStyle: React.CSSProperties = {
     border: "1px solid #bfbfbf",
-    padding: "12px 10px",
-    fontSize: 15,
+    padding: "8px 8px",
+    fontSize: 13,
     verticalAlign: "middle",
   };
 
@@ -184,7 +184,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         style={{
           display: "flex",
           alignItems: "flex-start",
-          justifyContent: "space-between",
+          width: "100%",
           gap: 28,
           marginBottom: 18,
         }}
@@ -192,7 +192,8 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         <div
           style={{
             display: "flex",
-            alignItems: "flex-start",
+          alignItems: "flex-start",
+          width: "100%",
             gap: 28,
             flex: 1,
           }}
@@ -207,7 +208,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
 
           <div style={{ flex: 1 }}>
             <h1 style={{ margin: "0 0 18px 0", fontSize: 24, fontWeight: 700 }}>
-              Aggregator - Matter {textValue(matter?.displayNumber)}
+              Main Matter- {textValue(matter?.displayNumber)}
             </h1>
 
             <div
@@ -216,8 +217,9 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                 gridTemplateColumns: "1fr",
                 rowGap: 8,
                 maxWidth: 520,
-                fontSize: 15,
+                fontSize: 24,
                 lineHeight: 1.45,
+                whiteSpace: "nowrap",
               }}
             >
               <div>
@@ -235,16 +237,16 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
 
         <div
           style={{
-            width: 380,
+            width: 340,
             border: "1px solid #bfbfbf",
             borderRadius: 4,
             padding: 18,
             background: "#fafafa",
-            marginLeft: 20,
+            marginLeft: "auto",
             flexShrink: 0,
           }}
         >
-          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 14 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>
             Selected Matters
           </div>
 
@@ -259,10 +261,10 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             }}
           >
             <div><strong>Claim Amount:</strong></div>
-            <div style={{ textAlign: "right", minWidth: 110 }}>{money(totals.claim)}</div>
+            <div style={{ textAlign: "left", minWidth: 110 }}>{money(totals.claim)}</div>
 
             <div><strong>Payment (Voluntary):</strong></div>
-            <div style={{ textAlign: "right", minWidth: 110 }}>{money(totals.payment)}</div>
+            <div style={{ textAlign: "left", minWidth: 110 }}>{money(totals.payment)}</div>
 
             <div
               style={{
@@ -273,14 +275,13 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             />
 
             <div><strong>Balance (Presuit):</strong></div>
-            <div style={{ textAlign: "right", minWidth: 110 }}>{money(totals.balance)}</div>
+            <div style={{ textAlign: "left", minWidth: 110 }}>{money(totals.balance)}</div>
           </div>
         </div>
       </div>
 
       <hr style={{ margin: "18px 0 20px 0", border: 0, borderTop: "1px solid #999" }} />
 
-      <h2 style={{ margin: "0 0 14px 0", fontSize: 16 }}>Sibling Bills</h2>
 
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
@@ -296,7 +297,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             <th style={thStyle}>Balance (Presuit)</th>
             <th style={thStyle}>Denial Reason</th>
             <th style={thStyle}>Status</th>
-            <th style={thStyle}>Master Lawsuit ID</th>
+            
           </tr>
         </thead>
 
@@ -350,12 +351,12 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                 <td style={tdStyle}>{providerValue(r)}</td>
                 <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{insurerValue(r)}</td>
                 <td style={tdStyle}>{formatDOS(r.dosStart, r.dosEnd)}</td>
-                <td style={{ ...tdStyle, textAlign: "right" }}>{money(claim)}</td>
-                <td style={{ ...tdStyle, textAlign: "right" }}>{money(payment)}</td>
-                <td style={{ ...tdStyle, textAlign: "right" }}>{money(balance)}</td>
+                <td style={{ ...tdStyle, textAlign: "left" }}>{money(claim)}</td>
+                <td style={{ ...tdStyle, textAlign: "left" }}>{money(payment)}</td>
+                <td style={{ ...tdStyle, textAlign: "left" }}>{money(balance)}</td>
                 <td style={tdStyle}>{denialReasonValue(r)}</td>
                 <td style={tdStyle}>{textValue(r.status)}</td>
-                <td style={tdStyle}>{textValue(r.masterLawsuitId)}</td>
+                
               </tr>
             );
           })}

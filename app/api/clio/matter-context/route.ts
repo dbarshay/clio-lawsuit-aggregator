@@ -18,6 +18,16 @@ const DENIAL_REASON_LABELS: Record<string, string> = {
   "12498065": "Fee Schedule / Coding",
 };
 
+function isSelectableForSettlement(matterStage: any, status: any) {
+  const stageName = String(matterStage?.name || "").toUpperCase();
+  const statusValue = String(status || "").toLowerCase();
+
+  return (
+    stageName.includes("READY FOR ARBITRATION/LITIGATION") &&
+    statusValue.includes("open")
+  );
+}
+
 function getDenialReasonLabel(value: any) {
   if (value == null || value === "") return null;
   return DENIAL_REASON_LABELS[String(value)] || String(value);
@@ -84,6 +94,7 @@ export async function GET(req: NextRequest) {
       description: matter.description,
       status: matter.status,
       matterStage: matter.matter_stage,
+      selectableForSettlement: isSelectableForSettlement(matter.matter_stage, matter.status),
       matterStage: matter.matter_stage,
 
       claimNumber: getCustomFieldValue(matter, MATTER_CF.CLAIM_NUMBER),

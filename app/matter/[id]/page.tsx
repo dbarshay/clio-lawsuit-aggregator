@@ -52,10 +52,7 @@ function statusColor(status?: string) {
 }
 
 function isSelectable(r: any) {
-  const stage = (r?.matterStage?.name || "").toUpperCase();
-  const status = (r?.status || "").toLowerCase();
-
-  return stage.includes("READY FOR ARBITRATION/LITIGATION") && status.includes("open");
+  return !!r?.selectableForSettlement;
 }
 
 function statusDisplay(status?: string) {

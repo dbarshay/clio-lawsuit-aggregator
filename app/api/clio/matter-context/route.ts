@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
       "display_number",
       "description",
       "status",
+      "stage",
       "client",
       "custom_field_values{value,custom_field}",
     ].join(",");
@@ -81,6 +82,7 @@ export async function GET(req: NextRequest) {
       displayNumber: matter.display_number,
       description: matter.description,
       status: matter.status,
+      stage: matter.stage,
 
       claimNumber: getCustomFieldValue(matter, MATTER_CF.CLAIM_NUMBER),
       billNumber: getCustomFieldValue(matter, MATTER_CF.BILL_NUMBER),

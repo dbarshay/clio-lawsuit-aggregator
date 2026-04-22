@@ -330,6 +330,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             <th style={thStyle}>Payment (Voluntary)</th>
             <th style={thStyle}>Balance (Presuit)</th>
             <th style={thStyle}>Denial Reason</th>
+            <th style={thStyle}>Stage</th>
             <th style={thStyle}>Status</th>
           </tr>
         </thead>
@@ -388,6 +389,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                 <td style={{ ...tdStyle, textAlign: "right" }}>{money(payment)}</td>
                 <td style={{ ...tdStyle, textAlign: "right" }}>{money(balance)}</td>
                 <td style={tdStyle}>{denialReasonValue(r)}</td>
+                <td style={tdStyle}>{textValue(r?.stage?.name)}</td>
                 <td style={tdStyle}>{textValue(r.status)}</td>
               </tr>
             );

@@ -409,6 +409,13 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                   >
                     <input
                       type="checkbox"
+title={
+  !isSelectable(r)
+    ? `Stage: ${r?.stage?.name || r?.matterStage?.name || "N/A"} | Status: ${r?.status || "N/A"} (Required: READY FOR ARBITRATION/LITIGATION + Open)`
+    : ""
+}
+                      style={{ width: 18, height: 18, cursor: isSelectable(r) ? "pointer" : "not-allowed", opacity: isSelectable(r) ? 1 : 0.4 }}
+                      disabled={!isSelectable(r)}
                       disabled={!isSelectable(r)}
                       checked={isSelected}
                       onChange={() => { if (isSelectable(r)) toggle(Number(r.id)); }}

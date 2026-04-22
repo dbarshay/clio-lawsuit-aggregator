@@ -98,11 +98,42 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
     if (!matterId) return;
 
     async function load() {
-      const m = await fetch(`/api/clio/matter-context?matterId=${matterId}`).then((r) => r.json());
-      const s = await fetch(`/api/aggregation/find-siblings?matterId=${matterId}`).then((r) => r.json());
+      const baseResponse = await fetch(
+        `/api/clio/matter-context?matterId=${matterId}`
+      ).then((r) => r.json());
 
-      const base = m.matter;
-      const siblings = Array.isArray(s.siblings) ? s.siblings : [];
+      const siblingsResponse = await fetch(
+        `/api/aggregation/find-siblings?matterId=${matterId}`
+      ).then((r) => r.json());
+
+      const base = baseResponse?.matter || null;
+      const siblings = Array.isArray(siblingsResponse?.siblings)
+        ? siblingsResponse.siblings
+        : [];
+
+      const siblingIds = siblings
+        .map((sib: any) => Number(sib.id ?? sib.matterId))
+        .filter((id: number) => Number.isFinite(id) && id > 0);
+
+      const liveSiblingResults = await Promise.all(
+        siblingIds.map(async (id: number) => {
+          try {
+            const json = await fetch(
+              `/api/clio/matter-context?matterId=${id}`
+            ).then((r) => r.json());
+
+            if (json?.ok && json?.matter) {
+              return json.matter;
+            }
+
+            return null;
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const liveSiblings = liveSiblingResults.filter(Boolean);
 
       const all: any[] = [];
       const seen = new Set<number>();
@@ -112,8 +143,8 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         seen.add(Number(base.id));
       }
 
-      for (const sib of siblings) {
-        const idNum = Number(sib.id ?? sib.matterId);
+      for (const sib of liveSiblings) {
+        const idNum = Number(sib.id);
         if (!idNum || seen.has(idNum)) continue;
         all.push({
           ...sib,
@@ -243,7 +274,14 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             alignSelf: "start",
           }}
         >
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 14, textAlign: "center" }}>
+          <div
+            style={{
+              fontSize: 16,
+              fontWeight: 700,
+              marginBottom: 14,
+              textAlign: "center",
+            }}
+          >
             Selected Matters
           </div>
 
@@ -346,9 +384,9 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                 <td style={tdStyle}>{providerValue(r)}</td>
                 <td style={tdStyle}>{insurerValue(r)}</td>
                 <td style={tdStyle}>{formatDOS(r.dosStart, r.dosEnd)}</td>
-                <td style={{ ...tdStyle, textAlign: "left" }}>{money(claim)}</td>
-                <td style={{ ...tdStyle, textAlign: "left" }}>{money(payment)}</td>
-                <td style={{ ...tdStyle, textAlign: "left" }}>{money(balance)}</td>
+                <td style={{ ...tdStyle, textAlign: "right" }}>{money(claim)}</td>
+                <td style={{ ...tdStyle, textAlign: "right" }}>{money(payment)}</td>
+                <td style={{ ...tdStyle, textAlign: "right" }}>{money(balance)}</td>
                 <td style={tdStyle}>{denialReasonValue(r)}</td>
                 <td style={tdStyle}>{textValue(r.status)}</td>
               </tr>

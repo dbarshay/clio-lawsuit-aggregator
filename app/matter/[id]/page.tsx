@@ -51,6 +51,13 @@ function statusColor(status?: string) {
   return {};
 }
 
+function isSelectable(r: any) {
+  const stage = (r?.matterStage?.name || "").toUpperCase();
+  const status = (r?.status || "").toLowerCase();
+
+  return stage.includes("READY FOR ARBITRATION/LITIGATION") && status.includes("open");
+}
+
 function statusDisplay(status?: string) {
   if (!status) return "";
   const s = status.toLowerCase();
@@ -380,7 +387,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
               <tr
                 key={Number(r.id)}
                 style={{
-                  background: isSelected ? "#eaf2ff" : "#ffffff",
+                  background: !isSelectable(r) ? "#f5f5f5" : isSelected ? "#eaf2ff" : "#ffffff",
                 }}
               >
                 <td
@@ -402,8 +409,9 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                   >
                     <input
                       type="checkbox"
+                      disabled={!isSelectable(r)}
                       checked={isSelected}
-                      onChange={() => toggle(Number(r.id))}
+                      onChange={() => { if (isSelectable(r)) toggle(Number(r.id)); }}
                       style={{
                         width: 18,
                         height: 18,

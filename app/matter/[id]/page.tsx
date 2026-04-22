@@ -28,6 +28,40 @@ function formatDOS(start?: string, end?: string) {
   return s || e || "";
 }
 
+function stageColor(stage?: string) {
+  if (!stage) return {};
+  if (stage.includes("READY FOR ARBITRATION/LITIGATION")) {
+    return { color: "green", fontWeight: "600" };
+  }
+  return { color: "red" };
+}
+
+function statusColor(status?: string) {
+  if (!status) return {};
+  const s = status.toLowerCase();
+
+  if (s.includes("open")) {
+    return { color: "green", fontWeight: "600" };
+  }
+
+  if (s.includes("pending") || s.includes("closed")) {
+    return { color: "red", fontWeight: "700" };
+  }
+
+  return {};
+}
+
+function statusDisplay(status?: string) {
+  if (!status) return "";
+  const s = status.toLowerCase();
+
+  if (s.includes("pending") || s.includes("closed")) {
+    return "**" + status + "**";
+  }
+
+  return status;
+}
+
 function textValue(v: any): string {
   if (v == null) return "";
   if (typeof v === "string" || typeof v === "number") return String(v);
@@ -115,25 +149,25 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         .map((sib: any) => Number(sib.id ?? sib.matterId))
         .filter((id: number) => Number.isFinite(id) && id > 0);
 
-      const liveSiblingResults = await Promise.all(
-        siblingIds.map(async (id: number) => {
-          try {
-            const json = await fetch(
-              `/api/clio/matter-context?matterId=${id}`
-            ).then((r) => r.json());
+      const liveSiblingResults: any[] = [];
 
-            if (json?.ok && json?.matter) {
-              return json.matter;
-            }
+      for (const id of siblingIds) {
+        try {
+          const res = await fetch(
+            `/api/clio/matter-context?matterId=${id}`
+          );
 
-            return null;
-          } catch {
-            return null;
+          if (!res.ok) continue;
+
+          const json = await res.json();
+
+          if (json?.matter) {
+            liveSiblingResults.push(json.matter);
           }
-        })
-      );
-
-      const liveSiblings = liveSiblingResults.filter(Boolean);
+        } catch {
+          // skip bad sibling silently
+        }
+      }
 
       const all: any[] = [];
       const seen = new Set<number>();
@@ -143,7 +177,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         seen.add(Number(base.id));
       }
 
-      for (const sib of liveSiblings) {
+      for (const sib of liveSiblingResults) {
         const idNum = Number(sib.id);
         if (!idNum || seen.has(idNum)) continue;
         all.push({
@@ -389,8 +423,12 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                 <td style={{ ...tdStyle, textAlign: "right" }}>{money(payment)}</td>
                 <td style={{ ...tdStyle, textAlign: "right" }}>{money(balance)}</td>
                 <td style={tdStyle}>{denialReasonValue(r)}</td>
-                <td style={tdStyle}>{textValue(r?.stage?.name)}</td>
-                <td style={tdStyle}>{textValue(r.status)}</td>
+                <td style={{ ...tdStyle, ...stageColor(r?.matterStage?.name), whiteSpace: "nowrap" }}>
+                  {textValue(r?.matterStage?.name)}
+                </td>
+                <td style={{ ...tdStyle, ...statusColor(r.status) }}>
+                  {statusDisplay(r.status)}
+                </td>
               </tr>
             );
           })}

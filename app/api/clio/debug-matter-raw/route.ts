@@ -12,7 +12,17 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const res = await clioFetch(`/api/v4/matters/${matterId}.json`);
+    const fields = [
+      "id",
+      "display_number",
+      "status",
+      "matter_stage",
+      "matter_stage{id,name}",
+    ].join(",");
+
+    const res = await clioFetch(
+      `/api/v4/matters/${matterId}.json?fields=${encodeURIComponent(fields)}`
+    );
 
     if (!res.ok) {
       const text = await res.text();

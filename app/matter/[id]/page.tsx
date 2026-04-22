@@ -182,71 +182,68 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
     >
       <div
         style={{
-          display: "flex",
-          alignItems: "flex-start",
+          display: "grid",
+          gridTemplateColumns: "220px minmax(0, 1fr) 360px",
+          columnGap: 24,
+          alignItems: "start",
           width: "100%",
-          gap: 28,
           marginBottom: 18,
         }}
       >
+        <div style={{ alignSelf: "start" }}>
+          <img
+            src="/brl-logo.png"
+            alt="BRL Logo"
+            style={{
+              width: 220,
+              height: "auto",
+              display: "block",
+              maxWidth: "100%",
+            }}
+          />
+        </div>
+
         <div
           style={{
-            display: "flex",
-          alignItems: "flex-start",
-          width: "100%",
-            gap: 28,
-            flex: 1,
+            minWidth: 0,
+            fontSize: 18,
+            lineHeight: 1.45,
           }}
         >
-          <div style={{ flexShrink: 0 }}>
-            <img
-              src="/brl-logo.png"
-              alt="BRL Logo"
-              style={{ width: 240, height: "auto", display: "block" }}
-            />
+          <h1
+            style={{
+              margin: "0 0 12px 0",
+              fontSize: 18,
+              fontWeight: 700,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Main Matter- {textValue(matter?.displayNumber)}
+          </h1>
+
+          <div style={{ whiteSpace: "nowrap", marginBottom: 8 }}>
+            <strong>Provider:</strong> {providerValue(matter)}
           </div>
-
-          <div style={{ flex: 1 }}>
-            <h1 style={{ margin: "0 0 18px 0", fontSize: 24, fontWeight: 700 }}>
-              Main Matter- {textValue(matter?.displayNumber)}
-            </h1>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr",
-                rowGap: 8,
-                maxWidth: 520,
-                fontSize: 24,
-                lineHeight: 1.45,
-                whiteSpace: "nowrap",
-              }}
-            >
-              <div>
-                <strong>Provider:</strong> {providerValue(matter)}
-              </div>
-              <div>
-                <strong>Insurer:</strong> {insurerValue(matter)}
-              </div>
-              <div>
-                <strong>Claim Number:</strong> {textValue(matter?.claimNumber)}
-              </div>
-            </div>
+          <div style={{ whiteSpace: "nowrap", marginBottom: 8 }}>
+            <strong>Insurer:</strong> {insurerValue(matter)}
+          </div>
+          <div style={{ whiteSpace: "nowrap" }}>
+            <strong>Claim Number:</strong> {textValue(matter?.claimNumber)}
           </div>
         </div>
 
         <div
           style={{
-            width: 340,
+            width: 360,
             border: "1px solid #bfbfbf",
             borderRadius: 4,
             padding: 18,
             background: "#fafafa",
-            marginLeft: "auto",
-            flexShrink: 0,
+            justifySelf: "end",
+            alignSelf: "start",
           }}
         >
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 14, textAlign: "center" }}>
             Selected Matters
           </div>
 
@@ -256,15 +253,15 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
               gridTemplateColumns: "1fr auto",
               rowGap: 12,
               columnGap: 18,
-              fontSize: 16,
+              fontSize: 15,
               alignItems: "center",
             }}
           >
             <div><strong>Claim Amount:</strong></div>
-            <div style={{ textAlign: "left", minWidth: 110 }}>{money(totals.claim)}</div>
+            <div style={{ textAlign: "right", minWidth: 110 }}>{money(totals.claim)}</div>
 
             <div><strong>Payment (Voluntary):</strong></div>
-            <div style={{ textAlign: "left", minWidth: 110 }}>{money(totals.payment)}</div>
+            <div style={{ textAlign: "right", minWidth: 110 }}>{money(totals.payment)}</div>
 
             <div
               style={{
@@ -275,13 +272,12 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             />
 
             <div><strong>Balance (Presuit):</strong></div>
-            <div style={{ textAlign: "left", minWidth: 110 }}>{money(totals.balance)}</div>
+            <div style={{ textAlign: "right", minWidth: 110 }}>{money(totals.balance)}</div>
           </div>
         </div>
       </div>
 
       <hr style={{ margin: "18px 0 20px 0", border: 0, borderTop: "1px solid #999" }} />
-
 
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
@@ -297,7 +293,6 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             <th style={thStyle}>Balance (Presuit)</th>
             <th style={thStyle}>Denial Reason</th>
             <th style={thStyle}>Status</th>
-            
           </tr>
         </thead>
 
@@ -328,7 +323,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                       alignItems: "center",
                       justifyContent: "center",
                       width: "100%",
-                      minHeight: 52,
+                      minHeight: 46,
                       cursor: "pointer",
                     }}
                   >
@@ -349,14 +344,13 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                 <td style={tdStyle}>{textValue(r.displayNumber)}</td>
                 <td style={tdStyle}>{textValue(r.patient)}</td>
                 <td style={tdStyle}>{providerValue(r)}</td>
-                <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{insurerValue(r)}</td>
+                <td style={tdStyle}>{insurerValue(r)}</td>
                 <td style={tdStyle}>{formatDOS(r.dosStart, r.dosEnd)}</td>
                 <td style={{ ...tdStyle, textAlign: "left" }}>{money(claim)}</td>
                 <td style={{ ...tdStyle, textAlign: "left" }}>{money(payment)}</td>
                 <td style={{ ...tdStyle, textAlign: "left" }}>{money(balance)}</td>
                 <td style={tdStyle}>{denialReasonValue(r)}</td>
                 <td style={tdStyle}>{textValue(r.status)}</td>
-                
               </tr>
             );
           })}

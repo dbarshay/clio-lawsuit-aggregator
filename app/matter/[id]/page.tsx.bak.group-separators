@@ -333,29 +333,6 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
     );
   }, [rows, selected]);
 
-  const displayRows = useMemo(() => {
-    return rows.map((row, index) => {
-      const currentMaster = String(row?.masterLawsuitId || "").trim();
-      const prevMaster =
-        index > 0 ? String(rows[index - 1]?.masterLawsuitId || "").trim() : "";
-
-      const startsNewGroup =
-        index > 0 &&
-        currentMaster !== prevMaster &&
-        (currentMaster !== "" || prevMaster !== "");
-
-      const showGroupLabel =
-        currentMaster !== "" &&
-        (index === 0 || currentMaster !== prevMaster);
-
-      return {
-        ...row,
-        startsNewGroup,
-        showGroupLabel,
-      };
-    });
-  }, [rows]);
-
   const thStyle: React.CSSProperties = {
     border: "1px solid #bfbfbf",
     padding: "8px 8px",
@@ -540,11 +517,12 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             <th style={thStyle}>Denial Reason</th>
             <th style={thStyle}>Stage</th>
             <th style={thStyle}>Status</th>
+            <th style={thStyle}>MASTER ID</th>
           </tr>
         </thead>
 
         <tbody>
-          {displayRows.map((r) => {
+          {rows.map((r) => {
             const claim = num(r.claimAmount);
             const payment = num(r.paymentVoluntary);
             const balance = claim - payment;
@@ -568,7 +546,6 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                     : "#ffffff",
                   opacity: aggregated ? 0.8 : 1,
                   borderLeft: aggregated ? `4px solid ${lawsuitColor}` : undefined,
-                  borderTop: r.startsNewGroup ? "22px solid #d9d9d9" : undefined,
                 }}
               >
                 <td
@@ -585,7 +562,6 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                       justifyContent: "center",
                       width: "100%",
                       minHeight: 46,
-                      position: "relative",
                     }}
                     title={
                       aggregated
@@ -595,8 +571,6 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                         : ""
                     }
                   >
-                    
-
                     {aggregated ? (
                       <span style={{ fontSize: 18, lineHeight: 1 }}>🔒</span>
                     ) : (
@@ -630,6 +604,9 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                 </td>
                 <td style={{ ...tdStyle, ...statusColor(r.status) }}>
                   {statusDisplay(r.status)}
+                </td>
+                <td style={tdStyle}>
+                  {aggregated ? <strong>{textValue(r.masterLawsuitId)}</strong> : ""}
                 </td>
               </tr>
             );

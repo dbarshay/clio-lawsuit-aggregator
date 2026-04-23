@@ -59,24 +59,6 @@ function isAggregated(r: any) {
   return !!(r?.masterLawsuitId && String(r.masterLawsuitId).trim());
 }
 
-function getColorForLawsuit(id: string): string {
-  const colors = [
-    "#f0f7ff",
-    "#f5fff0",
-    "#fff7f0",
-    "#f9f0ff",
-    "#fff0f5",
-    "#f0fff9",
-  ];
-
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  }
-
-  return colors[Math.abs(hash) % colors.length];
-}
-
 function statusDisplay(status?: string) {
   if (!status) return "";
   const s = status.toLowerCase();
@@ -214,32 +196,8 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         seen.add(idNum);
       }
 
-      const sortedAll = [...all].sort((a, b) => {
-        const aIsBase = Number(a?.id) === Number(base?.id);
-        const bIsBase = Number(b?.id) === Number(base?.id);
-
-        if (aIsBase && !bIsBase) return -1;
-        if (!aIsBase && bIsBase) return 1;
-
-        const aMaster = String(a?.masterLawsuitId || "").trim();
-        const bMaster = String(b?.masterLawsuitId || "").trim();
-
-        if (aMaster && bMaster) {
-          const cmp = aMaster.localeCompare(bMaster);
-          if (cmp !== 0) return cmp;
-        } else if (aMaster && !bMaster) {
-          return -1;
-        } else if (!aMaster && bMaster) {
-          return 1;
-        }
-
-        return String(a?.displayNumber || "").localeCompare(
-          String(b?.displayNumber || "")
-        );
-      });
-
       setMatter(base || null);
-      setRows(sortedAll);
+      setRows(all);
       setSelected((prev) =>
         prev.filter((id) => {
           const row = all.find((r) => Number(r.id) === id);
@@ -332,29 +290,6 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
       { claim: 0, payment: 0, balance: 0 }
     );
   }, [rows, selected]);
-
-  const displayRows = useMemo(() => {
-    return rows.map((row, index) => {
-      const currentMaster = String(row?.masterLawsuitId || "").trim();
-      const prevMaster =
-        index > 0 ? String(rows[index - 1]?.masterLawsuitId || "").trim() : "";
-
-      const startsNewGroup =
-        index > 0 &&
-        currentMaster !== prevMaster &&
-        (currentMaster !== "" || prevMaster !== "");
-
-      const showGroupLabel =
-        currentMaster !== "" &&
-        (index === 0 || currentMaster !== prevMaster);
-
-      return {
-        ...row,
-        startsNewGroup,
-        showGroupLabel,
-      };
-    });
-  }, [rows]);
 
   const thStyle: React.CSSProperties = {
     border: "1px solid #bfbfbf",
@@ -540,35 +475,32 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             <th style={thStyle}>Denial Reason</th>
             <th style={thStyle}>Stage</th>
             <th style={thStyle}>Status</th>
+            <th style={thStyle}>MASTER ID</th>
           </tr>
         </thead>
 
         <tbody>
-          {displayRows.map((r) => {
+          {rows.map((r) => {
             const claim = num(r.claimAmount);
             const payment = num(r.paymentVoluntary);
             const balance = claim - payment;
             const isSelected = selected.includes(Number(r.id));
             const aggregated = isAggregated(r);
             const selectable = isSelectable(r);
-            const lawsuitColor = aggregated
-              ? getColorForLawsuit(String(r.masterLawsuitId))
-              : "";
 
             return (
               <tr
                 key={Number(r.id)}
                 style={{
                   background: aggregated
-                    ? lawsuitColor
+                    ? "#f2f2f2"
                     : !selectable
                     ? "#f5f5f5"
                     : isSelected
                     ? "#eaf2ff"
                     : "#ffffff",
-                  opacity: aggregated ? 0.8 : 1,
-                  borderLeft: aggregated ? `4px solid ${lawsuitColor}` : undefined,
-                  borderTop: r.startsNewGroup ? "22px solid #d9d9d9" : undefined,
+                  opacity: aggregated ? 0.7 : 1,
+                  borderLeft: aggregated ? "4px solid #999" : undefined,
                 }}
               >
                 <td
@@ -585,7 +517,6 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                       justifyContent: "center",
                       width: "100%",
                       minHeight: 46,
-                      position: "relative",
                     }}
                     title={
                       aggregated
@@ -595,8 +526,6 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                         : ""
                     }
                   >
-                    
-
                     {aggregated ? (
                       <span style={{ fontSize: 18, lineHeight: 1 }}>🔒</span>
                     ) : (
@@ -630,6 +559,9 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                 </td>
                 <td style={{ ...tdStyle, ...statusColor(r.status) }}>
                   {statusDisplay(r.status)}
+                </td>
+                <td style={tdStyle}>
+                  {aggregated ? <strong>{textValue(r.masterLawsuitId)}</strong> : ""}
                 </td>
               </tr>
             );

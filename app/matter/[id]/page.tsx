@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 function num(v: any) {
   const n = Number(v);
@@ -53,6 +53,10 @@ function statusColor(status?: string) {
 
 function isSelectable(r: any) {
   return !!r?.selectableForSettlement;
+}
+
+function isAggregated(r: any) {
+  return !!(r?.masterLawsuitId && String(r.masterLawsuitId).trim());
 }
 
 function statusDisplay(status?: string) {
@@ -131,6 +135,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
   const [matter, setMatter] = useState<any>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!matterId) return;
@@ -193,15 +198,78 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
 
       setMatter(base || null);
       setRows(all);
+      setSelected((prev) =>
+        prev.filter((id) => {
+          const row = all.find((r) => Number(r.id) === id);
+          return row && !isAggregated(row) && isSelectable(row);
+        })
+      );
     }
 
     load();
   }, [matterId]);
 
   function toggle(id: number) {
+    const row = rows.find((r) => Number(r.id) === id);
+
+    if (!row) return;
+    if (isAggregated(row)) return;
+    if (!isSelectable(row)) return;
+
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
+  }
+
+  async function aggregate() {
+    if (submitting) return;
+
+    const selectedRows = rows.filter((r) => selected.includes(Number(r.id)));
+
+    if (selectedRows.length === 0) {
+      alert("Select at least one matter.");
+      return;
+    }
+
+    const invalid = selectedRows.filter(
+      (r) => isAggregated(r) || !isSelectable(r)
+    );
+
+    if (invalid.length > 0) {
+      alert("One or more selected matters are not eligible for aggregation.");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const res = await fetch("/api/aggregate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          matters: selectedRows.map((r) => ({
+            id: Number(r.id),
+            displayNumber: textValue(r.displayNumber),
+          })),
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!json.ok) {
+        alert(json.error || "Aggregation failed");
+        return;
+      }
+
+      alert(`MASTER LAWSUIT ID CREATED: ${json.masterLawsuitId}`);
+      window.location.reload();
+    } catch (err: any) {
+      alert(err?.message || "Aggregation failed");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const totals = useMemo(() => {
@@ -240,6 +308,8 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
     verticalAlign: "middle",
   };
 
+  const alreadyAggregated = isAggregated(matter);
+
   return (
     <main
       style={{
@@ -256,7 +326,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
           columnGap: 24,
           alignItems: "start",
           width: "100%",
-          marginBottom: 18,
+          marginBottom: 12,
         }}
       >
         <div style={{ alignSelf: "start" }}>
@@ -268,8 +338,35 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
               height: "auto",
               display: "block",
               maxWidth: "100%",
+              marginBottom: 12,
             }}
           />
+
+          <button
+            onClick={aggregate}
+            disabled={submitting || selected.length === 0 || alreadyAggregated}
+            style={{
+              width: 220,
+              textAlign: "center",
+              padding: "12px 14px",
+              background: alreadyAggregated ? "#999" : "#0070f3",
+              color: "#fff",
+              border: "none",
+              borderRadius: 4,
+              cursor:
+                submitting || selected.length === 0 || alreadyAggregated
+                  ? "not-allowed"
+                  : "pointer",
+              fontWeight: 700,
+              fontSize: 15,
+            }}
+          >
+            {alreadyAggregated
+              ? "Already Aggregated"
+              : submitting
+              ? "Aggregating..."
+              : "Aggregate Selected Matters"}
+          </button>
         </div>
 
         <div
@@ -296,9 +393,15 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
           <div style={{ whiteSpace: "nowrap", marginBottom: 8 }}>
             <strong>Insurer:</strong> {insurerValue(matter)}
           </div>
-          <div style={{ whiteSpace: "nowrap" }}>
+          <div style={{ whiteSpace: "nowrap", marginBottom: 8 }}>
             <strong>Claim Number:</strong> {textValue(matter?.claimNumber)}
           </div>
+
+          {alreadyAggregated && (
+            <div style={{ whiteSpace: "nowrap", color: "red", fontWeight: 700 }}>
+              <strong>MASTER LAWSUIT ID:</strong> {textValue(matter?.masterLawsuitId)}
+            </div>
+          )}
         </div>
 
         <div
@@ -370,6 +473,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             <th style={thStyle}>Denial Reason</th>
             <th style={thStyle}>Stage</th>
             <th style={thStyle}>Status</th>
+            <th style={thStyle}>MASTER ID</th>
           </tr>
         </thead>
 
@@ -379,12 +483,22 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             const payment = num(r.paymentVoluntary);
             const balance = claim - payment;
             const isSelected = selected.includes(Number(r.id));
+            const aggregated = isAggregated(r);
+            const selectable = isSelectable(r);
 
             return (
               <tr
                 key={Number(r.id)}
                 style={{
-                  background: !isSelectable(r) ? "#f5f5f5" : isSelected ? "#eaf2ff" : "#ffffff",
+                  background: aggregated
+                    ? "#f2f2f2"
+                    : !selectable
+                    ? "#f5f5f5"
+                    : isSelected
+                    ? "#eaf2ff"
+                    : "#ffffff",
+                  opacity: aggregated ? 0.7 : 1,
+                  borderLeft: aggregated ? "4px solid #999" : undefined,
                 }}
               >
                 <td
@@ -394,36 +508,39 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                     padding: 0,
                   }}
                 >
-                  <label
+                  <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       width: "100%",
                       minHeight: 46,
-                      cursor: "pointer",
                     }}
+                    title={
+                      aggregated
+                        ? `Already aggregated under ${textValue(r.masterLawsuitId)}`
+                        : !selectable
+                        ? `Stage: ${r?.stage?.name || r?.matterStage?.name || "N/A"} | Status: ${r?.status || "N/A"} (Required: READY FOR ARBITRATION/LITIGATION + Open)`
+                        : ""
+                    }
                   >
-                    <input
-                      type="checkbox"
-title={
-  !isSelectable(r)
-    ? `Stage: ${r?.stage?.name || r?.matterStage?.name || "N/A"} | Status: ${r?.status || "N/A"} (Required: READY FOR ARBITRATION/LITIGATION + Open)`
-    : ""
-}
-                      style={{ width: 18, height: 18, cursor: isSelectable(r) ? "pointer" : "not-allowed", opacity: isSelectable(r) ? 1 : 0.4 }}
-                      disabled={!isSelectable(r)}
-                      disabled={!isSelectable(r)}
-                      checked={isSelected}
-                      onChange={() => { if (isSelectable(r)) toggle(Number(r.id)); }}
-                      style={{
-                        width: 18,
-                        height: 18,
-                        cursor: "pointer",
-                        margin: 0,
-                      }}
-                    />
-                  </label>
+                    {aggregated ? (
+                      <span style={{ fontSize: 18, lineHeight: 1 }}>🔒</span>
+                    ) : (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        disabled={!selectable}
+                        onChange={() => toggle(Number(r.id))}
+                        style={{
+                          width: 18,
+                          height: 18,
+                          cursor: selectable ? "pointer" : "not-allowed",
+                          margin: 0,
+                        }}
+                      />
+                    )}
+                  </div>
                 </td>
 
                 <td style={tdStyle}>{textValue(r.displayNumber)}</td>
@@ -440,6 +557,9 @@ title={
                 </td>
                 <td style={{ ...tdStyle, ...statusColor(r.status) }}>
                   {statusDisplay(r.status)}
+                </td>
+                <td style={tdStyle}>
+                  {aggregated ? <strong>{textValue(r.masterLawsuitId)}</strong> : ""}
                 </td>
               </tr>
             );

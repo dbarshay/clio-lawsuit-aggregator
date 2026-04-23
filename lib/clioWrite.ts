@@ -98,3 +98,50 @@ export async function writeLawsuitFields(
 
   return { ok: true };
 }
+
+export async function clearLawsuitFields(matterId: number) {
+  const matter = await readMatter(matterId);
+
+  const masterCFV = findCFV(matter, MATTER_CF.MASTER_LAWSUIT_ID);
+  const mattersCFV = findCFV(matter, MATTER_CF.LAWSUIT_MATTERS);
+
+  if (!masterCFV || !mattersCFV) {
+    throw new Error("Required custom fields not found on matter");
+  }
+
+  const payload = [
+    {
+      id: masterCFV.id,
+      value: "",
+    },
+    {
+      id: mattersCFV.id,
+      value: "",
+    },
+  ];
+
+  const res = await clioFetch(`/api/v4/matters/${matterId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "If-Match": matter.etag,
+    },
+    body: JSON.stringify({
+      data: {
+        custom_field_values: payload,
+      },
+    }),
+  });
+
+  const text = await res.text();
+
+  if (!res.ok) {
+    throw new Error(`Clear failed: ${text}`);
+  }
+
+  return {
+    matterId,
+    displayNumber: matter.display_number || String(matterId),
+    ok: true,
+  };
+}

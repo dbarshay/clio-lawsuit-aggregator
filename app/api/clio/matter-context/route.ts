@@ -95,7 +95,6 @@ export async function GET(req: NextRequest) {
       status: matter.status,
       matterStage: matter.matter_stage,
       selectableForSettlement: isSelectableForSettlement(matter.matter_stage, matter.status),
-      matterStage: matter.matter_stage,
 
       claimNumber: getCustomFieldValue(matter, MATTER_CF.CLAIM_NUMBER),
       billNumber: getCustomFieldValue(matter, MATTER_CF.BILL_NUMBER),

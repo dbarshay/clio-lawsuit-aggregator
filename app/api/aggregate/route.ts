@@ -15,7 +15,7 @@ async function generateLawsuitId() {
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
 
-  const counter = await prisma.$transaction(async (tx) => {
+  const counter = await prisma.$transaction(async (tx: any) => {
     const existing = await tx.lawsuitSequenceCounter.findUnique({
       where: {
         year_month: {

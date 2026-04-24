@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
 
     const selectedMatterIds = rawSelectedMatterIds
       .map(normalizeMatterId)
-      .filter((id): id is number => id !== null);
+      .filter((id: number | null): id is number => id !== null);
 
     if (!selectedMatterIds.length) {
       return NextResponse.json(
@@ -194,7 +194,11 @@ export async function POST(req: NextRequest) {
           matterId,
           masterMatterId
         );
-        results.push(result);
+
+        results.push({
+          matterId: result.matterId,
+          action: result.action === "created" ? "created" : "updated",
+        });
       } catch (err: any) {
         results.push({
           matterId,

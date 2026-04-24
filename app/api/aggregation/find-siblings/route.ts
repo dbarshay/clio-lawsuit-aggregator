@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const siblings = (getSiblings(current.claim_number_normalized) as any[])
+    const siblings = (await getSiblings(current.claim_number_normalized))
       .filter((row) => Number(row.matter_id) !== id)
       .map((row) => ({
         matterId: row.matter_id,

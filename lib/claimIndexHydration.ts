@@ -105,6 +105,6 @@ export async function indexMatterFromClioPayload(m: any) {
     raw_json: JSON.stringify(m),
   };
 
-  upsertRow(row);
+  await upsertRow(row);
   return row;
 }

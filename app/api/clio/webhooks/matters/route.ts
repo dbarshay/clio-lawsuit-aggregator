@@ -8,9 +8,28 @@ function authorized(req: NextRequest) {
   return actual === expected;
 }
 
+function clioHandshake(req: NextRequest) {
+  const hookSecret = req.headers.get("x-hook-secret");
+
+  if (!hookSecret) return null;
+
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "x-hook-secret": hookSecret,
+    },
+  });
+}
+
 export async function GET(req: NextRequest) {
+  const handshake = clioHandshake(req);
+  if (handshake) return handshake;
+
   if (!authorized(req)) {
-    return NextResponse.json({ ok: false, error: "Unauthorized webhook check" }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, error: "Unauthorized webhook check" },
+      { status: 401 }
+    );
   }
 
   return NextResponse.json({
@@ -22,8 +41,14 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const handshake = clioHandshake(req);
+  if (handshake) return handshake;
+
   if (!authorized(req)) {
-    return NextResponse.json({ ok: false, error: "Unauthorized webhook post" }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, error: "Unauthorized webhook post" },
+      { status: 401 }
+    );
   }
 
   let body: unknown = null;

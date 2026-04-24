@@ -1,8 +1,10 @@
+import { prisma } from "./prisma";
+
 const CLIO_API_BASE = process.env.CLIO_API_BASE || "https://app.clio.com";
 const CLIO_API_VERSION = process.env.CLIO_API_VERSION || "4.0.13";
 
-let currentAccessToken = process.env.CLIO_ACCESS_TOKEN || "";
-let currentRefreshToken = process.env.CLIO_REFRESH_TOKEN || "";
+let currentAccessToken = "";
+let currentRefreshToken = "";
 
 function requiredEnv(name: string) {
   const value = process.env[name];
@@ -14,12 +16,49 @@ function normalizeHeaders(headers?: HeadersInit) {
   return new Headers(headers || {});
 }
 
+async function getStoredTokens() {
+  const existing = await prisma.clioToken.findUnique({
+    where: { id: 1 },
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  const accessToken = requiredEnv("CLIO_ACCESS_TOKEN");
+  const refreshToken = requiredEnv("CLIO_REFRESH_TOKEN");
+
+  return prisma.clioToken.create({
+    data: {
+      id: 1,
+      accessToken,
+      refreshToken,
+    },
+  });
+}
+
+async function saveTokens(accessToken: string, refreshToken: string) {
+  await prisma.clioToken.upsert({
+    where: { id: 1 },
+    update: {
+      accessToken,
+      refreshToken,
+    },
+    create: {
+      id: 1,
+      accessToken,
+      refreshToken,
+    },
+  });
+}
+
 async function refreshClioAccessToken() {
   const clientId = requiredEnv("CLIO_CLIENT_ID");
   const clientSecret = requiredEnv("CLIO_CLIENT_SECRET");
 
   if (!currentRefreshToken) {
-    currentRefreshToken = requiredEnv("CLIO_REFRESH_TOKEN");
+    const stored = await getStoredTokens();
+    currentRefreshToken = stored.refreshToken;
   }
 
   const body = new URLSearchParams({
@@ -51,10 +90,9 @@ async function refreshClioAccessToken() {
   }
 
   currentAccessToken = data.access_token;
+  currentRefreshToken = data.refresh_token || currentRefreshToken;
 
-  if (data.refresh_token) {
-    currentRefreshToken = data.refresh_token;
-  }
+  await saveTokens(currentAccessToken, currentRefreshToken);
 
   return currentAccessToken;
 }
@@ -68,8 +106,10 @@ export async function clioFetch(
       ? path
       : `${CLIO_API_BASE}${path}`;
 
-  if (!currentAccessToken) {
-    currentAccessToken = requiredEnv("CLIO_ACCESS_TOKEN");
+  if (!currentAccessToken || !currentRefreshToken) {
+    const stored = await getStoredTokens();
+    currentAccessToken = stored.accessToken;
+    currentRefreshToken = stored.refreshToken;
   }
 
   const headers = normalizeHeaders(options.headers);

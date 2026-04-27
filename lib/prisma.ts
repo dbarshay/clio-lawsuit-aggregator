@@ -6,7 +6,7 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 const adapter = new PrismaPg({
-  connectionString: process.env.POSTGRES_PRISMA_URL,
+  connectionString: process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_DATABASE_URL || process.env.POSTGRES_URL,
 });
 
 export const prisma =

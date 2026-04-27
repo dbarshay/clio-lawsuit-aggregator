@@ -113,7 +113,52 @@ export async function POST(req: NextRequest) {
     const rawMatters = Array.isArray(body?.matters) ? body.matters : [];
     const matters = normalizeMatters(rawMatters);
 
-    if (matters.length === 0) {
+    // --- CLAIM INDEX PRECHECK ---
+    const ids = matters.map(m => Number(m.id));
+
+    const indexedRows = await prisma.claimIndex.findMany({
+      where: {
+        matter_id: { in: ids }
+      }
+    });
+
+    if (indexedRows.length !== matters.length) {
+      return NextResponse.json(
+        {
+          ok: false,
+          stage: "preflight",
+          error: "One or more matters are not indexed (missing claim number)."
+        },
+        { status: 400 }
+      );
+    }
+
+    const claimSet = new Set(indexedRows.map(r => r.claim_number_normalized));
+    if (claimSet.size !== 1) {
+      return NextResponse.json(
+        {
+          ok: false,
+          stage: "preflight",
+          error: "Selected matters do not share the same claim number."
+        },
+        { status: 400 }
+      );
+    }
+
+    const providerSet = new Set(indexedRows.map(r => r.client_name));
+    if (providerSet.size !== 1) {
+      return NextResponse.json(
+        {
+          ok: false,
+          stage: "preflight",
+          error: "Selected matters do not share the same provider."
+        },
+        { status: 400 }
+      );
+    }
+
+
+    if (matters.length < 2) {
       return NextResponse.json(
         { ok: false, error: "No valid matters selected" },
         { status: 400 }

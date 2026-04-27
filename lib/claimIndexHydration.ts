@@ -48,7 +48,7 @@ export async function indexMatterFromClioPayload(m: any) {
 
   if (!claimNormalized) {
     return { skipped: true, reason: "No claim number" };
-}
+  }
 
   const patientId = getField(m, PATIENT_FIELD_ID);
   const insurerId = getField(m, INSURANCE_COMPANY_FIELD_ID);

@@ -10,6 +10,7 @@ async function hydrateMatter(matterId: number) {
     "display_number",
     "description",
     "status",
+    "matter_stage{id,name}",
     "client",
     "custom_field_values{value,custom_field}",
   ].join(",");
@@ -47,7 +48,17 @@ function siblingRow(row: any) {
     paymentVoluntary: row.payment_voluntary ?? 0,
     balancePresuit: row.balance_presuit ?? 0,
     denialReason: row.denial_reason ?? "",
+    matterStage: row.matter_stage_name
+      ? { name: row.matter_stage_name }
+      : null,
+    stage: row.matter_stage_name
+      ? { name: row.matter_stage_name }
+      : null,
     status: row.status ?? "",
+    selectableForSettlement:
+      String(row.matter_stage_name || "").toUpperCase().includes("READY FOR ARBITRATION/LITIGATION") &&
+      String(row.status || "").toLowerCase().includes("open") &&
+      !String(row.master_lawsuit_id || "").trim(),
     masterLawsuitId: row.master_lawsuit_id ?? "",
   };
 }

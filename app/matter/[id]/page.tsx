@@ -154,6 +154,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
   const [rows, setRows] = useState<any[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [expanding, setExpanding] = useState(false);
 
   useEffect(() => {
     if (!matterId) return;
@@ -198,7 +199,9 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
           denialReason: sib.denialReason,
           status: sib.status,
           masterLawsuitId: sib.masterLawsuitId,
-          selectableForSettlement: false,
+          matterStage: sib.matterStage || sib.stage || null,
+          stage: sib.stage || sib.matterStage || null,
+          selectableForSettlement: !!sib.selectableForSettlement,
         });
 
         seen.add(idNum);
@@ -256,21 +259,6 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
     }
 
     const selectedRows = rows.filter((r) => selected.includes(Number(r.id)));
-
-    const selectedProviders = new Set(
-      selectedRows.map((r) => providerValue(r)).filter(Boolean)
-    );
-
-    const rowProvider = providerValue(row);
-
-    if (
-      selectedProviders.size > 0 &&
-      rowProvider &&
-      !selectedProviders.has(rowProvider)
-    ) {
-      alert("Cannot mix providers in one lawsuit aggregation.");
-      return;
-    }
 
     const selectedMasterIds = new Set(
       selectedRows
@@ -340,6 +328,32 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
       alert(err?.message || "Aggregation failed");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function expandClaim() {
+    if (expanding) return;
+
+    setExpanding(true);
+
+    try {
+      const res = await fetch(
+        `/api/aggregation/expand-claim?matterId=${matterId}&limit=20&delayMs=1200`
+      );
+
+      const json = await res.json();
+
+      if (!json.ok) {
+        alert(json.error || "Expansion failed");
+        return;
+      }
+
+      alert(`Expanded claim cluster.\nRefreshed: ${json.refreshed} matters.`);
+      window.location.reload();
+    } catch (err: any) {
+      alert(err?.message || "Expansion failed");
+    } finally {
+      setExpanding(false);
     }
   }
 
@@ -463,6 +477,26 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
               : alreadyAggregated
               ? "Main Matter Already Aggregated"
               : "Select Matters to Aggregate"}
+          </button>
+
+          <button
+            onClick={expandClaim}
+            disabled={expanding || !matterId}
+            style={{
+              width: 220,
+              textAlign: "center",
+              padding: "10px 14px",
+              marginTop: 10,
+              background: expanding || !matterId ? "#999" : "#28a745",
+              color: "#fff",
+              border: "none",
+              borderRadius: 4,
+              cursor: expanding || !matterId ? "not-allowed" : "pointer",
+              fontWeight: 700,
+              fontSize: 14,
+            }}
+          >
+            {expanding ? "Refreshing..." : "Refresh Claim Cluster"}
           </button>
         </div>
 
@@ -626,7 +660,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                         : ""
                     }
                   >
-                    {aggregated ? (
+                    {locked ? (
                       <span style={{ fontSize: 18, lineHeight: 1 }}>🔒</span>
                     ) : (
                       <input
@@ -647,7 +681,16 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
 
                 <td style={tdStyle}>
                   {aggregated ? "🔒 " : ""}
-                  {textValue(r.displayNumber)}
+                  <a
+                    href={`/matter/${Number(r.id)}`}
+                    style={{
+                      color: "#0057b8",
+                      textDecoration: "underline",
+                      fontWeight: Number(r.id) === Number(matter?.id) ? 700 : 500,
+                    }}
+                  >
+                    {textValue(r.displayNumber)}
+                  </a>
                   {aggregated && r.masterLawsuitId
                     ? ` (${textValue(r.masterLawsuitId)})`
                     : ""}

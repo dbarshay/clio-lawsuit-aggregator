@@ -82,6 +82,7 @@ export async function upsertClaimIndexFromMatter(matter: any) {
     balance_presuit: num(cf(MATTER_CF.BALANCE_PRESUIT)),
 
     master_lawsuit_id: str(cf(MATTER_CF.MASTER_LAWSUIT_ID)),
+    matter_stage_name: str(matter?.matter_stage?.name),
     status: str(matter.status),
 
     raw_json: JSON.stringify(matter),

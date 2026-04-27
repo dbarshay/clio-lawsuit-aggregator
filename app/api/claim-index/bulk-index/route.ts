@@ -49,6 +49,7 @@ async function hydrateMatter(matterId: number) {
     "display_number",
     "description",
     "status",
+    "matter_stage{id,name}",
     "client",
     "custom_field_values{value,custom_field}",
   ].join(",");

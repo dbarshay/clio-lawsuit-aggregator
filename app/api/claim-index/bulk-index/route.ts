@@ -1,10 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clioFetch } from "@/lib/clio";
-import { indexMatterFromClioPayload } from "@/lib/claimIndexHydration";
+import { clioFetch } from "@/lib/clioAuth";
+import { upsertClaimIndexFromMatter } from "@/lib/claimIndexUpsert";
 
-async function fetchMatterDetail(matterId: number) {
+const CLAIM_NUMBER_FIELD_ID = 22145915;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function extractPageToken(nextUrl: string | null): string | null {
+  if (!nextUrl) return null;
+  try {
+    return new URL(nextUrl).searchParams.get("page_token");
+  } catch {
+    return null;
+  }
+}
+
+function getClaimNumber(matter: any) {
+  return matter.custom_field_values?.find(
+    (c: any) => Number(c.custom_field?.id) === CLAIM_NUMBER_FIELD_ID
+  )?.value;
+}
+
+async function clioFetchWithRetry(path: string, maxRetries = 3) {
+  let attempt = 0;
+
+  while (true) {
+    const res = await clioFetch(path);
+    const text = await res.text();
+
+    if (res.status !== 429 || attempt >= maxRetries) {
+      return { res, text };
+    }
+
+    const match = text.match(/Retry in (\d+) seconds/i);
+    const waitSeconds = match ? Number(match[1]) : 60;
+
+    await sleep((waitSeconds + 2) * 1000);
+    attempt++;
+  }
+}
+
+async function hydrateMatter(matterId: number) {
   const fields = [
     "id",
+    "etag",
     "display_number",
     "description",
     "status",
@@ -12,56 +53,130 @@ async function fetchMatterDetail(matterId: number) {
     "custom_field_values{value,custom_field}",
   ].join(",");
 
-  const res = await clioFetch(
+  const { res, text } = await clioFetchWithRetry(
     `/api/v4/matters/${matterId}.json?fields=${encodeURIComponent(fields)}`
   );
 
-  const text = await res.text();
-
   if (!res.ok) {
-    throw new Error(`Clio API ${res.status}: ${text}`);
+    throw new Error(`Hydrate failed ${res.status}: ${text}`);
   }
 
   return JSON.parse(text)?.data;
 }
 
-export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => null);
-  const matterIds = Array.isArray(body?.matterIds) ? body.matterIds : [];
+export async function GET(req: NextRequest) {
+  const totalLimit = Number(req.nextUrl.searchParams.get("limit") || 250);
+  const pageLimit = Math.min(Number(req.nextUrl.searchParams.get("pageLimit") || 50), 200);
+  const delayMs = Number(req.nextUrl.searchParams.get("delayMs") || 1500);
+  const maxPages = Number(req.nextUrl.searchParams.get("maxPages") || 100);
 
-  const results = [];
+  let pageToken: string | null = null;
 
-  for (const rawId of matterIds) {
-    const matterId = Number(rawId);
+  let scanned = 0;
+  let hydrated = 0;
+  let indexed = 0;
+  let skippedNoClaim = 0;
+  let failed = 0;
+  let rateLimitRetries = 0;
 
-    if (!Number.isFinite(matterId)) {
-      results.push({ matterId: rawId, ok: false, error: "Invalid matterId" });
-      continue;
-    }
+  const sampleClaims: any[] = [];
+  const errors: any[] = [];
 
-    try {
-      const detail = await fetchMatterDetail(matterId);
-      const indexed = await indexMatterFromClioPayload(detail);
+  for (let page = 0; page < maxPages; page++) {
+    if (scanned >= totalLimit) break;
 
-      results.push({
-        matterId,
-        ok: true,
-        indexed,
-      });
-    } catch (err: any) {
-      results.push({
-        matterId,
+    const params = new URLSearchParams({
+      limit: String(pageLimit),
+      fields: "id,display_number",
+    });
+
+    if (pageToken) params.set("page_token", pageToken);
+
+    const listResult = await clioFetchWithRetry(
+      `/api/v4/matters.json?${params.toString()}`
+    );
+
+    const listRes = listResult.res;
+    const listText = listResult.text;
+
+    if (!listRes.ok) {
+      return NextResponse.json({
         ok: false,
-        error: err?.message || "Unknown error",
+        phase: "list",
+        error: `Clio list failed: ${listRes.status}`,
+        body: listText,
+        scanned,
+        hydrated,
+        indexed,
+        skippedNoClaim,
+        failed,
       });
     }
+
+    const listJson = JSON.parse(listText);
+    const matters = listJson?.data || [];
+
+    if (matters.length === 0) break;
+
+    for (const thinMatter of matters) {
+      if (scanned >= totalLimit) break;
+
+      scanned++;
+
+      try {
+        const matter = await hydrateMatter(Number(thinMatter.id));
+        hydrated++;
+
+        const claim = getClaimNumber(matter);
+
+        if (!claim) {
+          skippedNoClaim++;
+        } else {
+          const row = await upsertClaimIndexFromMatter(matter);
+          indexed++;
+
+          if (sampleClaims.length < 25) {
+            sampleClaims.push({
+              matterId: matter.id,
+              displayNumber: matter.display_number,
+              claimNumber: claim,
+              normalized: row.claim_number_normalized,
+            });
+          }
+        }
+      } catch (err: any) {
+        failed++;
+
+        if (String(err?.message || "").includes("429")) {
+          rateLimitRetries++;
+        }
+
+        if (errors.length < 25) {
+          errors.push({
+            matterId: thinMatter.id,
+            error: err?.message || String(err),
+          });
+        }
+      }
+
+      await sleep(delayMs);
+    }
+
+    pageToken = extractPageToken(listJson?.meta?.paging?.next || null);
+    if (!pageToken) break;
+
+    await sleep(delayMs);
   }
 
   return NextResponse.json({
     ok: true,
-    requested: matterIds.length,
-    succeeded: results.filter((r) => r.ok).length,
-    failed: results.filter((r) => !r.ok).length,
-    results,
+    scanned,
+    hydrated,
+    indexed,
+    skippedNoClaim,
+    failed,
+    rateLimitRetries,
+    sampleClaims,
+    errors,
   });
 }

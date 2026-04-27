@@ -1,5 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
+import { clioFetch } from "@/lib/clioAuth";
 import { getMatter, getSiblings } from "@/lib/claimIndex";
+import { upsertClaimIndexFromMatter } from "@/lib/claimIndexUpsert";
+
+async function hydrateMatter(matterId: number) {
+  const fields = [
+    "id",
+    "etag",
+    "display_number",
+    "description",
+    "status",
+    "client",
+    "custom_field_values{value,custom_field}",
+  ].join(",");
+
+  const res = await clioFetch(
+    `/api/v4/matters/${matterId}.json?fields=${encodeURIComponent(fields)}`
+  );
+
+  const text = await res.text();
+
+  if (!res.ok) {
+    throw new Error(`Failed to hydrate matter ${matterId}: ${res.status} ${text}`);
+  }
+
+  return JSON.parse(text)?.data;
+}
+
+function siblingRow(row: any) {
+  return {
+    matterId: row.matter_id,
+    id: row.matter_id,
+    displayNumber: row.display_number ?? "",
+    patient: row.patient_name ?? "",
+    client: row.client_name ?? "",
+    clientName: row.client_name ?? "",
+    insuranceCompany: row.insurer_name ?? "",
+    billNumber: row.bill_number ?? "",
+    dosStart: row.dos_start ?? "",
+    dosEnd: row.dos_end ?? "",
+    dosRange:
+      row.dos_start && row.dos_end
+        ? `${row.dos_start} to ${row.dos_end}`
+        : row.dos_start || row.dos_end || "",
+    claimAmount: row.claim_amount ?? 0,
+    paymentVoluntary: row.payment_voluntary ?? 0,
+    balancePresuit: row.balance_presuit ?? 0,
+    denialReason: row.denial_reason ?? "",
+    status: row.status ?? "",
+    masterLawsuitId: row.master_lawsuit_id ?? "",
+  };
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -21,46 +72,28 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const liveMatter = await hydrateMatter(id);
+    await upsertClaimIndexFromMatter(liveMatter);
+
     const current = await getMatter(id);
 
     if (!current) {
       return NextResponse.json(
-        {
-          ok: false,
-          error: "Matter is not yet indexed. Run index-matter or rebuild first.",
-        },
-        { status: 404 }
+        { ok: false, error: "Matter could not be indexed." },
+        { status: 500 }
       );
     }
 
     if (!current.claim_number_normalized) {
-      return NextResponse.json({ ok: false, error: "No claim number" }, { status: 422 });
+      return NextResponse.json(
+        { ok: false, error: "No claim number" },
+        { status: 422 }
+      );
     }
 
     const siblings = (await getSiblings(current.claim_number_normalized))
       .filter((row) => Number(row.matter_id) !== id)
-      .map((row) => ({
-        matterId: row.matter_id,
-        id: row.matter_id,
-        displayNumber: row.display_number ?? "",
-        patient: row.patient_name ?? "",
-        client: row.client_name ?? "",
-        clientName: row.client_name ?? "",
-        insuranceCompany: row.insurer_name ?? "",
-        billNumber: row.bill_number ?? "",
-        dosStart: row.dos_start ?? "",
-        dosEnd: row.dos_end ?? "",
-        dosRange:
-          row.dos_start && row.dos_end
-            ? `${row.dos_start} to ${row.dos_end}`
-            : row.dos_start || row.dos_end || "",
-        claimAmount: row.claim_amount ?? 0,
-        paymentVoluntary: row.payment_voluntary ?? 0,
-        balancePresuit: row.balance_presuit ?? 0,
-        denialReason: row.denial_reason ?? "",
-        status: row.status ?? "",
-        masterLawsuitId: row.master_lawsuit_id ?? "",
-      }));
+      .map(siblingRow);
 
     return NextResponse.json({
       ok: true,
@@ -77,7 +110,7 @@ export async function GET(req: NextRequest) {
         masterLawsuitId: current.master_lawsuit_id,
       },
       siblings,
-      source: "local-claim-index",
+      source: "live-hydrate-current-then-local-claim-index",
     });
   } catch (err: any) {
     return NextResponse.json(

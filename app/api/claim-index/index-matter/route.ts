@@ -48,6 +48,10 @@ export async function GET(req: NextRequest) {
     const detail = await fetchMatterDetail(matterId);
     const indexed = await indexMatterFromClioPayload(detail);
 
+    if ((indexed as any)?.skipped) {
+      return NextResponse.json({ ok: true, skipped: true });
+    }
+
     return NextResponse.json({
       ok: true,
       matterId,

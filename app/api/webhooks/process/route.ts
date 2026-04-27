@@ -1,4 +1,5 @@
 export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { clioFetch } from "@/lib/clio";
@@ -76,10 +77,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const pending = await prisma.webhookEvent.findMany({
+  const events = await prisma.webhookEvent.findMany({
     where: {
-      status: { in: ["pending", "failed"] },
-      attempts: { lt: 5 },
+      status: {
+        in: ["pending", "failed"],
+      },
     },
     orderBy: { createdAt: "asc" },
     take: 10,
@@ -87,7 +89,7 @@ export async function POST(req: NextRequest) {
 
   const results = [];
 
-  for (const event of pending) {
+  for (const event of events) {
     try {
       await prisma.webhookEvent.update({
         where: { id: event.id },
@@ -148,7 +150,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    selected: pending.length,
+    selected: events.length,
     results,
   });
 }

@@ -340,6 +340,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
 
       return {
         ...row,
+        isLocked: !!(row.masterLawsuitId && String(row.masterLawsuitId).trim()),
         startsNewGroup,
         showGroupLabel,
       };
@@ -372,7 +373,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         maxWidth: 1325,
         margin: "0 auto",
         fontFamily: "Arial, sans-serif",
-      }}
+       }}
     >
       <div
         style={{
@@ -382,9 +383,9 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
           alignItems: "start",
           width: "100%",
           marginBottom: 12,
-        }}
+         }}
       >
-        <div style={{ alignSelf: "start" }}>
+        <div style={{ alignSelf: "start"  }}>
           <img
             src="/brl-logo.png"
             alt="BRL Logo"
@@ -394,7 +395,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
               display: "block",
               maxWidth: "100%",
               marginBottom: 12,
-            }}
+             }}
           />
 
           <button
@@ -414,7 +415,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                   : "pointer",
               fontWeight: 700,
               fontSize: 15,
-            }}
+             }}
           >
             {submitting
               ? "Aggregating..."
@@ -431,7 +432,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             minWidth: 0,
             fontSize: 18,
             lineHeight: 1.45,
-          }}
+           }}
         >
           <h1
             style={{
@@ -439,23 +440,23 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
               fontSize: 18,
               fontWeight: 700,
               whiteSpace: "nowrap",
-            }}
+             }}
           >
             Main Matter- {textValue(matter?.displayNumber)}
           </h1>
 
-          <div style={{ whiteSpace: "nowrap", marginBottom: 8 }}>
+          <div style={{ whiteSpace: "nowrap", marginBottom: 8  }}>
             <strong>Provider:</strong> {providerValue(matter)}
           </div>
-          <div style={{ whiteSpace: "nowrap", marginBottom: 8 }}>
+          <div style={{ whiteSpace: "nowrap", marginBottom: 8  }}>
             <strong>Insurer:</strong> {insurerValue(matter)}
           </div>
-          <div style={{ whiteSpace: "nowrap", marginBottom: 8 }}>
+          <div style={{ whiteSpace: "nowrap", marginBottom: 8  }}>
             <strong>Claim Number:</strong> {textValue(matter?.claimNumber)}
           </div>
 
           {alreadyAggregated && (
-            <div style={{ whiteSpace: "nowrap", color: "red", fontWeight: 700 }}>
+            <div style={{ whiteSpace: "nowrap", color: "red", fontWeight: 700  }}>
               <strong>MASTER LAWSUIT ID:</strong> {textValue(matter?.masterLawsuitId)}
             </div>
           )}
@@ -470,7 +471,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             background: "#fafafa",
             justifySelf: "end",
             alignSelf: "start",
-          }}
+           }}
         >
           <div
             style={{
@@ -478,7 +479,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
               fontWeight: 700,
               marginBottom: 14,
               textAlign: "center",
-            }}
+             }}
           >
             Selected Matters
           </div>
@@ -491,31 +492,31 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
               columnGap: 18,
               fontSize: 15,
               alignItems: "center",
-            }}
+             }}
           >
             <div><strong>Claim Amount:</strong></div>
-            <div style={{ textAlign: "right", minWidth: 110 }}>{money(totals.claim)}</div>
+            <div style={{ textAlign: "right", minWidth: 110  }}>{money(totals.claim)}</div>
 
             <div><strong>Payment (Voluntary):</strong></div>
-            <div style={{ textAlign: "right", minWidth: 110 }}>{money(totals.payment)}</div>
+            <div style={{ textAlign: "right", minWidth: 110  }}>{money(totals.payment)}</div>
 
             <div
               style={{
                 gridColumn: "1 / 3",
                 borderTop: "1px solid #bfbfbf",
                 margin: "2px 0 0 0",
-              }}
+               }}
             />
 
             <div><strong>Balance (Presuit):</strong></div>
-            <div style={{ textAlign: "right", minWidth: 110 }}>{money(totals.balance)}</div>
+            <div style={{ textAlign: "right", minWidth: 110  }}>{money(totals.balance)}</div>
           </div>
         </div>
       </div>
 
-      <hr style={{ margin: "18px 0 20px 0", border: 0, borderTop: "1px solid #999" }} />
+      <hr style={{ margin: "18px 0 20px 0", border: 0, borderTop: "1px solid #999"  }} />
 
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse"  }}>
         <thead>
           <tr>
             <th style={thStyle}>Select</th>
@@ -541,6 +542,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             const isSelected = selected.includes(Number(r.id));
             const aggregated = isAggregated(r);
             const selectable = isSelectable(r);
+            const locked = aggregated || !selectable;
             const lawsuitColor = aggregated
               ? getColorForLawsuit(String(r.masterLawsuitId))
               : "";
@@ -556,7 +558,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                     : isSelected
                     ? "#eaf2ff"
                     : "#ffffff",
-                  opacity: aggregated ? 0.8 : 1,
+                  opacity: locked ? 0.8 : 1,
                   borderLeft: aggregated ? `4px solid ${lawsuitColor}` : undefined,
                   borderTop: r.startsNewGroup ? "22px solid #d9d9d9" : undefined,
                 }}
@@ -581,12 +583,10 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                       aggregated
                         ? `Already aggregated under ${textValue(r.masterLawsuitId)}`
                         : !selectable
-                        ? `Stage: ${r?.stage?.name || r?.matterStage?.name || "N/A"} | Status: ${r?.status || "N/A"} (Required: READY FOR ARBITRATION/LITIGATION + Open)`
+                        ? `Stage: ${r?.stage?.name || r?.matterStage?.name || "N/A"} | Status: ${r?.status || "N/A"}`
                         : ""
                     }
                   >
-                    
-
                     {aggregated ? (
                       <span style={{ fontSize: 18, lineHeight: 1 }}>🔒</span>
                     ) : (
@@ -606,7 +606,13 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                   </div>
                 </td>
 
-                <td style={tdStyle}>{textValue(r.displayNumber)}</td>
+                <td style={tdStyle}>
+                  {aggregated ? "🔒 " : ""}
+                  {textValue(r.displayNumber)}
+                  {aggregated && r.masterLawsuitId
+                    ? ` (${textValue(r.masterLawsuitId)})`
+                    : ""}
+                </td>
                 <td style={tdStyle}>{textValue(r.patient)}</td>
                 <td style={tdStyle}>{providerValue(r)}</td>
                 <td style={tdStyle}>{insurerValue(r)}</td>
@@ -615,7 +621,13 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                 <td style={{ ...tdStyle, textAlign: "right" }}>{money(payment)}</td>
                 <td style={{ ...tdStyle, textAlign: "right" }}>{money(balance)}</td>
                 <td style={tdStyle}>{denialReasonValue(r)}</td>
-                <td style={{ ...tdStyle, ...stageColor(r?.matterStage?.name), whiteSpace: "nowrap" }}>
+                <td
+                  style={{
+                    ...tdStyle,
+                    ...stageColor(r?.matterStage?.name),
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   {textValue(r?.matterStage?.name)}
                 </td>
                 <td style={{ ...tdStyle, ...statusColor(r.status) }}>

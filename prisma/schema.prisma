@@ -36,33 +36,49 @@ model ClioToken {
 }
 
 model ClaimIndex {
-  matter_id              Int     @id
-  display_number         String?
-  description            String?
+  matter_id      Int     @id
+  display_number String?
+  description    String?
 
-  claim_number_raw       String?
+  claim_number_raw        String?
   claim_number_normalized String?
 
-  patient_name           String?
-  client_name            String?
-  insurer_name           String?
+  patient_name String?
+  client_name  String?
+  insurer_name String?
 
-  claim_amount           Float?
-  settled_amount         Float?
-  payment_amount         Float?
-  balance_amount         Float?
+  claim_amount   Float?
+  settled_amount Float?
+  payment_amount Float?
+  balance_amount Float?
 
-  bill_number            String?
-  dos_start              String?
-  dos_end                String?
-  denial_reason          String?
-  payment_voluntary      Float?
-  balance_presuit        Float?
-  master_lawsuit_id      String?
+  bill_number       String?
+  dos_start         String?
+  dos_end           String?
+  denial_reason     String?
+  payment_voluntary Float?
+  balance_presuit   Float?
+  master_lawsuit_id String?
 
-  status                 String?
-  raw_json               String?
-  indexed_at             DateTime @default(now())
+  status     String?
+  raw_json   String?
+  indexed_at DateTime @default(now())
 
   @@index([claim_number_normalized])
+}
+
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  webhookId   String?
+  matterId    Int?
+  payload     Json
+  status      String    @default("pending")
+  attempts    Int       @default(0)
+  lastError   String?
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+
+  @@index([status])
+  @@index([matterId])
+  @@index([webhookId])
 }

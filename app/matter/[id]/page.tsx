@@ -280,7 +280,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
     setSelected((prev) => [...prev, id]);
   }
 
-  async function aggregate() {
+    async function aggregate() {
     if (submitting) return;
 
     const selectedRows = rows.filter((r) => selected.includes(Number(r.id)));
@@ -302,30 +302,31 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
     setSubmitting(true);
 
     try {
-      const res = await fetch("/api/aggregate", {
+      const res = await fetch("/api/aggregation/build-lawsuit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          matters: selectedRows.map((r) => ({
-            id: Number(r.id),
-            displayNumber: textValue(r.displayNumber),
-          })),
+          baseMatterId: Number(matter.id),
+          selectedMatterIds: selectedRows.map((r) => Number(r.id)),
         }),
       });
 
       const json = await res.json();
 
       if (!json.ok) {
-        alert(json.error || "Aggregation failed");
+        alert(json.error || "Lawsuit build failed");
         return;
       }
 
-      alert(`MASTER LAWSUIT ID CREATED: ${json.masterLawsuitId}`);
+      alert(
+        `MASTER CREATED\n\nMaster Matter ID: ${json.masterMatterId}\nMaster Lawsuit ID: ${json.masterLawsuitId}`
+      );
+
       window.location.reload();
     } catch (err: any) {
-      alert(err?.message || "Aggregation failed");
+      alert(err?.message || "Lawsuit build failed");
     } finally {
       setSubmitting(false);
     }

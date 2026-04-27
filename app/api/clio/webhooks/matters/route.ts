@@ -164,11 +164,15 @@ export async function POST(req: NextRequest) {
     const matter = await fetchMatterDetail(matterId);
     const indexed = await indexMatterFromClioPayload(matter);
 
+      if ((indexed as any)?.skipped) {
+        return NextResponse.json({ ok: true, skipped: true });
+      }
+
     console.log("CLIO WEBHOOK MATTER INDEXED:", {
       webhookId,
       matterId,
-      displayNumber: indexed.display_number,
-      claimNumber: indexed.claim_number_raw,
+      displayNumber: (indexed as any).display_number,
+      claimNumber: (indexed as any).claim_number_raw,
     });
 
     return NextResponse.json({
@@ -177,8 +181,8 @@ export async function POST(req: NextRequest) {
       processed: true,
       webhookId,
       matterId,
-      displayNumber: indexed.display_number,
-      claimNumber: indexed.claim_number_raw,
+      displayNumber: (indexed as any).display_number,
+      claimNumber: (indexed as any).claim_number_raw,
       receivedAt: new Date().toISOString(),
     });
   } catch (err: any) {

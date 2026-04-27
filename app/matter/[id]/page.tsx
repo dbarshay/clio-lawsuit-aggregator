@@ -172,30 +172,6 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         ? siblingsResponse.siblings
         : [];
 
-      const siblingIds = siblings
-        .map((sib: any) => Number(sib.id ?? sib.matterId))
-        .filter((id: number) => Number.isFinite(id) && id > 0);
-
-      const liveSiblingResults: any[] = [];
-
-      for (const id of siblingIds) {
-        try {
-          const res = await fetch(
-            `/api/clio/matter-context?matterId=${id}`
-          );
-
-          if (!res.ok) continue;
-
-          const json = await res.json();
-
-          if (json?.matter) {
-            liveSiblingResults.push(json.matter);
-          }
-        } catch {
-          // skip bad sibling silently
-        }
-      }
-
       const all: any[] = [];
       const seen = new Set<number>();
 
@@ -204,13 +180,27 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         seen.add(Number(base.id));
       }
 
-      for (const sib of liveSiblingResults) {
-        const idNum = Number(sib.id);
+      for (const sib of siblings) {
+        const idNum = Number(sib.id ?? sib.matterId);
         if (!idNum || seen.has(idNum)) continue;
+
         all.push({
-          ...sib,
           id: idNum,
+          displayNumber: sib.displayNumber,
+          patient: sib.patient,
+          clientName: sib.clientName,
+          insuranceCompany: sib.insuranceCompany,
+          claimAmount: sib.claimAmount,
+          paymentVoluntary: sib.paymentVoluntary,
+          balancePresuit: sib.balancePresuit,
+          dosStart: sib.dosStart,
+          dosEnd: sib.dosEnd,
+          denialReason: sib.denialReason,
+          status: sib.status,
+          masterLawsuitId: sib.masterLawsuitId,
+          selectableForSettlement: false,
         });
+
         seen.add(idNum);
       }
 

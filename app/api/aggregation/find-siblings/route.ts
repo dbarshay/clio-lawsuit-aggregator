@@ -21,23 +21,20 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const current = getMatter(id) as any;
+    const current = await getMatter(id);
 
     if (!current) {
       return NextResponse.json(
         {
           ok: false,
-          error: "Matter is not yet indexed. Run rebuild for this matter set first.",
+          error: "Matter is not yet indexed. Run index-matter or rebuild first.",
         },
         { status: 404 }
       );
     }
 
     if (!current.claim_number_normalized) {
-      return NextResponse.json(
-        { ok: false, error: "No claim number for this matter" },
-        { status: 422 }
-      );
+      return NextResponse.json({ ok: false, error: "No claim number" }, { status: 422 });
     }
 
     const siblings = (await getSiblings(current.claim_number_normalized))
@@ -69,6 +66,16 @@ export async function GET(req: NextRequest) {
       ok: true,
       count: siblings.length,
       claimNumber: current.claim_number_raw,
+      normalizedClaimNumber: current.claim_number_normalized,
+      currentMatter: {
+        matterId: current.matter_id,
+        displayNumber: current.display_number,
+        patient: current.patient_name,
+        clientName: current.client_name,
+        insuranceCompany: current.insurer_name,
+        claimAmount: current.claim_amount,
+        masterLawsuitId: current.master_lawsuit_id,
+      },
       siblings,
       source: "local-claim-index",
     });

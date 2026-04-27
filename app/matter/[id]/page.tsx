@@ -248,9 +248,48 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
     if (isAggregated(row)) return;
     if (!isSelectable(row)) return;
 
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    const alreadySelected = selected.includes(id);
+
+    if (alreadySelected) {
+      setSelected((prev) => prev.filter((x) => x !== id));
+      return;
+    }
+
+    const selectedRows = rows.filter((r) => selected.includes(Number(r.id)));
+
+    const selectedProviders = new Set(
+      selectedRows.map((r) => providerValue(r)).filter(Boolean)
     );
+
+    const rowProvider = providerValue(row);
+
+    if (
+      selectedProviders.size > 0 &&
+      rowProvider &&
+      !selectedProviders.has(rowProvider)
+    ) {
+      alert("Cannot mix providers in one lawsuit aggregation.");
+      return;
+    }
+
+    const selectedMasterIds = new Set(
+      selectedRows
+        .map((r) => textValue(r.masterLawsuitId))
+        .filter(Boolean)
+    );
+
+    const rowMasterId = textValue(row.masterLawsuitId);
+
+    if (
+      selectedMasterIds.size > 0 &&
+      rowMasterId &&
+      !selectedMasterIds.has(rowMasterId)
+    ) {
+      alert("Cannot mix matters from different existing lawsuits.");
+      return;
+    }
+
+    setSelected((prev) => [...prev, id]);
   }
 
   async function aggregate() {

@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-function normalizeClaimNumber(value: string) {
-  return value.replace(/\D/g, "");
-}
+import { normalizeClaimNumber } from "@/lib/claimIndex";
 
 export async function GET(req: NextRequest) {
   const claimNumber = req.nextUrl.searchParams.get("claimNumber");

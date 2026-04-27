@@ -1,8 +1,28 @@
 import "dotenv/config";
 import dotenv from "dotenv";
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
 
 dotenv.config({ path: ".env.local" });
+
+function getDbUrl() {
+  const candidates = [
+    process.env.POSTGRES_PRISMA_URL,
+    process.env.POSTGRES_DATABASE_URL,
+    process.env.POSTGRES_URL,
+  ];
+
+  for (const value of candidates) {
+    if (
+      value &&
+      !value.includes("...") &&
+      (value.startsWith("postgresql://") || value.startsWith("postgres://"))
+    ) {
+      return value;
+    }
+  }
+
+  throw new Error("No valid database URL found for Prisma config");
+}
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -10,6 +30,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: env("POSTGRES_PRISMA_URL"),
+    url: getDbUrl(),
   },
 });

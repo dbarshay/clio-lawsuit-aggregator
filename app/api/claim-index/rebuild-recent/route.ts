@@ -85,18 +85,18 @@ export async function GET(req: NextRequest) {
 
       try {
         const detail = await fetchMatterDetail(id);
-        await indexMatterFromClioPayload(detail);
-        indexed++;
-        indexedMatterIds.push(id);
-      } catch (e: any) {
-        const msg = e?.message || "Unknown error";
+        const result = await indexMatterFromClioPayload(detail);
 
-        if (msg === "No claim number") {
+        if ((result as any)?.skipped) {
           skippedNoClaim.push(id);
         } else {
-          failed++;
-          errors.push({ id, error: msg });
+          indexed++;
+          indexedMatterIds.push(id);
         }
+      } catch (e: any) {
+        const msg = e?.message || "Unknown error";
+        failed++;
+        errors.push({ id, error: msg });
       }
 
       if (delayMs > 0) {

@@ -80,8 +80,11 @@ export async function GET(req: NextRequest) {
 
       try {
         const detail = await fetchMatterDetail(id);
-        indexMatterFromClioPayload(detail);
-        indexed++;
+        const result = await indexMatterFromClioPayload(detail);
+
+        if (!(result as any)?.skipped) {
+          indexed++;
+        }
       } catch (e: any) {
         failed++;
         errors.push({ id, error: e?.message || "Unknown error" });

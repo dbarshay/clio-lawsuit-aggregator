@@ -5,8 +5,24 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+function validConnectionString(value: string | undefined) {
+  if (!value) return null;
+  if (value.includes("...")) return null;
+  if (!value.startsWith("postgresql://") && !value.startsWith("postgres://")) return null;
+  return value;
+}
+
+const connectionString =
+  validConnectionString(process.env.POSTGRES_PRISMA_URL) ||
+  validConnectionString(process.env.POSTGRES_DATABASE_URL) ||
+  validConnectionString(process.env.POSTGRES_URL);
+
+if (!connectionString) {
+  throw new Error("Missing valid PostgreSQL connection string");
+}
+
 const adapter = new PrismaPg({
-  connectionString: process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_DATABASE_URL || process.env.POSTGRES_URL,
+  connectionString,
 });
 
 export const prisma =

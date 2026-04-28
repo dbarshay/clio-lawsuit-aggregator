@@ -3,20 +3,15 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST() {
   const events = await prisma.webhookEvent.findMany({
-    where: {
-      matterId: { not: null },
-    },
-    select: {
-      id: true,
-      matterId: true,
-      payload: true,
-    },
+    where: { matterId: { not: null } },
+    select: { id: true, matterId: true, payload: true },
   });
 
   let cleaned = 0;
 
   for (const e of events) {
-    const payloadId = e.payload?.data?.id;
+    const payload = e.payload as any;
+    const payloadId = payload?.data?.id;
 
     if (
       payloadId &&
@@ -32,8 +27,5 @@ export async function POST() {
     }
   }
 
-  return NextResponse.json({
-    ok: true,
-    cleaned,
-  });
+  return NextResponse.json({ ok: true, cleaned });
 }

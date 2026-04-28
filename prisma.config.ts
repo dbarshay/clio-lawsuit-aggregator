@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
 
 function loadLocalEnvFile(fileName: string) {
   const filePath = path.join(process.cwd(), fileName);
@@ -29,12 +29,21 @@ function loadLocalEnvFile(fileName: string) {
 loadLocalEnvFile(".env.local");
 loadLocalEnvFile(".env");
 
+const databaseUrl =
+  process.env.POSTGRES_DATABASE_URL_UNPOOLED ||
+  process.env.POSTGRES_URL_NON_POOLING ||
+  process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error("No database URL found for Prisma.");
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    url: databaseUrl,
   },
 });

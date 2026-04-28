@@ -26,3 +26,13 @@ model Lawsuit {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
+
+model ClioToken {
+  id           String   @id @default("default")
+  accessToken  String
+  refreshToken String
+  tokenType    String   @default("bearer")
+  expiresAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

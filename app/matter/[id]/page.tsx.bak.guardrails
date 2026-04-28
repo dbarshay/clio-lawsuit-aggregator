@@ -55,16 +55,6 @@ function isSelectable(r: any) {
   return !!r?.selectableForSettlement;
 }
 
-function isDisabledByGroup(r: any, activeGroupKey?: string | null) {
-  if (!activeGroupKey) return false;
-
-  const rowGroup = String(r?.masterLawsuitId || "").trim();
-  if (!rowGroup) return false;
-
-  return rowGroup !== activeGroupKey;
-}
-
-
 function isAggregated(r: any) {
   return !!(r?.masterLawsuitId && String(r.masterLawsuitId).trim());
 }
@@ -163,24 +153,6 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
   const [matter, setMatter] = useState<any>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
-
-const selectedRows = useMemo(() => {
-  return rows.filter((r) => selected.includes(Number(r.id)));
-}, [rows, selected]);
-
-const selectedGroupKeys = useMemo(() => {
-  return Array.from(
-    new Set(
-      selectedRows
-        .map((r) => String(r.masterLawsuitId || "").trim())
-        .filter(Boolean)
-    )
-  );
-}, [selectedRows]);
-
-const activeGroupKey =
-  selectedGroupKeys.length === 1 ? selectedGroupKeys[0] : null;
-
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -285,7 +257,6 @@ const activeGroupKey =
     if (!row) return;
     if (isAggregated(row)) return;
     if (!isSelectable(row)) return;
-  if (isDisabledByGroup(row, activeGroupKey)) return;
 
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]

@@ -1,0 +1,629 @@
+"use client";
+
+import { use, useEffect, useMemo, useState } from "react";
+
+type MatterRow = {
+  matterId?: number;
+  id?: number;
+  displayNumber?: string;
+  description?: string;
+  claimNumber?: string;
+  claimAmount?: number | string;
+  masterLawsuitId?: string | null;
+  lawsuitMatters?: string | null;
+  locked?: boolean;
+};
+
+type MatterContext = {
+  id?: number;
+  display_number?: string;
+  description?: string;
+};
+
+function getMatterId(row: MatterRow): number {
+  return Number(row.matterId ?? row.id ?? 0);
+}
+
+function getGroupKey(row: MatterRow): string | null {
+  const key = row.masterLawsuitId;
+  return key && String(key).trim() !== "" ? String(key) : null;
+}
+
+function isGrouped(row: MatterRow): boolean {
+  return !!getGroupKey(row);
+}
+
+function formatMoney(value: number | string | undefined): string {
+  const n = Number(value ?? 0);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(Number.isFinite(n) ? n : 0);
+}
+
+function hashString(input: string): number {
+  let h = 0;
+  for (let i = 0; i < input.length; i++) {
+    h = (h << 5) - h + input.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h);
+}
+
+function getRowBackground(row: MatterRow): string {
+  const groupKey = getGroupKey(row);
+  if (!groupKey) return "#ffffff";
+
+  const palette = [
+    "#eef6ff",
+    "#eefcf3",
+    "#fff8e8",
+    "#f8f0ff",
+    "#fff1f1",
+    "#eefbfb",
+  ];
+
+  return palette[hashString(groupKey) % palette.length];
+}
+
+export default function MatterPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+
+  const [matter, setMatter] = useState<MatterContext | null>(null);
+  const [siblings, setSiblings] = useState<MatterRow[]>([]);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>("");
+
+  async function loadPage() {
+    setLoading(true);
+    setError("");
+
+    try {
+      const [matterRes, siblingsRes] = await Promise.all([
+        fetch(`/api/clio/matter-context?matterId=${id}`, {
+          cache: "no-store",
+        }),
+        fetch(`/api/aggregation/find-siblings?matterId=${id}`, {
+          cache: "no-store",
+        }),
+      ]);
+
+      const matterJson = await matterRes.json();
+      const siblingsJson = await siblingsRes.json();
+
+      if (matterJson?.ok) {
+        setMatter(matterJson.matter ?? null);
+      }
+
+      if (siblingsJson?.ok) {
+        const rows = Array.isArray(siblingsJson.siblings)
+          ? siblingsJson.siblings
+          : [];
+        setSiblings(rows);
+      } else {
+        setSiblings([]);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to load matter page.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadPage();
+  }, [id]);
+
+  const selectedRows = useMemo(() => {
+    return siblings.filter((row) => selectedIds.includes(getMatterId(row)));
+  }, [siblings, selectedIds]);
+
+  const selectedExistingGroupKeys = useMemo(() => {
+    return Array.from(
+      new Set(
+        selectedRows
+          .map((row) => getGroupKey(row))
+          .filter((v): v is string => Boolean(v))
+      )
+    );
+  }, [selectedRows]);
+
+  const activeExistingGroupKey =
+    selectedExistingGroupKeys.length === 1
+      ? selectedExistingGroupKeys[0]
+      : null;
+
+  const hasMixedExistingGroups = selectedExistingGroupKeys.length > 1;
+
+  function rowIsDisabled(row: MatterRow): boolean {
+    const rowId = getMatterId(row);
+
+    if (selectedIds.includes(rowId)) return false;
+    if (!activeExistingGroupKey) return false;
+
+    const rowGroupKey = getGroupKey(row);
+
+    return Boolean(rowGroupKey && rowGroupKey !== activeExistingGroupKey);
+  }
+
+  function rowDisableReason(row: MatterRow): string {
+    const rowGroupKey = getGroupKey(row);
+
+    if (!activeExistingGroupKey) return "";
+    if (!rowGroupKey) return "";
+    if (rowGroupKey === activeExistingGroupKey) return "";
+
+    return `Unavailable because you already selected matters from lawsuit ${activeExistingGroupKey}.`;
+  }
+
+  const canAggregate =
+    selectedIds.length >= 2 &&
+    !hasMixedExistingGroups &&
+    !busy;
+
+  async function handleAggregate() {
+    if (!canAggregate) return;
+
+    setBusy(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/aggregate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          matterIds: selectedIds,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Aggregation failed.");
+      }
+
+      setSelectedIds([]);
+      await loadPage();
+    } catch (err: any) {
+      setError(err?.message || "Aggregation failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeaggregateActiveGroup() {
+    if (!activeExistingGroupKey) return;
+
+    const idsInGroup = siblings
+      .filter((row) => getGroupKey(row) === activeExistingGroupKey)
+      .map((row) => getMatterId(row));
+
+    if (idsInGroup.length === 0) return;
+
+    const ok = window.confirm(
+      `De-aggregate lawsuit ${activeExistingGroupKey}? This will clear MASTER_LAWSUIT_ID and LAWSUIT_MATTERS on the grouped matters.`
+    );
+
+    if (!ok) return;
+
+    setBusy(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/deaggregate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          matterIds: idsInGroup,
+          masterLawsuitId: activeExistingGroupKey,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "De-aggregation failed.");
+      }
+
+      setSelectedIds([]);
+      await loadPage();
+    } catch (err: any) {
+      setError(err?.message || "De-aggregation failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function toggleRow(row: MatterRow) {
+    const rowId = getMatterId(row);
+
+    if (!rowId) return;
+    if (rowIsDisabled(row)) return;
+
+    setSelectedIds((current) =>
+      current.includes(rowId)
+        ? current.filter((id) => id !== rowId)
+        : [...current, rowId]
+    );
+  }
+
+  const rowsForDisplay = useMemo(() => {
+    const grouped: MatterRow[] = [];
+    const ungrouped: MatterRow[] = [];
+
+    for (const row of siblings) {
+      if (isGrouped(row)) grouped.push(row);
+      else ungrouped.push(row);
+    }
+
+    grouped.sort((a, b) => {
+      const aGroup = getGroupKey(a) || "";
+      const bGroup = getGroupKey(b) || "";
+      if (aGroup !== bGroup) return aGroup.localeCompare(bGroup);
+
+      const aNum = (a.displayNumber || "").toString();
+      const bNum = (b.displayNumber || "").toString();
+      return aNum.localeCompare(bNum, undefined, { numeric: true });
+    });
+
+    ungrouped.sort((a, b) => {
+      const aNum = (a.displayNumber || "").toString();
+      const bNum = (b.displayNumber || "").toString();
+      return aNum.localeCompare(bNum, undefined, { numeric: true });
+    });
+
+    return [...grouped, ...ungrouped];
+  }, [siblings]);
+
+  if (loading) {
+    return (
+      <main
+        style={{
+          padding: "24px",
+          fontFamily: "Arial, sans-serif",
+          maxWidth: "1200px",
+          margin: "0 auto",
+        }}
+      >
+        Loading matter page...
+      </main>
+    );
+  }
+
+  return (
+    <main
+      style={{
+        padding: "24px",
+        fontFamily: "Arial, sans-serif",
+        maxWidth: "1200px",
+        margin: "0 auto",
+      }}
+    >
+      <h1 style={{ marginTop: 0, marginBottom: "8px" }}>
+        Lawsuit Aggregation
+      </h1>
+
+      <div style={{ marginBottom: "18px", color: "#444" }}>
+        <div>
+          <strong>Source matter:</strong>{" "}
+          {matter?.display_number || `Matter ${id}`}
+        </div>
+        {matter?.description ? (
+          <div style={{ marginTop: "4px" }}>{matter.description}</div>
+        ) : null}
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          gap: "12px",
+          flexWrap: "wrap",
+          marginBottom: "16px",
+        }}
+      >
+        <button
+          onClick={handleAggregate}
+          disabled={!canAggregate}
+          style={{
+            padding: "10px 14px",
+            borderRadius: "8px",
+            border: "1px solid #999",
+            cursor: canAggregate ? "pointer" : "not-allowed",
+            opacity: canAggregate ? 1 : 0.5,
+            background: "#f5f5f5",
+          }}
+        >
+          {busy ? "Working..." : "Aggregate Selected"}
+        </button>
+
+        <button
+          onClick={handleDeaggregateActiveGroup}
+          disabled={!activeExistingGroupKey || busy}
+          style={{
+            padding: "10px 14px",
+            borderRadius: "8px",
+            border: "1px solid #999",
+            cursor:
+              activeExistingGroupKey && !busy ? "pointer" : "not-allowed",
+            opacity: activeExistingGroupKey && !busy ? 1 : 0.5,
+            background: "#f5f5f5",
+          }}
+        >
+          {activeExistingGroupKey
+            ? `De-aggregate Selected Lawsuit (${activeExistingGroupKey})`
+            : "De-aggregate Selected Lawsuit"}
+        </button>
+
+        <button
+          onClick={() => setSelectedIds([])}
+          disabled={selectedIds.length === 0 || busy}
+          style={{
+            padding: "10px 14px",
+            borderRadius: "8px",
+            border: "1px solid #999",
+            cursor:
+              selectedIds.length > 0 && !busy ? "pointer" : "not-allowed",
+            opacity: selectedIds.length > 0 && !busy ? 1 : 0.5,
+            background: "#f5f5f5",
+          }}
+        >
+          Clear Selection
+        </button>
+      </div>
+
+      <div
+        style={{
+          marginBottom: "16px",
+          padding: "12px 14px",
+          borderRadius: "8px",
+          background: "#f8f8f8",
+          border: "1px solid #ddd",
+          fontSize: "14px",
+          lineHeight: 1.45,
+        }}
+      >
+        <div>
+          <strong>Selected matters:</strong> {selectedIds.length}
+        </div>
+        <div style={{ marginTop: "6px" }}>
+          Once you select a matter from an existing lawsuit group, rows from
+          other existing lawsuit groups are automatically disabled.
+          Unaggregated matters remain available.
+        </div>
+        {activeExistingGroupKey ? (
+          <div style={{ marginTop: "6px" }}>
+            <strong>Active lawsuit group:</strong> {activeExistingGroupKey}
+          </div>
+        ) : null}
+      </div>
+
+      {hasMixedExistingGroups ? (
+        <div
+          style={{
+            marginBottom: "16px",
+            padding: "12px 14px",
+            borderRadius: "8px",
+            background: "#fff3cd",
+            border: "1px solid #f0d98a",
+            color: "#6b5500",
+          }}
+        >
+          Invalid selection: you selected matters from more than one existing
+          lawsuit group.
+        </div>
+      ) : null}
+
+      {error ? (
+        <div
+          style={{
+            marginBottom: "16px",
+            padding: "12px 14px",
+            borderRadius: "8px",
+            background: "#fdeaea",
+            border: "1px solid #e2a7a7",
+            color: "#8a1f1f",
+          }}
+        >
+          {error}
+        </div>
+      ) : null}
+
+      <div
+        style={{
+          border: "1px solid #ddd",
+          borderRadius: "12px",
+          overflow: "hidden",
+        }}
+      >
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            tableLayout: "fixed",
+          }}
+        >
+          <thead>
+            <tr style={{ background: "#111", color: "#fff" }}>
+              <th
+                style={{
+                  textAlign: "left",
+                  padding: "12px",
+                  width: "70px",
+                }}
+              >
+                Pick
+              </th>
+              <th style={{ textAlign: "left", padding: "12px", width: "160px" }}>
+                Matter
+              </th>
+              <th style={{ textAlign: "left", padding: "12px" }}>
+                Description
+              </th>
+              <th style={{ textAlign: "left", padding: "12px", width: "150px" }}>
+                Claim #
+              </th>
+              <th
+                style={{
+                  textAlign: "right",
+                  padding: "12px",
+                  width: "140px",
+                }}
+              >
+                Claim Amount
+              </th>
+              <th style={{ textAlign: "left", padding: "12px", width: "180px" }}>
+                Status
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rowsForDisplay.map((row, index) => {
+              const rowId = getMatterId(row);
+              const checked = selectedIds.includes(rowId);
+              const disabled = rowIsDisabled(row);
+              const groupKey = getGroupKey(row);
+
+              const prevRow = index > 0 ? rowsForDisplay[index - 1] : null;
+              const prevGroupKey = prevRow ? getGroupKey(prevRow) : null;
+              const showBand = index === 0 || prevGroupKey !== groupKey;
+
+              return (
+                <FragmentRow key={rowId || `row-${index}`}>
+                  {showBand ? (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        style={{
+                          padding: "10px 12px",
+                          background: groupKey ? "#dfe8f7" : "#efefef",
+                          borderTop: index === 0 ? "none" : "3px solid #cfcfcf",
+                          fontWeight: 700,
+                          fontSize: "13px",
+                          letterSpacing: "0.2px",
+                        }}
+                      >
+                        {groupKey
+                          ? `Existing Lawsuit Group: ${groupKey}`
+                          : "Unaggregated Matters"}
+                      </td>
+                    </tr>
+                  ) : null}
+
+                  <tr
+                    title={disabled ? rowDisableReason(row) : ""}
+                    style={{
+                      background: checked
+                        ? "#d9f2df"
+                        : disabled
+                        ? "#ececec"
+                        : getRowBackground(row),
+                      color: disabled ? "#888" : "#111",
+                      opacity: disabled ? 0.55 : 1,
+                    }}
+                  >
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        borderTop: "1px solid #e5e5e5",
+                        verticalAlign: "middle",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={disabled || busy}
+                        onChange={() => toggleRow(row)}
+                        style={{
+                          width: "18px",
+                          height: "18px",
+                          cursor:
+                            disabled || busy ? "not-allowed" : "pointer",
+                        }}
+                      />
+                    </td>
+
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        borderTop: "1px solid #e5e5e5",
+                        fontWeight: 700,
+                        verticalAlign: "middle",
+                      }}
+                    >
+                      <span>{row.displayNumber || `Matter ${rowId}`}</span>
+                      {groupKey ? (
+                        <span style={{ marginLeft: "8px" }} title="Locked aggregated matter">
+                          🔒
+                        </span>
+                      ) : null}
+                    </td>
+
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        borderTop: "1px solid #e5e5e5",
+                        verticalAlign: "middle",
+                      }}
+                    >
+                      {row.description || ""}
+                    </td>
+
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        borderTop: "1px solid #e5e5e5",
+                        verticalAlign: "middle",
+                      }}
+                    >
+                      {row.claimNumber || ""}
+                    </td>
+
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        borderTop: "1px solid #e5e5e5",
+                        textAlign: "right",
+                        verticalAlign: "middle",
+                      }}
+                    >
+                      {formatMoney(row.claimAmount)}
+                    </td>
+
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        borderTop: "1px solid #e5e5e5",
+                        verticalAlign: "middle",
+                        fontSize: "13px",
+                      }}
+                    >
+                      {disabled
+                        ? rowDisableReason(row)
+                        : groupKey
+                        ? `Grouped in lawsuit ${groupKey}`
+                        : "Available"}
+                    </td>
+                  </tr>
+                </FragmentRow>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </main>
+  );
+}
+
+function FragmentRow({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
+}

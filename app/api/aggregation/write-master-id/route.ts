@@ -144,7 +144,7 @@ async function writeMasterLawsuitIdToMatter(
 
   return {
     matterId,
-    action: existing?.id ? "updated" : "created",
+    action: existing?.id ? "updated" as const : "created" as const,
   };
 }
 
@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const rawSelectedMatterIds = Array.isArray(body?.selectedMatterIds)
+    const rawSelectedMatterIds: unknown[] = Array.isArray(body?.selectedMatterIds)
       ? body.selectedMatterIds
       : [];
 
@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
 
     const selectedMatterIds = rawSelectedMatterIds
       .map(normalizeMatterId)
-      .filter((id): id is number => id !== null);
+      .filter((id: number | null): id is number => id !== null);
 
     if (!selectedMatterIds.length) {
       return NextResponse.json(

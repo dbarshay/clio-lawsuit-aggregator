@@ -72,6 +72,7 @@ model ClaimIndex {
 
 model WebhookEvent {
   id          String    @id @default(cuid())
+  eventKey    String    @unique
   webhookId   String?
   matterId    Int?
   payload     Json

@@ -1,4 +1,6 @@
+import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 function extractMatterId(payload: any): number | null {
@@ -28,26 +30,110 @@ function extractMatterId(payload: any): number | null {
   return null;
 }
 
+function stableStringify(value: any): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(",")}]`;
+  }
+
+  return `{${Object.keys(value)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
+    .join(",")}}`;
+}
+
+function makeEventKey(payload: any, matterId: number | null): string {
+  const sourceId =
+    payload?.id ??
+    payload?.event_id ??
+    payload?.webhook_id ??
+    payload?.data?.id ??
+    payload?.object?.id ??
+    payload?.record?.id ??
+    "";
+
+  const updatedAt =
+    payload?.updated_at ??
+    payload?.updatedAt ??
+    payload?.data?.updated_at ??
+    payload?.data?.updatedAt ??
+    payload?.object?.updated_at ??
+    payload?.record?.updated_at ??
+    "";
+
+  const basis = {
+    matterId,
+    sourceId,
+    updatedAt,
+    payload,
+  };
+
+  return createHash("sha256")
+    .update(stableStringify(basis))
+    .digest("hex");
+}
+
+function isUniqueConstraintError(err: any) {
+  return (
+    err instanceof Prisma.PrismaClientKnownRequestError &&
+    err.code === "P2002"
+  );
+}
+
 export async function POST(req: NextRequest) {
   try {
     const payload = await req.json().catch(() => ({}));
 
     const matterId = extractMatterId(payload);
+    const eventKey = makeEventKey(payload, matterId);
 
-    const event = await prisma.webhookEvent.create({
-      data: {
-        payload,
+    try {
+      const event = await prisma.webhookEvent.create({
+        data: {
+          eventKey,
+          payload,
+          matterId,
+          status: "pending",
+        },
+      });
+
+      return NextResponse.json({
+        ok: true,
+        accepted: true,
+        duplicate: false,
+        eventId: event.id,
+        eventKey,
         matterId,
-        status: "pending",
-      },
-    });
+      });
+    } catch (err: any) {
+      if (!isUniqueConstraintError(err)) {
+        throw err;
+      }
 
-    return NextResponse.json({
-      ok: true,
-      accepted: true,
-      eventId: event.id,
-      matterId,
-    });
+      const existing = await prisma.webhookEvent.findUnique({
+        where: { eventKey },
+        select: {
+          id: true,
+          status: true,
+          matterId: true,
+          createdAt: true,
+          processedAt: true,
+        },
+      });
+
+      return NextResponse.json({
+        ok: true,
+        accepted: true,
+        duplicate: true,
+        eventId: existing?.id ?? null,
+        eventKey,
+        matterId: existing?.matterId ?? matterId,
+        status: existing?.status ?? null,
+      });
+    }
   } catch (err: any) {
     return NextResponse.json(
       { ok: false, error: err?.message || "Webhook error" },

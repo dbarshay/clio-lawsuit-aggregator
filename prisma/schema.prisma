@@ -28,7 +28,7 @@ model Lawsuit {
 }
 
 model ClioToken {
-  id           String   @id @default("default")
+  id           Int      @id @default(1)
   accessToken  String
   refreshToken String
   tokenType    String   @default("bearer")

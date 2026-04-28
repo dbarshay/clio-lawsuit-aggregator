@@ -55,7 +55,7 @@ function isSelectable(r: any) {
   return !!r?.selectableForSettlement;
 }
 
-function isDisabledByGroup(r: any, activeGroupKey?: string | null) {
+function isDisabledByGroup(r: any) {
   if (!activeGroupKey) return false;
 
   const rowGroup = String(r?.masterLawsuitId || "").trim();
@@ -182,7 +182,6 @@ const activeGroupKey =
   selectedGroupKeys.length === 1 ? selectedGroupKeys[0] : null;
 
   const [submitting, setSubmitting] = useState(false);
-  const [expanding, setExpanding] = useState(false);
 
   useEffect(() => {
     if (!matterId) return;
@@ -201,6 +200,30 @@ const activeGroupKey =
         ? siblingsResponse.siblings
         : [];
 
+      const siblingIds = siblings
+        .map((sib: any) => Number(sib.id ?? sib.matterId))
+        .filter((id: number) => Number.isFinite(id) && id > 0);
+
+      const liveSiblingResults: any[] = [];
+
+      for (const id of siblingIds) {
+        try {
+          const res = await fetch(
+            `/api/clio/matter-context?matterId=${id}`
+          );
+
+          if (!res.ok) continue;
+
+          const json = await res.json();
+
+          if (json?.matter) {
+            liveSiblingResults.push(json.matter);
+          }
+        } catch {
+          // skip bad sibling silently
+        }
+      }
+
       const all: any[] = [];
       const seen = new Set<number>();
 
@@ -209,29 +232,13 @@ const activeGroupKey =
         seen.add(Number(base.id));
       }
 
-      for (const sib of siblings) {
-        const idNum = Number(sib.id ?? sib.matterId);
+      for (const sib of liveSiblingResults) {
+        const idNum = Number(sib.id);
         if (!idNum || seen.has(idNum)) continue;
-
         all.push({
+          ...sib,
           id: idNum,
-          displayNumber: sib.displayNumber,
-          patient: sib.patient,
-          clientName: sib.clientName,
-          insuranceCompany: sib.insuranceCompany,
-          claimAmount: sib.claimAmount,
-          paymentVoluntary: sib.paymentVoluntary,
-          balancePresuit: sib.balancePresuit,
-          dosStart: sib.dosStart,
-          dosEnd: sib.dosEnd,
-          denialReason: sib.denialReason,
-          status: sib.status,
-          masterLawsuitId: sib.masterLawsuitId,
-          matterStage: sib.matterStage || sib.stage || null,
-          stage: sib.stage || sib.matterStage || null,
-          selectableForSettlement: !!sib.selectableForSettlement,
         });
-
         seen.add(idNum);
       }
 
@@ -278,38 +285,14 @@ const activeGroupKey =
     if (!row) return;
     if (isAggregated(row)) return;
     if (!isSelectable(row)) return;
-  if (isDisabledByGroup(row, activeGroupKey)) return;
+  if (isDisabledByGroup(row)) return;
 
-    const alreadySelected = selected.includes(id);
-
-    if (alreadySelected) {
-      setSelected((prev) => prev.filter((x) => x !== id));
-      return;
-    }
-
-    const selectedRows = rows.filter((r) => selected.includes(Number(r.id)));
-
-    const selectedMasterIds = new Set(
-      selectedRows
-        .map((r) => textValue(r.masterLawsuitId))
-        .filter(Boolean)
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
-
-    const rowMasterId = textValue(row.masterLawsuitId);
-
-    if (
-      selectedMasterIds.size > 0 &&
-      rowMasterId &&
-      !selectedMasterIds.has(rowMasterId)
-    ) {
-      alert("Cannot mix matters from different existing lawsuits.");
-      return;
-    }
-
-    setSelected((prev) => [...prev, id]);
   }
 
-    async function aggregate() {
+  async function aggregate() {
     if (submitting) return;
 
     const selectedRows = rows.filter((r) => selected.includes(Number(r.id)));
@@ -331,59 +314,32 @@ const activeGroupKey =
     setSubmitting(true);
 
     try {
-      const res = await fetch("/api/aggregation/build-lawsuit", {
+      const res = await fetch("/api/aggregate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          baseMatterId: Number(matter.id),
-          selectedMatterIds: selectedRows.map((r) => Number(r.id)),
+          matters: selectedRows.map((r) => ({
+            id: Number(r.id),
+            displayNumber: textValue(r.displayNumber),
+          })),
         }),
       });
 
       const json = await res.json();
 
       if (!json.ok) {
-        alert(json.error || "Lawsuit build failed");
+        alert(json.error || "Aggregation failed");
         return;
       }
 
-      alert(
-        `MASTER CREATED\n\nMaster Matter ID: ${json.masterMatterId}\nMaster Lawsuit ID: ${json.masterLawsuitId}`
-      );
-
+      alert(`MASTER LAWSUIT ID CREATED: ${json.masterLawsuitId}`);
       window.location.reload();
     } catch (err: any) {
-      alert(err?.message || "Lawsuit build failed");
+      alert(err?.message || "Aggregation failed");
     } finally {
       setSubmitting(false);
-    }
-  }
-
-  async function expandClaim() {
-    if (expanding) return;
-
-    setExpanding(true);
-
-    try {
-      const res = await fetch(
-        `/api/aggregation/expand-claim?matterId=${matterId}&limit=20&delayMs=1200`
-      );
-
-      const json = await res.json();
-
-      if (!json.ok) {
-        alert(json.error || "Expansion failed");
-        return;
-      }
-
-      alert(`Expanded claim cluster.\nRefreshed: ${json.refreshed} matters.`);
-      window.location.reload();
-    } catch (err: any) {
-      alert(err?.message || "Expansion failed");
-    } finally {
-      setExpanding(false);
     }
   }
 
@@ -423,7 +379,6 @@ const activeGroupKey =
 
       return {
         ...row,
-        isLocked: !!(row.masterLawsuitId && String(row.masterLawsuitId).trim()),
         startsNewGroup,
         showGroupLabel,
       };
@@ -456,7 +411,7 @@ const activeGroupKey =
         maxWidth: 1325,
         margin: "0 auto",
         fontFamily: "Arial, sans-serif",
-       }}
+      }}
     >
       <div
         style={{
@@ -466,9 +421,9 @@ const activeGroupKey =
           alignItems: "start",
           width: "100%",
           marginBottom: 12,
-         }}
+        }}
       >
-        <div style={{ alignSelf: "start"  }}>
+        <div style={{ alignSelf: "start" }}>
           <img
             src="/brl-logo.png"
             alt="BRL Logo"
@@ -478,7 +433,7 @@ const activeGroupKey =
               display: "block",
               maxWidth: "100%",
               marginBottom: 12,
-             }}
+            }}
           />
 
           <button
@@ -498,7 +453,7 @@ const activeGroupKey =
                   : "pointer",
               fontWeight: 700,
               fontSize: 15,
-             }}
+            }}
           >
             {submitting
               ? "Aggregating..."
@@ -508,26 +463,6 @@ const activeGroupKey =
               ? "Main Matter Already Aggregated"
               : "Select Matters to Aggregate"}
           </button>
-
-          <button
-            onClick={expandClaim}
-            disabled={expanding || !matterId}
-            style={{
-              width: 220,
-              textAlign: "center",
-              padding: "10px 14px",
-              marginTop: 10,
-              background: expanding || !matterId ? "#999" : "#28a745",
-              color: "#fff",
-              border: "none",
-              borderRadius: 4,
-              cursor: expanding || !matterId ? "not-allowed" : "pointer",
-              fontWeight: 700,
-              fontSize: 14,
-            }}
-          >
-            {expanding ? "Refreshing..." : "Refresh Claim Cluster"}
-          </button>
         </div>
 
         <div
@@ -535,7 +470,7 @@ const activeGroupKey =
             minWidth: 0,
             fontSize: 18,
             lineHeight: 1.45,
-           }}
+          }}
         >
           <h1
             style={{
@@ -543,23 +478,23 @@ const activeGroupKey =
               fontSize: 18,
               fontWeight: 700,
               whiteSpace: "nowrap",
-             }}
+            }}
           >
             Main Matter- {textValue(matter?.displayNumber)}
           </h1>
 
-          <div style={{ whiteSpace: "nowrap", marginBottom: 8  }}>
+          <div style={{ whiteSpace: "nowrap", marginBottom: 8 }}>
             <strong>Provider:</strong> {providerValue(matter)}
           </div>
-          <div style={{ whiteSpace: "nowrap", marginBottom: 8  }}>
+          <div style={{ whiteSpace: "nowrap", marginBottom: 8 }}>
             <strong>Insurer:</strong> {insurerValue(matter)}
           </div>
-          <div style={{ whiteSpace: "nowrap", marginBottom: 8  }}>
+          <div style={{ whiteSpace: "nowrap", marginBottom: 8 }}>
             <strong>Claim Number:</strong> {textValue(matter?.claimNumber)}
           </div>
 
           {alreadyAggregated && (
-            <div style={{ whiteSpace: "nowrap", color: "red", fontWeight: 700  }}>
+            <div style={{ whiteSpace: "nowrap", color: "red", fontWeight: 700 }}>
               <strong>MASTER LAWSUIT ID:</strong> {textValue(matter?.masterLawsuitId)}
             </div>
           )}
@@ -574,7 +509,7 @@ const activeGroupKey =
             background: "#fafafa",
             justifySelf: "end",
             alignSelf: "start",
-           }}
+          }}
         >
           <div
             style={{
@@ -582,7 +517,7 @@ const activeGroupKey =
               fontWeight: 700,
               marginBottom: 14,
               textAlign: "center",
-             }}
+            }}
           >
             Selected Matters
           </div>
@@ -595,31 +530,31 @@ const activeGroupKey =
               columnGap: 18,
               fontSize: 15,
               alignItems: "center",
-             }}
+            }}
           >
             <div><strong>Claim Amount:</strong></div>
-            <div style={{ textAlign: "right", minWidth: 110  }}>{money(totals.claim)}</div>
+            <div style={{ textAlign: "right", minWidth: 110 }}>{money(totals.claim)}</div>
 
             <div><strong>Payment (Voluntary):</strong></div>
-            <div style={{ textAlign: "right", minWidth: 110  }}>{money(totals.payment)}</div>
+            <div style={{ textAlign: "right", minWidth: 110 }}>{money(totals.payment)}</div>
 
             <div
               style={{
                 gridColumn: "1 / 3",
                 borderTop: "1px solid #bfbfbf",
                 margin: "2px 0 0 0",
-               }}
+              }}
             />
 
             <div><strong>Balance (Presuit):</strong></div>
-            <div style={{ textAlign: "right", minWidth: 110  }}>{money(totals.balance)}</div>
+            <div style={{ textAlign: "right", minWidth: 110 }}>{money(totals.balance)}</div>
           </div>
         </div>
       </div>
 
-      <hr style={{ margin: "18px 0 20px 0", border: 0, borderTop: "1px solid #999"  }} />
+      <hr style={{ margin: "18px 0 20px 0", border: 0, borderTop: "1px solid #999" }} />
 
-      <table style={{ width: "100%", borderCollapse: "collapse"  }}>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
             <th style={thStyle}>Select</th>
@@ -645,7 +580,6 @@ const activeGroupKey =
             const isSelected = selected.includes(Number(r.id));
             const aggregated = isAggregated(r);
             const selectable = isSelectable(r);
-            const locked = aggregated || !selectable;
             const lawsuitColor = aggregated
               ? getColorForLawsuit(String(r.masterLawsuitId))
               : "";
@@ -661,7 +595,7 @@ const activeGroupKey =
                     : isSelected
                     ? "#eaf2ff"
                     : "#ffffff",
-                  opacity: locked ? 0.8 : 1,
+                  opacity: aggregated ? 0.8 : 1,
                   borderLeft: aggregated ? `4px solid ${lawsuitColor}` : undefined,
                   borderTop: r.startsNewGroup ? "22px solid #d9d9d9" : undefined,
                 }}
@@ -686,11 +620,13 @@ const activeGroupKey =
                       aggregated
                         ? `Already aggregated under ${textValue(r.masterLawsuitId)}`
                         : !selectable
-                        ? `Stage: ${r?.stage?.name || r?.matterStage?.name || "N/A"} | Status: ${r?.status || "N/A"}`
+                        ? `Stage: ${r?.stage?.name || r?.matterStage?.name || "N/A"} | Status: ${r?.status || "N/A"} (Required: READY FOR ARBITRATION/LITIGATION + Open)`
                         : ""
                     }
                   >
-                    {locked ? (
+                    
+
+                    {aggregated ? (
                       <span style={{ fontSize: 18, lineHeight: 1 }}>🔒</span>
                     ) : (
                       <input
@@ -709,22 +645,7 @@ const activeGroupKey =
                   </div>
                 </td>
 
-                <td style={tdStyle}>
-                  {aggregated ? "🔒 " : ""}
-                  <a
-                    href={`/matter/${Number(r.id)}`}
-                    style={{
-                      color: "#0057b8",
-                      textDecoration: "underline",
-                      fontWeight: Number(r.id) === Number(matter?.id) ? 700 : 500,
-                    }}
-                  >
-                    {textValue(r.displayNumber)}
-                  </a>
-                  {aggregated && r.masterLawsuitId
-                    ? ` (${textValue(r.masterLawsuitId)})`
-                    : ""}
-                </td>
+                <td style={tdStyle}>{textValue(r.displayNumber)}</td>
                 <td style={tdStyle}>{textValue(r.patient)}</td>
                 <td style={tdStyle}>{providerValue(r)}</td>
                 <td style={tdStyle}>{insurerValue(r)}</td>
@@ -733,13 +654,7 @@ const activeGroupKey =
                 <td style={{ ...tdStyle, textAlign: "right" }}>{money(payment)}</td>
                 <td style={{ ...tdStyle, textAlign: "right" }}>{money(balance)}</td>
                 <td style={tdStyle}>{denialReasonValue(r)}</td>
-                <td
-                  style={{
-                    ...tdStyle,
-                    ...stageColor(r?.matterStage?.name),
-                    whiteSpace: "nowrap",
-                  }}
-                >
+                <td style={{ ...tdStyle, ...stageColor(r?.matterStage?.name), whiteSpace: "nowrap" }}>
                   {textValue(r?.matterStage?.name)}
                 </td>
                 <td style={{ ...tdStyle, ...statusColor(r.status) }}>

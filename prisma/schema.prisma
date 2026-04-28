@@ -29,9 +29,11 @@ model Lawsuit {
 }
 
 model ClioToken {
-  id           Int      @id @default(1)
+  id           String   @id @default("default")
   accessToken  String
   refreshToken String
+  tokenType    String   @default("bearer")
+  expiresAt    DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -83,4 +85,12 @@ model WebhookEvent {
   @@index([status])
   @@index([matterId])
   @@index([webhookId])
+}
+  id           String   @id @default("default")
+  accessToken  String
+  refreshToken String
+  tokenType    String   @default("bearer")
+  expiresAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

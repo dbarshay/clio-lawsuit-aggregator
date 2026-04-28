@@ -1,19 +1,16 @@
 import { getValidClioAccessToken, refreshClioToken } from "@/lib/clioTokenStore";
 
-const RAW_CLIO_API_BASE = process.env.CLIO_API_BASE || "https://app.clio.com";
-
-function normalizedClioApiBase(): string {
-  const base = RAW_CLIO_API_BASE.replace(/\/$/, "");
-  return base.endsWith("/api/v4") ? base : `${base}/api/v4`;
-}
+const CLIO_API_BASE = process.env.CLIO_API_BASE || "https://app.clio.com/api/v4";
 
 function buildClioUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  return `${normalizedClioApiBase()}${normalizedPath}`;
+  return `${CLIO_API_BASE}${path}`;
 }
 
-function mergeHeaders(token: string, existing?: HeadersInit): HeadersInit {
+function mergeHeaders(
+  token: string,
+  existing?: HeadersInit
+): HeadersInit {
   return {
     Authorization: `Bearer ${token}`,
     Accept: "application/json",

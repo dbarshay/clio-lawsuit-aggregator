@@ -19,9 +19,11 @@ function isFresh(expiresAt: Date | null): boolean {
   return expiresAt.getTime() > Date.now() + 90_000;
 }
 
+const TOKEN_ID = 1;
+
 export async function getStoredClioToken(): Promise<StoredClioToken> {
   const dbToken = await prisma.clioToken.findUnique({
-    where: { id: "default" },
+    where: { id: TOKEN_ID },
   });
 
   if (dbToken?.accessToken && dbToken?.refreshToken) {
@@ -44,9 +46,9 @@ export async function getStoredClioToken(): Promise<StoredClioToken> {
 
 export async function saveClioToken(token: StoredClioToken): Promise<StoredClioToken> {
   const saved = await prisma.clioToken.upsert({
-    where: { id: "default" },
+    where: { id: TOKEN_ID },
     create: {
-      id: "default",
+      id: TOKEN_ID,
       accessToken: token.accessToken,
       refreshToken: token.refreshToken,
       expiresAt: token.expiresAt,
@@ -97,7 +99,7 @@ async function refreshClioTokenNow(): Promise<StoredClioToken> {
   const expiresIn = Number(json?.expires_in || 0);
 
   if (!accessToken) {
-    throw new Error(`Clio token refresh returned no access_token: ${JSON.stringify(json)}`);
+    throw new Error(`Clio token refresh returned no access_token`);
   }
 
   return saveClioToken({

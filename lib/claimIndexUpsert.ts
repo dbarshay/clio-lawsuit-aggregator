@@ -57,37 +57,76 @@ export async function upsertClaimIndexFromMatter(matter: any) {
     getContactName(insurerRaw),
   ]);
 
+    // --- SELECTOR-FIRST EXTRACTION ---
+  const indexAaaRaw = cf(MATTER_CF.INDEX_AAA_NUMBER);
+  const providerName = str(matter?.client?.name);
+  // --- NORMALIZATION HELPERS ---
+  const norm = (v: any) =>
+    String(v || "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toUpperCase() || null;
+
+  const joinNorm = (...vals: any[]) =>
+    vals
+      .map(norm)
+      .filter(Boolean)
+      .join(" | ") || null;
+
+  // --- DERIVED NUMERIC FIELDS ---
+  const paymentAmount = num(cf(MATTER_CF.PAYMENT_VOLUNTARY));
+  const claimAmount = num(cf(MATTER_CF.CLAIM_AMOUNT));
+
+  const balanceAmount =
+    claimAmount !== null && paymentAmount !== null
+      ? claimAmount - paymentAmount
+      : null;
+
   const row = {
     display_number: str(matter.display_number),
     description: str(matter.description),
 
+    // --- CLAIM ---
     claim_number_raw: claimRaw,
     claim_number_normalized: claimNorm,
 
+    // --- CORE ENTITIES ---
     patient_name: patientName,
+    provider_name: providerName,
     client_name: str(matter?.client?.name),
     insurer_name: insurerName,
 
-    claim_amount: num(cf(MATTER_CF.CLAIM_AMOUNT)),
+    // --- COMPOSITE SELECTORS ---
+    patient_provider: joinNorm(patientName, providerName),
+    patient_insurer: joinNorm(patientName, insurerName),
+
+    // --- FINANCIALS ---
+    claim_amount: claimAmount,
     settled_amount: num(cf(MATTER_CF.SETTLED_AMOUNT)),
+    payment_amount: paymentAmount,
+    balance_amount: balanceAmount,
 
+    // --- BILL DATA ---
     bill_number: str(cf(MATTER_CF.BILL_NUMBER)),
-
     dos_start: str(cf(MATTER_CF.DOS_START)),
     dos_end: str(cf(MATTER_CF.DOS_END)),
 
+    // --- LEGAL / STATUS ---
     denial_reason: getDenialReasonLabel(rawDenialReason),
-
-    payment_voluntary: num(cf(MATTER_CF.PAYMENT_VOLUNTARY)),
+    payment_voluntary: paymentAmount,
     balance_presuit: num(cf(MATTER_CF.BALANCE_PRESUIT)),
 
     master_lawsuit_id: str(cf(MATTER_CF.MASTER_LAWSUIT_ID)),
+    index_aaa_number: str(indexAaaRaw),
+
     matter_stage_name: str(matter?.matter_stage?.name),
     status: str(matter.status),
 
+    // --- RAW SNAPSHOT ---
     raw_json: JSON.stringify(matter),
     indexed_at: new Date(),
   };
+
 
   return prisma.claimIndex.upsert({
     where: { matter_id: id },

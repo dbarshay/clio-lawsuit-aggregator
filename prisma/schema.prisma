@@ -28,61 +28,66 @@ model Lawsuit {
 }
 
 model ClioToken {
-  id           Int      @id @default(1)
+  id           Int       @id @default(1)
   accessToken  String
   refreshToken String
-  tokenType    String   @default("bearer")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  tokenType    String    @default("bearer")
   expiresAt    DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
 }
 
 model ClaimIndex {
-  matter_id      Int     @id
-  display_number String?
-  description    String?
-
+  matter_id               Int      @id
+  display_number          String?
+  description             String?
   claim_number_raw        String?
   claim_number_normalized String?
-
-  patient_name String?
-  client_name  String?
-  insurer_name String?
-
-  claim_amount   Float?
-  settled_amount Float?
-  payment_amount Float?
-  balance_amount Float?
-
-  bill_number       String?
-  dos_start         String?
-  dos_end           String?
-  denial_reason     String?
-  payment_voluntary Float?
-  balance_presuit   Float?
-  master_lawsuit_id String?
-  index_aaa_number String?
-
-  matter_stage_name String?
-  status            String?
-  raw_json          String?
-  indexed_at        DateTime @default(now())
+  patient_name            String?
+  client_name             String?
+  insurer_name            String?
+  claim_amount            Float?
+  settled_amount          Float?
+  payment_amount          Float?
+  balance_amount          Float?
+  bill_number             String?
+  dos_start               String?
+  dos_end                 String?
+  denial_reason           String?
+  payment_voluntary       Float?
+  balance_presuit         Float?
+  master_lawsuit_id       String?
+  status                  String?
+  raw_json                String?
+  indexed_at              DateTime @default(now())
+  matter_stage_name       String?
+  index_aaa_number        String?
+  patient_insurer         String?
+  patient_provider        String?
+  provider_name           String?
 
   @@index([claim_number_normalized])
+  @@index([patient_name])
+  @@index([provider_name])
+  @@index([insurer_name])
+  @@index([patient_provider])
+  @@index([patient_insurer])
+  @@index([master_lawsuit_id])
+  @@index([index_aaa_number])
 }
 
 model WebhookEvent {
-  id          String    @id @default(cuid())
-  eventKey    String    @unique
-  webhookId   String?
-  matterId    Int?
-  payload     Json
-  status      String    @default("pending")
+  id            String    @id @default(cuid())
+  webhookId     String?
+  matterId      Int?
+  payload       Json
+  status        String    @default("pending")
   attempts      Int       @default(0)
   lastError     String?
   createdAt     DateTime  @default(now())
   processedAt   DateTime?
   nextAttemptAt DateTime?
+  eventKey      String    @unique
 
   @@index([status])
   @@index([nextAttemptAt])

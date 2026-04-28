@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     }
 
     const res = await clioFetch(
-      `/api/v4/matters/${matterId}.json?fields=id,etag,display_number,custom_field_values`,
+      `/api/v4/matters/${matterId}.json?fields=id,etag,display_number,description,status,client{id,name},matter_stage{name},custom_field_values`,
       {
         method: "GET",
         headers: {

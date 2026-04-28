@@ -85,6 +85,18 @@ export async function processWebhookEvents() {
       take: 20,
     });
 
+    const newestEventIdByMatterId = new Map<number, string>();
+
+    for (const event of events) {
+      const matterIds = event.matterId
+        ? [event.matterId]
+        : collectMatterIds(event.payload);
+
+      for (const matterId of matterIds) {
+        newestEventIdByMatterId.set(matterId, event.id);
+      }
+    }
+
     const results: any[] = [];
 
     for (const event of events) {
@@ -95,6 +107,32 @@ export async function processWebhookEvents() {
           matterIds = [event.matterId];
         } else {
           matterIds = collectMatterIds(event.payload);
+        }
+
+        const hasNewerQueuedMatterEvent = matterIds.some(
+          (matterId) => newestEventIdByMatterId.get(matterId) !== event.id
+        );
+
+        if (hasNewerQueuedMatterEvent) {
+          await prisma.webhookEvent.update({
+            where: { id: event.id },
+            data: {
+              status: "skipped",
+              attempts: { increment: 1 },
+              lastError: "Skipped because a newer queued webhook event exists for this matter.",
+              processedAt: new Date(),
+            },
+          });
+
+          results.push({
+            eventId: event.id,
+            ok: true,
+            skipped: true,
+            reason: "newer queued matter event exists",
+            matterIds,
+          });
+
+          continue;
         }
 
         for (const id of matterIds) {

@@ -85,3 +85,14 @@ model WebhookEvent {
   @@index([matterId])
   @@index([webhookId])
 }
+
+
+model WorkerLock {
+  name        String   @id
+  lockedBy    String
+  lockedUntil DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([lockedUntil])
+}

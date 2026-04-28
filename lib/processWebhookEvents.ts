@@ -64,31 +64,30 @@ export async function processWebhookEvents() {
       take: 20,
     });
 
-    const newestEventIdByMatterId = new Map<number, string>();
+    // Build TRUE newest-per-matter map
+    const newestEventByMatter = new Map<number, typeof events[0]>();
 
     for (const event of events) {
       if (!event.matterId) continue;
 
-      newestEventIdByMatterId.set(event.matterId, event.id);
+      const existing = newestEventByMatter.get(event.matterId);
+
+      if (!existing || event.createdAt > existing.createdAt) {
+        newestEventByMatter.set(event.matterId, event);
+      }
     }
 
     const results: any[] = [];
 
     for (const event of events) {
       try {
-        let matterIds: number[] = [];
-
-        // ONLY trust stored matterId from ingestion
-        if (event.matterId) {
-          matterIds = [event.matterId];
-        } else {
-          // No valid matterId → skip safely
+        if (!event.matterId) {
           await prisma.webhookEvent.update({
             where: { id: event.id },
             data: {
               status: "skipped",
               attempts: { increment: 1 },
-              lastError: "No valid matterId on event (ignored payload-derived IDs)",
+              lastError: "No valid matterId on event (claim-based or non-matter webhook)",
               processedAt: new Date(),
             },
           });
@@ -97,17 +96,15 @@ export async function processWebhookEvents() {
             eventId: event.id,
             ok: true,
             skipped: true,
-            reason: "no valid matterId",
+            reason: "no matterId",
           });
 
           continue;
         }
 
-        const hasNewerQueuedMatterEvent = matterIds.some(
-          (matterId) => newestEventIdByMatterId.get(matterId) !== event.id
-        );
+        const newest = newestEventByMatter.get(event.matterId);
 
-        if (hasNewerQueuedMatterEvent) {
+        if (!newest || newest.id !== event.id) {
           await prisma.webhookEvent.update({
             where: { id: event.id },
             data: {
@@ -122,16 +119,14 @@ export async function processWebhookEvents() {
             eventId: event.id,
             ok: true,
             skipped: true,
-            reason: "newer queued matter event exists",
-            matterIds,
+            reason: "newer event exists",
+            matterId: event.matterId,
           });
 
           continue;
         }
 
-        for (const id of matterIds) {
-          await ingestMatterFromClio(id);
-        }
+        await ingestMatterFromClio(event.matterId);
 
         await prisma.webhookEvent.update({
           where: { id: event.id },
@@ -146,7 +141,7 @@ export async function processWebhookEvents() {
         results.push({
           eventId: event.id,
           ok: true,
-          matterIds,
+          matterId: event.matterId,
         });
       } catch (err: any) {
         const message = err?.message || "Unknown webhook processing error";

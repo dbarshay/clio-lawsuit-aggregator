@@ -13,6 +13,10 @@ function extractMatterId(payload: any): number | null {
     payload?.record?.matterId,
   ];
 
+  if (payload?.data?.display_number) {
+    candidates.push(payload?.data?.id);
+  }
+
   for (const c of candidates) {
     const n = Number(c);
     if (Number.isFinite(n) && n > 0) return n;

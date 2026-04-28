@@ -89,12 +89,11 @@ model WebhookEvent {
 }
 
 model WorkerLock {
-  id        String   @id
-  name      String?
-  lockedBy  String?
-  locked    Boolean  @default(false)
-  lockedAt  DateTime?
-  updatedAt DateTime @updatedAt
+  name        String   @id
+  lockedBy    String
+  lockedUntil DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@index([name])
+  @@index([lockedUntil])
 }

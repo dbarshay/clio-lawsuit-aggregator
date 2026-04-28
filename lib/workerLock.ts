@@ -1,46 +1,54 @@
+import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 
-const WORKER_LOCK_ID = "global-lock";
-const WORKER_LOCK_NAME = "webhook-worker";
+const DEFAULT_LOCK_NAME = "webhook-event-processor";
+const DEFAULT_LOCK_TTL_SECONDS = 55;
 
-export async function acquireLock(ownerId: string = "default-worker") {
-  const now = new Date();
+export async function acquireLock(
+  ownerId: string = `${process.env.VERCEL_REGION || "local"}-${randomUUID()}`,
+  lockName: string = DEFAULT_LOCK_NAME,
+  ttlSeconds: number = DEFAULT_LOCK_TTL_SECONDS
+) {
+  const rows = await prisma.$queryRaw<{ name: string }[]>`
+    INSERT INTO "WorkerLock" ("name", "lockedBy", "lockedUntil", "createdAt", "updatedAt")
+    VALUES (
+      ${lockName},
+      ${ownerId},
+      NOW() + (${ttlSeconds} || ' seconds')::interval,
+      NOW(),
+      NOW()
+    )
+    ON CONFLICT ("name") DO UPDATE
+    SET
+      "lockedBy" = EXCLUDED."lockedBy",
+      "lockedUntil" = EXCLUDED."lockedUntil",
+      "updatedAt" = NOW()
+    WHERE
+      "WorkerLock"."lockedUntil" < NOW()
+      OR "WorkerLock"."lockedBy" = ${ownerId}
+    RETURNING "name";
+  `;
 
-  const existing = await prisma.workerLock.findUnique({
-    where: { id: WORKER_LOCK_ID },
-  });
-
-  if (existing?.locked) {
-    return false;
-  }
-
-  await prisma.workerLock.upsert({
-    where: { id: WORKER_LOCK_ID },
-    update: {
-      locked: true,
-      lockedAt: now,
-      lockedBy: ownerId,
-      name: WORKER_LOCK_NAME,
-    },
-    create: {
-      id: WORKER_LOCK_ID,
-      locked: true,
-      lockedAt: now,
-      lockedBy: ownerId,
-      name: WORKER_LOCK_NAME,
-    },
-  });
-
-  return true;
+  return rows.length > 0;
 }
 
-export async function releaseLock() {
-  await prisma.workerLock.update({
-    where: { id: WORKER_LOCK_ID },
-    data: {
-      locked: false,
-      lockedAt: null,
-      lockedBy: null,
+export async function releaseLock(
+  ownerId?: string,
+  lockName: string = DEFAULT_LOCK_NAME
+) {
+  if (ownerId) {
+    await prisma.workerLock.deleteMany({
+      where: {
+        name: lockName,
+        lockedBy: ownerId,
+      },
+    });
+    return;
+  }
+
+  await prisma.workerLock.deleteMany({
+    where: {
+      name: lockName,
     },
   });
 }

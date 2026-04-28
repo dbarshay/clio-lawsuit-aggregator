@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { ingestMatterFromClio } from "@/lib/ingestMatterFromClio";
+import { refreshClaimCluster } from "@/lib/refreshClaimCluster";
 
 const WORKER_LOCK_NAME = "webhook-event-processor";
 const WORKER_LOCK_TTL_SECONDS = 55;
@@ -25,33 +26,21 @@ async function acquireWorkerLock(ownerId: string): Promise<boolean> {
       OR "WorkerLock"."lockedBy" = ${ownerId}
     RETURNING "name";
   `;
-
   return rows.length > 0;
 }
 
 async function releaseWorkerLock(ownerId: string) {
   await prisma.workerLock.deleteMany({
-    where: {
-      name: WORKER_LOCK_NAME,
-      lockedBy: ownerId,
-    },
+    where: { name: WORKER_LOCK_NAME, lockedBy: ownerId },
   });
 }
 
 export async function processWebhookEvents() {
   const ownerId = `${process.env.VERCEL_REGION || "local"}-${randomUUID()}`;
-
   const acquired = await acquireWorkerLock(ownerId);
 
   if (!acquired) {
-    return {
-      ok: true,
-      locked: true,
-      scanned: 0,
-      processed: 0,
-      failed: 0,
-      results: [],
-    };
+    return { ok: true, locked: true, scanned: 0, processed: 0, failed: 0, results: [] };
   }
 
   try {
@@ -64,14 +53,11 @@ export async function processWebhookEvents() {
       take: 20,
     });
 
-    // Build TRUE newest-per-matter map
     const newestEventByMatter = new Map<number, typeof events[0]>();
 
     for (const event of events) {
       if (!event.matterId) continue;
-
       const existing = newestEventByMatter.get(event.matterId);
-
       if (!existing || event.createdAt > existing.createdAt) {
         newestEventByMatter.set(event.matterId, event);
       }
@@ -81,13 +67,40 @@ export async function processWebhookEvents() {
 
     for (const event of events) {
       try {
+        // CLAIM-BASED EVENTS
         if (!event.matterId) {
+          const payload = event.payload as any;
+          const claimNumber = payload?.data?.id;
+
+          if (claimNumber) {
+            const result = await refreshClaimCluster(claimNumber);
+
+            await prisma.webhookEvent.update({
+              where: { id: event.id },
+              data: {
+                status: "processed",
+                attempts: { increment: 1 },
+                lastError: `Claim refresh: ${result.refreshed}`,
+                processedAt: new Date(),
+              },
+            });
+
+            results.push({
+              eventId: event.id,
+              ok: true,
+              claimNumber,
+              refreshed: result.refreshed,
+            });
+
+            continue;
+          }
+
           await prisma.webhookEvent.update({
             where: { id: event.id },
             data: {
               status: "skipped",
               attempts: { increment: 1 },
-              lastError: "No valid matterId on event (claim-based or non-matter webhook)",
+              lastError: "No matterId or claimNumber",
               processedAt: new Date(),
             },
           });
@@ -96,12 +109,12 @@ export async function processWebhookEvents() {
             eventId: event.id,
             ok: true,
             skipped: true,
-            reason: "no matterId",
           });
 
           continue;
         }
 
+        // MATTER-BASED EVENTS
         const newest = newestEventByMatter.get(event.matterId);
 
         if (!newest || newest.id !== event.id) {
@@ -110,19 +123,12 @@ export async function processWebhookEvents() {
             data: {
               status: "skipped",
               attempts: { increment: 1 },
-              lastError: "Skipped because a newer queued webhook event exists for this matter.",
+              lastError: "Skipped because newer event exists",
               processedAt: new Date(),
             },
           });
 
-          results.push({
-            eventId: event.id,
-            ok: true,
-            skipped: true,
-            reason: "newer event exists",
-            matterId: event.matterId,
-          });
-
+          results.push({ eventId: event.id, ok: true, skipped: true });
           continue;
         }
 
@@ -138,15 +144,12 @@ export async function processWebhookEvents() {
           },
         });
 
-        results.push({
-          eventId: event.id,
-          ok: true,
-          matterId: event.matterId,
-        });
-      } catch (err: any) {
-        const message = err?.message || "Unknown webhook processing error";
+        results.push({ eventId: event.id, ok: true, matterId: event.matterId });
 
-        const isNonRetryableSkip =
+      } catch (err: any) {
+        const message = err?.message || "Unknown error";
+
+        const skip =
           message.includes("has no claim number") ||
           message.includes("was not returned by Clio") ||
           message.includes("Not Found");
@@ -154,18 +157,14 @@ export async function processWebhookEvents() {
         await prisma.webhookEvent.update({
           where: { id: event.id },
           data: {
-            status: isNonRetryableSkip ? "skipped" : "failed",
+            status: skip ? "skipped" : "failed",
             attempts: { increment: 1 },
             lastError: message,
-            processedAt: isNonRetryableSkip ? new Date() : undefined,
+            processedAt: skip ? new Date() : undefined,
           },
         });
 
-        results.push({
-          eventId: event.id,
-          ok: isNonRetryableSkip,
-          error: message,
-        });
+        results.push({ eventId: event.id, ok: skip });
       }
     }
 
@@ -173,10 +172,11 @@ export async function processWebhookEvents() {
       ok: true,
       locked: false,
       scanned: events.length,
-      processed: results.filter((r) => r.ok).length,
-      failed: results.filter((r) => !r.ok).length,
+      processed: results.filter(r => r.ok).length,
+      failed: results.filter(r => !r.ok).length,
       results,
     };
+
   } finally {
     await releaseWorkerLock(ownerId);
   }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { clioFetch } from "@/lib/clioAuth";
+import { clioFetch } from "@/lib/clio";
 
 export async function GET() {
   const res = await clioFetch(

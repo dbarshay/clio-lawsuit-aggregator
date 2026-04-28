@@ -1,4 +1,4 @@
-import { clioFetch } from "@/lib/clioAuth";
+import { clioFetch } from "@/lib/clio";
 import { prisma } from "@/lib/prisma";
 
 /**

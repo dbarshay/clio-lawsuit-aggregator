@@ -9,7 +9,13 @@ function normalizedClioApiBase(): string {
 
 function buildClioUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+
+  let normalizedPath = path.startsWith("/") ? path : `/${path}`;
+
+  // Legacy app code sometimes passes /api/v4/... while this helper already
+  // appends /api/v4. Strip it here so both styles work safely.
+  normalizedPath = normalizedPath.replace(/^\/api\/v4(?=\/)/, "");
+
   return `${normalizedClioApiBase()}${normalizedPath}`;
 }
 

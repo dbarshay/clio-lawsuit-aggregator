@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeClaimNumber } from "@/lib/claimIndex";
-import { clioFetch } from "@/lib/clioAuth";
+import { clioFetch } from "@/lib/clio";
 import { MATTER_CF } from "@/lib/clioFields";
 import { getDenialReasonLabel } from "@/lib/matterHelpers";
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clioFetch } from "@/lib/clioAuth";
+import { clioFetch } from "@/lib/clio";
 
 export async function GET(req: NextRequest) {
   try {

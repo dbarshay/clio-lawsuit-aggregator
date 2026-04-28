@@ -1,4 +1,4 @@
-import { clioFetch } from "@/lib/clioAuth";
+import { clioFetch } from "@/lib/clio";
 import { upsertRow, normalizeClaimNumber } from "@/lib/claimIndex";
 import { MATTER_CF } from "@/lib/clioFields";
 

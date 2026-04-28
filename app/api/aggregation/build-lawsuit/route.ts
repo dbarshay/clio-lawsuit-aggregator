@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clioFetch } from "@/lib/clioAuth";
+import { clioFetch } from "@/lib/clio";
 import { upsertClaimIndexFromMatter } from "@/lib/claimIndexUpsert";
 
 const MASTER_LAWSUIT_ID_FIELD_ID = 22294835;

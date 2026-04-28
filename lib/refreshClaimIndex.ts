@@ -1,4 +1,4 @@
-import { clioFetch } from "@/lib/clioAuth";
+import { clioFetch } from "@/lib/clio";
 import { upsertRow, normalizeClaimNumber } from "@/lib/claimIndex";
 import Database from "better-sqlite3";
 import fs from "fs";

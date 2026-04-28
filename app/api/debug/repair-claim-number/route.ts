@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clioFetch } from "@/lib/clioAuth";
+import { clioFetch } from "@/lib/clio";
 
 const CLAIM_NUMBER_FIELD_ID = 22145915;
 

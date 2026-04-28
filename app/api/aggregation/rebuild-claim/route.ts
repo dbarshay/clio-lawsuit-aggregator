@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     }
 
     const refresh = await refreshClaimIndex(claimNumber, { force: true });
-    const siblings = (getSiblings(normalizedClaimNumber) as any[]).map((row) => ({
+    const siblings = ((await getSiblings(normalizedClaimNumber)) as any[]).map((row) => ({
       matterId: row.matter_id,
       id: row.matter_id,
       displayNumber: row.display_number ?? "",

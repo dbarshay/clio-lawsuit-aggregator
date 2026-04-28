@@ -1,22 +1,14 @@
 import { NextResponse } from "next/server";
+import { processWebhookEvents } from "@/lib/processWebhookEvents";
 
 export async function GET() {
   try {
-    const base =
-      process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : "http://localhost:3000";
-
-    const res = await fetch(`${base}/api/clio/webhooks/process`, {
-      method: "POST",
-    });
-
-    const data = await res.json();
+    const result = await processWebhookEvents();
 
     return NextResponse.json({
       ok: true,
       triggered: true,
-      workerResponse: data,
+      workerResponse: result,
     });
   } catch (err: any) {
     return NextResponse.json(

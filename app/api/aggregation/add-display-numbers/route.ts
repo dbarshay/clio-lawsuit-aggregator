@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clioFetch } from "@/lib/clioAuth";
+import { clioFetch } from "@/lib/clio";
 import { upsertClaimIndexFromMatter } from "@/lib/claimIndexUpsert";
 
 async function findMatterByDisplayNumber(displayNumber: string) {

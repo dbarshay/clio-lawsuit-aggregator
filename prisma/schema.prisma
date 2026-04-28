@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model LawsuitSequenceCounter {
@@ -76,12 +77,14 @@ model WebhookEvent {
   matterId    Int?
   payload     Json
   status      String    @default("pending")
-  attempts    Int       @default(0)
-  lastError   String?
-  createdAt   DateTime  @default(now())
-  processedAt DateTime?
+  attempts      Int       @default(0)
+  lastError     String?
+  createdAt     DateTime  @default(now())
+  processedAt   DateTime?
+  nextAttemptAt DateTime?
 
   @@index([status])
+  @@index([nextAttemptAt])
   @@index([matterId])
   @@index([webhookId])
 }

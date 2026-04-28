@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model LawsuitSequenceCounter {
@@ -90,8 +89,12 @@ model WebhookEvent {
 }
 
 model WorkerLock {
-  id        Int      @id @default(1)
+  id        String   @id
+  name      String?
+  lockedBy  String?
   locked    Boolean  @default(false)
   lockedAt  DateTime?
   updatedAt DateTime @updatedAt
+
+  @@index([name])
 }

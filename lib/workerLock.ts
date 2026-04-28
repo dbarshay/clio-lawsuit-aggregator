@@ -1,43 +1,46 @@
 import { prisma } from "@/lib/prisma";
 
-const LOCK_TIMEOUT_MS = 60 * 1000;
+const WORKER_LOCK_ID = "global-lock";
+const WORKER_LOCK_NAME = "webhook-worker";
 
-export async function acquireLock(): Promise<boolean> {
+export async function acquireLock(ownerId: string = "default-worker") {
   const now = new Date();
 
-  await prisma.workerLock.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      id: 1,
-      locked: false,
-      lockedAt: null,
-    },
+  const existing = await prisma.workerLock.findUnique({
+    where: { id: WORKER_LOCK_ID },
   });
 
-  const acquired = await prisma.workerLock.updateMany({
-    where: {
-      id: 1,
-      OR: [
-        { locked: false },
-        { lockedAt: { lt: new Date(now.getTime() - LOCK_TIMEOUT_MS) } },
-      ],
-    },
-    data: {
+  if (existing?.locked) {
+    return false;
+  }
+
+  await prisma.workerLock.upsert({
+    where: { id: WORKER_LOCK_ID },
+    update: {
       locked: true,
       lockedAt: now,
+      lockedBy: ownerId,
+      name: WORKER_LOCK_NAME,
+    },
+    create: {
+      id: WORKER_LOCK_ID,
+      locked: true,
+      lockedAt: now,
+      lockedBy: ownerId,
+      name: WORKER_LOCK_NAME,
     },
   });
 
-  return acquired.count === 1;
+  return true;
 }
 
-export async function releaseLock(): Promise<void> {
+export async function releaseLock() {
   await prisma.workerLock.update({
-    where: { id: 1 },
+    where: { id: WORKER_LOCK_ID },
     data: {
       locked: false,
       lockedAt: null,
+      lockedBy: null,
     },
   });
 }

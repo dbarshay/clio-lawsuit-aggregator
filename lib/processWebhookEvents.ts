@@ -5,27 +5,6 @@ import { ingestMatterFromClio } from "@/lib/ingestMatterFromClio";
 const WORKER_LOCK_NAME = "webhook-event-processor";
 const WORKER_LOCK_TTL_SECONDS = 55;
 
-function collectMatterIds(payload: any): number[] {
-  const ids = new Set<number>();
-
-  const maybeAdd = (v: any) => {
-    const n = Number(v);
-    if (Number.isFinite(n) && n > 0) ids.add(n);
-  };
-
-  maybeAdd(payload?.id);
-  maybeAdd(payload?.data?.id);
-  maybeAdd(payload?.object?.id);
-
-  if (Array.isArray(payload?.data)) {
-    for (const item of payload.data) {
-      maybeAdd(item?.id);
-    }
-  }
-
-  return [...ids];
-}
-
 async function acquireWorkerLock(ownerId: string): Promise<boolean> {
   const rows = await prisma.$queryRaw<{ name: string }[]>`
     INSERT INTO "WorkerLock" ("name", "lockedBy", "lockedUntil", "createdAt", "updatedAt")
@@ -88,13 +67,9 @@ export async function processWebhookEvents() {
     const newestEventIdByMatterId = new Map<number, string>();
 
     for (const event of events) {
-      const matterIds = event.matterId
-        ? [event.matterId]
-        : collectMatterIds(event.payload);
+      if (!event.matterId) continue;
 
-      for (const matterId of matterIds) {
-        newestEventIdByMatterId.set(matterId, event.id);
-      }
+      newestEventIdByMatterId.set(event.matterId, event.id);
     }
 
     const results: any[] = [];
@@ -103,10 +78,29 @@ export async function processWebhookEvents() {
       try {
         let matterIds: number[] = [];
 
+        // ONLY trust stored matterId from ingestion
         if (event.matterId) {
           matterIds = [event.matterId];
         } else {
-          matterIds = collectMatterIds(event.payload);
+          // No valid matterId → skip safely
+          await prisma.webhookEvent.update({
+            where: { id: event.id },
+            data: {
+              status: "skipped",
+              attempts: { increment: 1 },
+              lastError: "No valid matterId on event (ignored payload-derived IDs)",
+              processedAt: new Date(),
+            },
+          });
+
+          results.push({
+            eventId: event.id,
+            ok: true,
+            skipped: true,
+            reason: "no valid matterId",
+          });
+
+          continue;
         }
 
         const hasNewerQueuedMatterEvent = matterIds.some(

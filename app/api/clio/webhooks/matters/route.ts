@@ -5,21 +5,21 @@ import { prisma } from "@/lib/prisma";
 
 function extractMatterId(payload: any): number | null {
   const candidates = [
-    payload?.id,
-    payload?.matter_id,
-    payload?.matterId,
-
+    // Direct payload shapes
     payload?.data?.id,
+    payload?.object?.id,
+    payload?.record?.id,
+
     payload?.data?.matter_id,
     payload?.data?.matterId,
-
-    payload?.object?.id,
     payload?.object?.matter_id,
     payload?.object?.matterId,
 
-    payload?.record?.id,
-    payload?.record?.matter_id,
-    payload?.record?.matterId,
+    // Clio events[] envelope (CRITICAL)
+    payload?.events?.[0]?.data?.id,
+    payload?.events?.[0]?.object?.id,
+    payload?.events?.[0]?.data?.matter_id,
+    payload?.events?.[0]?.data?.matterId,
   ];
 
   for (const c of candidates) {
@@ -53,6 +53,8 @@ function makeEventKey(payload: any, matterId: number | null): string {
     payload?.data?.id ??
     payload?.object?.id ??
     payload?.record?.id ??
+    payload?.events?.[0]?.id ??
+    payload?.events?.[0]?.data?.id ??
     "";
 
   const updatedAt =
@@ -62,6 +64,9 @@ function makeEventKey(payload: any, matterId: number | null): string {
     payload?.data?.updatedAt ??
     payload?.object?.updated_at ??
     payload?.record?.updated_at ??
+    payload?.events?.[0]?.updated_at ??
+    payload?.events?.[0]?.updatedAt ??
+    payload?.events?.[0]?.data?.updated_at ??
     "";
 
   const basis = {

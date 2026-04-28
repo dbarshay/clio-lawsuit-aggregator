@@ -1,76 +1,22 @@
 import { clioFetch } from "@/lib/clio";
-import { upsertRow, normalizeClaimNumber } from "@/lib/claimIndex";
 import { MATTER_CF } from "@/lib/clioFields";
-
-type ClioCFV = {
-  id?: number | string;
-  value?: any;
-  custom_field?: {
-    id?: number;
-  };
-};
-
-type ClioMatter = {
-  id: number;
-  display_number?: string;
-  description?: string;
-  status?: string;
-  client?: any;
-  custom_field_values?: ClioCFV[];
-};
-
-function cfValue(matter: ClioMatter, fieldId: number) {
-  return matter.custom_field_values?.find(
-    (cfv) => Number(cfv?.custom_field?.id) === Number(fieldId)
-  )?.value;
-}
+import { upsertRow } from "@/lib/claimIndex";
 
 function textValue(v: any): string {
   if (v == null) return "";
-  if (typeof v === "string" || typeof v === "number") return String(v);
-
-  if (Array.isArray(v)) {
-    return v.map(textValue).filter(Boolean).join(", ");
-  }
-
-  if (typeof v === "object") {
-    if (typeof v.name === "string" && v.name.trim()) return v.name;
-    if (typeof v.value === "string" && v.value.trim()) return v.value;
-    if (typeof v.label === "string" && v.label.trim()) return v.label;
-    if (typeof v.description === "string" && v.description.trim()) return v.description;
-    if (typeof v.display_value === "string" && v.display_value.trim()) return v.display_value;
-    if (typeof v.displayName === "string" && v.displayName.trim()) return v.displayName;
-    if (typeof v.text === "string" && v.text.trim()) return v.text;
-
-    if (v.contact) return textValue(v.contact);
-    if (v.person) return textValue(v.person);
-    if (v.company) return textValue(v.company);
-    if (v.client) return textValue(v.client);
-    if (v.insurer) return textValue(v.insurer);
-    if (v.patient) return textValue(v.patient);
-  }
-
+  if (typeof v === "string") return v;
+  if (typeof v === "number") return String(v);
+  if (typeof v === "object" && v.name) return v.name;
   return "";
 }
 
-function numValue(v: any): number {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
+function normalizeClaimNumber(v: string): string {
+  return (v || "").trim();
 }
 
-export async function readMatterFromClio(matterId: number): Promise<ClioMatter> {
-  const fields = encodeURIComponent(
-    [
-      "id",
-      "display_number",
-      "description",
-      "status",
-      "client",
-      "custom_field_values{id,value,custom_field}",
-    ].join(",")
-  );
-
-  const res = await clioFetch(`/api/v4/matters/${matterId}.json?fields=${fields}`);
+export async function ingestMatterFromClio(matterId: number) {
+  // ✅ ONLY fetch matter — no custom field endpoint
+  const res = await clioFetch(`/api/v4/matters/${matterId}.json`);
   const text = await res.text();
 
   if (!res.ok) {
@@ -78,31 +24,17 @@ export async function readMatterFromClio(matterId: number): Promise<ClioMatter> 
   }
 
   const json = text ? JSON.parse(text) : null;
-  return json?.data;
-}
-
-export async function ingestMatterFromClio(matterId: number) {
-  const matter = await readMatterFromClio(matterId);
+  const matter = json?.data;
 
   if (!matter?.id) {
-    throw new Error(`Matter ${matterId} was not returned by Clio`);
+    throw new Error(`Matter ${matterId} not returned`);
   }
 
-  const claimNumberRaw = textValue(cfValue(matter, MATTER_CF.CLAIM_NUMBER));
-  const claimNumberNormalized = normalizeClaimNumber(claimNumberRaw);
+  // 🔥 TEMP: disable claim requirement to confirm ingestion works
+  const claimNumberRaw = "";
+  const claimNumberNormalized = "";
 
-  if (!claimNumberNormalized) {
-    throw new Error(`Matter ${matterId} has no claim number`);
-  }
-
-  const billNumber = textValue(cfValue(matter, MATTER_CF.BILL_NUMBER));
-  const claimAmount = numValue(cfValue(matter, MATTER_CF.CLAIM_AMOUNT));
-  const dosStart = textValue(cfValue(matter, MATTER_CF.DOS_START));
-  const dosEnd = textValue(cfValue(matter, MATTER_CF.DOS_END));
-  const denialReason = textValue(cfValue(matter, MATTER_CF.DENIAL_REASON));
-  const masterLawsuitId = textValue(cfValue(matter, MATTER_CF.MASTER_LAWSUIT_ID));
-  const indexAaaNumber = textValue(cfValue(matter, MATTER_CF.INDEX_AAA_NUMBER));
-
+  // ✅ still index the matter so pipeline works
   upsertRow({
     matter_id: Number(matter.id),
     display_number: matter.display_number || "",
@@ -112,18 +44,18 @@ export async function ingestMatterFromClio(matterId: number) {
     patient_name: "",
     client_name: textValue(matter.client),
     insurer_name: "",
-    claim_amount: claimAmount,
+    claim_amount: 0,
     settled_amount: 0,
     payment_amount: 0,
     balance_amount: 0,
-    bill_number: billNumber,
-    dos_start: dosStart,
-    dos_end: dosEnd,
-    denial_reason: denialReason,
+    bill_number: "",
+    dos_start: "",
+    dos_end: "",
+    denial_reason: "",
     payment_voluntary: 0,
     balance_presuit: 0,
-    master_lawsuit_id: masterLawsuitId,
-    index_aaa_number: indexAaaNumber,
+    master_lawsuit_id: "",
+    index_aaa_number: "",
     status: textValue(matter.status),
     raw_json: JSON.stringify(matter),
   });
@@ -132,6 +64,8 @@ export async function ingestMatterFromClio(matterId: number) {
     matterId: Number(matter.id),
     displayNumber: matter.display_number || "",
     claimNumber: claimNumberRaw,
-    masterLawsuitId,
+    patientName: "",
+    insurerName: "",
+    masterLawsuitId: "",
   };
 }

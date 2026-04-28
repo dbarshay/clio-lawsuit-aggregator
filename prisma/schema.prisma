@@ -61,6 +61,7 @@ model ClaimIndex {
   payment_voluntary Float?
   balance_presuit   Float?
   master_lawsuit_id String?
+  index_aaa_number String?
 
   matter_stage_name String?
   status            String?

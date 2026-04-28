@@ -101,6 +101,7 @@ export async function ingestMatterFromClio(matterId: number) {
   const dosEnd = textValue(cfValue(matter, MATTER_CF.DOS_END));
   const denialReason = textValue(cfValue(matter, MATTER_CF.DENIAL_REASON));
   const masterLawsuitId = textValue(cfValue(matter, MATTER_CF.MASTER_LAWSUIT_ID));
+  const indexAaaNumber = textValue(cfValue(matter, MATTER_CF.INDEX_AAA_NUMBER));
 
   upsertRow({
     matter_id: Number(matter.id),
@@ -122,6 +123,7 @@ export async function ingestMatterFromClio(matterId: number) {
     payment_voluntary: 0,
     balance_presuit: 0,
     master_lawsuit_id: masterLawsuitId,
+    index_aaa_number: indexAaaNumber,
     status: textValue(matter.status),
     raw_json: JSON.stringify(matter),
   });

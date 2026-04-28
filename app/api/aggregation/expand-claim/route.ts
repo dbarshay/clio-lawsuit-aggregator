@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clioFetch } from "@/lib/clio";
-import { getMatter, getSiblings } from "@/lib/claimIndex";
-import { upsertClaimIndexFromMatter } from "@/lib/claimIndexUpsert";
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));

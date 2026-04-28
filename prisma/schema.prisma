@@ -64,8 +64,8 @@ model ClaimIndex {
 
   matter_stage_name String?
   status            String?
-  raw_json   String?
-  indexed_at DateTime @default(now())
+  raw_json          String?
+  indexed_at        DateTime @default(now())
 
   @@index([claim_number_normalized])
 }
@@ -86,13 +86,9 @@ model WebhookEvent {
   @@index([webhookId])
 }
 
-
 model WorkerLock {
-  name        String   @id
-  lockedBy    String
-  lockedUntil DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([lockedUntil])
+  id        Int      @id @default(1)
+  locked    Boolean  @default(false)
+  lockedAt  DateTime?
+  updatedAt DateTime @updatedAt
 }

@@ -6,6 +6,16 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function brlNumber(displayNumber: any): number | null {
+  const match = String(displayNumber || "").match(/^BRL(\d+)$/i);
+  return match ? Number(match[1]) : null;
+}
+
+function shouldScan(displayNumber: any) {
+  const n = brlNumber(displayNumber);
+  return n !== null && n >= 30000;
+}
+
 async function fetchWithRetry(path: string, maxAttempts = 5) {
   let attempt = 0;
 
@@ -29,16 +39,19 @@ async function fetchWithRetry(path: string, maxAttempts = 5) {
     throw new Error(`Clio API ${res.status}: ${text}`);
   }
 
-  throw new Error(`Retry limit exceeded`);
+  throw new Error("Retry limit exceeded");
 }
 
 async function fetchMatterDetail(matterId: number) {
   const fields = [
     "id",
+    "etag",
     "display_number",
     "description",
     "status",
-    "custom_field_values{value,custom_field}"
+    "matter_stage",
+    "client",
+    "custom_field_values{id,value,custom_field{id}}",
   ].join(",");
 
   const res = await fetchWithRetry(
@@ -52,12 +65,14 @@ async function fetchMatterDetail(matterId: number) {
 export async function GET(req: NextRequest) {
   try {
     const nextParam = req.nextUrl.searchParams.get("next");
-    const limit = Math.max(1, Number(req.nextUrl.searchParams.get("limit") || "25"));
-    const delayMs = Math.max(0, Number(req.nextUrl.searchParams.get("delayMs") || "200"));
+    const limit = Math.max(1, Number(req.nextUrl.searchParams.get("limit") || "50"));
+    const delayMs = Math.max(0, Number(req.nextUrl.searchParams.get("delayMs") || "250"));
+
+    const listFields = encodeURIComponent("id,display_number");
 
     const nextUrl = nextParam
       ? decodeURIComponent(nextParam)
-      : `/api/v4/matters.json?fields=id&limit=${limit}`;
+      : `/api/v4/matters.json?fields=${listFields}&limit=${limit}`;
 
     console.log("Fetching:", nextUrl);
 
@@ -68,13 +83,22 @@ export async function GET(req: NextRequest) {
     const next = json?.meta?.paging?.next || null;
 
     let scanned = 0;
+    let skippedBefore30000 = 0;
     let indexed = 0;
     let failed = 0;
-    const errors: Array<{ id?: number; error: string }> = [];
+
+    const errors: Array<{ id?: number; displayNumber?: string; error: string }> = [];
 
     for (const m of matters) {
       const id = Number(m?.id);
+      const displayNumber = String(m?.display_number || "");
+
       if (!id) continue;
+
+      if (!shouldScan(displayNumber)) {
+        skippedBefore30000++;
+        continue;
+      }
 
       scanned++;
 
@@ -87,7 +111,11 @@ export async function GET(req: NextRequest) {
         }
       } catch (e: any) {
         failed++;
-        errors.push({ id, error: e?.message || "Unknown error" });
+        errors.push({
+          id,
+          displayNumber,
+          error: e?.message || "Unknown error",
+        });
       }
 
       if (delayMs > 0) {
@@ -98,6 +126,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       scanned,
+      skippedBefore30000,
       indexed,
       failed,
       next,

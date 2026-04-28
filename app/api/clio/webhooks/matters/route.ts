@@ -5,21 +5,12 @@ import { prisma } from "@/lib/prisma";
 
 function extractMatterId(payload: any): number | null {
   const candidates = [
-    // Direct payload shapes
-    payload?.data?.id,
-    payload?.object?.id,
-    payload?.record?.id,
-
     payload?.data?.matter_id,
     payload?.data?.matterId,
     payload?.object?.matter_id,
     payload?.object?.matterId,
-
-    // Clio events[] envelope (CRITICAL)
-    payload?.events?.[0]?.data?.id,
-    payload?.events?.[0]?.object?.id,
-    payload?.events?.[0]?.data?.matter_id,
-    payload?.events?.[0]?.data?.matterId,
+    payload?.record?.matter_id,
+    payload?.record?.matterId,
   ];
 
   for (const c of candidates) {
@@ -50,23 +41,12 @@ function makeEventKey(payload: any, matterId: number | null): string {
     payload?.id ??
     payload?.event_id ??
     payload?.webhook_id ??
-    payload?.data?.id ??
-    payload?.object?.id ??
-    payload?.record?.id ??
-    payload?.events?.[0]?.id ??
-    payload?.events?.[0]?.data?.id ??
+    payload?.data?.id ??   // keep for uniqueness ONLY (not meaning)
     "";
 
   const updatedAt =
     payload?.updated_at ??
-    payload?.updatedAt ??
     payload?.data?.updated_at ??
-    payload?.data?.updatedAt ??
-    payload?.object?.updated_at ??
-    payload?.record?.updated_at ??
-    payload?.events?.[0]?.updated_at ??
-    payload?.events?.[0]?.updatedAt ??
-    payload?.events?.[0]?.data?.updated_at ??
     "";
 
   const basis = {
@@ -124,8 +104,6 @@ export async function POST(req: NextRequest) {
           id: true,
           status: true,
           matterId: true,
-          createdAt: true,
-          processedAt: true,
         },
       });
 

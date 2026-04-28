@@ -1,44 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-function collectMatterIds(payload: any): number[] {
-  const ids = new Set<number>();
-  const maybeAdd = (v: any) => {
-    const n = Number(v);
-    if (Number.isFinite(n) && n > 0) ids.add(n);
-  };
+function extractMatterId(payload: any): number | null {
+  const candidates = [
+    payload?.id,
+    payload?.matter_id,
+    payload?.matterId,
 
-  maybeAdd(payload?.id);
-  maybeAdd(payload?.data?.id);
-  maybeAdd(payload?.object?.id);
+    payload?.data?.id,
+    payload?.data?.matter_id,
+    payload?.data?.matterId,
 
-  if (Array.isArray(payload?.data)) {
-    for (const item of payload.data) {
-      maybeAdd(item?.id);
-    }
+    payload?.object?.id,
+    payload?.object?.matter_id,
+    payload?.object?.matterId,
+
+    payload?.record?.id,
+    payload?.record?.matter_id,
+    payload?.record?.matterId,
+  ];
+
+  for (const c of candidates) {
+    const n = Number(c);
+    if (Number.isFinite(n) && n > 0) return n;
   }
 
-  return [...ids];
+  return null;
 }
 
 export async function POST(req: NextRequest) {
   try {
     const payload = await req.json().catch(() => ({}));
 
+    const matterId = extractMatterId(payload);
+
     const event = await prisma.webhookEvent.create({
       data: {
         payload,
+        matterId,
         status: "pending",
       },
     });
-
-    const matterIds = collectMatterIds(payload);
 
     return NextResponse.json({
       ok: true,
       accepted: true,
       eventId: event.id,
-      matterIds,
+      matterId,
     });
   } catch (err: any) {
     return NextResponse.json(

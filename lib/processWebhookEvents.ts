@@ -10,35 +10,12 @@ function collectMatterIds(payload: any): number[] {
   };
 
   maybeAdd(payload?.id);
-  maybeAdd(payload?.matter_id);
-  maybeAdd(payload?.matterId);
-
   maybeAdd(payload?.data?.id);
-  maybeAdd(payload?.data?.matter_id);
-  maybeAdd(payload?.data?.matterId);
-
   maybeAdd(payload?.object?.id);
-  maybeAdd(payload?.object?.matter_id);
-  maybeAdd(payload?.object?.matterId);
-
-  maybeAdd(payload?.record?.id);
-  maybeAdd(payload?.record?.matter_id);
-  maybeAdd(payload?.record?.matterId);
 
   if (Array.isArray(payload?.data)) {
     for (const item of payload.data) {
       maybeAdd(item?.id);
-      maybeAdd(item?.matter_id);
-      maybeAdd(item?.matterId);
-      maybeAdd(item?.record?.id);
-    }
-  }
-
-  if (Array.isArray(payload?.records)) {
-    for (const item of payload.records) {
-      maybeAdd(item?.id);
-      maybeAdd(item?.matter_id);
-      maybeAdd(item?.matterId);
     }
   }
 
@@ -55,17 +32,17 @@ export async function processWebhookEvents() {
     take: 20,
   });
 
-  const results: Array<{
-    eventId: string;
-    ok: boolean;
-    matterIds?: number[];
-    processed?: number;
-    error?: string;
-  }> = [];
+  const results: any[] = [];
 
   for (const event of events) {
     try {
-      const matterIds = collectMatterIds(event.payload);
+      let matterIds: number[] = [];
+
+      if (event.matterId) {
+        matterIds = [event.matterId];
+      } else {
+        matterIds = collectMatterIds(event.payload);
+      }
 
       for (const id of matterIds) {
         await ingestMatterFromClio(id);
@@ -85,10 +62,10 @@ export async function processWebhookEvents() {
         eventId: event.id,
         ok: true,
         matterIds,
-        processed: matterIds.length,
       });
     } catch (err: any) {
       const message = err?.message || "Unknown webhook processing error";
+
       const isNonRetryableSkip =
         message.includes("has no claim number") ||
         message.includes("was not returned by Clio") ||

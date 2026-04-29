@@ -46,3 +46,6 @@ next-env.d.ts
 dev.db
 *.bak
 .env*.local
+
+# accidental version artifacts
+*.0

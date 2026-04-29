@@ -36,6 +36,15 @@ function customFieldId(cf: any): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function normalizeList(value: string | null | undefined) {
+  return String(value || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .sort()
+    .join(",");
+}
+
 export async function updateMatterCustomFields(
   matterId: number,
   masterLawsuitId: string,
@@ -67,6 +76,26 @@ export async function updateMatterCustomFields(
     );
   }
 
+  const nextMatterList = lawsuitMatterIds.join(",");
+
+  const currentMaster = String(masterField.value || "").trim();
+  const nextMaster = String(masterLawsuitId || "").trim();
+
+  const currentMatterList = normalizeList(mattersField.value);
+  const normalizedNextMatterList = normalizeList(nextMatterList);
+
+  if (
+    currentMaster === nextMaster &&
+    currentMatterList === normalizedNextMatterList
+  ) {
+    return {
+      matterId,
+      updated: false,
+      skipped: true,
+      reason: "already-current",
+    };
+  }
+
   await clioFetch(`/matters/${matterId}.json`, {
     method: "PATCH",
     body: JSON.stringify({
@@ -78,12 +107,16 @@ export async function updateMatterCustomFields(
           },
           {
             id: mattersField.id,
-            value: lawsuitMatterIds.join(","),
+            value: nextMatterList,
           },
         ],
       },
     }),
   });
 
-  return true;
+  return {
+    matterId,
+    updated: true,
+    skipped: false,
+  };
 }

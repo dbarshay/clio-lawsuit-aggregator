@@ -6,12 +6,10 @@ export function buildClaimIndexWhere(params: {
   insurer?: string;
   claim?: string;
 }): Prisma.ClaimIndexWhereInput {
-  const where: Prisma.ClaimIndexWhereInput = {
-    AND: [],
-  };
+  const and: Prisma.ClaimIndexWhereInput[] = [];
 
   if (params.patient) {
-    where.AND?.push({
+    and.push({
       patient_name: {
         contains: params.patient,
         mode: "insensitive",
@@ -20,7 +18,7 @@ export function buildClaimIndexWhere(params: {
   }
 
   if (params.provider) {
-    where.AND?.push({
+    and.push({
       provider_name: {
         contains: params.provider,
         mode: "insensitive",
@@ -29,7 +27,7 @@ export function buildClaimIndexWhere(params: {
   }
 
   if (params.insurer) {
-    where.AND?.push({
+    and.push({
       insurer_name: {
         contains: params.insurer,
         mode: "insensitive",
@@ -38,26 +36,25 @@ export function buildClaimIndexWhere(params: {
   }
 
   if (params.claim) {
-    where.AND?.push({
+    and.push({
       claim_number_normalized: {
         contains: params.claim,
         mode: "insensitive",
       },
     });
 
-    // CRITICAL: exclude null claims when filtering by claim
-    where.AND?.push({
+    and.push({
       NOT: {
         claim_number_normalized: null,
       },
     });
   }
 
-  if (where.AND && where.AND.length === 0) {
+  if (and.length === 0) {
     return {};
   }
 
-  return where;
+  return { AND: and };
 }
 
 export const CLAIM_INDEX_SELECT = {

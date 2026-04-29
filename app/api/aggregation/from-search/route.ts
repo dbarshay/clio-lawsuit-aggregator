@@ -71,9 +71,21 @@ export async function POST(req: NextRequest) {
     created = true;
   }
 
+  const writebacks = [];
+
   for (const id of matterIds) {
-    await updateMatterCustomFields(id, masterLawsuitId, matterIds);
+    const result = await updateMatterCustomFields(id, masterLawsuitId, matterIds);
+    writebacks.push(result);
   }
+
+  await prisma.claimIndex.updateMany({
+    where: {
+      matter_id: { in: matterIds },
+    },
+    data: {
+      master_lawsuit_id: masterLawsuitId,
+    },
+  });
 
   return NextResponse.json({
     ok: true,
@@ -81,5 +93,6 @@ export async function POST(req: NextRequest) {
     masterLawsuitId,
     created,
     matterCount: rows.length,
+    writebacks,
   });
 }

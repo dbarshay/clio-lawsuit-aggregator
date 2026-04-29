@@ -94,7 +94,28 @@ export async function upsertClaimIndexFromMatter(matter: any) {
     patient_name: patientName,
     provider_name: providerName,
     client_name: str(matter?.client?.name),
-    insurer_name: insurerName,
+    insurer_name: (() => {
+      const raw = insurerRaw ?? matter.insurance_company ?? "";
+
+      // If it's an object, prefer name
+      if (typeof raw === "object" && raw !== null) {
+        return String(raw.name ?? raw.value ?? "");
+      }
+
+      // If it's a numeric string (Clio contact ID), discard it
+      if (typeof raw === "string" && /^\d+$/.test(raw)) {
+        return "";
+      }
+
+      // If it's number, discard
+      if (typeof raw === "number") {
+        return "";
+      }
+
+      return String(raw);
+    })()
+        ? String((insurerRaw as any).name ?? (insurerRaw as any).value ?? "")
+        : String(insurerRaw ?? ""),
 
     // --- COMPOSITE SELECTORS ---
     patient_provider: joinNorm(patientName, providerName),

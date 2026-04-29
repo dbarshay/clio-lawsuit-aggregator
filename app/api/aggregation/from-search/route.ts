@@ -65,18 +65,27 @@ export async function POST(req: NextRequest) {
   let created = false;
 
   if (!masterLawsuitId) {
-    masterLawsuitId = await buildMasterId();
-
-    await prisma.lawsuit.create({
-      data: {
-        masterLawsuitId,
-        claimNumber,
-        lawsuitMatters: matterIds.join(","),
-        sharedFolderPath: "",
-      },
+    // CHECK DB FIRST (critical for idempotency)
+    const existing = await prisma.lawsuit.findFirst({
+      where: { claimNumber },
     });
 
-    created = true;
+    if (existing) {
+      masterLawsuitId = existing.masterLawsuitId;
+    } else {
+      masterLawsuitId = await buildMasterId();
+
+      await prisma.lawsuit.create({
+        data: {
+          masterLawsuitId,
+          claimNumber,
+          lawsuitMatters: matterIds.join(","),
+          sharedFolderPath: "",
+        },
+      });
+
+      created = true;
+    }
   }
 
   const writebacks = [];

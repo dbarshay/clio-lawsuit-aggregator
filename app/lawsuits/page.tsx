@@ -1,0 +1,444 @@
+"use client";
+
+import React, { useMemo, useState } from "react";
+
+type Matter = any;
+type ClaimGroup = any;
+
+function matterId(m: Matter) {
+  return String(m.matterId ?? m.matter_id ?? m.id ?? "");
+}
+
+function displayNumber(m: Matter) {
+  return m.displayNumber ?? m.display_number ?? m.matterNumber ?? m.matter_number ?? matterId(m);
+}
+
+function val(m: Matter, ...keys: string[]) {
+  for (const k of keys) {
+    if (m?.[k] !== undefined && m?.[k] !== null && m?.[k] !== "") return m[k];
+  }
+  return "";
+}
+
+function raw(m: Matter) {
+  const r = m?.raw_json ?? m?.rawJson;
+  if (!r) return null;
+  if (typeof r === "object") return r;
+  if (typeof r === "string") {
+    try {
+      return JSON.parse(r);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function insurerName(m: Matter) {
+  const r = raw(m);
+
+  return (
+    val(
+      m,
+      "insurerName",
+      "insurer_name",
+      "insuranceCompanyName",
+      "insurance_company_name",
+      "insuranceCompany",
+      "insurance_company"
+    ) ||
+    m?.insurance_company?.name ||
+    m?.insuranceCompany?.name ||
+    m?.insurer?.name ||
+    r?.insurance_company?.name ||
+    r?.insuranceCompany?.name ||
+    r?.insurer?.name ||
+    r?.custom_field_values?.find?.((cf: any) =>
+      String(cf?.custom_field?.name ?? cf?.name ?? "")
+        .toLowerCase()
+        .includes("insurance")
+    )?.value ||
+    ""
+  );
+}
+
+function moneyValue(v: unknown) {
+  const n = Number(v ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function money(v: unknown) {
+  return moneyValue(v).toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
+function getRows(g: ClaimGroup): Matter[] {
+  return g.matters ?? g.rows ?? g.items ?? [];
+}
+
+function getClaimNumber(g: ClaimGroup) {
+  return g.claimNumber ?? g.claim_number ?? g.claimNumberNormalized ?? g.claim_number_normalized ?? "(no claim number)";
+}
+
+function masterId(m: Matter) {
+  return val(m, "masterLawsuitId", "master_lawsuit_id") || "";
+}
+
+export default function LawsuitsPage() {
+  const [claim, setClaim] = useState("");
+  const [patient, setPatient] = useState("");
+  const [provider, setProvider] = useState("");
+  const [insurer, setInsurer] = useState("");
+
+  const [groups, setGroups] = useState<ClaimGroup[]>([]);
+  const [selected, setSelected] = useState<Record<string, Matter>>({});
+  const [loading, setLoading] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<any>(null);
+  const [searched, setSearched] = useState(false);
+
+  const selectedMatters = useMemo(() => Object.values(selected), [selected]);
+
+  const selectedTotal = selectedMatters.reduce(
+    (sum, m) => sum + moneyValue(val(m, "claimAmount", "claim_amount")),
+    0
+  );
+
+  async function search() {
+    setLoading(true);
+    setError("");
+    setResult(null);
+    setSearched(true);
+    setSelected({});
+
+    try {
+      const params = new URLSearchParams();
+      if (claim.trim()) params.set("claim", claim.trim());
+      if (patient.trim()) params.set("patient", patient.trim());
+      if (provider.trim()) params.set("provider", provider.trim());
+      if (insurer.trim()) params.set("insurer", insurer.trim());
+
+      if (!params.toString()) {
+        throw new Error("Enter at least one search parameter.");
+      }
+
+      const res = await fetch(`/api/claim-index/search-grouped?${params.toString()}`, {
+        cache: "no-store",
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Search failed.");
+
+      const nextGroups = json.groups ?? json.claims ?? json.results ?? json.data ?? [];
+      setGroups(Array.isArray(nextGroups) ? nextGroups : []);
+      setSelected({});
+    } catch (e: any) {
+      setError(e?.message || "Search failed.");
+      setGroups([]);
+      setSelected({});
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function toggleMatter(m: Matter) {
+    const id = matterId(m);
+    if (!id || masterId(m)) return;
+
+    setSelected((prev) => {
+      const next = { ...prev };
+      if (next[id]) delete next[id];
+      else next[id] = m;
+      return next;
+    });
+  }
+
+  function toggleAllEligible(rows: Matter[]) {
+    const eligible = rows.filter((m) => matterId(m) && !masterId(m));
+    const allSelected = eligible.length > 0 && eligible.every((m) => selected[matterId(m)]);
+
+    setSelected((prev) => {
+      const next = { ...prev };
+
+      if (allSelected) {
+        eligible.forEach((m) => {
+          delete next[matterId(m)];
+        });
+      } else {
+        eligible.forEach((m) => {
+          next[matterId(m)] = m;
+        });
+      }
+
+      return next;
+    });
+  }
+
+  async function createOrExtend() {
+    if (!selectedMatters.length) return;
+
+    setRunning(true);
+    setError("");
+    setResult(null);
+
+    try {
+      const matterIds = selectedMatters.map((m) => Number(matterId(m)));
+
+      const res = await fetch("/api/aggregation/from-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matterIds }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Aggregation failed.");
+
+      setResult(json);
+      await search();
+    } catch (e: any) {
+      setError(e?.message || "Aggregation failed.");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  return (
+    <main style={{ padding: 20, maxWidth: 1400, margin: "0 auto" }}>
+      <h1 style={{ fontSize: 24, marginBottom: 12 }}>Lawsuit Aggregation</h1>
+
+      <div style={searchGrid}>
+        <input placeholder="Claim number" value={claim} onChange={(e) => setClaim(e.target.value)} style={input} />
+        <input placeholder="Patient" value={patient} onChange={(e) => setPatient(e.target.value)} style={input} />
+        <input placeholder="Provider" value={provider} onChange={(e) => setProvider(e.target.value)} style={input} />
+        <input placeholder="Insurer" value={insurer} onChange={(e) => setInsurer(e.target.value)} style={input} />
+        <button onClick={search} disabled={loading || running} style={primaryBtn}>
+          {loading ? "Searching..." : "Search"}
+        </button>
+      </div>
+
+      {error && <div style={errorBox}>{error}</div>}
+
+      {result && (
+        <div style={successBox}>
+          <strong>Result:</strong> {result.action ?? result.status ?? result.result ?? "completed"}
+          {(result.masterLawsuitId ?? result.master_lawsuit_id) ? ` — ${result.masterLawsuitId ?? result.master_lawsuit_id}` : ""}
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 16 }}>
+        <section>
+          {!searched ? (
+            <p>Enter a selector and search.</p>
+          ) : loading ? (
+            <p>Loading claim clusters...</p>
+          ) : groups.length === 0 ? (
+            <p>No claim clusters found.</p>
+          ) : (
+            groups.map((group, idx) => {
+              const rows = [...getRows(group)].sort((a, b) => {
+                const aM = masterId(a);
+                const bM = masterId(b);
+                if (!aM && bM) return -1;
+                if (aM && !bM) return 1;
+                return String(aM).localeCompare(String(bM));
+              });
+
+              const eligibleRows = rows.filter((m) => matterId(m) && !masterId(m));
+              const allEligibleSelected =
+                eligibleRows.length > 0 && eligibleRows.every((m) => selected[matterId(m)]);
+
+              return (
+                <div key={`${getClaimNumber(group)}-${idx}`} style={card}>
+                  <div style={header}>
+                    <span>Claim Number: {getClaimNumber(group)}</span>
+                  </div>
+
+                  <table style={table}>
+                    <thead>
+                      <tr>
+                        <th style={thCheck}>
+                          <input
+                            type="checkbox"
+                            checked={allEligibleSelected}
+                            disabled={eligibleRows.length === 0}
+                            onChange={() => toggleAllEligible(rows)}
+                            title="Select/deselect all eligible matters"
+                          />
+                        </th>
+                        <th style={th}>Matter</th>
+                        <th style={th}>Patient</th>
+                        <th style={th}>Provider</th>
+                        <th style={th}>Insurer</th>
+                        <th style={thRight}>Claim Amount</th>
+                        <th style={thRight}>Balance</th>
+                        <th style={th}>Status</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {rows.map((m) => {
+                        const id = matterId(m);
+                        const checked = Boolean(selected[id]);
+                        const hasMaster = !!masterId(m);
+
+                        return (
+                          <tr
+                            key={id}
+                            style={{
+                              background: checked ? "#fff7cc" : hasMaster ? "#f2f2f2" : "white",
+                              opacity: hasMaster ? 0.55 : 1,
+                            }}
+                          >
+                            <td style={tdCheck}>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={hasMaster}
+                                onChange={() => toggleMatter(m)}
+                              />
+                            </td>
+                            <td style={td}>{displayNumber(m)}</td>
+                            <td style={td}>{val(m, "patientName", "patient_name")}</td>
+                            <td style={td}>{val(m, "providerName", "clientName", "provider_name", "client_name")}</td>
+                            <td style={td}>{insurerName(m)}</td>
+                            <td style={tdRight}>{money(val(m, "claimAmount", "claim_amount"))}</td>
+                            <td style={tdRight}>{money(val(m, "balanceAmount", "balance_amount"))}</td>
+                            <td style={td}>{hasMaster ? `Existing: ${masterId(m)}` : "New"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })
+          )}
+        </section>
+
+        <aside style={panel}>
+          <h3 style={{ marginTop: 0, marginBottom: 8 }}>Selected Matters</h3>
+          <p style={panelLine}><strong>Count:</strong> {selectedMatters.length}</p>
+          <p style={panelLine}><strong>Total Claim Amount:</strong> {money(selectedTotal)}</p>
+
+          <button
+            onClick={createOrExtend}
+            disabled={!selectedMatters.length || running}
+            style={{
+              ...primaryBtn,
+              width: "100%",
+              opacity: !selectedMatters.length || running ? 0.45 : 1,
+              cursor: !selectedMatters.length || running ? "not-allowed" : "pointer",
+            }}
+          >
+            {running ? "Working..." : "Create / Extend Lawsuit"}
+          </button>
+        </aside>
+      </div>
+    </main>
+  );
+}
+
+const searchGrid: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, 1fr) 220px",
+  gap: 8,
+  marginBottom: 12,
+};
+
+const input: React.CSSProperties = {
+  padding: 8,
+  border: "1px solid #ccc",
+  borderRadius: 6,
+};
+
+const card: React.CSSProperties = {
+  border: "1px solid #ddd",
+  borderRadius: 8,
+  marginBottom: 12,
+  overflow: "hidden",
+};
+
+const header: React.CSSProperties = {
+  padding: "8px 10px",
+  background: "#fafafa",
+  borderBottom: "1px solid #ddd",
+  fontWeight: 700,
+};
+
+const table: React.CSSProperties = {
+  width: "100%",
+  borderCollapse: "collapse",
+  fontSize: 13,
+};
+
+const th: React.CSSProperties = {
+  textAlign: "left",
+  padding: "7px 8px",
+  borderBottom: "1px solid #ddd",
+  whiteSpace: "nowrap",
+};
+
+const thCheck: React.CSSProperties = {
+  ...th,
+  width: 32,
+  textAlign: "center",
+};
+
+const thRight: React.CSSProperties = {
+  ...th,
+  textAlign: "right",
+};
+
+const td: React.CSSProperties = {
+  padding: "7px 8px",
+  borderBottom: "1px solid #eee",
+  verticalAlign: "top",
+};
+
+const tdCheck: React.CSSProperties = {
+  ...td,
+  width: 32,
+  textAlign: "center",
+};
+
+const tdRight: React.CSSProperties = {
+  ...td,
+  textAlign: "right",
+  whiteSpace: "nowrap",
+};
+
+const panel: React.CSSProperties = {
+  border: "1px solid #ddd",
+  borderRadius: 8,
+  padding: 12,
+  height: "fit-content",
+  position: "sticky",
+  top: 16,
+};
+
+const panelLine: React.CSSProperties = {
+  margin: "5px 0",
+};
+
+const primaryBtn: React.CSSProperties = {
+  padding: "8px 10px",
+  borderRadius: 6,
+  background: "#111",
+  color: "white",
+  border: "none",
+  cursor: "pointer",
+};
+
+const errorBox: React.CSSProperties = {
+  padding: 10,
+  background: "#fee",
+  border: "1px solid #f99",
+  marginBottom: 12,
+};
+
+const successBox: React.CSSProperties = {
+  padding: 10,
+  background: "#eef9ee",
+  border: "1px solid #9c9",
+  marginBottom: 12,
+};

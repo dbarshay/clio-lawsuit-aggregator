@@ -281,9 +281,36 @@ export async function GET(req: NextRequest) {
     rows = await runSearch(params);
 
     // --- EXPANSION STEP ---
-    // Clio-backed discovery must still run; ClaimIndex freshness only controls hydration.
+    // Clio-backed verification has already refreshed the seed rows from Clio.
+    // For strong selectors, skip weaker Clio-backed expansion after the verified cluster is stable.
+    const hasStrongSelector =
+      !!params.matterId ||
+      !!params.claim ||
+      !!params.masterLawsuitId ||
+      !!params.indexAaaNumber;
+
+    const clusterClaims = new Set(
+      rows.map((r) => r.claim_number_normalized).filter(Boolean)
+    );
+    const clusterMasterIds = new Set(
+      rows.map((r) => r.master_lawsuit_id).filter(Boolean)
+    );
+    const clusterIndexNums = new Set(
+      rows.map((r) => r.index_aaa_number).filter(Boolean)
+    );
+
+    const hasUniformStrongCluster =
+      clusterClaims.size === 1 ||
+      clusterMasterIds.size === 1 ||
+      clusterIndexNums.size === 1;
+
+    const shouldEarlyStopClioExpansion =
+      hasStrongSelector &&
+      rows.length > 0 &&
+      hasUniformStrongCluster;
+
     const expansion = await expandFromSeed(rows, {
-      includeClio: true,
+      includeClio: !shouldEarlyStopClioExpansion,
     });
 
     expansionDebug = expansion;

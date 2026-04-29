@@ -92,7 +92,7 @@ export async function upsertClaimIndexFromMatter(matter: any) {
 
     // --- CORE ENTITIES ---
     patient_name: patientName,
-    provider_name: providerName,
+    provider_name: str(matter?.client?.name),
     client_name: str(matter?.client?.name),
     insurer_name: (() => {
       const raw = insurerRaw ?? matter.insurance_company ?? "";

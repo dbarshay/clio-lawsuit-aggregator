@@ -49,7 +49,16 @@ export async function indexMatterInternal(
 
     if (!res.ok) {
       const text = await res.text();
-      return { matterId, ok: false, error: text };
+      if (text && text.includes("Rate limit")) {
+      return {
+        matterId,
+        ok: false,
+        rateLimited: true,
+        error: text,
+      };
+    }
+
+    return { matterId, ok: false, error: text };
     }
 
     const json = await res.json();
@@ -68,10 +77,21 @@ export async function indexMatterInternal(
 
     return { matterId, ok: true, skipped: false };
   } catch (err: any) {
+    const msg = err?.message || "Unknown error";
+
+    if (msg.includes("Rate limit")) {
+      return {
+        matterId,
+        ok: false,
+        rateLimited: true,
+        error: msg,
+      };
+    }
+
     return {
       matterId,
       ok: false,
-      error: err?.message || "Unknown error",
+      error: msg,
     };
   }
 }

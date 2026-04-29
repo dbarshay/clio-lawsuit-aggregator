@@ -38,9 +38,17 @@ export async function POST(req: NextRequest) {
 
   const claimNumber = Array.from(claimSet)[0];
 
-  const existingLawsuits = new Set(
-    rows.map(r => r.master_lawsuit_id).filter(Boolean)
-  );
+  // 🔥 LIVE CLIO CHECK (source of truth)
+  const { getMasterIdFromClio } = await import("@/lib/getMasterIdFromClio");
+
+  const liveIds = [];
+
+  for (const id of matterIds) {
+    const live = await getMasterIdFromClio(id);
+    if (live) liveIds.push(live);
+  }
+
+  const existingLawsuits = new Set(liveIds);
 
   if (existingLawsuits.size > 1) {
     return NextResponse.json(

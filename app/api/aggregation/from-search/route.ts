@@ -95,8 +95,20 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  const anyUpdated = writebacks.some((w: any) => w.updated);
+  const allSkipped = writebacks.every((w: any) => w.skipped);
+
+  const status = created
+    ? "created"
+    : anyUpdated
+      ? "updated"
+      : allSkipped
+        ? "no-op"
+        : "completed";
+
   return NextResponse.json({
     ok: true,
+    status,
     claimNumber,
     masterLawsuitId,
     created,

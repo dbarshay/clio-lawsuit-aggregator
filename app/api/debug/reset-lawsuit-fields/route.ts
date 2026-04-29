@@ -1,7 +1,8 @@
+import { NextResponse } from "next/server";
 import { getValidClioAccessToken } from "@/lib/clioTokenStore";
+import { prisma } from "@/lib/prisma";
 
 const CLIO_API_BASE = process.env.CLIO_API_BASE || "https://app.clio.com/api/v4";
-
 const MASTER_LAWSUIT_ID = 22294835;
 const LAWSUIT_MATTERS = 22306250;
 
@@ -18,12 +19,14 @@ async function clioFetch(path: string, options: RequestInit = {}) {
     },
   });
 
+  const text = await res.text();
+  const json = text ? JSON.parse(text) : null;
+
   if (!res.ok) {
-    const text = await res.text();
     throw new Error(`Clio API error: ${res.status} ${text}`);
   }
 
-  return res.json();
+  return json;
 }
 
 function customFieldId(cf: any): number | null {
@@ -36,26 +39,12 @@ function customFieldId(cf: any): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function normalizeList(value: any) {
-  return String(value || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .sort()
-    .join(",");
-}
-
-export async function updateMatterCustomFields(
-  matterId: number,
-  masterLawsuitId: string,
-  lawsuitMatterIds: number[]
-) {
+async function resetMatter(matterId: number) {
   const fields = encodeURIComponent(
     "id,display_number,custom_field_values{id,value,custom_field}"
   );
 
   const data = await clioFetch(`/matters/${matterId}.json?fields=${fields}`);
-
   const cfValues = data?.data?.custom_field_values || [];
 
   const masterField = cfValues.find(
@@ -74,36 +63,41 @@ export async function updateMatterCustomFields(
     );
   }
 
-  const nextMaster = String(masterLawsuitId || "").trim();
-  const currentMaster = String(masterField.value || "").trim();
-
-  const nextList = normalizeList(lawsuitMatterIds.join(","));
-  const currentList = normalizeList(mattersField.value);
-
-  if (currentMaster === nextMaster && currentList === nextList) {
-    return {
-      matterId,
-      updated: false,
-      skipped: true,
-      reason: "already-current",
-    };
-  }
-
   await clioFetch(`/matters/${matterId}.json`, {
     method: "PATCH",
     body: JSON.stringify({
       data: {
         custom_field_values: [
-          { id: masterField.id, value: masterLawsuitId },
-          { id: mattersField.id, value: lawsuitMatterIds.join(",") },
+          { id: masterField.id, value: "" },
+          { id: mattersField.id, value: "" },
         ],
       },
     }),
   });
 
-  return {
-    matterId,
-    updated: true,
-    skipped: false,
-  };
+  return matterId;
+}
+
+export async function POST() {
+  const matterIds = [1870311350, 1870482830];
+
+  const reset = [];
+  for (const id of matterIds) {
+    reset.push(await resetMatter(id));
+  }
+
+  await prisma.claimIndex.updateMany({
+    where: {
+      matter_id: { in: matterIds },
+    },
+    data: {
+      master_lawsuit_id: null,
+    },
+  });
+
+  return NextResponse.json({
+    ok: true,
+    reset,
+    claimIndexReset: true,
+  });
 }

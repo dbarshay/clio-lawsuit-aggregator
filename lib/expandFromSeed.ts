@@ -11,6 +11,13 @@ type SeedRow = {
   index_aaa_number: string | null;
 };
 
+type ClioExpansionIssue = {
+  query: string;
+  status: number;
+  error: string;
+  rateLimited: boolean;
+};
+
 function clean(v: string | null | undefined) {
   return (v || "").trim();
 }
@@ -53,7 +60,10 @@ function getNextPageToken(json: any): string | null {
   }
 }
 
-async function searchClioMatterIdsByQuery(query: string): Promise<number[]> {
+async function searchClioMatterIdsByQuery(
+  query: string,
+  issues: ClioExpansionIssue[]
+): Promise<number[]> {
   const ids: number[] = [];
   let pageToken: string | null = null;
 
@@ -71,7 +81,13 @@ async function searchClioMatterIdsByQuery(query: string): Promise<number[]> {
 
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(`Clio expansion failed for "${query}": ${res.status} ${text}`);
+      issues.push({
+        query,
+        status: res.status,
+        error: text,
+        rateLimited: res.status === 429 || text.includes("Rate limit"),
+      });
+      return ids;
     }
 
     const json = await res.json();
@@ -159,7 +175,11 @@ async function addClaimIndexMatches(rows: SeedRow[], matterIds: Set<number>) {
   }
 }
 
-async function addClioMatches(rows: SeedRow[], matterIds: Set<number>) {
+async function addClioMatches(
+  rows: SeedRow[],
+  matterIds: Set<number>,
+  issues: ClioExpansionIssue[]
+) {
   const claims = uniqueStrings(rows.map((r) => r.claim_number_normalized));
   const patients = uniqueStrings(rows.map((r) => r.patient_name));
   const providers = uniqueStrings(rows.map((r) => r.client_name));
@@ -167,34 +187,34 @@ async function addClioMatches(rows: SeedRow[], matterIds: Set<number>) {
   const masterIds = uniqueStrings(rows.map((r) => r.master_lawsuit_id));
   const indexNums = uniqueStrings(rows.map((r) => r.index_aaa_number));
 
-  const queries: string[] = [];
+  let queries: string[] = [];
 
-  // Strong selectors.
-  queries.push(...claims);
-  queries.push(...masterIds);
-  queries.push(...indexNums);
+  if (claims.length > 0) {
+    queries = claims;
+  } else if (masterIds.length > 0 || indexNums.length > 0) {
+    queries = [...masterIds, ...indexNums];
+  } else {
+    queries.push(...patients);
 
-  // Patient-only is allowed.
-  queries.push(...patients);
+    for (const patient of patients) {
+      for (const insurer of insurers) {
+        queries.push(`${patient} ${insurer}`);
+      }
 
-  // Combined selectors only. Do NOT add provider-only or insurer-only.
-  for (const patient of patients) {
-    for (const provider of providers) {
-      queries.push(`${provider} ${patient}`);
-      queries.push(`${patient} ${provider}`);
-    }
-
-    for (const insurer of insurers) {
-      queries.push(`${patient} ${insurer}`);
+      for (const provider of providers) {
+        queries.push(`${provider} ${patient}`);
+      }
     }
   }
 
   const uniqueQueries = Array.from(new Set(queries.map(clean).filter(Boolean)));
 
   for (const query of uniqueQueries) {
-    const found = await searchClioMatterIdsByQuery(query);
+    const found = await searchClioMatterIdsByQuery(query, issues);
     found.forEach((id) => matterIds.add(id));
   }
+
+  return uniqueQueries;
 }
 
 type ExpandFromSeedOptions = {
@@ -206,14 +226,23 @@ export async function expandFromSeed(
   options: ExpandFromSeedOptions = {}
 ) {
   const matterIds = new Set<number>();
+  const clioIssues: ClioExpansionIssue[] = [];
+  let clioQueries: string[] = [];
+  let clioExpansionSkipped = options.includeClio === false;
 
   rows.forEach((row) => matterIds.add(row.matter_id));
 
   await addClaimIndexMatches(rows, matterIds);
 
   if (options.includeClio !== false) {
-    await addClioMatches(rows, matterIds);
+    clioQueries = await addClioMatches(rows, matterIds, clioIssues);
   }
 
-  return Array.from(matterIds);
+  return {
+    matterIds: Array.from(matterIds),
+    clioExpansionSkipped,
+    clioQueries,
+    clioIssues,
+    clioRateLimited: clioIssues.filter((i) => i.rateLimited).length,
+  };
 }

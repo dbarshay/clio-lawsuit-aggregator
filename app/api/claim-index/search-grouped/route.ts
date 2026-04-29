@@ -240,6 +240,9 @@ export async function GET(req: NextRequest) {
   let refreshErrors: { matterId: number; error: string }[] = [];
   let rateLimitedIds: number[] = [];
 
+  let expansionDebug: any = null;
+  let expandedMatterIdsForDebug: number[] = [];
+
   if (rows.length > 0) {
     refreshSource = "claim-index";
 
@@ -253,15 +256,14 @@ export async function GET(req: NextRequest) {
     rows = await runSearch(params);
 
     // --- EXPANSION STEP ---
-    // Option A: skip Clio-backed expansion only when ALL seed rows are fresh.
-    // MatterId is an anchor and still gets Clio-backed expansion.
-    const seedIds = rows.map((r) => r.matter_id);
-    const skipClioExpansion =
-      !params.matterId && (await allMatterIdsFresh(seedIds));
-
-    const expandedIds = await expandFromSeed(rows, {
-      includeClio: !skipClioExpansion,
+    // Clio-backed discovery must still run; ClaimIndex freshness only controls hydration.
+    const expansion = await expandFromSeed(rows, {
+      includeClio: true,
     });
+
+    expansionDebug = expansion;
+    const expandedIds = expansion.matterIds;
+    expandedMatterIdsForDebug = expandedIds;
 
     if (expandedIds.length > 0) {
       const expandRefresh = await indexMatterIds(expandedIds);
@@ -271,8 +273,23 @@ export async function GET(req: NextRequest) {
       ]);
       refreshErrors.push(...expandRefresh.errors);
 
+      const seedClaims = Array.from(
+        new Set(
+          rows
+            .map((r) => r.claim_number_normalized)
+            .filter((v): v is string => Boolean(v))
+        )
+      );
+
       rows = await prisma.claimIndex.findMany({
-        where: { matter_id: { in: expandedIds } },
+        where: {
+          AND: [
+            { matter_id: { in: expandedIds } },
+            seedClaims.length > 0
+              ? { claim_number_normalized: { in: seedClaims } }
+              : {},
+          ],
+        },
         orderBy: { matter_id: "asc" },
         select: CLAIM_INDEX_SELECT,
       });
@@ -310,6 +327,17 @@ export async function GET(req: NextRequest) {
       refreshedMatterIds: dedupedRefreshed,
       errors: refreshErrors,
     },
+    expansion: expansionDebug ? {
+      skippedClioExpansion: expansionDebug.clioExpansionSkipped,
+      clioQueries: expansionDebug.clioQueries,
+      clioQueryCount: expansionDebug.clioQueries.length,
+      clioIssues: expansionDebug.clioIssues,
+      clioRateLimited: expansionDebug.clioRateLimited,
+      rawExpandedCandidateCount: expandedMatterIdsForDebug.length,
+      rawExpandedCandidateIds: expandedMatterIdsForDebug,
+      finalReturnedMatterCount: rows.length,
+      finalReturnedMatterIds: rows.map((r) => r.matter_id),
+    } : null,
     groups,
   });
 }

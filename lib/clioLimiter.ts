@@ -1,21 +1,57 @@
 type Task<T> = () => Promise<T>;
 
-const MAX_CONCURRENT = 2;
+export type ClioLimitCategory = "search" | "matter" | "contact" | "token" | "default";
 
-let active = 0;
-const queue: (() => void)[] = [];
+const GLOBAL_MAX_CONCURRENT = 3;
 
-function runNext() {
-  if (active >= MAX_CONCURRENT) return;
+const CATEGORY_LIMITS: Record<ClioLimitCategory, number> = {
+  search: 1,
+  matter: 2,
+  contact: 2,
+  token: 1,
+  default: 2,
+};
 
-  const next = queue.shift();
-  if (!next) return;
+let globalActive = 0;
 
-  active++;
-  next();
+const categoryActive: Record<ClioLimitCategory, number> = {
+  search: 0,
+  matter: 0,
+  contact: 0,
+  token: 0,
+  default: 0,
+};
+
+type QueueItem = {
+  category: ClioLimitCategory;
+  run: () => void;
+};
+
+const queue: QueueItem[] = [];
+
+function canRun(category: ClioLimitCategory) {
+  return (
+    globalActive < GLOBAL_MAX_CONCURRENT &&
+    categoryActive[category] < CATEGORY_LIMITS[category]
+  );
 }
 
-export async function runWithClioLimit<T>(task: Task<T>): Promise<T> {
+function runNext() {
+  const idx = queue.findIndex((item) => canRun(item.category));
+  if (idx === -1) return;
+
+  const [next] = queue.splice(idx, 1);
+
+  globalActive++;
+  categoryActive[next.category]++;
+
+  next.run();
+}
+
+export async function runWithClioLimit<T>(
+  category: ClioLimitCategory,
+  task: Task<T>
+): Promise<T> {
   return new Promise((resolve, reject) => {
     const wrapped = async () => {
       try {
@@ -24,12 +60,13 @@ export async function runWithClioLimit<T>(task: Task<T>): Promise<T> {
       } catch (err) {
         reject(err);
       } finally {
-        active--;
+        globalActive--;
+        categoryActive[category]--;
         runNext();
       }
     };
 
-    queue.push(wrapped);
+    queue.push({ category, run: wrapped });
     runNext();
   });
 }

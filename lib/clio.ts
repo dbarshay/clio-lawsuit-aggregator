@@ -1,5 +1,5 @@
 import { getValidClioAccessToken, refreshClioToken } from "@/lib/clioTokenStore";
-import { runWithClioLimit } from "@/lib/clioLimiter";
+import { type ClioLimitCategory, runWithClioLimit } from "@/lib/clioLimiter";
 
 const RAW_CLIO_API_BASE = process.env.CLIO_API_BASE || "https://app.clio.com";
 
@@ -28,11 +28,33 @@ function mergeHeaders(token: string, existing?: HeadersInit): HeadersInit {
   };
 }
 
+function classifyClioPath(path: string): ClioLimitCategory {
+  const normalized = path.toLowerCase();
+
+  if (normalized.includes("/oauth/token")) return "token";
+
+  if (
+    normalized.includes("/matters.json?") ||
+    normalized.includes("/matters?") ||
+    normalized.includes("/matters.json")
+  ) {
+    return "search";
+  }
+
+  if (normalized.includes("/matters/")) return "matter";
+
+  if (normalized.includes("/contacts/")) return "contact";
+
+  return "default";
+}
+
 export async function clioFetch(
   path: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  return runWithClioLimit(async () => {
+  const category = classifyClioPath(path);
+
+  return runWithClioLimit(category, async () => {
     const url = buildClioUrl(path);
 
     const token = await getValidClioAccessToken();

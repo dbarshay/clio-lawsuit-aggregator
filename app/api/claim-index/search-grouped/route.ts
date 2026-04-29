@@ -272,7 +272,24 @@ export async function GET(req: NextRequest) {
 
     const ids = rows.map((r) => r.matter_id);
     const forceIds = params.matterId ? [Number(params.matterId)] : [];
-    const refresh = await indexMatterIds(ids, forceIds);
+
+    // Only hydrate stale or unknown seed matters.
+    // MatterId searches are forced because the user is asking for one exact record.
+    const idsNeedingSeedRefresh = [];
+
+    for (const id of ids) {
+      if (forceIds.includes(id)) {
+        idsNeedingSeedRefresh.push(id);
+        continue;
+      }
+
+      const fresh = await allMatterIdsFresh([id]);
+      if (!fresh) idsNeedingSeedRefresh.push(id);
+    }
+
+    const refresh = idsNeedingSeedRefresh.length > 0
+      ? await indexMatterIds(idsNeedingSeedRefresh, forceIds)
+      : { refreshed: [], skipped: [], rateLimited: [], errors: [] };
     refreshedMatterIds = refresh.refreshed;
     skippedMatterIds = refresh.skipped;
     refreshErrors = refresh.errors;
@@ -360,7 +377,17 @@ export async function GET(req: NextRequest) {
 
       preHydrationExpandedIdsForDebug = filteredExpandedIds;
 
-      const expandRefresh = await indexMatterIds(filteredExpandedIds);
+      // Only hydrate stale or unknown matters to reduce Clio pressure
+      const idsNeedingRefresh = [];
+
+      for (const id of filteredExpandedIds) {
+        const fresh = await allMatterIdsFresh([id]);
+        if (!fresh) idsNeedingRefresh.push(id);
+      }
+
+      const expandRefresh = idsNeedingRefresh.length > 0
+        ? await indexMatterIds(idsNeedingRefresh)
+        : { refreshed: [], skipped: [], errors: [] };
       refreshedMatterIds = uniqueNumbers([
         ...refreshedMatterIds,
         ...expandRefresh.refreshed,

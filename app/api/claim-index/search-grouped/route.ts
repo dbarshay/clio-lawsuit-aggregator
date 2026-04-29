@@ -9,6 +9,8 @@ import { groupByClaim } from "@/lib/claimIndexGroup";
 import { getValidClioAccessToken } from "@/lib/clioTokenStore";
 import { indexMatterInternal } from "@/lib/indexMatterInternal";
 import { expandFromSeed } from "@/lib/expandFromSeed";
+import { getCacheMetrics, resetCacheMetrics } from "@/lib/clioQueryCache";
+import { getClioMetrics, resetClioMetrics } from "@/lib/clio";
 import { getCachedQuery, setCachedQuery } from "@/lib/clioQueryCache";
 import { clearContactCache } from "@/lib/contactCache";
 
@@ -230,6 +232,8 @@ async function allMatterIdsFresh(matterIds: number[]) {
 export async function GET(req: NextRequest) {
   // Ensure per-request contact cache isolation
   clearContactCache();
+  resetCacheMetrics();
+  resetClioMetrics();
 
   const params: ClaimIndexSearchParams = {
     matterId: clean(req.nextUrl.searchParams.get("matterId")),
@@ -364,6 +368,9 @@ export async function GET(req: NextRequest) {
       rawExpandedCandidateIds: expandedMatterIdsForDebug,
       finalReturnedMatterCount: rows.length,
       finalReturnedMatterIds: rows.map((r) => r.matter_id),
+      cacheHits: getCacheMetrics().cacheHits,
+      cacheMisses: getCacheMetrics().cacheMisses,
+      clioCallCount: getClioMetrics().clioCallCount,
     } : null,
     groups,
   });

@@ -1,6 +1,17 @@
 import { getValidClioAccessToken, refreshClioToken } from "@/lib/clioTokenStore";
 import { type ClioLimitCategory, runWithClioLimit } from "@/lib/clioLimiter";
 
+// ---- METRICS ----
+let clioCallCount = 0;
+
+export function getClioMetrics() {
+  return { clioCallCount };
+}
+
+export function resetClioMetrics() {
+  clioCallCount = 0;
+}
+
 const RAW_CLIO_API_BASE = process.env.CLIO_API_BASE || "https://app.clio.com";
 
 function normalizedClioApiBase(): string {
@@ -55,6 +66,7 @@ export async function clioFetch(
   const category = classifyClioPath(path);
 
   return runWithClioLimit(category, async () => {
+    clioCallCount++;
     const url = buildClioUrl(path);
 
     const token = await getValidClioAccessToken();

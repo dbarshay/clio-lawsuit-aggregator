@@ -1,6 +1,7 @@
 import { clioFetch } from "@/lib/clio";
 import { indexMatterFromClioPayload } from "@/lib/claimIndexHydration";
 import { prisma } from "@/lib/prisma";
+import { parseRetryAfterMs, sleep } from "@/lib/clioRateLimit";
 
 const FRESHNESS_WINDOW_MS = 30_000;
 
@@ -40,25 +41,37 @@ export async function indexMatterInternal(
       "description",
       "status",
       "client",
-      "custom_field_values{value,custom_field}"
+      "custom_field_values{value,custom_field}",
     ].join(",");
 
-    const res = await clioFetch(
-      `/matters/${matterId}.json?fields=${encodeURIComponent(fields)}`
-    );
+    const path = `/matters/${matterId}.json?fields=${encodeURIComponent(fields)}`;
+
+    let res = await clioFetch(path);
 
     if (!res.ok) {
       const text = await res.text();
-      if (text && text.includes("Rate limit")) {
-      return {
-        matterId,
-        ok: false,
-        rateLimited: true,
-        error: text,
-      };
-    }
 
-    return { matterId, ok: false, error: text };
+      if (res.status === 429 || /Rate limit/i.test(text)) {
+        const retryAfterMs = Math.min(parseRetryAfterMs(text, 5000), 10000);
+
+        await sleep(retryAfterMs);
+
+        res = await clioFetch(path);
+
+        if (!res.ok) {
+          const retryText = await res.text();
+
+          return {
+            matterId,
+            ok: false,
+            rateLimited: res.status === 429 || /Rate limit/i.test(retryText),
+            retried: true,
+            error: retryText,
+          };
+        }
+      } else {
+        return { matterId, ok: false, error: text };
+      }
     }
 
     const json = await res.json();
@@ -79,7 +92,7 @@ export async function indexMatterInternal(
   } catch (err: any) {
     const msg = err?.message || "Unknown error";
 
-    if (msg.includes("Rate limit")) {
+    if (/Rate limit/i.test(msg)) {
       return {
         matterId,
         ok: false,

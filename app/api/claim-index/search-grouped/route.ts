@@ -264,6 +264,8 @@ export async function GET(req: NextRequest) {
 
   let expansionDebug: any = null;
   let expandedMatterIdsForDebug: number[] = [];
+  let preHydrationExpandedIdsForDebug: number[] = [];
+  let preHydrationExcludedIdsForDebug: number[] = [];
 
   if (rows.length > 0) {
     refreshSource = "claim-index";
@@ -289,7 +291,49 @@ export async function GET(req: NextRequest) {
     expandedMatterIdsForDebug = expandedIds;
 
     if (expandedIds.length > 0) {
-      const expandRefresh = await indexMatterIds(expandedIds);
+      const seedClaims = Array.from(
+        new Set(
+          rows
+            .map((r) => r.claim_number_normalized)
+            .filter((v): v is string => Boolean(v))
+        )
+      );
+
+      // Early filter before hydration:
+      // - keep unknown candidates so Clio remains source of truth
+      // - skip candidates already known locally to have a different claim
+      let filteredExpandedIds = expandedIds;
+
+      if (seedClaims.length > 0) {
+        const knownCandidates = await prisma.claimIndex.findMany({
+          where: { matter_id: { in: expandedIds } },
+          select: {
+            matter_id: true,
+            claim_number_normalized: true,
+          },
+        });
+
+        const knownById = new Map(
+          knownCandidates.map((row) => [row.matter_id, row.claim_number_normalized])
+        );
+
+        filteredExpandedIds = expandedIds.filter((id) => {
+          const knownClaim = knownById.get(id);
+
+          if (!knownById.has(id)) return true; // unknown: hydrate from Clio
+          if (!knownClaim) return true; // locally incomplete: hydrate from Clio
+
+          return seedClaims.includes(knownClaim);
+        });
+
+        preHydrationExcludedIdsForDebug = expandedIds.filter(
+          (id) => !filteredExpandedIds.includes(id)
+        );
+      }
+
+      preHydrationExpandedIdsForDebug = filteredExpandedIds;
+
+      const expandRefresh = await indexMatterIds(filteredExpandedIds);
       refreshedMatterIds = uniqueNumbers([
         ...refreshedMatterIds,
         ...expandRefresh.refreshed,
@@ -300,18 +344,10 @@ export async function GET(req: NextRequest) {
       ]);
       refreshErrors.push(...expandRefresh.errors);
 
-      const seedClaims = Array.from(
-        new Set(
-          rows
-            .map((r) => r.claim_number_normalized)
-            .filter((v): v is string => Boolean(v))
-        )
-      );
-
       rows = await prisma.claimIndex.findMany({
         where: {
           AND: [
-            { matter_id: { in: expandedIds } },
+            { matter_id: { in: filteredExpandedIds } },
             seedClaims.length > 0
               ? { claim_number_normalized: { in: seedClaims } }
               : {},
@@ -366,6 +402,10 @@ export async function GET(req: NextRequest) {
       clioRateLimited: expansionDebug.clioRateLimited,
       rawExpandedCandidateCount: expandedMatterIdsForDebug.length,
       rawExpandedCandidateIds: expandedMatterIdsForDebug,
+      preHydrationCandidateCount: preHydrationExpandedIdsForDebug.length,
+      preHydrationCandidateIds: preHydrationExpandedIdsForDebug,
+      preHydrationExcludedCount: preHydrationExcludedIdsForDebug.length,
+      preHydrationExcludedIds: preHydrationExcludedIdsForDebug,
       finalReturnedMatterCount: rows.length,
       finalReturnedMatterIds: rows.map((r) => r.matter_id),
       cacheHits: getCacheMetrics().cacheHits,

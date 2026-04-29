@@ -36,12 +36,16 @@ function customFieldId(cf: any): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function normalizeList(value: any) {
+function parseMatterList(value: any): string[] {
   return String(value || "")
     .split(",")
     .map((s) => s.trim())
-    .filter(Boolean)
-    .sort()
+    .filter(Boolean);
+}
+
+function normalizeMatterList(values: any[]) {
+  return Array.from(new Set(values.map(String).map((s) => s.trim()).filter(Boolean)))
+    .sort((a, b) => Number(a) - Number(b))
     .join(",");
 }
 
@@ -77,15 +81,24 @@ export async function updateMatterCustomFields(
   const nextMaster = String(masterLawsuitId || "").trim();
   const currentMaster = String(masterField.value || "").trim();
 
-  const nextList = normalizeList(lawsuitMatterIds.join(","));
-  const currentList = normalizeList(mattersField.value);
+  const existingMatterIds = parseMatterList(mattersField.value);
+  const incomingMatterIds = lawsuitMatterIds.map(String);
 
-  if (currentMaster === nextMaster && currentList === nextList) {
+  // Merge instead of overwrite.
+  const mergedMatterList = normalizeMatterList([
+    ...existingMatterIds,
+    ...incomingMatterIds,
+  ]);
+
+  const currentMatterList = normalizeMatterList(existingMatterIds);
+
+  if (currentMaster === nextMaster && currentMatterList === mergedMatterList) {
     return {
       matterId,
       updated: false,
       skipped: true,
       reason: "already-current",
+      lawsuitMatterList: mergedMatterList,
     };
   }
 
@@ -95,7 +108,7 @@ export async function updateMatterCustomFields(
       data: {
         custom_field_values: [
           { id: masterField.id, value: masterLawsuitId },
-          { id: mattersField.id, value: lawsuitMatterIds.join(",") },
+          { id: mattersField.id, value: mergedMatterList },
         ],
       },
     }),
@@ -105,5 +118,6 @@ export async function updateMatterCustomFields(
     matterId,
     updated: true,
     skipped: false,
+    lawsuitMatterList: mergedMatterList,
   };
 }

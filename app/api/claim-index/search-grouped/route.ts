@@ -9,6 +9,7 @@ import { groupByClaim } from "@/lib/claimIndexGroup";
 import { getValidClioAccessToken } from "@/lib/clioTokenStore";
 import { indexMatterInternal } from "@/lib/indexMatterInternal";
 import { expandFromSeed } from "@/lib/expandFromSeed";
+import { getCachedQuery, setCachedQuery } from "@/lib/clioQueryCache";
 import { clearContactCache } from "@/lib/contactCache";
 
 const CLIO_API_BASE = process.env.CLIO_API_BASE || "https://app.clio.com/api/v4";
@@ -71,6 +72,11 @@ async function clioFetch(path: string) {
 }
 
 async function searchClioMatterIdsByQuery(query: string): Promise<number[]> {
+  const cached = getCachedQuery(query);
+  if (cached) {
+    return cached;
+  }
+
   const ids: number[] = [];
   let pageToken: string | null = null;
 
@@ -95,7 +101,10 @@ async function searchClioMatterIdsByQuery(query: string): Promise<number[]> {
     pageToken = getNextPageToken(json);
   } while (pageToken);
 
-  return uniqueNumbers(ids);
+  const result = uniqueNumbers(ids);
+  setCachedQuery(query, result);
+
+  return result;
 }
 
 async function directClioFallbackMatterIds(params: ClaimIndexSearchParams): Promise<number[]> {
@@ -135,12 +144,13 @@ async function directClioFallbackMatterIds(params: ClaimIndexSearchParams): Prom
 
 async function indexMatterIds(matterIds: number[], forceIds: number[] = []) {
   const refreshed = new Set<number>();
+  const skipped = new Set<number>();
+  const rateLimited = new Set<number>();
   const errors: { matterId: number; error: string }[] = [];
-  const rateLimited: number[] = [];
 
   const ids = uniqueNumbers(matterIds);
   const forced = new Set(uniqueNumbers(forceIds));
-  const concurrency = 5;
+  const concurrency = 3;
 
   for (let i = 0; i < ids.length; i += concurrency) {
     const batch = ids.slice(i, i + concurrency);
@@ -152,10 +162,16 @@ async function indexMatterIds(matterIds: number[], forceIds: number[] = []) {
     );
 
     for (const result of results) {
-      if (result.ok) {
+      const errorText = String(result.error || "");
+
+      if (!result.ok && /RateLimited|rate limit|429/i.test(errorText)) {
+        rateLimited.add(result.matterId);
+      }
+
+      if (result.ok && result.skipped) {
+        skipped.add(result.matterId);
+      } else if (result.ok) {
         refreshed.add(result.matterId);
-      } else if (result.rateLimited) {
-        rateLimited.push(result.matterId);
       } else {
         errors.push({
           matterId: result.matterId,
@@ -167,8 +183,9 @@ async function indexMatterIds(matterIds: number[], forceIds: number[] = []) {
 
   return {
     refreshed: Array.from(refreshed),
+    skipped: Array.from(skipped),
+    rateLimited: Array.from(rateLimited),
     errors,
-    rateLimited,
   };
 }
 
@@ -238,6 +255,7 @@ export async function GET(req: NextRequest) {
   let refreshSource: "claim-index" | "clio-fallback" | "none" = "none";
   let refreshedMatterIds: number[] = [];
   let refreshErrors: { matterId: number; error: string }[] = [];
+  let skippedMatterIds: number[] = [];
   let rateLimitedIds: number[] = [];
 
   let expansionDebug: any = null;
@@ -250,6 +268,7 @@ export async function GET(req: NextRequest) {
     const forceIds = params.matterId ? [Number(params.matterId)] : [];
     const refresh = await indexMatterIds(ids, forceIds);
     refreshedMatterIds = refresh.refreshed;
+    skippedMatterIds = refresh.skipped;
     refreshErrors = refresh.errors;
     rateLimitedIds = refresh.rateLimited || [];
 
@@ -270,6 +289,10 @@ export async function GET(req: NextRequest) {
       refreshedMatterIds = uniqueNumbers([
         ...refreshedMatterIds,
         ...expandRefresh.refreshed,
+      ]);
+      skippedMatterIds = uniqueNumbers([
+        ...skippedMatterIds,
+        ...expandRefresh.skipped,
       ]);
       refreshErrors.push(...expandRefresh.errors);
 
@@ -303,6 +326,7 @@ export async function GET(req: NextRequest) {
       const forceIds = params.matterId ? [Number(params.matterId)] : [];
       const refresh = await indexMatterIds(fallbackIds, forceIds);
       refreshedMatterIds = refresh.refreshed;
+      skippedMatterIds = refresh.skipped;
       refreshErrors = refresh.errors;
     rateLimitedIds = refresh.rateLimited || [];
 
@@ -313,6 +337,7 @@ export async function GET(req: NextRequest) {
   const groups = groupByClaim(rows);
 
   const dedupedRefreshed = uniqueNumbers(refreshedMatterIds);
+  const dedupedSkipped = uniqueNumbers(skippedMatterIds);
 
   return NextResponse.json({
     ok: true,
@@ -325,6 +350,8 @@ export async function GET(req: NextRequest) {
       rateLimitedIds,
       refreshed: dedupedRefreshed.length,
       refreshedMatterIds: dedupedRefreshed,
+      skipped: dedupedSkipped.length,
+      skippedMatterIds: dedupedSkipped,
       errors: refreshErrors,
     },
     expansion: expansionDebug ? {

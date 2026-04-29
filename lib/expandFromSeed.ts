@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { clioFetch } from "@/lib/clio";
+import { getCachedQuery, setCachedQuery } from "@/lib/clioQueryCache";
 
 type SeedRow = {
   matter_id: number;
@@ -64,6 +65,11 @@ async function searchClioMatterIdsByQuery(
   query: string,
   issues: ClioExpansionIssue[]
 ): Promise<number[]> {
+  const cached = getCachedQuery(query);
+  if (cached) {
+    return cached;
+  }
+
   const ids: number[] = [];
   let pageToken: string | null = null;
 
@@ -101,7 +107,10 @@ async function searchClioMatterIdsByQuery(
     pageToken = getNextPageToken(json);
   } while (pageToken);
 
-  return uniqueNumbers(ids);
+  const result = uniqueNumbers(ids);
+  setCachedQuery(query, result);
+
+  return result;
 }
 
 async function addClaimIndexMatches(rows: SeedRow[], matterIds: Set<number>) {

@@ -1,4 +1,5 @@
 import { getValidClioAccessToken, refreshClioToken } from "@/lib/clioTokenStore";
+import { runWithClioLimit } from "@/lib/clioLimiter";
 
 const RAW_CLIO_API_BASE = process.env.CLIO_API_BASE || "https://app.clio.com";
 
@@ -31,23 +32,25 @@ export async function clioFetch(
   path: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  const url = buildClioUrl(path);
+  return runWithClioLimit(async () => {
+    const url = buildClioUrl(path);
 
-  const token = await getValidClioAccessToken();
+    const token = await getValidClioAccessToken();
 
-  let res = await fetch(url, {
-    ...options,
-    headers: mergeHeaders(token, options.headers),
+    let res = await fetch(url, {
+      ...options,
+      headers: mergeHeaders(token, options.headers),
+    });
+
+    if (res.status !== 401) return res;
+
+    const refreshed = await refreshClioToken();
+
+    res = await fetch(url, {
+      ...options,
+      headers: mergeHeaders(refreshed.accessToken, options.headers),
+    });
+
+    return res;
   });
-
-  if (res.status !== 401) return res;
-
-  const refreshed = await refreshClioToken();
-
-  res = await fetch(url, {
-    ...options,
-    headers: mergeHeaders(refreshed.accessToken, options.headers),
-  });
-
-  return res;
 }

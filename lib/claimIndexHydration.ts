@@ -1,5 +1,6 @@
 import { clioFetch } from "@/lib/clio";
 import { upsertRow, normalizeClaimNumber } from "./claimIndex";
+import { getCachedContact, setCachedContact } from "@/lib/contactCache";
 
 const CLAIM_NUMBER_FIELD_ID = 22145915;
 const BILL_NUMBER_FIELD_ID = 22145930;
@@ -30,16 +31,28 @@ function num(value: any) {
 async function getContactName(contactId: number | string | null | undefined) {
   if (!contactId) return null;
 
+  const id = Number(contactId);
+  if (!Number.isFinite(id)) return null;
+
+  const cached = getCachedContact(id);
+  if (cached !== undefined) {
+    return cached;
+  }
+
   const res = await clioFetch(
-    `/api/v4/contacts/${contactId}.json?fields=id,name`
+    `/api/v4/contacts/${id}.json?fields=id,name`
   );
 
   if (!res.ok) {
+    setCachedContact(id, null);
     return null;
   }
 
   const json = await res.json();
-  return json?.data?.name ?? null;
+  const name = json?.data?.name ?? null;
+
+  setCachedContact(id, name);
+  return name;
 }
 
 export async function indexMatterFromClioPayload(m: any) {

@@ -8,6 +8,7 @@ import {
 import { groupByClaim } from "@/lib/claimIndexGroup";
 import { getValidClioAccessToken } from "@/lib/clioTokenStore";
 import { indexMatterInternal } from "@/lib/indexMatterInternal";
+import { expandFromSeed } from "@/lib/expandFromSeed";
 
 const CLIO_API_BASE = process.env.CLIO_API_BASE || "https://app.clio.com/api/v4";
 
@@ -131,23 +132,26 @@ async function directClioFallbackMatterIds(params: ClaimIndexSearchParams): Prom
   return uniqueNumbers(ids);
 }
 
-async function indexMatterIds(matterIds: number[]) {
-  const refreshed: number[] = [];
+async function indexMatterIds(matterIds: number[], forceIds: number[] = []) {
+  const refreshed = new Set<number>();
   const errors: { matterId: number; error: string }[] = [];
 
   const ids = uniqueNumbers(matterIds);
+  const forced = new Set(uniqueNumbers(forceIds));
   const concurrency = 5;
 
   for (let i = 0; i < ids.length; i += concurrency) {
     const batch = ids.slice(i, i + concurrency);
 
     const results = await Promise.all(
-      batch.map(async (id) => indexMatterInternal(id))
+      batch.map(async (id) =>
+        indexMatterInternal(id, { force: forced.has(id) })
+      )
     );
 
     for (const result of results) {
       if (result.ok) {
-        refreshed.push(result.matterId);
+        refreshed.add(result.matterId);
       } else {
         errors.push({
           matterId: result.matterId,
@@ -157,7 +161,7 @@ async function indexMatterIds(matterIds: number[]) {
     }
   }
 
-  return { refreshed, errors };
+  return { refreshed: Array.from(refreshed), errors };
 }
 
 async function runSearch(params: ClaimIndexSearchParams) {
@@ -167,6 +171,34 @@ async function runSearch(params: ClaimIndexSearchParams) {
     where,
     orderBy: { matter_id: "asc" },
     select: CLAIM_INDEX_SELECT,
+  });
+}
+
+async function allMatterIdsFresh(matterIds: number[]) {
+  const ids = uniqueNumbers(matterIds);
+
+  if (ids.length === 0) return false;
+
+  const rows = await prisma.claimIndex.findMany({
+    where: {
+      matter_id: { in: ids },
+    },
+    select: {
+      matter_id: true,
+      indexed_at: true,
+    },
+  });
+
+  if (rows.length !== ids.length) return false;
+
+  const freshnessWindowMs = 30_000;
+  const now = Date.now();
+
+  return rows.every((row) => {
+    if (!row.indexed_at) return false;
+
+    const ageMs = now - row.indexed_at.getTime();
+    return ageMs >= 0 && ageMs < freshnessWindowMs;
   });
 }
 
@@ -200,18 +232,46 @@ export async function GET(req: NextRequest) {
     refreshSource = "claim-index";
 
     const ids = rows.map((r) => r.matter_id);
-    const refresh = await indexMatterIds(ids);
+    const forceIds = params.matterId ? [Number(params.matterId)] : [];
+    const refresh = await indexMatterIds(ids, forceIds);
     refreshedMatterIds = refresh.refreshed;
     refreshErrors = refresh.errors;
 
     rows = await runSearch(params);
+
+    // --- EXPANSION STEP ---
+    // Option A: skip Clio-backed expansion only when ALL seed rows are fresh.
+    // MatterId is an anchor and still gets Clio-backed expansion.
+    const seedIds = rows.map((r) => r.matter_id);
+    const skipClioExpansion =
+      !params.matterId && (await allMatterIdsFresh(seedIds));
+
+    const expandedIds = await expandFromSeed(rows, {
+      includeClio: !skipClioExpansion,
+    });
+
+    if (expandedIds.length > 0) {
+      const expandRefresh = await indexMatterIds(expandedIds);
+      refreshedMatterIds = uniqueNumbers([
+        ...refreshedMatterIds,
+        ...expandRefresh.refreshed,
+      ]);
+      refreshErrors.push(...expandRefresh.errors);
+
+      rows = await prisma.claimIndex.findMany({
+        where: { matter_id: { in: expandedIds } },
+        orderBy: { matter_id: "asc" },
+        select: CLAIM_INDEX_SELECT,
+      });
+    }
   } else {
     refreshSource = "clio-fallback";
 
     const fallbackIds = await directClioFallbackMatterIds(params);
 
     if (fallbackIds.length > 0) {
-      const refresh = await indexMatterIds(fallbackIds);
+      const forceIds = params.matterId ? [Number(params.matterId)] : [];
+      const refresh = await indexMatterIds(fallbackIds, forceIds);
       refreshedMatterIds = refresh.refreshed;
       refreshErrors = refresh.errors;
 

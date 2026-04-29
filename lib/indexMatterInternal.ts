@@ -1,8 +1,39 @@
 import { clioFetch } from "@/lib/clio";
 import { indexMatterFromClioPayload } from "@/lib/claimIndexHydration";
+import { prisma } from "@/lib/prisma";
 
-export async function indexMatterInternal(matterId: number) {
+const FRESHNESS_WINDOW_MS = 30_000;
+
+type IndexMatterInternalOptions = {
+  force?: boolean;
+};
+
+export async function indexMatterInternal(
+  matterId: number,
+  options: IndexMatterInternalOptions = {}
+) {
   try {
+    if (!options.force) {
+      const existing = await prisma.claimIndex.findUnique({
+        where: { matter_id: matterId },
+        select: { indexed_at: true },
+      });
+
+      if (existing?.indexed_at) {
+        const ageMs = Date.now() - existing.indexed_at.getTime();
+
+        if (ageMs >= 0 && ageMs < FRESHNESS_WINDOW_MS) {
+          return {
+            matterId,
+            ok: true,
+            skipped: true,
+            reason: "recently-indexed",
+            ageMs,
+          };
+        }
+      }
+    }
+
     const fields = [
       "id",
       "display_number",
@@ -27,10 +58,15 @@ export async function indexMatterInternal(matterId: number) {
     const indexed = await indexMatterFromClioPayload(detail);
 
     if ((indexed as any)?.skipped) {
-      return { matterId, ok: true, skipped: true };
+      return {
+        matterId,
+        ok: true,
+        skipped: true,
+        reason: (indexed as any)?.reason,
+      };
     }
 
-    return { matterId, ok: true };
+    return { matterId, ok: true, skipped: false };
   } catch (err: any) {
     return {
       matterId,

@@ -26,18 +26,13 @@ async function clioFetch(path: string, options: RequestInit = {}) {
   return res.json();
 }
 
-function matterFieldsPath(matterId: number) {
-  const fields = "id,display_number,custom_field_values{id,value,custom_field}";
-  return `/matters/${matterId}.json?fields=${encodeURIComponent(fields)}`;
-}
-
 function customFieldId(cf: any): number | null {
-  const id =
+  const raw =
     cf?.custom_field?.id ??
     cf?.custom_field_id ??
     cf?.custom_field;
 
-  const n = Number(id);
+  const n = Number(raw);
   return Number.isFinite(n) ? n : null;
 }
 
@@ -46,7 +41,13 @@ export async function updateMatterCustomFields(
   masterLawsuitId: string,
   lawsuitMatterIds: number[]
 ) {
-  const data = await clioFetch(matterFieldsPath(matterId));
+  const fields = encodeURIComponent(
+    "id,display_number,custom_field_values{id,value,custom_field}"
+  );
+
+  const data = await clioFetch(
+    `/matters/${matterId}.json?fields=${fields}`
+  );
 
   const cfValues = data?.data?.custom_field_values || [];
 
@@ -60,7 +61,7 @@ export async function updateMatterCustomFields(
 
   if (!masterField || !mattersField) {
     throw new Error(
-      `Missing required custom field values on matter ${matterId}. Found: ${cfValues
+      `Missing custom fields on matter ${matterId}. Found: ${cfValues
         .map((cf: any) => JSON.stringify(cf))
         .join(" | ")}`
     );

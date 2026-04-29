@@ -1,17 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { updateMatterCustomFields } from "@/lib/clioUpdateCustomFields";
-
-function buildMasterId() {
-  const now = new Date();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const yyyy = now.getFullYear();
-  const rand = Math.floor(Math.random() * 100000)
-    .toString()
-    .padStart(5, "0");
-
-  return `${mm}.${yyyy}.${rand}`;
-}
+import { buildMasterId } from "@/lib/buildMasterId";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -67,7 +57,7 @@ export async function POST(req: NextRequest) {
   let created = false;
 
   if (!masterLawsuitId) {
-    masterLawsuitId = buildMasterId();
+    masterLawsuitId = await buildMasterId();
 
     await prisma.lawsuit.create({
       data: {
@@ -81,7 +71,6 @@ export async function POST(req: NextRequest) {
     created = true;
   }
 
-  // 🔥 REAL WRITEBACK (sequential to stay safe on rate limits)
   for (const id of matterIds) {
     await updateMatterCustomFields(id, masterLawsuitId, matterIds);
   }

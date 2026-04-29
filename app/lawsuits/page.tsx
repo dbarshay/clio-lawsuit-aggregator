@@ -299,7 +299,7 @@ export default function LawsuitsPage() {
                             </td>
                             <td style={td}>{displayNumber(m)}</td>
                             <td style={td}>{val(m, "patientName", "patient_name")}</td>
-                            <td style={td}>{val(m, "providerName", "clientName", "provider_name", "client_name")}</td>
+                            <td style={td}>{val(m, "client_name", "clientName", "provider_name", "providerName")}</td>
                             <td style={td}>{insurerName(m)}</td>
                             <td style={tdRight}>{money(val(m, "claimAmount", "claim_amount"))}</td>
                             <td style={tdRight}>{money(val(m, "balanceAmount", "balance_amount"))}</td>

@@ -62,6 +62,7 @@ export const CLAIM_INDEX_SELECT = {
   display_number: true,
   patient_name: true,
   provider_name: true,
+  client_name: true,
   insurer_name: true,
   claim_number_normalized: true,
   claim_amount: true,

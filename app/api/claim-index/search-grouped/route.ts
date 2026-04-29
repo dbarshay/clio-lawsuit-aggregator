@@ -7,6 +7,7 @@ import {
 } from "@/lib/claimIndexQuery";
 import { groupByClaim } from "@/lib/claimIndexGroup";
 import { getValidClioAccessToken } from "@/lib/clioTokenStore";
+import { indexMatterInternal } from "@/lib/indexMatterInternal";
 
 const CLIO_API_BASE = process.env.CLIO_API_BASE || "https://app.clio.com/api/v4";
 
@@ -130,25 +131,29 @@ async function directClioFallbackMatterIds(params: ClaimIndexSearchParams): Prom
   return uniqueNumbers(ids);
 }
 
-async function indexMatterIds(origin: string, matterIds: number[]) {
+async function indexMatterIds(matterIds: number[]) {
   const refreshed: number[] = [];
   const errors: { matterId: number; error: string }[] = [];
 
-  for (const id of uniqueNumbers(matterIds)) {
-    try {
-      const res = await fetch(`${origin}/api/claim-index/index-matter?matterId=${id}`, {
-        cache: "no-store",
-      });
+  const ids = uniqueNumbers(matterIds);
+  const concurrency = 5;
 
-      if (!res.ok) {
-        const text = await res.text();
-        errors.push({ matterId: id, error: text });
-        continue;
+  for (let i = 0; i < ids.length; i += concurrency) {
+    const batch = ids.slice(i, i + concurrency);
+
+    const results = await Promise.all(
+      batch.map(async (id) => indexMatterInternal(id))
+    );
+
+    for (const result of results) {
+      if (result.ok) {
+        refreshed.push(result.matterId);
+      } else {
+        errors.push({
+          matterId: result.matterId,
+          error: result.error || "Unknown error",
+        });
       }
-
-      refreshed.push(id);
-    } catch (e: any) {
-      errors.push({ matterId: id, error: e?.message || "Unknown refresh error" });
     }
   }
 
@@ -195,7 +200,7 @@ export async function GET(req: NextRequest) {
     refreshSource = "claim-index";
 
     const ids = rows.map((r) => r.matter_id);
-    const refresh = await indexMatterIds(req.nextUrl.origin, ids);
+    const refresh = await indexMatterIds(ids);
     refreshedMatterIds = refresh.refreshed;
     refreshErrors = refresh.errors;
 
@@ -206,7 +211,7 @@ export async function GET(req: NextRequest) {
     const fallbackIds = await directClioFallbackMatterIds(params);
 
     if (fallbackIds.length > 0) {
-      const refresh = await indexMatterIds(req.nextUrl.origin, fallbackIds);
+      const refresh = await indexMatterIds(fallbackIds);
       refreshedMatterIds = refresh.refreshed;
       refreshErrors = refresh.errors;
 

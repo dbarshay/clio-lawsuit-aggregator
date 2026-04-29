@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { updateMatterCustomFields } from "@/lib/clioUpdateCustomFields";
 
 function buildMasterId() {
   const now = new Date();
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   const yyyy = now.getFullYear();
-
-  // temporary simple sequence
   const rand = Math.floor(Math.random() * 100000)
     .toString()
     .padStart(5, "0");
@@ -26,9 +25,7 @@ export async function POST(req: NextRequest) {
   }
 
   const rows = await prisma.claimIndex.findMany({
-    where: {
-      matter_id: { in: matterIds },
-    },
+    where: { matter_id: { in: matterIds } },
   });
 
   if (rows.length !== matterIds.length) {
@@ -67,7 +64,8 @@ export async function POST(req: NextRequest) {
       ? Array.from(existingLawsuits)[0]
       : null;
 
-  // --- CREATE if none exists ---
+  let created = false;
+
   if (!masterLawsuitId) {
     masterLawsuitId = buildMasterId();
 
@@ -79,13 +77,20 @@ export async function POST(req: NextRequest) {
         sharedFolderPath: "",
       },
     });
+
+    created = true;
+  }
+
+  // 🔥 REAL WRITEBACK (sequential to stay safe on rate limits)
+  for (const id of matterIds) {
+    await updateMatterCustomFields(id, masterLawsuitId, matterIds);
   }
 
   return NextResponse.json({
     ok: true,
     claimNumber,
     masterLawsuitId,
-    created: existingLawsuits.size === 0,
+    created,
     matterCount: rows.length,
   });
 }

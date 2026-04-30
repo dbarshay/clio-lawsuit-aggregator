@@ -43,3 +43,11 @@ export async function setClaimClusterCache(claim: string, matterIds: number[]) {
     },
   });
 }
+
+export async function deleteClaimClusterCache(claim: string | null | undefined) {
+  if (!claim) return;
+
+  await prisma.claimClusterCache.deleteMany({
+    where: { claim_number_normalized: claim },
+  });
+}

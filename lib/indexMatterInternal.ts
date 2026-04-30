@@ -1,6 +1,7 @@
 import { clioFetch } from "@/lib/clio";
 import { indexMatterFromClioPayload } from "@/lib/claimIndexHydration";
 import { prisma } from "@/lib/prisma";
+import { deleteClaimClusterCache } from "@/lib/claimClusterCache";
 import { parseRetryAfterMs, sleep } from "@/lib/clioRateLimit";
 
 const FRESHNESS_WINDOW_MS = 30_000;
@@ -34,6 +35,13 @@ export async function indexMatterInternal(
         }
       }
     }
+
+    const existingRow = await prisma.claimIndex.findUnique({
+      where: { matter_id: matterId },
+      select: { claim_number_normalized: true },
+    });
+
+    const oldClaim = existingRow?.claim_number_normalized || null;
 
     const fields = [
       "id",
@@ -78,6 +86,18 @@ export async function indexMatterInternal(
     const detail = json?.data;
 
     const indexed = await indexMatterFromClioPayload(detail);
+
+    const newRow = await prisma.claimIndex.findUnique({
+      where: { matter_id: matterId },
+      select: { claim_number_normalized: true },
+    });
+
+    const newClaim = newRow?.claim_number_normalized || null;
+
+    // --- CACHE INVALIDATION ---
+    await deleteClaimClusterCache(oldClaim);
+    await deleteClaimClusterCache(newClaim);
+
 
     if ((indexed as any)?.skipped) {
       return {

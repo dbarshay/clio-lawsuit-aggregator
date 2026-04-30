@@ -250,34 +250,6 @@ async function runSearch(params: ClaimIndexSearchParams) {
   });
 }
 
-async function allMatterIdsFresh(matterIds: number[]) {
-  const ids = uniqueNumbers(matterIds);
-
-  if (ids.length === 0) return false;
-
-  const rows = await prisma.claimIndex.findMany({
-    where: {
-      matter_id: { in: ids },
-    },
-    select: {
-      matter_id: true,
-      indexed_at: true,
-    },
-  });
-
-  if (rows.length !== ids.length) return false;
-
-  const freshnessWindowMs = 30_000;
-  const now = Date.now();
-
-  return rows.every((row) => {
-    if (!row.indexed_at) return false;
-
-    const ageMs = now - row.indexed_at.getTime();
-    return ageMs >= 0 && ageMs < freshnessWindowMs;
-  });
-}
-
 export async function GET(req: NextRequest) {
   // Ensure per-request contact cache isolation
   clearContactCache();
@@ -317,28 +289,10 @@ export async function GET(req: NextRequest) {
 
   let rows = await runSearch(params);
 
-  // --- CLAIM CLUSTER CACHE SHORT-CIRCUIT ---
-  const allowCache =
-    !forceRefresh &&
-    !isRiskySelector;
-
-  if (params.claim && allowCache) {
-    const cachedIds = await getClaimClusterCache(params.claim);
-
-    if (cachedIds && cachedIds.length > 0) {
-      clusterCacheHit = true;
-      clusterCacheCount = cachedIds.length;
-      const cachedRows = await prisma.claimIndex.findMany({
-        where: { matter_id: { in: cachedIds } },
-        orderBy: { matter_id: "asc" },
-        select: CLAIM_INDEX_SELECT,
-      });
-
-      if (cachedRows.length > 0) {
-        rows = cachedRows;
-      }
-    }
-  }
+  // Claim-cluster cache is intentionally NOT used to replace UI search rows.
+  // Correctness rule: returned UI rows must be Clio-verified in this request.
+  // The cache may remain as an observability/warmth layer, but never as a
+  // correctness dependency or return-path shortcut.
 
 
   let refreshSource: "claim-index" | "clio-fallback" | "none" = "none";
@@ -384,28 +338,14 @@ export async function GET(req: NextRequest) {
       !params.masterLawsuitId &&
       !params.indexAaaNumber;
 
-    // Only hydrate stale or unknown seed matters.
-    // MatterId searches are forced because the user is asking for one exact record.
-    const idsNeedingSeedRefresh = [];
+    // Correctness rule: every seed row returned to the UI must be hydrated
+    // from Clio in this request.  No freshness window, cache hit, or webhook
+    // signal can substitute for source-of-truth verification.
+    const idsNeedingSeedRefresh = ids;
 
-    if (!skipSeedRefreshBecauseClusterCacheHit) {
-      for (const id of ids) {
-        if (forceRefresh || isRiskySelector || forceIds.includes(id)) {
-          idsNeedingSeedRefresh.push(id);
-          continue;
-        }
+    const refreshForceIds = idsNeedingSeedRefresh;
 
-        const fresh = await allMatterIdsFresh([id]);
-        if (!fresh) idsNeedingSeedRefresh.push(id);
-      }
-    }
-
-    const refreshForceIds =
-      forceRefresh || isRiskySelector
-        ? idsNeedingSeedRefresh
-        : forceIds;
-
-    const refresh = !skipSeedRefreshBecauseClusterCacheHit && idsNeedingSeedRefresh.length > 0
+    const refresh = idsNeedingSeedRefresh.length > 0
       ? await indexMatterIds(idsNeedingSeedRefresh, refreshForceIds)
       : { refreshed: [], skipped: [], rateLimited: [], errors: [] };
     refreshedMatterIds = refresh.refreshed;
@@ -548,33 +488,18 @@ export async function GET(req: NextRequest) {
         ? Number(((expandedIdsRaw.length - filteredExpandedIds.length) / expandedIdsRaw.length).toFixed(4))
         : 0;
 
-      // Only hydrate stale or unknown matters to reduce Clio pressure.
-      // A fresh claim-cluster cache hit is allowed to serve membership from cache
-      // and row details from ClaimIndex without rehydrating the same cluster.
-      const idsNeedingRefresh = [];
-
-      if (!skipSeedRefreshBecauseClusterCacheHit) {
-        for (const id of filteredExpandedIds) {
-          if (forceRefresh || isRiskySelector) {
-            idsNeedingRefresh.push(id);
-            continue;
-          }
-
-          const fresh = await allMatterIdsFresh([id]);
-          if (!fresh) idsNeedingRefresh.push(id);
-        }
-      }
+      // Correctness rule: every expanded candidate that may be returned must
+      // be hydrated from Clio in this request.  No freshness window or cluster
+      // cache can substitute for source-of-truth verification.
+      const idsNeedingRefresh = filteredExpandedIds;
 
       expansionObservability.hydrationCandidateCount = idsNeedingRefresh.length;
 
-      const expandRefreshForceIds =
-        forceRefresh || isRiskySelector
-          ? idsNeedingRefresh
-          : [];
+      const expandRefreshForceIds = idsNeedingRefresh;
 
-      const expandRefresh = !skipSeedRefreshBecauseClusterCacheHit && idsNeedingRefresh.length > 0
+      const expandRefresh = idsNeedingRefresh.length > 0
         ? await indexMatterIds(idsNeedingRefresh, expandRefreshForceIds)
-        : { refreshed: [], skipped: [], errors: [] };
+        : { refreshed: [], skipped: [], rateLimited: [], errors: [] };
       refreshedMatterIds = uniqueNumbers([
         ...refreshedMatterIds,
         ...expandRefresh.refreshed,

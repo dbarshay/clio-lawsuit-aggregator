@@ -14,10 +14,13 @@ export async function GET(req: NextRequest) {
 
     const fields = [
       "id",
+      "etag",
       "display_number",
+      "description",
       "status",
-      "matter_stage",
+      "client",
       "matter_stage{id,name}",
+      "custom_field_values{id,value,custom_field}",
     ].join(",");
 
     const res = await clioFetch(

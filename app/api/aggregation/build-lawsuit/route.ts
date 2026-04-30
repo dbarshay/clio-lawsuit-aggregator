@@ -1,24 +1,83 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clioFetch } from "@/lib/clio";
+import { prisma } from "@/lib/prisma";
+import { buildMasterId } from "@/lib/buildMasterId";
+import { MATTER_CF } from "@/lib/clioFields";
 import { upsertClaimIndexFromMatter } from "@/lib/claimIndexUpsert";
 
-const MASTER_LAWSUIT_ID_FIELD_ID = 22294835;
+type CFV = {
+  id: number | string;
+  value: unknown;
+  custom_field?: {
+    id?: number | string;
+  };
+};
 
-function generateMasterId(counter: number) {
-  const now = new Date();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const yyyy = now.getFullYear();
-  const seq = String(counter).padStart(5, "0");
-  return `${mm}.${yyyy}.${seq}`;
+type ClioMatter = {
+  id: number;
+  etag?: string;
+  display_number?: string;
+  description?: string;
+  status?: string;
+  client?: {
+    id?: number;
+    name?: string;
+  };
+  practice_area?: {
+    id?: number;
+    name?: string;
+  };
+  matter_stage?: {
+    id?: number;
+    name?: string;
+  };
+  custom_field_values?: CFV[];
+};
+
+const LIVE_FIELDS = [
+  "id",
+  "etag",
+  "display_number",
+  "description",
+  "status",
+  "client",
+  "practice_area{id,name}",
+  "matter_stage{id,name}",
+  "custom_field_values{id,value,custom_field}",
+].join(",");
+
+function normalizeMatterIds(raw: unknown): number[] {
+  if (!Array.isArray(raw)) return [];
+
+  return Array.from(
+    new Set(
+      raw
+        .map((v) => Number(v))
+        .filter((n) => Number.isFinite(n) && n > 0)
+    )
+  );
 }
 
-// TEMP: replace later with DB-backed counter
-let LOCAL_COUNTER = 1;
+function cfv(matter: ClioMatter, fieldId: number): CFV | undefined {
+  return matter.custom_field_values?.find(
+    (item) => Number(item?.custom_field?.id) === Number(fieldId)
+  );
+}
 
-async function readMatterForMasterWrite(matterId: number) {
-  const fields = "id,etag,display_number,custom_field_values{id,value,custom_field}";
+function text(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
+}
+
+function normalizeMatterList(ids: number[]): string {
+  return Array.from(new Set(ids))
+    .sort((a, b) => a - b)
+    .join(",");
+}
+
+async function readMatterLive(matterId: number): Promise<ClioMatter> {
   const res = await clioFetch(
-    `/api/v4/matters/${matterId}.json?fields=${encodeURIComponent(fields)}`,
+    `/api/v4/matters/${matterId}.json?fields=${encodeURIComponent(LIVE_FIELDS)}`,
     {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -26,223 +85,430 @@ async function readMatterForMasterWrite(matterId: number) {
     }
   );
 
-  const text = await res.text();
+  const body = await res.text();
 
   if (!res.ok) {
-    throw new Error(`Read failed for ${matterId}: status ${res.status}; body ${text}`);
+    throw new Error(
+      `Failed to read matter ${matterId} from Clio: status ${res.status}; body ${body}`
+    );
   }
 
-  const matter = JSON.parse(text)?.data;
+  const matter = body ? JSON.parse(body)?.data : null;
 
-  if (!matter?.etag) {
-    throw new Error(`Matter ${matterId} missing ETag.`);
+  if (!matter?.id) {
+    throw new Error(`Matter ${matterId} was not returned by Clio.`);
   }
 
-  const existing = (matter.custom_field_values || []).find(
-    (cfv: any) => Number(cfv?.custom_field?.id) === MASTER_LAWSUIT_ID_FIELD_ID
-  );
-
-  // existing may be undefined — that's OK (we will create it)
-
-  return { matter, existing };
+  return matter;
 }
 
-async function createMasterMatter(baseMatterId: number) {
-  const baseRes = await clioFetch(
-    `/api/v4/matters/${baseMatterId}.json?fields=id,client`
-  );
+function requireWritableFields(matter: ClioMatter) {
+  const master = cfv(matter, MATTER_CF.MASTER_LAWSUIT_ID);
+  const matters = cfv(matter, MATTER_CF.LAWSUIT_MATTERS);
 
-  const baseText = await baseRes.text();
-
-  if (!baseRes.ok) {
-    throw new Error(`Failed to read base matter: status ${baseRes.status}; body ${baseText}`);
+  if (!master?.id || !matters?.id) {
+    throw new Error(
+      `Matter ${matter.display_number || matter.id} is missing MASTER_LAWSUIT_ID or LAWSUIT_MATTERS custom field values.`
+    );
   }
 
-  const baseJson = JSON.parse(baseText);
-  const clientId = baseJson?.data?.client?.id;
+  if (!matter.etag) {
+    throw new Error(
+      `Matter ${matter.display_number || matter.id} is missing an ETag and cannot be safely updated.`
+    );
+  }
+
+  return { master, matters, etag: matter.etag };
+}
+
+function requireClaimField(matter: ClioMatter) {
+  const claim = cfv(matter, MATTER_CF.CLAIM_NUMBER);
+
+  if (!claim?.id) {
+    throw new Error(
+      `Matter ${matter.display_number || matter.id} is missing CLAIM_NUMBER custom field value.`
+    );
+  }
+
+  return claim;
+}
+
+function existingMasterValue(matter: ClioMatter): string {
+  return text(cfv(matter, MATTER_CF.MASTER_LAWSUIT_ID)?.value);
+}
+
+function claimValue(matter: ClioMatter): string {
+  return text(cfv(matter, MATTER_CF.CLAIM_NUMBER)?.value);
+}
+
+function patientValue(matter: ClioMatter): string {
+  return text(cfv(matter, MATTER_CF.PATIENT)?.value);
+}
+
+async function createMasterMatter(params: {
+  baseMatter: ClioMatter;
+  masterLawsuitId: string;
+}) {
+  const clientId = params.baseMatter?.client?.id;
 
   if (!clientId) {
-    throw new Error("Base matter missing client");
+    throw new Error("Base matter is missing client ID.");
   }
 
-  const createRes = await clioFetch(`/api/v4/matters.json`, {
+  const data: any = {
+    description: `MASTER LAWSUIT - ${params.masterLawsuitId}`,
+    client: { id: clientId },
+  };
+
+  if (params.baseMatter.practice_area?.id) {
+    data.practice_area = { id: params.baseMatter.practice_area.id };
+  }
+
+  if (params.baseMatter.matter_stage?.id) {
+    data.matter_stage = { id: params.baseMatter.matter_stage.id };
+  }
+
+  const res = await clioFetch(`/api/v4/matters.json`, {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      data: {
-        description: `MASTER LAWSUIT`,
-        client: { id: clientId },
-      },
-    }),
+    body: JSON.stringify({ data }),
   });
 
-  const createdText = await createRes.text();
+  const body = await res.text();
+  const parsed = body ? JSON.parse(body) : null;
 
-  let created: any = null;
-  try {
-    created = createdText ? JSON.parse(createdText) : null;
-  } catch {
-    created = null;
-  }
-
-  if (!createRes.ok || !created?.data?.id) {
+  if (!res.ok || !parsed?.data?.id) {
     throw new Error(
-      `Failed to create master matter: status ${createRes.status}; body ${createdText}`
+      `Failed to create Clio master matter: status ${res.status}; body ${body}`
     );
   }
 
-  return created.data;
+  return Number(parsed.data.id);
 }
 
-async function refreshMatterIndex(matterId: number) {
-  const fields = [
-    "id",
-    "etag",
-    "display_number",
-    "description",
-    "status",
-    "matter_stage{id,name}",
-    "client",
-    "custom_field_values{value,custom_field}",
-  ].join(",");
-
-  const res = await clioFetch(
-    `/api/v4/matters/${matterId}.json?fields=${encodeURIComponent(fields)}`,
-    {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    }
-  );
-
-  const text = await res.text();
-
-  if (!res.ok) {
-    throw new Error(
-      `Failed to refresh claim index for ${matterId}: status ${res.status}; body ${text}`
-    );
-  }
-
-  const matter = JSON.parse(text)?.data;
-  await upsertClaimIndexFromMatter(matter);
-}
-
-async function writeMasterId(params: {
+async function writeLawsuitFieldsAfterLiveRecheck(params: {
   matterId: number;
-  etag: string;
-  fieldValueId?: string;
-  masterId: string;
+  masterLawsuitId: string;
+  lawsuitMatters: string;
+  claimNumber?: string | null;
+  patientContactId?: string | null;
+  allowSameMaster?: boolean;
 }) {
-  const payload = params.fieldValueId
-    ? [
-        {
-          id: params.fieldValueId,
-          custom_field: { id: MASTER_LAWSUIT_ID_FIELD_ID },
-          value: params.masterId,
-        },
-      ]
-    : [
-        {
-          custom_field: { id: MASTER_LAWSUIT_ID_FIELD_ID },
-          value: params.masterId,
-        },
-      ];
+  const matter = await readMatterLive(params.matterId);
 
-  const patch = await clioFetch(`/api/v4/matters/${params.matterId}.json`, {
+  const existingMaster = existingMasterValue(matter);
+
+  if (
+    existingMaster &&
+    !(params.allowSameMaster && existingMaster === params.masterLawsuitId)
+  ) {
+    throw new Error(
+      `Matter ${matter.display_number || params.matterId} was assigned to MASTER LAWSUIT ID ${existingMaster} before write.`
+    );
+  }
+
+  const { master, matters, etag } = requireWritableFields(matter);
+
+  const customFieldValues: Array<{
+    id: number | string;
+    custom_field: { id: number };
+    value: string | number;
+  }> = [
+    {
+      id: master.id,
+      custom_field: { id: MATTER_CF.MASTER_LAWSUIT_ID },
+      value: params.masterLawsuitId,
+    },
+    {
+      id: matters.id,
+      custom_field: { id: MATTER_CF.LAWSUIT_MATTERS },
+      value: params.lawsuitMatters,
+    },
+  ];
+
+  if (params.claimNumber) {
+    const claim = requireClaimField(matter);
+    customFieldValues.push({
+      id: claim.id,
+      custom_field: { id: MATTER_CF.CLAIM_NUMBER },
+      value: params.claimNumber,
+    });
+  }
+
+  if (params.patientContactId) {
+    const patient = cfv(matter, MATTER_CF.PATIENT);
+    if (patient?.id) {
+      customFieldValues.push({
+        id: patient.id,
+        custom_field: { id: MATTER_CF.PATIENT },
+        value: Number(params.patientContactId),
+      });
+    }
+  }
+
+  const res = await clioFetch(`/api/v4/matters/${params.matterId}.json`, {
     method: "PATCH",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      "If-Match": params.etag,
+      "If-Match": etag,
     },
     body: JSON.stringify({
       data: {
-        custom_field_values: payload,
+        custom_field_values: customFieldValues,
       },
     }),
   });
 
-  const text = await patch.text();
+  const body = await res.text();
 
-  if (!patch.ok) {
+  if (!res.ok) {
     throw new Error(
-      `Write failed ${params.matterId}: status ${patch.status}; body ${text}`
+      `Failed to write lawsuit fields to matter ${params.matterId}: status ${res.status}; body ${body}`
     );
   }
+
+  return body ? JSON.parse(body)?.data : null;
+}
+
+async function clearNewMasterOnly(matterId: number, masterLawsuitId: string) {
+  const matter = await readMatterLive(matterId);
+
+  if (existingMasterValue(matter) !== masterLawsuitId) {
+    return { matterId, skipped: true, reason: "current-master-different" };
+  }
+
+  const { master, matters, etag } = requireWritableFields(matter);
+
+  const res = await clioFetch(`/api/v4/matters/${matterId}.json`, {
+    method: "PATCH",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "If-Match": etag,
+    },
+    body: JSON.stringify({
+      data: {
+        custom_field_values: [
+          {
+            id: master.id,
+            custom_field: { id: MATTER_CF.MASTER_LAWSUIT_ID },
+            value: "",
+          },
+          {
+            id: matters.id,
+            custom_field: { id: MATTER_CF.LAWSUIT_MATTERS },
+            value: "",
+          },
+        ],
+      },
+    }),
+  });
+
+  const body = await res.text();
+
+  if (!res.ok) {
+    throw new Error(
+      `Rollback failed for matter ${matterId}: status ${res.status}; body ${body}`
+    );
+  }
+
+  return { matterId, skipped: false, reason: "cleared" };
+}
+
+async function refreshClaimIndexFromClio(matterId: number) {
+  const matter = await readMatterLive(matterId);
+  await upsertClaimIndexFromMatter(matter);
 }
 
 export async function POST(req: NextRequest) {
+  const writtenMatterIds: number[] = [];
+  let masterLawsuitId = "";
+  let clioMasterMatterId: number | null = null;
+
   try {
     const body = await req.json();
 
-    const baseMatterId = Number(body.baseMatterId);
-    const selectedMatterIds = Array.isArray(body.selectedMatterIds)
-      ? body.selectedMatterIds.map(Number).filter((n: number) => Number.isFinite(n) && n > 0)
-      : [];
+    const baseMatterId = Number(body?.baseMatterId);
+    const selectedMatterIds = normalizeMatterIds(body?.selectedMatterIds);
 
-    if (!baseMatterId || !selectedMatterIds.length) {
+    if (!Number.isFinite(baseMatterId) || baseMatterId <= 0) {
       return NextResponse.json(
-        { ok: false, error: "Missing inputs" },
+        { ok: false, error: "baseMatterId is required." },
         { status: 400 }
       );
     }
 
-    const allMatterIds: number[] = Array.from(new Set(selectedMatterIds));
-
-    // Preflight BEFORE creating a master matter.
-    const preflight = [];
-    for (const matterId of allMatterIds) {
-      const { matter, existing } = await readMatterForMasterWrite(matterId);
-      preflight.push({
-        matterId,
-        etag: matter.etag,
-        fieldValueId: existing?.id,
-      });
+    if (selectedMatterIds.length === 0) {
+      return NextResponse.json(
+        { ok: false, error: "selectedMatterIds must contain at least one matter." },
+        { status: 400 }
+      );
     }
 
-    const masterMatter = await createMasterMatter(baseMatterId);
-    const masterId = generateMasterId(LOCAL_COUNTER++);
+    const liveMatters = await Promise.all(
+      selectedMatterIds.map((id) => readMatterLive(id))
+    );
 
-    const results = [];
+    for (const matter of liveMatters) {
+      requireWritableFields(matter);
 
-    for (const item of preflight) {
-      try {
-        await writeMasterId({
-          matterId: item.matterId,
-          etag: item.etag,
-          fieldValueId: item.fieldValueId,
-          masterId,
-        });
-
-        await refreshMatterIndex(item.matterId);
-
-        results.push({ matterId: item.matterId, ok: true });
-      } catch (err: any) {
-        results.push({
-          matterId: item.matterId,
-          ok: false,
-          error: err?.message || "Unknown write error",
-        });
+      const existingMaster = existingMasterValue(matter);
+      if (existingMaster) {
+        return NextResponse.json(
+          {
+            ok: false,
+            stage: "preflight",
+            error: `Matter ${matter.display_number || matter.id} already belongs to MASTER LAWSUIT ID ${existingMaster}.`,
+            matterId: matter.id,
+            existingMasterLawsuitId: existingMaster,
+          },
+          { status: 400 }
+        );
       }
     }
 
-    const failed = results.filter((r) => !r.ok);
+    const claimSet = new Set(liveMatters.map(claimValue).filter(Boolean));
+
+    if (claimSet.size > 1) {
+      return NextResponse.json(
+        {
+          ok: false,
+          stage: "preflight",
+          error: "Selected matters do not share the same live Clio claim number.",
+          claims: Array.from(claimSet),
+        },
+        { status: 400 }
+      );
+    }
+
+    const claimNumber = Array.from(claimSet)[0] || null;
+
+    const patientSet = new Set(liveMatters.map(patientValue).filter(Boolean));
+    const multiplePatientsContactId =
+      process.env.CLIO_MULTIPLE_PATIENTS_CONTACT_ID || "2507344805";
+    const masterPatientContactId =
+      patientSet.size === 1
+        ? Array.from(patientSet)[0]
+        : patientSet.size > 1
+          ? multiplePatientsContactId
+          : null;
+
+    const baseMatter =
+      liveMatters.find((m) => Number(m.id) === Number(baseMatterId)) ||
+      (await readMatterLive(baseMatterId));
+
+    masterLawsuitId = await buildMasterId();
+
+    clioMasterMatterId = await createMasterMatter({
+      baseMatter,
+      masterLawsuitId,
+    });
+
+    const allMatterIds = normalizeMatterIds([
+      clioMasterMatterId,
+      ...selectedMatterIds,
+    ]);
+
+    const lawsuitMatters = normalizeMatterList(allMatterIds);
+
+    // Verify the newly created master matter has the required no-fault custom fields.
+    // If Clio creates it without those fields, fail before mutating any selected bill matters.
+    const masterMatter = await readMatterLive(clioMasterMatterId);
+    requireWritableFields(masterMatter);
+    if (claimNumber) requireClaimField(masterMatter);
+
+    await writeLawsuitFieldsAfterLiveRecheck({
+      matterId: clioMasterMatterId,
+      masterLawsuitId,
+      lawsuitMatters,
+      claimNumber,
+      patientContactId: masterPatientContactId,
+      allowSameMaster: true,
+    });
+    writtenMatterIds.push(clioMasterMatterId);
+
+    for (const matterId of selectedMatterIds) {
+      await writeLawsuitFieldsAfterLiveRecheck({
+        matterId,
+        masterLawsuitId,
+        lawsuitMatters,
+      });
+
+      writtenMatterIds.push(matterId);
+    }
+
+    for (const matterId of allMatterIds) {
+      await refreshClaimIndexFromClio(matterId);
+    }
+
+    const lawsuit = await prisma.lawsuit.create({
+      data: {
+        masterLawsuitId,
+        claimNumber,
+        lawsuitMatters,
+        sharedFolderPath: "",
+      },
+    });
 
     return NextResponse.json({
-      ok: failed.length === 0,
-      masterMatterId: masterMatter.id,
-      masterLawsuitId: masterId,
-      total: allMatterIds.length,
-      failed: failed.length,
-      results,
-      error: failed.length ? failed.map((f) => f.error).join("\\n") : null,
+      ok: true,
+      stage: "completed",
+      lawsuitId: lawsuit.id,
+      masterMatterId: clioMasterMatterId,
+      masterLawsuitId,
+      lawsuitMatters,
+      claimNumber,
+      requested: selectedMatterIds.length,
+      succeeded: selectedMatterIds.length,
+      failed: 0,
+      results: allMatterIds.map((matterId) => ({
+        matterId,
+        role: matterId === clioMasterMatterId ? "master" : "bill",
+        ok: true,
+      })),
     });
   } catch (err: any) {
+    const rollbackResults = [];
+
+    if (masterLawsuitId && writtenMatterIds.length > 0) {
+      for (const matterId of writtenMatterIds) {
+        try {
+          const rollback = await clearNewMasterOnly(matterId, masterLawsuitId);
+          rollbackResults.push({ matterId, ok: true, rollback });
+
+          try {
+            await refreshClaimIndexFromClio(matterId);
+          } catch (refreshErr: any) {
+            rollbackResults.push({
+              matterId,
+              ok: false,
+              error: `Rollback succeeded but ClaimIndex refresh failed: ${refreshErr?.message || refreshErr}`,
+            });
+          }
+        } catch (rollbackErr: any) {
+          rollbackResults.push({
+            matterId,
+            ok: false,
+            error: rollbackErr?.message || "Unknown rollback error",
+          });
+        }
+      }
+    }
+
     return NextResponse.json(
-      { ok: false, error: err?.message || "Lawsuit build failed" },
+      {
+        ok: false,
+        stage: "failed",
+        error: err?.message || "Lawsuit build failed.",
+        masterLawsuitId: masterLawsuitId || null,
+        masterMatterId: clioMasterMatterId,
+        writtenMatterIds,
+        rollbackResults,
+      },
       { status: 500 }
     );
   }

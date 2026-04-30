@@ -76,6 +76,14 @@ model ClaimIndex {
   @@index([index_aaa_number])
 }
 
+model ClaimClusterCache {
+  claim_number_normalized String   @id
+  matter_ids              String
+  updated_at              DateTime @updatedAt
+
+  @@index([updated_at])
+}
+
 model WebhookEvent {
   id            String    @id @default(cuid())
   webhookId     String?

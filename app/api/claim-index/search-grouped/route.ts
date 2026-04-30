@@ -14,6 +14,8 @@ import { getCacheMetrics, resetCacheMetrics } from "@/lib/clioQueryCache";
 import { getClioMetrics, resetClioMetrics } from "@/lib/clio";
 import { getCachedQuery, setCachedQuery } from "@/lib/clioQueryCache";
 import { clearContactCache } from "@/lib/contactCache";
+import { getClaimClusterCache, setClaimClusterCache } from "@/lib/claimClusterCache";
+
 
 const CLIO_API_BASE = process.env.CLIO_API_BASE || "https://app.clio.com/api/v4";
 
@@ -301,7 +303,30 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  let clusterCacheHit = false;
+  let clusterCacheCount = 0;
+
   let rows = await runSearch(params);
+
+  // --- CLAIM CLUSTER CACHE SHORT-CIRCUIT ---
+  if (params.claim) {
+    const cachedIds = await getClaimClusterCache(params.claim);
+
+    if (cachedIds && cachedIds.length > 0) {
+      clusterCacheHit = true;
+      clusterCacheCount = cachedIds.length;
+      const cachedRows = await prisma.claimIndex.findMany({
+        where: { matter_id: { in: cachedIds } },
+        orderBy: { matter_id: "asc" },
+        select: CLAIM_INDEX_SELECT,
+      });
+
+      if (cachedRows.length > 0) {
+        rows = cachedRows;
+      }
+    }
+  }
+
 
   let refreshSource: "claim-index" | "clio-fallback" | "none" = "none";
   let refreshedMatterIds: number[] = [];
@@ -310,6 +335,7 @@ export async function GET(req: NextRequest) {
   let rateLimitedIds: number[] = [];
 
   let expansionDebug: any = null;
+
   let expandedMatterIdsRawForDebug: number[] = [];
   let expandedMatterIdsForDebug: number[] = [];
   let appScopePrunedExpandedIdsForDebug: number[] = [];
@@ -336,24 +362,43 @@ export async function GET(req: NextRequest) {
       .map((r) => r.matter_id);
     const forceIds = params.matterId ? [Number(params.matterId)] : [];
 
+    const skipSeedRefreshBecauseClusterCacheHit =
+      clusterCacheHit &&
+      !!params.claim &&
+      !params.matterId &&
+      !params.patient &&
+      !params.provider &&
+      !params.insurer &&
+      !params.masterLawsuitId &&
+      !params.indexAaaNumber;
+
     // Only hydrate stale or unknown seed matters.
     // MatterId searches are forced because the user is asking for one exact record.
     const idsNeedingSeedRefresh = [];
 
-    for (const id of ids) {
-      if (forceIds.includes(id)) {
-        idsNeedingSeedRefresh.push(id);
-        continue;
-      }
+    if (!skipSeedRefreshBecauseClusterCacheHit) {
+      for (const id of ids) {
+        if (forceIds.includes(id)) {
+          idsNeedingSeedRefresh.push(id);
+          continue;
+        }
 
-      const fresh = await allMatterIdsFresh([id]);
-      if (!fresh) idsNeedingSeedRefresh.push(id);
+        const fresh = await allMatterIdsFresh([id]);
+        if (!fresh) idsNeedingSeedRefresh.push(id);
+      }
     }
 
-    const refresh = idsNeedingSeedRefresh.length > 0
+    const refresh = !skipSeedRefreshBecauseClusterCacheHit && idsNeedingSeedRefresh.length > 0
       ? await indexMatterIds(idsNeedingSeedRefresh, forceIds)
       : { refreshed: [], skipped: [], rateLimited: [], errors: [] };
     refreshedMatterIds = refresh.refreshed;
+
+    // --- STORE CLAIM CLUSTER CACHE ---
+    if (params.claim && rows.length > 0) {
+      const idsToCache = rows.map(r => r.matter_id);
+      await setClaimClusterCache(params.claim, idsToCache);
+    }
+
     skippedMatterIds = refresh.skipped;
     refreshErrors = refresh.errors;
     rateLimitedIds = refresh.rateLimited || [];
@@ -486,17 +531,21 @@ export async function GET(req: NextRequest) {
         ? Number(((expandedIdsRaw.length - filteredExpandedIds.length) / expandedIdsRaw.length).toFixed(4))
         : 0;
 
-      // Only hydrate stale or unknown matters to reduce Clio pressure
+      // Only hydrate stale or unknown matters to reduce Clio pressure.
+      // A fresh claim-cluster cache hit is allowed to serve membership from cache
+      // and row details from ClaimIndex without rehydrating the same cluster.
       const idsNeedingRefresh = [];
 
-      for (const id of filteredExpandedIds) {
-        const fresh = await allMatterIdsFresh([id]);
-        if (!fresh) idsNeedingRefresh.push(id);
+      if (!skipSeedRefreshBecauseClusterCacheHit) {
+        for (const id of filteredExpandedIds) {
+          const fresh = await allMatterIdsFresh([id]);
+          if (!fresh) idsNeedingRefresh.push(id);
+        }
       }
 
       expansionObservability.hydrationCandidateCount = idsNeedingRefresh.length;
 
-      const expandRefresh = idsNeedingRefresh.length > 0
+      const expandRefresh = !skipSeedRefreshBecauseClusterCacheHit && idsNeedingRefresh.length > 0
         ? await indexMatterIds(idsNeedingRefresh)
         : { refreshed: [], skipped: [], errors: [] };
       refreshedMatterIds = uniqueNumbers([
@@ -531,6 +580,13 @@ export async function GET(req: NextRequest) {
       const forceIds = params.matterId ? [Number(params.matterId)] : [];
       const refresh = await indexMatterIds(fallbackIds, forceIds);
       refreshedMatterIds = refresh.refreshed;
+
+    // --- STORE CLAIM CLUSTER CACHE ---
+    if (params.claim && rows.length > 0) {
+      const idsToCache = rows.map(r => r.matter_id);
+      await setClaimClusterCache(params.claim, idsToCache);
+    }
+
       skippedMatterIds = refresh.skipped;
       refreshErrors = refresh.errors;
     rateLimitedIds = refresh.rateLimited || [];
@@ -549,6 +605,10 @@ export async function GET(req: NextRequest) {
     count: rows.length,
     groupCount: groups.length,
     filters: params,
+    clusterCache: {
+      hit: clusterCacheHit,
+      matterCount: clusterCacheCount,
+    },
     refresh: {
       source: refreshSource,
       rateLimited: rateLimitedIds.length,

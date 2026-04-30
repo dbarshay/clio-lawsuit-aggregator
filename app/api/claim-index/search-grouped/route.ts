@@ -284,6 +284,8 @@ export async function GET(req: NextRequest) {
   resetCacheMetrics();
   resetClioMetrics();
 
+  const forceRefresh = clean(req.nextUrl.searchParams.get("refresh")) === "true";
+
   const params: ClaimIndexSearchParams = {
     matterId: clean(req.nextUrl.searchParams.get("matterId")),
     patient: clean(req.nextUrl.searchParams.get("patient")),
@@ -295,6 +297,13 @@ export async function GET(req: NextRequest) {
   };
 
   const hasAnySelector = Object.values(params).some(Boolean);
+
+  const isRiskySelector =
+    !!params.patient ||
+    !!params.provider ||
+    !!params.insurer;
+
+
 
   if (!hasAnySelector) {
     return NextResponse.json(
@@ -309,7 +318,11 @@ export async function GET(req: NextRequest) {
   let rows = await runSearch(params);
 
   // --- CLAIM CLUSTER CACHE SHORT-CIRCUIT ---
-  if (params.claim) {
+  const allowCache =
+    !forceRefresh &&
+    !isRiskySelector;
+
+  if (params.claim && allowCache) {
     const cachedIds = await getClaimClusterCache(params.claim);
 
     if (cachedIds && cachedIds.length > 0) {
@@ -365,10 +378,9 @@ export async function GET(req: NextRequest) {
     const skipSeedRefreshBecauseClusterCacheHit =
       clusterCacheHit &&
       !!params.claim &&
+      !isRiskySelector &&
+      !forceRefresh &&
       !params.matterId &&
-      !params.patient &&
-      !params.provider &&
-      !params.insurer &&
       !params.masterLawsuitId &&
       !params.indexAaaNumber;
 
@@ -378,7 +390,7 @@ export async function GET(req: NextRequest) {
 
     if (!skipSeedRefreshBecauseClusterCacheHit) {
       for (const id of ids) {
-        if (forceIds.includes(id)) {
+        if (forceRefresh || isRiskySelector || forceIds.includes(id)) {
           idsNeedingSeedRefresh.push(id);
           continue;
         }
@@ -388,8 +400,13 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const refreshForceIds =
+      forceRefresh || isRiskySelector
+        ? idsNeedingSeedRefresh
+        : forceIds;
+
     const refresh = !skipSeedRefreshBecauseClusterCacheHit && idsNeedingSeedRefresh.length > 0
-      ? await indexMatterIds(idsNeedingSeedRefresh, forceIds)
+      ? await indexMatterIds(idsNeedingSeedRefresh, refreshForceIds)
       : { refreshed: [], skipped: [], rateLimited: [], errors: [] };
     refreshedMatterIds = refresh.refreshed;
 
@@ -538,6 +555,11 @@ export async function GET(req: NextRequest) {
 
       if (!skipSeedRefreshBecauseClusterCacheHit) {
         for (const id of filteredExpandedIds) {
+          if (forceRefresh || isRiskySelector) {
+            idsNeedingRefresh.push(id);
+            continue;
+          }
+
           const fresh = await allMatterIdsFresh([id]);
           if (!fresh) idsNeedingRefresh.push(id);
         }
@@ -545,8 +567,13 @@ export async function GET(req: NextRequest) {
 
       expansionObservability.hydrationCandidateCount = idsNeedingRefresh.length;
 
+      const expandRefreshForceIds =
+        forceRefresh || isRiskySelector
+          ? idsNeedingRefresh
+          : [];
+
       const expandRefresh = !skipSeedRefreshBecauseClusterCacheHit && idsNeedingRefresh.length > 0
-        ? await indexMatterIds(idsNeedingRefresh)
+        ? await indexMatterIds(idsNeedingRefresh, expandRefreshForceIds)
         : { refreshed: [], skipped: [], errors: [] };
       refreshedMatterIds = uniqueNumbers([
         ...refreshedMatterIds,
@@ -593,6 +620,13 @@ export async function GET(req: NextRequest) {
 
       rows = await runSearch(params);
     }
+  }
+
+  // Final cache repair: forced/risky hydration may invalidate claim cache
+  // through indexMatterInternal.  Rebuild the claim cache after all Clio refresh
+  // work is complete so the next safe claim search can use the warm path.
+  if (params.claim && rows.length > 0) {
+    await setClaimClusterCache(params.claim, rows.map((r) => r.matter_id));
   }
 
   const groups = groupByClaim(rows);

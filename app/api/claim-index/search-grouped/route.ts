@@ -303,6 +303,12 @@ export async function GET(req: NextRequest) {
 
   let expansionDebug: any = null;
 
+  // Per-request hydration planner state.
+  // Correctness rule: this only avoids duplicate Clio hydration of the same
+  // matter within one request.  It does NOT skip Clio verification across
+  // requests and does NOT rely on cache/webhooks/freshness windows.
+  const hydratedThisRequest = new Set<number>();
+
   let expandedMatterIdsRawForDebug: number[] = [];
   let expandedMatterIdsForDebug: number[] = [];
   let appScopePrunedExpandedIdsForDebug: number[] = [];
@@ -349,6 +355,13 @@ export async function GET(req: NextRequest) {
       ? await indexMatterIds(idsNeedingSeedRefresh, refreshForceIds)
       : { refreshed: [], skipped: [], rateLimited: [], errors: [] };
     refreshedMatterIds = refresh.refreshed;
+
+    for (const id of uniqueNumbers([
+      ...refresh.refreshed,
+      ...refresh.skipped,
+    ])) {
+      hydratedThisRequest.add(id);
+    }
 
     // --- STORE CLAIM CLUSTER CACHE ---
     if (params.claim && rows.length > 0) {
@@ -489,9 +502,12 @@ export async function GET(req: NextRequest) {
         : 0;
 
       // Correctness rule: every expanded candidate that may be returned must
-      // be hydrated from Clio in this request.  No freshness window or cluster
-      // cache can substitute for source-of-truth verification.
-      const idsNeedingRefresh = filteredExpandedIds;
+      // be hydrated from Clio in this request.  This filter only avoids
+      // duplicate hydration of matters already Clio-verified earlier in this
+      // same request.
+      const idsNeedingRefresh = filteredExpandedIds.filter(
+        (id) => !hydratedThisRequest.has(id)
+      );
 
       expansionObservability.hydrationCandidateCount = idsNeedingRefresh.length;
 
@@ -504,6 +520,14 @@ export async function GET(req: NextRequest) {
         ...refreshedMatterIds,
         ...expandRefresh.refreshed,
       ]);
+
+      for (const id of uniqueNumbers([
+        ...expandRefresh.refreshed,
+        ...expandRefresh.skipped,
+      ])) {
+        hydratedThisRequest.add(id);
+      }
+
       skippedMatterIds = uniqueNumbers([
         ...skippedMatterIds,
         ...expandRefresh.skipped,
@@ -532,6 +556,13 @@ export async function GET(req: NextRequest) {
       const forceIds = params.matterId ? [Number(params.matterId)] : [];
       const refresh = await indexMatterIds(fallbackIds, forceIds);
       refreshedMatterIds = refresh.refreshed;
+
+      for (const id of uniqueNumbers([
+        ...refresh.refreshed,
+        ...refresh.skipped,
+      ])) {
+        hydratedThisRequest.add(id);
+      }
 
     // --- STORE CLAIM CLUSTER CACHE ---
     if (params.claim && rows.length > 0) {

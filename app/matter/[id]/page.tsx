@@ -724,7 +724,7 @@ const activeGroupKey =
             const balance = claim - payment;
             const isSelected = selected.includes(Number(r.id));
             const aggregated = isAggregated(r);
-            const isMaster = !!(r.isMaster || r.is_master) || Number(r.id) === Number(matter?.id);
+            const isMaster = !!(r.isMaster || r.is_master);
             const selectable = isSelectable(r);
             const locked = isMaster || aggregated || !selectable;
             const lawsuitColor = aggregated

@@ -8,6 +8,7 @@ import {
 import { groupByClaim } from "@/lib/claimIndexGroup";
 import { getValidClioAccessToken } from "@/lib/clioTokenStore";
 import { indexMatterInternal } from "@/lib/indexMatterInternal";
+import { ingestMattersFromClioBatch } from "@/lib/ingestMattersFromClioBatch";
 import { expandFromSeed } from "@/lib/expandFromSeed";
 import { getCacheMetrics, resetCacheMetrics } from "@/lib/clioQueryCache";
 import { getClioMetrics, resetClioMetrics } from "@/lib/clio";
@@ -28,6 +29,16 @@ function uniqueNumbers(values: unknown[]) {
         .filter((n) => Number.isFinite(n) && n > 0)
     )
   );
+}
+
+function isEligibleDisplayNumber(display?: string | null) {
+  if (!display) return false;
+
+  const match = String(display).trim().match(/^BRL\s*-?\s*(\d+)$/i);
+  if (!match) return false;
+
+  const n = Number(match[1]);
+  return Number.isFinite(n) && n >= 30000;
 }
 
 function getNextPageToken(json: any): string | null {
@@ -152,33 +163,69 @@ async function indexMatterIds(matterIds: number[], forceIds: number[] = []) {
 
   const ids = uniqueNumbers(matterIds);
   const forced = new Set(uniqueNumbers(forceIds));
-  const concurrency = 3;
 
-  for (let i = 0; i < ids.length; i += concurrency) {
-    const batch = ids.slice(i, i + concurrency);
+  // Network-level batch size.  Keep conservative to avoid URL-length issues
+  // while still replacing N per-matter Clio calls with a small number of calls.
+  const batchSize = 25;
+  const fallbackConcurrency = 3;
 
-    const results = await Promise.all(
-      batch.map(async (id) =>
-        indexMatterInternal(id, { force: forced.has(id) })
-      )
-    );
+  function recordResult(result: {
+    matterId: number;
+    ok: boolean;
+    skipped?: boolean;
+    error?: string;
+  }) {
+    const errorText = String(result.error || "");
 
-    for (const result of results) {
-      const errorText = String(result.error || "");
+    if (!result.ok && /RateLimited|rate limit|429/i.test(errorText)) {
+      rateLimited.add(result.matterId);
+    }
 
-      if (!result.ok && /RateLimited|rate limit|429/i.test(errorText)) {
-        rateLimited.add(result.matterId);
+    if (result.ok && result.skipped) {
+      skipped.add(result.matterId);
+    } else if (result.ok) {
+      refreshed.add(result.matterId);
+    } else {
+      errors.push({
+        matterId: result.matterId,
+        error: result.error || "Unknown error",
+      });
+    }
+  }
+
+  for (let i = 0; i < ids.length; i += batchSize) {
+    const batch = ids.slice(i, i + batchSize);
+
+    try {
+      const batchResults = await ingestMattersFromClioBatch(batch);
+      for (const result of batchResults) {
+        recordResult(result);
       }
+      continue;
+    } catch (err: any) {
+      const batchError = err?.message || "Batch hydration failed";
 
-      if (result.ok && result.skipped) {
-        skipped.add(result.matterId);
-      } else if (result.ok) {
-        refreshed.add(result.matterId);
-      } else {
-        errors.push({
-          matterId: result.matterId,
-          error: result.error || "Unknown error",
-        });
+      // If the batch request fails, fall back to the existing per-matter path.
+      // This preserves the old correctness behavior and makes the optimization safe.
+      for (let j = 0; j < batch.length; j += fallbackConcurrency) {
+        const fallbackBatch = batch.slice(j, j + fallbackConcurrency);
+
+        const fallbackResults = await Promise.all(
+          fallbackBatch.map(async (id) =>
+            indexMatterInternal(id, { force: forced.has(id) })
+          )
+        );
+
+        for (const result of fallbackResults) {
+          if (!result.ok && !result.error) {
+            recordResult({
+              ...result,
+              error: batchError,
+            });
+          } else {
+            recordResult(result);
+          }
+        }
       }
     }
   }
@@ -263,14 +310,30 @@ export async function GET(req: NextRequest) {
   let rateLimitedIds: number[] = [];
 
   let expansionDebug: any = null;
+  let expandedMatterIdsRawForDebug: number[] = [];
   let expandedMatterIdsForDebug: number[] = [];
+  let appScopePrunedExpandedIdsForDebug: number[] = [];
   let preHydrationExpandedIdsForDebug: number[] = [];
   let preHydrationExcludedIdsForDebug: number[] = [];
+  let expansionObservability = {
+    seedRowCount: 0,
+    rawExpandedCount: 0,
+    appScopeExpandedCount: 0,
+    appScopePrunedCount: 0,
+    claimFilteredExpandedCount: 0,
+    claimPrunedCount: 0,
+    hydrationCandidateCount: 0,
+    appScopePruneRatio: 0,
+    claimPruneRatio: 0,
+    totalPruneRatio: 0,
+  };
 
   if (rows.length > 0) {
     refreshSource = "claim-index";
 
-    const ids = rows.map((r) => r.matter_id);
+    const ids = rows
+      .filter((r) => isEligibleDisplayNumber(r.display_number))
+      .map((r) => r.matter_id);
     const forceIds = params.matterId ? [Number(params.matterId)] : [];
 
     // Only hydrate stale or unknown seed matters.
@@ -331,8 +394,46 @@ export async function GET(req: NextRequest) {
     });
 
     expansionDebug = expansion;
-    const expandedIds = expansion.matterIds;
+    const expandedIdsRaw = expansion.matterIds;
+    expandedMatterIdsRawForDebug = expandedIdsRaw;
+    expansionObservability.seedRowCount = rows.length;
+    expansionObservability.rawExpandedCount = expandedIdsRaw.length;
+
+    // App scope: this lawsuit aggregation app is for BRL30000 and later.
+    // Prune expansion candidates before freshness checks or Clio hydration.
+    const expandedKnownRows = expandedIdsRaw.length > 0
+      ? await prisma.claimIndex.findMany({
+          where: { matter_id: { in: expandedIdsRaw } },
+          select: {
+            matter_id: true,
+            display_number: true,
+          },
+        })
+      : [];
+
+    const eligibleKnownIds = new Set(
+      expandedKnownRows
+        .filter((r) => isEligibleDisplayNumber(r.display_number))
+        .map((r) => r.matter_id)
+    );
+
+    const knownExpandedIds = new Set(expandedKnownRows.map((r) => r.matter_id));
+
+    // Keep unknown IDs because Clio remains source of truth. Known old BRL rows are excluded.
+    const expandedIds = expandedIdsRaw.filter(
+      (id) => !knownExpandedIds.has(id) || eligibleKnownIds.has(id)
+    );
+
+    appScopePrunedExpandedIdsForDebug = expandedIdsRaw.filter(
+      (id) => !expandedIds.includes(id)
+    );
+
     expandedMatterIdsForDebug = expandedIds;
+    expansionObservability.appScopeExpandedCount = expandedIds.length;
+    expansionObservability.appScopePrunedCount = appScopePrunedExpandedIdsForDebug.length;
+    expansionObservability.appScopePruneRatio = expandedIdsRaw.length > 0
+      ? Number((appScopePrunedExpandedIdsForDebug.length / expandedIdsRaw.length).toFixed(4))
+      : 0;
 
     if (expandedIds.length > 0) {
       const seedClaims = Array.from(
@@ -376,6 +477,14 @@ export async function GET(req: NextRequest) {
       }
 
       preHydrationExpandedIdsForDebug = filteredExpandedIds;
+      expansionObservability.claimFilteredExpandedCount = filteredExpandedIds.length;
+      expansionObservability.claimPrunedCount = preHydrationExcludedIdsForDebug.length;
+      expansionObservability.claimPruneRatio = expandedIds.length > 0
+        ? Number((preHydrationExcludedIdsForDebug.length / expandedIds.length).toFixed(4))
+        : 0;
+      expansionObservability.totalPruneRatio = expandedIdsRaw.length > 0
+        ? Number(((expandedIdsRaw.length - filteredExpandedIds.length) / expandedIdsRaw.length).toFixed(4))
+        : 0;
 
       // Only hydrate stale or unknown matters to reduce Clio pressure
       const idsNeedingRefresh = [];
@@ -384,6 +493,8 @@ export async function GET(req: NextRequest) {
         const fresh = await allMatterIdsFresh([id]);
         if (!fresh) idsNeedingRefresh.push(id);
       }
+
+      expansionObservability.hydrationCandidateCount = idsNeedingRefresh.length;
 
       const expandRefresh = idsNeedingRefresh.length > 0
         ? await indexMatterIds(idsNeedingRefresh)
@@ -454,8 +565,13 @@ export async function GET(req: NextRequest) {
       clioQueryCount: expansionDebug.clioQueries.length,
       clioIssues: expansionDebug.clioIssues,
       clioRateLimited: expansionDebug.clioRateLimited,
-      rawExpandedCandidateCount: expandedMatterIdsForDebug.length,
-      rawExpandedCandidateIds: expandedMatterIdsForDebug,
+      observability: expansionObservability,
+      rawExpandedCandidateCount: expandedMatterIdsRawForDebug.length,
+      rawExpandedCandidateIds: expandedMatterIdsRawForDebug,
+      appScopeExpandedCandidateCount: expandedMatterIdsForDebug.length,
+      appScopeExpandedCandidateIds: expandedMatterIdsForDebug,
+      appScopePrunedCandidateCount: appScopePrunedExpandedIdsForDebug.length,
+      appScopePrunedCandidateIds: appScopePrunedExpandedIdsForDebug,
       preHydrationCandidateCount: preHydrationExpandedIdsForDebug.length,
       preHydrationCandidateIds: preHydrationExpandedIdsForDebug,
       preHydrationExcludedCount: preHydrationExcludedIdsForDebug.length,

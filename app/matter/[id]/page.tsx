@@ -466,10 +466,37 @@ const activeGroupKey =
   }, [rows, selected]);
 
   const displayRows = useMemo(() => {
-    return rows.map((row, index) => {
+    const reordered: any[] = [];
+    const grouped = new Map<string, any[]>();
+
+    for (const row of rows) {
+      const key = String(row?.masterLawsuitId || "").trim();
+
+      if (!key) {
+        reordered.push(row);
+        continue;
+      }
+
+      const group = grouped.get(key) || [];
+      group.push(row);
+      grouped.set(key, group);
+    }
+
+    for (const group of grouped.values()) {
+      const master = group.find((row) => !!(row.isMaster || row.is_master));
+
+      if (master) {
+        reordered.push(master);
+        reordered.push(...group.filter((row) => row !== master));
+      } else {
+        reordered.push(...group);
+      }
+    }
+
+    return reordered.map((row, index) => {
       const currentMaster = String(row?.masterLawsuitId || "").trim();
       const prevMaster =
-        index > 0 ? String(rows[index - 1]?.masterLawsuitId || "").trim() : "";
+        index > 0 ? String(reordered[index - 1]?.masterLawsuitId || "").trim() : "";
 
       const startsNewGroup =
         index > 0 &&

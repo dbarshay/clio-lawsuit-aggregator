@@ -3,7 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { expandFromSeed } from "@/lib/expandFromSeed";
 import { ingestMattersFromClioBatch } from "@/lib/ingestMattersFromClioBatch";
 import { indexMatterInternal } from "@/lib/indexMatterInternal";
-import { deleteClaimClusterCache, setClaimClusterCache } from "@/lib/claimClusterCache";
+import {
+  deleteClaimClusterCache,
+  setClaimClusterCache,
+} from "@/lib/claimClusterCache";
+import {
+  buildClaimIndexWhere,
+  type ClaimIndexSearchParams,
+} from "@/lib/claimIndexQuery";
 
 function clean(v: string | null) {
   return (v || "").trim();
@@ -19,22 +26,36 @@ function uniqueNumbers(values: unknown[]) {
   );
 }
 
+function uniqueStrings(values: (string | null | undefined)[]) {
+  return Array.from(new Set(values.map((v) => (v || "").trim()).filter(Boolean)));
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const claim = clean(req.nextUrl.searchParams.get("claim"));
+    const params: ClaimIndexSearchParams = {
+      matterId: clean(req.nextUrl.searchParams.get("matterId")),
+      patient: clean(req.nextUrl.searchParams.get("patient")),
+      provider: clean(req.nextUrl.searchParams.get("provider")),
+      insurer: clean(req.nextUrl.searchParams.get("insurer")),
+      claim: clean(req.nextUrl.searchParams.get("claim")),
+      masterLawsuitId: clean(req.nextUrl.searchParams.get("masterLawsuitId")),
+      indexAaaNumber: clean(req.nextUrl.searchParams.get("indexAaaNumber")),
+    };
 
-    if (!claim) {
+    const hasSelector = Object.values(params).some(Boolean);
+
+    if (!hasSelector) {
       return NextResponse.json(
-        { ok: false, error: "claim is required" },
+        { ok: false, error: "At least one selector is required" },
         { status: 400 }
       );
     }
 
-    // 1. Seed from ClaimIndex
+    // 1. Seed from ClaimIndex using SAME selector logic as search
+    const where = buildClaimIndexWhere(params);
+
     const seedRows = await prisma.claimIndex.findMany({
-      where: {
-        claim_number_normalized: claim,
-      },
+      where,
       select: {
         matter_id: true,
         claim_number_normalized: true,
@@ -49,18 +70,17 @@ export async function POST(req: NextRequest) {
     if (seedRows.length === 0) {
       return NextResponse.json({
         ok: true,
-        claim,
         message: "No seed rows found",
+        selectors: params,
         refreshed: 0,
       });
     }
 
-    // 2. Expand cluster (NO Clio expansion needed; ClaimIndex is enough for claim)
+    // 2. Expand cluster
     const expanded = await expandFromSeed(seedRows, { includeClio: false });
-
     const allIds = uniqueNumbers(expanded.matterIds);
 
-    // 3. Force refresh all matters
+    // 3. Force hydrate EVERYTHING from Clio
     const batchSize = 25;
     const refreshed: number[] = [];
     const errors: any[] = [];
@@ -76,7 +96,6 @@ export async function POST(req: NextRequest) {
           else errors.push(r);
         }
       } catch {
-        // fallback per-matter
         for (const id of batch) {
           const r = await indexMatterInternal(id, { force: true });
           if (r.ok) refreshed.push(id);
@@ -85,16 +104,35 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Rebuild cache AFTER successful refresh
-    await deleteClaimClusterCache(claim);
-    await setClaimClusterCache(claim, allIds);
+    // 4. Determine ALL affected claims
+    const refreshedRows = await prisma.claimIndex.findMany({
+      where: { matter_id: { in: allIds } },
+      select: { claim_number_normalized: true },
+    });
+
+    const affectedClaims = uniqueStrings(
+      refreshedRows.map((r) => r.claim_number_normalized)
+    );
+
+    // 5. Invalidate + rebuild each claim cache
+    for (const claim of affectedClaims) {
+      await deleteClaimClusterCache(claim);
+
+      const claimRows = await prisma.claimIndex.findMany({
+        where: { claim_number_normalized: claim },
+        select: { matter_id: true },
+      });
+
+      const claimIds = claimRows.map((r) => r.matter_id);
+      await setClaimClusterCache(claim, claimIds);
+    }
 
     return NextResponse.json({
       ok: true,
-      claim,
+      selectors: params,
       total: allIds.length,
       refreshed: refreshed.length,
-      cachedMatterIds: allIds.length,
+      affectedClaims,
       errors,
     });
   } catch (err: any) {

@@ -362,6 +362,64 @@ const activeGroupKey =
     }
   }
 
+  
+
+  async function deaggregateCluster() {
+    if (!matter?.masterLawsuitId) {
+      alert("This matter is not part of a lawsuit.");
+      return;
+    }
+
+    const clusterRows = rows.filter(
+      (r) => String(r.masterLawsuitId || "").trim() === String(matter.masterLawsuitId).trim()
+    );
+
+    const clusterSize = clusterRows.length;
+
+    const confirmed = confirm(
+      `DE-AGGREGATE LAWSUIT\n\n` +
+      `Master Lawsuit ID: ${matter.masterLawsuitId}\n` +
+      `Total Matters: ${clusterSize}\n\n` +
+      `This will REMOVE ALL matters from this lawsuit.\n\n` +
+      `Continue?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch("/api/deaggregate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          matters: clusterRows.map((r) => ({
+            id: r.id,
+            displayNumber: r.displayNumber,
+          })),
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!json.ok) {
+        alert(json.error || "De-aggregation failed");
+        return;
+      }
+
+      alert(
+        `DE-AGGREGATION COMPLETE\n\n` +
+        `Master Lawsuit ID: ${json.masterLawsuitId}\n` +
+        `Cleared: ${json.cleared} matters`
+      );
+
+      window.location.reload();
+    } catch (err: any) {
+      alert(err?.message || "De-aggregation failed");
+    }
+  }
+
+
   async function expandClaim() {
     if (expanding) return;
 
@@ -509,6 +567,27 @@ const activeGroupKey =
               ? "Main Matter Already Aggregated"
               : "Select Matters to Aggregate"}
           </button>
+
+          {alreadyAggregated && (
+            <button
+              onClick={deaggregateCluster}
+              style={{
+                width: 220,
+                textAlign: "center",
+                padding: "10px 14px",
+                marginTop: 10,
+                background: "#dc3545",
+                color: "#fff",
+                border: "none",
+                borderRadius: 4,
+                cursor: "pointer",
+                fontWeight: 700,
+                fontSize: 14,
+              }}
+            >
+              De-aggregate Lawsuit
+            </button>
+          )}
 
           <button
             onClick={expandClaim}

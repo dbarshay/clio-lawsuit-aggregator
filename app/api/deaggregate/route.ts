@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearLawsuitFields, preflightLawsuitMatter } from "@/lib/clioWrite";
 import { MATTER_CF } from "@/lib/clioFields";
+import { ingestMatterFromClio } from "@/lib/ingestMatterFromClio";
 
 function parseMatterIds(raw: string): number[] {
   return String(raw || "")
@@ -95,11 +96,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // --- STEP 4: refresh ClaimIndex immediately from Clio after clearing ---
+    const refreshed: number[] = [];
+
+    for (const id of clusterIds) {
+      await ingestMatterFromClio(id);
+      refreshed.push(id);
+    }
+
     return NextResponse.json({
       ok: true,
       stage: "deaggregate",
       clusterSize: clusterIds.length,
       cleared: clusterIds.length,
+      refreshed: refreshed.length,
+      refreshedMatterIds: refreshed,
       masterLawsuitId: existingMasterValue,
       results,
     });

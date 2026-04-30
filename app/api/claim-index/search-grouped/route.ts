@@ -404,8 +404,12 @@ export async function GET(req: NextRequest) {
       rows.length > 0 &&
       hasUniformStrongCluster;
 
+    // Disable Clio-based expansion queries.
+    // Correctness rule: ClaimIndex is used for candidate discovery only.
+    // Clio remains the source of truth via hydration, so expansion does not
+    // need to query Clio directly.
     const expansion = await expandFromSeed(rows, {
-      includeClio: !shouldEarlyStopClioExpansion,
+      includeClio: false,
     });
 
     expansionDebug = expansion;

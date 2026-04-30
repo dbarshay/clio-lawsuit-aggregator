@@ -230,6 +230,7 @@ const activeGroupKey =
           matterStage: sib.matterStage || sib.stage || null,
           stage: sib.stage || sib.matterStage || null,
           selectableForSettlement: !!sib.selectableForSettlement,
+          isMaster: !!(sib.isMaster || sib.is_master),
         });
 
         seen.add(idNum);
@@ -644,8 +645,9 @@ const activeGroupKey =
             const balance = claim - payment;
             const isSelected = selected.includes(Number(r.id));
             const aggregated = isAggregated(r);
+            const isMaster = !!(r.isMaster || r.is_master) || Number(r.id) === Number(matter?.id);
             const selectable = isSelectable(r);
-            const locked = aggregated || !selectable;
+            const locked = isMaster || aggregated || !selectable;
             const lawsuitColor = aggregated
               ? getColorForLawsuit(String(r.masterLawsuitId))
               : "";
@@ -654,7 +656,9 @@ const activeGroupKey =
               <tr
                 key={Number(r.id)}
                 style={{
-                  background: aggregated
+                  background: isMaster
+                    ? "#ffe9b3"
+                    : aggregated
                     ? lawsuitColor
                     : !selectable
                     ? "#f5f5f5"
@@ -719,7 +723,7 @@ const activeGroupKey =
                       fontWeight: Number(r.id) === Number(matter?.id) ? 700 : 500,
                     }}
                   >
-                    {textValue(r.displayNumber)}
+                    {isMaster ? "⭐ MASTER — " : ""}{textValue(r.displayNumber)}
                   </a>
                   {aggregated && r.masterLawsuitId
                     ? ` (${textValue(r.masterLawsuitId)})`

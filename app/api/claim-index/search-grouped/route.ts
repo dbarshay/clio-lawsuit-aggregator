@@ -250,6 +250,36 @@ async function runSearch(params: ClaimIndexSearchParams) {
   });
 }
 
+
+function attachMasterFlags(rows: any[]) {
+  const byMasterId = new Map<string, any[]>();
+
+  for (const row of rows) {
+    const key = String(row.master_lawsuit_id || "").trim();
+    if (!key) continue;
+
+    const group = byMasterId.get(key) || [];
+    group.push(row);
+    byMasterId.set(key, group);
+  }
+
+  for (const [key, group] of byMasterId.entries()) {
+    let maxId = 0;
+    for (const r of group) {
+      const id = Number(r.matter_id);
+      if (id > maxId) maxId = id;
+    }
+
+    for (const r of group) {
+      const isMaster = Number(r.matter_id) === maxId;
+      r.isMaster = isMaster;
+      r.is_master = isMaster;
+    }
+  }
+
+  return rows;
+}
+
 export async function GET(req: NextRequest) {
   // Ensure per-request contact cache isolation
   clearContactCache();
@@ -593,6 +623,8 @@ export async function GET(req: NextRequest) {
 
   const dedupedRefreshed = uniqueNumbers(refreshedMatterIds);
   const dedupedSkipped = uniqueNumbers(skippedMatterIds);
+
+  rows = attachMasterFlags(rows);
 
   return NextResponse.json({
     ok: true,

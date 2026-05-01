@@ -4,6 +4,8 @@ import { clioFetch } from "@/lib/clio";
 import { MATTER_CF } from "@/lib/clioFields";
 import { getDenialReasonLabel } from "@/lib/matterHelpers";
 
+const CLOSE_REASON_LITIGATION_ARBITRATION = 22145660;
+
 function num(val: any): number | null {
   const n = Number(val);
   return Number.isFinite(n) ? n : null;
@@ -51,6 +53,7 @@ export async function upsertClaimIndexFromMatter(matter: any) {
   const patientRaw = cf(MATTER_CF.PATIENT);
   const insurerRaw = cf(MATTER_CF.INSURANCE_COMPANY);
   const rawDenialReason = cf(MATTER_CF.DENIAL_REASON);
+  const closeReasonRaw = cf(CLOSE_REASON_LITIGATION_ARBITRATION);
 
   const [patientName, insurerName] = await Promise.all([
     getContactName(patientRaw),
@@ -121,6 +124,7 @@ export async function upsertClaimIndexFromMatter(matter: any) {
 
     matter_stage_name: str(matter?.matter_stage?.name),
     status: str(matter.status),
+    close_reason: str(closeReasonRaw),
 
     // --- RAW SNAPSHOT ---
     raw_json: JSON.stringify(matter),

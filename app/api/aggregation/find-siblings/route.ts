@@ -3,6 +3,34 @@ import { clioFetch } from "@/lib/clio";
 import { getMatter, getSiblings } from "@/lib/claimIndex";
 import { upsertClaimIndexFromMatter } from "@/lib/claimIndexUpsert";
 
+const CLOSE_REASON_LABELS: Record<string, string> = {
+  "12497450": "AAA- DECISION- DISMISSED WITH PREJUDICE",
+  "12497465": "AAA- VOLUNTARILY WITHDRAWN WITH PREJUDICE",
+  "12497480": "DISCONTINUED WITH PREJUDICE",
+  "12497495": "MOTION LOSS",
+  "12497510": "OUT OF STATE CARRIER",
+  "12497525": "PAID (DECISION)",
+  "12497540": "PAID (JUDGMENT)",
+  "12497555": "PAID (SETTLEMENT)",
+  "12497570": "PAID (FEE SCHEDULE)",
+  "12497585": "PAID (VOLUNTARY)",
+  "12497600": "PER CLIENT",
+  "12497615": "POLICY CANCELLED",
+  "12497630": "POLICY EXHAUSTED/NO COVERAGE",
+  "12497645": "PPO",
+  "12497660": "SOL",
+  "12497675": "TRIAL LOSS",
+  "12497690": "WORKERS COMPENSATION",
+  "12497825": "TRANSFERRED TO LB",
+};
+
+function closeReasonLabel(value: any): string {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  return CLOSE_REASON_LABELS[raw] || raw;
+}
+
+
 async function hydrateMatter(matterId: number) {
   const fields = [
     "id",
@@ -55,6 +83,7 @@ function siblingRow(row: any) {
       ? { name: row.matter_stage_name }
       : null,
     status: row.status ?? "",
+    closeReason: closeReasonLabel(row.close_reason), 
     selectableForSettlement:
       String(row.matter_stage_name || "").toUpperCase().includes("READY FOR ARBITRATION/LITIGATION") &&
       String(row.status || "").toLowerCase().includes("open") &&

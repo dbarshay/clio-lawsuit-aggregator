@@ -58,6 +58,7 @@ model ClaimIndex {
   balance_presuit         Float?
   master_lawsuit_id       String?
   status                  String?
+  close_reason            String?
   raw_json                String?
   indexed_at              DateTime @default(now())
   matter_stage_name       String?

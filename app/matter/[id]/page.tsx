@@ -52,7 +52,7 @@ function statusColor(status?: string) {
 }
 
 function isSelectable(r: any) {
-  return !!r?.selectableForSettlement;
+  return !String(r.closeReason || "").trim();
 }
 
 function isDisabledByGroup(r: any, activeGroupKey?: string | null) {
@@ -130,7 +130,9 @@ function providerValue(v: any): string {
 }
 
 function insurerValue(v: any): string {
-  return (
+  
+
+return (
     textValue(v?.insurer) ||
     textValue(v?.insuranceCompany) ||
     textValue(v?.insurance_company) ||
@@ -152,6 +154,27 @@ function denialReasonValue(v: any): string {
   if (!raw) return "";
   return DENIAL_REASON_LABELS[raw] || raw;
 }
+
+const VALID_CLOSE_REASONS = [
+  "AAA- DECISION- DISMISSED WITH PREJUDICE",
+  "AAA- VOLUNTARILY WITHDRAWN WITH PREJUDICE",
+  "DISCONTINUED WITH PREJUDICE",
+  "MOTION LOSS",
+  "OUT OF STATE CARRIER",
+  "PAID (DECISION)",
+  "PAID (JUDGMENT)",
+  "PAID (SETTLEMENT)",
+  "PAID (FEE SCHEDULE)",
+  "PAID (VOLUNTARY)",
+  "PER CLIENT",
+  "POLICY CANCELLED",
+  "POLICY EXHAUSTED/NO COVERAGE",
+  "PPO",
+  "SOL",
+  "TRIAL LOSS",
+  "WORKERS COMPENSATION",
+  "TRANSFERRED TO LB",
+];
 
 export default function Page({ params }: { params: Promise<{ id: string }> }) {
   const [matterId, setMatterId] = useState<string>("");
@@ -183,6 +206,12 @@ const activeGroupKey =
 
   const [submitting, setSubmitting] = useState(false);
   const [expanding, setExpanding] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [closeReason, setCloseReason] = useState("");
+  const [closing, setClosing] = useState(false);
+  const [closeMatterTarget, setCloseMatterTarget] = useState<any>(null);
+  const [showClosed, setShowClosed] = useState(true);
+
 
   useEffect(() => {
     if (!matterId) return;
@@ -226,6 +255,7 @@ const activeGroupKey =
           dosEnd: sib.dosEnd,
           denialReason: sib.denialReason,
           status: sib.status,
+          closeReason: sib.closeReason,
           masterLawsuitId: sib.masterLawsuitId,
           matterStage: sib.matterStage || sib.stage || null,
           stage: sib.stage || sib.matterStage || null,
@@ -310,7 +340,44 @@ const activeGroupKey =
     setSelected((prev) => [...prev, id]);
   }
 
-    async function aggregate() {
+    async function handleCloseMatter() {
+    if (!closeMatterTarget?.id || !closeReason) return;
+
+    setClosing(true);
+
+    try {
+      const res = await fetch("/api/matters/close", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          matterId: Number(closeMatterTarget.id),
+          closeReason,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!json.ok) {
+        alert(json.error || "Close failed");
+        return;
+      }
+
+      setShowCloseModal(false);
+      setCloseMatterTarget(null);
+      setCloseReason("");
+
+      // FORCE fresh Clio-backed refresh (not cache)
+      await fetch(`/api/claim-index/refresh-cluster?matterId=${Number(closeMatterTarget.id)}`);
+
+      window.location.reload();
+    } catch (err) {
+      alert("Close failed");
+    } finally {
+      setClosing(false);
+    }
+  }
+
+  async function aggregate() {
     if (submitting) return;
 
     const selectedRows = rows.filter((r) => selected.includes(Number(r.id)));
@@ -466,10 +533,15 @@ const activeGroupKey =
   }, [rows, selected]);
 
   const displayRows = useMemo(() => {
+    const sourceRows = (rows || []).filter((r: any) => {
+      if (showClosed) return true;
+      return !String(r.closeReason || "").trim();
+    });
+
     const reordered: any[] = [];
     const grouped = new Map<string, any[]>();
 
-    for (const row of rows) {
+    for (const row of sourceRows) {
       const key = String(row?.masterLawsuitId || "").trim();
 
       if (!key) {
@@ -514,7 +586,7 @@ const activeGroupKey =
         showGroupLabel,
       };
     });
-  }, [rows]);
+  }, [rows, showClosed]);
 
   const thStyle: React.CSSProperties = {
     border: "1px solid #bfbfbf",
@@ -535,7 +607,10 @@ const activeGroupKey =
 
   const alreadyAggregated = isAggregated(matter);
 
+
   return (
+    <>
+
     <main
       style={{
         padding: 24,
@@ -584,7 +659,7 @@ const activeGroupKey =
                   : "pointer",
               fontWeight: 700,
               fontSize: 15,
-             }}
+            }}
           >
             {submitting
               ? "Aggregating..."
@@ -726,7 +801,20 @@ const activeGroupKey =
 
       <hr style={{ margin: "18px 0 20px 0", border: 0, borderTop: "1px solid #999"  }} />
 
-      <table style={{ width: "100%", borderCollapse: "collapse"  }}>
+      
+<div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+  <label style={{ cursor: "pointer", fontSize: 14 }}>
+    <input
+      type="checkbox"
+      checked={showClosed}
+      onChange={(e) => setShowClosed(e.target.checked)}
+      style={{ marginRight: 6 }}
+    />
+    Include closed matters
+  </label>
+</div>
+
+<table style={{ width: "100%", borderCollapse: "collapse"  }}>
         <thead>
           <tr>
             <th style={thStyle}>Select</th>
@@ -739,8 +827,9 @@ const activeGroupKey =
             <th style={thStyle}>Payment (Voluntary)</th>
             <th style={thStyle}>Balance (Presuit)</th>
             <th style={thStyle}>Denial Reason</th>
-            <th style={thStyle}>Stage</th>
             <th style={thStyle}>Status</th>
+            <th style={thStyle}>Final Status</th>
+            <th style={thStyle}>Actions</th>
           </tr>
         </thead>
 
@@ -846,14 +935,41 @@ const activeGroupKey =
                 <td
                   style={{
                     ...tdStyle,
-                    ...stageColor(r?.matterStage?.name),
+                    
                     whiteSpace: "nowrap",
                   }}
                 >
                   {textValue(r?.matterStage?.name)}
                 </td>
-                <td style={{ ...tdStyle, ...statusColor(r.status) }}>
-                  {statusDisplay(r.status)}
+                <td style={{ ...tdStyle }}>
+                  {textValue(r.closeReason || "")}
+                </td>
+                <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap" }}>
+                  <button
+                    onClick={() => {
+                      setCloseMatterTarget(r);
+                      setCloseReason("");
+                      setShowCloseModal(true);
+                    }}
+                    disabled={!!String(r.closeReason || "").trim()}
+                    style={{
+                      padding: "6px 10px",
+                      border: "1px solid #dc2626",
+                      background: !!String(r.closeReason || "").trim()
+                        ? "#f3f4f6"
+                        : "#fee2e2",
+                      color: !!String(r.closeReason || "").trim()
+                        ? "#6b7280"
+                        : "#991b1b",
+                      borderRadius: 4,
+                      cursor: !!String(r.closeReason || "").trim()
+                        ? "not-allowed"
+                        : "pointer",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Close
+                  </button>
                 </td>
               </tr>
             );
@@ -861,5 +977,96 @@ const activeGroupKey =
         </tbody>
       </table>
     </main>
+
+    {showCloseModal && (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.45)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+        }}
+      >
+        <div
+          style={{
+            width: 460,
+            background: "#fff",
+            borderRadius: 8,
+            padding: 22,
+            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+          }}
+        >
+          <h2 style={{ marginTop: 0 }}>Close Matter in Clio</h2>
+
+          <p style={{ marginBottom: 14 }}>
+            This will close matter <strong>{textValue(closeMatterTarget?.displayNumber)}</strong> in Clio
+            and write the selected Close Reason.
+          </p>
+
+          <label style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>
+            Close Reason
+          </label>
+
+          <select
+            value={closeReason}
+            onChange={(e) => setCloseReason(e.target.value)}
+            style={{
+              width: "100%",
+              padding: 10,
+              marginBottom: 18,
+              border: "1px solid #bbb",
+              borderRadius: 4,
+            }}
+          >
+            <option value="">Select Close Reason</option>
+            {VALID_CLOSE_REASONS.map((reason) => (
+              <option key={reason} value={reason}>
+                {reason}
+              </option>
+            ))}
+          </select>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <button
+              onClick={() => {
+                setShowCloseModal(false);
+                setCloseMatterTarget(null);
+                setCloseReason("");
+              }}
+              disabled={closing}
+              style={{
+                padding: "8px 12px",
+                border: "1px solid #aaa",
+                background: "#fff",
+                borderRadius: 4,
+                cursor: closing ? "not-allowed" : "pointer",
+              }}
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={handleCloseMatter}
+              disabled={!closeReason || closing}
+              style={{
+                padding: "8px 12px",
+                border: "1px solid #dc2626",
+                background: !closeReason || closing ? "#f3f4f6" : "#dc2626",
+                color: !closeReason || closing ? "#666" : "#fff",
+                borderRadius: 4,
+                cursor: !closeReason || closing ? "not-allowed" : "pointer",
+                fontWeight: 700,
+              }}
+            >
+              {closing ? "Closing..." : "Close Matter"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

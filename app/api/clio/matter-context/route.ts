@@ -13,6 +13,8 @@ async function getContactName(contactId: number | string | null | undefined) {
   return json?.data?.name ?? null;
 }
 
+const CLOSE_REASON_LITIGATION_ARBITRATION = 22145660;
+
 const DENIAL_REASON_LABELS: Record<string, string> = {
   "12497975": "Medical Necessity (IME)",
   "12498065": "Fee Schedule / Coding",
@@ -26,6 +28,32 @@ function isSelectableForSettlement(matterStage: any, status: any) {
     stageName.includes("READY FOR ARBITRATION/LITIGATION") &&
     statusValue.includes("open")
   );
+}
+
+const CLOSE_REASON_LABELS: Record<string, string> = {
+  "12497450": "AAA- DECISION- DISMISSED WITH PREJUDICE",
+  "12497465": "AAA- VOLUNTARILY WITHDRAWN WITH PREJUDICE",
+  "12497480": "DISCONTINUED WITH PREJUDICE",
+  "12497495": "MOTION LOSS",
+  "12497510": "OUT OF STATE CARRIER",
+  "12497525": "PAID (DECISION)",
+  "12497540": "PAID (JUDGMENT)",
+  "12497555": "PAID (SETTLEMENT)",
+  "12497570": "PAID (FEE SCHEDULE)",
+  "12497585": "PAID (VOLUNTARY)",
+  "12497600": "PER CLIENT",
+  "12497615": "POLICY CANCELLED",
+  "12497630": "POLICY EXHAUSTED/NO COVERAGE",
+  "12497645": "PPO",
+  "12497660": "SOL",
+  "12497675": "TRIAL LOSS",
+  "12497690": "WORKERS COMPENSATION",
+  "12497825": "TRANSFERRED TO LB",
+};
+
+function getCloseReasonLabel(value: any) {
+  if (value == null || value === "") return "";
+  return CLOSE_REASON_LABELS[String(value)] || "";
 }
 
 function getDenialReasonLabel(value: any) {
@@ -81,6 +109,7 @@ export async function GET(req: NextRequest) {
     const patientId = getCustomFieldValue(matter, MATTER_CF.PATIENT);
     const insurerId = getCustomFieldValue(matter, MATTER_CF.INSURANCE_COMPANY);
     const rawDenialReason = getCustomFieldValue(matter, MATTER_CF.DENIAL_REASON);
+    const closeReasonRaw = getCustomFieldValue(matter, CLOSE_REASON_LITIGATION_ARBITRATION);
 
     const [patientName, insurerName] = await Promise.all([
       getContactName(patientId),
@@ -93,6 +122,7 @@ export async function GET(req: NextRequest) {
       displayNumber: matter.display_number,
       description: matter.description,
       status: matter.status,
+      closeReason: getCloseReasonLabel(closeReasonRaw),
       matterStage: matter.matter_stage,
       selectableForSettlement: isSelectableForSettlement(matter.matter_stage, matter.status),
 

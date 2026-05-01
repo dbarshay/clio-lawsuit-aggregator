@@ -1,3 +1,4 @@
+import { getDenialReasonLabel } from "@/lib/matterHelpers";
 import { clioFetch } from "@/lib/clio";
 import { upsertRow, normalizeClaimNumber } from "./claimIndex";
 import { getCachedContact, setCachedContact } from "@/lib/contactCache";
@@ -105,9 +106,7 @@ export async function indexMatterFromClioPayload(m: any) {
     dos_end: getField(m, DOS_END_FIELD_ID)
       ? String(getField(m, DOS_END_FIELD_ID))
       : "",
-    denial_reason: getField(m, DENIAL_REASON_FIELD_ID)
-      ? String(getField(m, DENIAL_REASON_FIELD_ID))
-      : "",
+    denial_reason: getDenialReasonLabel(getField(m, DENIAL_REASON_FIELD_ID)),
     payment_voluntary: num(getField(m, PAYMENT_VOLUNTARY_FIELD_ID)),
     balance_presuit: num(getField(m, BALANCE_PRESUIT_FIELD_ID)),
     master_lawsuit_id: getField(m, MASTER_LAWSUIT_ID_FIELD_ID)

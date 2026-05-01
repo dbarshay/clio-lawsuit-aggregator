@@ -201,7 +201,7 @@ export async function refreshClaimIndex(
           denial_reason: "",
           payment_voluntary: 0,
           balance_presuit: 0,
-          master_lawsuit_id: getCF(22146050) || "",
+          master_lawsuit_id: getCF(22294835) || "",
           status: "",
           raw_json: JSON.stringify(m),
         });

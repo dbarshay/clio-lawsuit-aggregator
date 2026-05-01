@@ -29,5 +29,5 @@ export async function buildMasterId() {
 
   const seq = String(counter.lastSequence).padStart(5, "0");
 
-  return `${mm}.${year}.${seq}`;
+  return `${year}.${mm}.${seq}`;
 }

@@ -53,7 +53,7 @@ async function generateLawsuitId() {
   const monthStr = String(month).padStart(2, "0");
   const sequenceStr = padSequence(counter.lastSequence);
 
-  return `${monthStr}.${year}.${sequenceStr}`;
+  return `${year}.${monthStr}.${sequenceStr}`;
 }
 
 function buildFolderPath(masterId: string): string {

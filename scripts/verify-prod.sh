@@ -31,5 +31,9 @@ echo "=== RUN SETTLED WITH PERSON-CONTACT SAFETY VERIFIER ==="
 npm run verify:settled-with-person-contact-safety
 
 echo
+echo "=== RUN PROVIDER FEE DEFAULTS SAFETY VERIFIER ==="
+npm run verify:provider-fee-defaults-safety
+
+echo
 echo "=== RUN PRODUCTION WORKFLOW SMOKE TEST ==="
 npm run smoke:workflow:prod

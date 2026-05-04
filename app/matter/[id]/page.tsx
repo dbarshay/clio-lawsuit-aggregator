@@ -2174,11 +2174,229 @@ const activeGroupKey =
 
       {activeWorkspaceTab === "audit_history" && (
         <section style={tabPlaceholderPanelStyle}>
-          <h2 style={{ marginTop: 0 }}>Audit / History</h2>
-          <p style={tabPlaceholderTextStyle}>
-            Audit and finalization history will be separated here next.  These records remain local workflow history only;
-            the Clio master matter Documents tab remains the record-copy source of truth.
-          </p>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <h2 style={{ marginTop: 0, marginBottom: 6 }}>Matter-Level Audit / History</h2>
+              <p style={tabPlaceholderTextStyle}>
+                Local finalization and workflow history for this lawsuit.  These records do not replace Clio;
+                the Clio master matter Documents tab remains the record-copy source of truth.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => loadFinalizationHistory(tabMasterLawsuitId)}
+              disabled={finalizationHistoryLoading || !tabMasterLawsuitId}
+              style={{
+                padding: "7px 10px",
+                border: "1px solid #2563eb",
+                background:
+                  finalizationHistoryLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#2563eb",
+                color: finalizationHistoryLoading || !tabMasterLawsuitId ? "#666" : "#fff",
+                borderRadius: 4,
+                cursor:
+                  finalizationHistoryLoading || !tabMasterLawsuitId ? "not-allowed" : "pointer",
+                fontWeight: 700,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {finalizationHistoryLoading ? "Loading..." : "Refresh History"}
+            </button>
+          </div>
+
+          {!tabMasterLawsuitId ? (
+            <div style={{ marginTop: 12, color: "#475569" }}>
+              No MASTER_LAWSUIT_ID is available yet.  Generate or connect a lawsuit before loading audit/history records.
+            </div>
+          ) : (
+            <>
+              {finalizationHistory?.error && (
+                <div style={{ marginTop: 12, color: "#991b1b" }}>
+                  <strong>Error:</strong> {textValue(finalizationHistory.error)}
+                </div>
+              )}
+
+              {finalizationHistoryLoading && !finalizationHistory && (
+                <div style={{ marginTop: 12, color: "#475569" }}>
+                  Loading finalization history...
+                </div>
+              )}
+
+              {finalizationHistory?.ok &&
+                Array.isArray(finalizationHistory.rows) &&
+                finalizationHistory.rows.length === 0 && (
+                  <div style={{ marginTop: 12, color: "#475569" }}>
+                    No finalization history recorded yet.
+                  </div>
+                )}
+
+              {finalizationHistory?.ok &&
+                Array.isArray(finalizationHistory.rows) &&
+                finalizationHistory.rows.length > 0 && (
+                  <div style={{ marginTop: 14 }}>
+                    {finalizationHistory.rows.map((row: any) => {
+                      const uploaded = Array.isArray(row.uploaded) ? row.uploaded : [];
+                      const skipped = Array.isArray(row.skipped) ? row.skipped : [];
+                      const rowKey = textValue(row.id);
+                      const isExpanded = expandedFinalizationId === rowKey;
+
+                      return (
+                        <div
+                          key={rowKey}
+                          style={{
+                            marginBottom: 10,
+                            padding: 12,
+                            background: "#f8fafc",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 6,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: 10,
+                              alignItems: "flex-start",
+                            }}
+                          >
+                            <div>
+                              <div style={{ fontWeight: 800 }}>
+                                {row.finalizedAt
+                                  ? new Date(row.finalizedAt).toLocaleString()
+                                  : "Unknown date"}
+                              </div>
+                              <div style={{ color: "#475569", marginTop: 2, fontSize: 13 }}>
+                                Audit ID {rowKey} · Status {textValue(row.status) || "unknown"} · Uploaded {uploaded.length} · Skipped {skipped.length}
+                                {row.noUploadPerformed ? " · No upload performed" : ""}
+                                {row.allowDuplicateUploads ? " · Duplicate override allowed" : ""}
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedFinalizationId(isExpanded ? null : rowKey)
+                              }
+                              style={{
+                                fontSize: 12,
+                                padding: "4px 9px",
+                                border: "1px solid #94a3b8",
+                                borderRadius: 4,
+                                background: isExpanded ? "#e2e8f0" : "#fff",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {isExpanded ? "Hide Details" : "Details"}
+                            </button>
+                          </div>
+
+                          {uploaded.length > 0 && (
+                            <div style={{ color: "#065f46", marginTop: 6, fontSize: 13 }}>
+                              Uploaded:{" "}
+                              {uploaded
+                                .map((doc: any) => `${textValue(doc.label) || textValue(doc.key)}${doc.clioDocumentId ? ` (Clio ${doc.clioDocumentId})` : ""}`)
+                                .join(", ")}
+                            </div>
+                          )}
+
+                          {skipped.length > 0 && (
+                            <div style={{ color: "#92400e", marginTop: 6, fontSize: 13 }}>
+                              Skipped:{" "}
+                              {skipped
+                                .map((doc: any) => `${textValue(doc.label) || textValue(doc.key)}${textValue(doc.reason) ? ` (${textValue(doc.reason)})` : ""}`)
+                                .join(", ")}
+                            </div>
+                          )}
+
+                          {textValue(row.error) && (
+                            <div style={{ color: "#991b1b", marginTop: 6, fontSize: 13 }}>
+                              <strong>Error:</strong> {textValue(row.error)}
+                            </div>
+                          )}
+
+                          {isExpanded && (
+                            <div
+                              style={{
+                                marginTop: 10,
+                                padding: 10,
+                                background: "#fff",
+                                border: "1px solid #e5e7eb",
+                                borderRadius: 4,
+                                fontSize: 12,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "grid",
+                                  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                                  gap: 8,
+                                  marginBottom: 10,
+                                }}
+                              >
+                                <div>
+                                  <strong>Master Lawsuit ID:</strong>
+                                  <br />
+                                  {textValue(row.masterLawsuitId) || "—"}
+                                </div>
+                                <div>
+                                  <strong>Master Matter:</strong>
+                                  <br />
+                                  {textValue(row.masterDisplayNumber) || textValue(row.masterMatterId) || "—"}
+                                </div>
+                                <div>
+                                  <strong>Requested Docs:</strong>
+                                  <br />
+                                  {Array.isArray(row.requestedKeys) && row.requestedKeys.length > 0
+                                    ? row.requestedKeys.map(textValue).join(", ")
+                                    : "—"}
+                                </div>
+                                <div>
+                                  <strong>Audit Updated:</strong>
+                                  <br />
+                                  {row.updatedAt ? new Date(row.updatedAt).toLocaleString() : "—"}
+                                </div>
+                              </div>
+
+                              <details>
+                                <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                                  Raw finalization audit JSON
+                                </summary>
+                                <pre
+                                  style={{
+                                    whiteSpace: "pre-wrap",
+                                    overflowX: "auto",
+                                    margin: "6px 0 0 0",
+                                    padding: 8,
+                                    background: "#f8fafc",
+                                    border: "1px solid #e5e7eb",
+                                    borderRadius: 4,
+                                  }}
+                                >
+                                  {JSON.stringify(row, null, 2)}
+                                </pre>
+                              </details>
+
+                              <div style={{ marginTop: 8, color: "#475569" }}>
+                                This drilldown displays local audit/history data only.  It does not verify current Clio document existence.
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+            </>
+          )}
         </section>
       )}
 

@@ -2610,7 +2610,7 @@ const activeGroupKey =
                   </div>
 
                   <div style={{ marginTop: 4, color: "#475569", fontSize: 12 }}>
-                    Read-only print-candidate preview from local finalization audit records.  This does not create a print queue and does not verify current Clio document existence.
+                    Read-only print-candidate preview from local finalization audit records, verified against the current Clio master matter Documents tab.  This does not create a print queue.
                   </div>
 
                   {printQueuePreview?.error && (
@@ -2637,7 +2637,7 @@ const activeGroupKey =
                         fontSize: 12,
                       }}
                     >
-                      No printable finalized documents are currently proposed for this lawsuit.  Duplicate-only or no-upload finalization audit rows are intentionally excluded.
+                      No currently verified printable finalized documents are proposed for this lawsuit.  Duplicate-only, no-upload, or unverified finalization audit rows are intentionally excluded.
                     </div>
                   )}
 
@@ -2687,7 +2687,7 @@ const activeGroupKey =
                       </table>
 
                       <div style={{ marginTop: 8, color: "#475569" }}>
-                        These are proposed print candidates only.  The Clio Documents tab remains the record-copy source of truth.
+                        These are proposed print candidates only.  Each listed document has been verified against the current Clio master matter Documents tab, which remains the record-copy source of truth.
                       </div>
                     </div>
                   )}

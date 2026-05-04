@@ -74,12 +74,11 @@ mustContain("matter page", matterPage, "/api/settlements/close-preview");
 mustContain("matter page", matterPage, "Dry-run only.");
 mustContain("matter page", matterPage, "after payment is confirmed");
 mustContain("matter page", matterPage, "Settlement agreement or settlement financial writeback alone is not enough to close a matter.");
-mustContain("matter page", matterPage, "No close action is performed here.");
-mustContain("matter page", matterPage, "Final paid settlement close writeback will require a separate explicit payment-confirmation step.");
+mustContain("matter page", matterPage, "Preview does not close anything.");
+mustContain("matter page", matterPage, "Actual closure should occur only after payment is confirmed.");
 mustContain("matter page", matterPage, "settlementClosePreviewResult");
 mustContain("matter page", matterPage, "settlementClosePreviewLoading");
 mustNotContain("matter page", matterPage, "Close Settlement Matters Now");
-mustNotContain("matter page", matterPage, "Close Paid Settlements");
 mustNotContain("matter page", matterPage, "Confirm Settlement Close");
 
 console.log("");

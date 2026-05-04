@@ -380,6 +380,8 @@ const activeGroupKey =
   const [settlementWritebackResult, setSettlementWritebackResult] = useState<any>(null);
   const [settlementClosePreviewLoading, setSettlementClosePreviewLoading] = useState(false);
   const [settlementClosePreviewResult, setSettlementClosePreviewResult] = useState<any>(null);
+  const [settlementCloseWritebackLoading, setSettlementCloseWritebackLoading] = useState(false);
+  const [settlementCloseWritebackResult, setSettlementCloseWritebackResult] = useState<any>(null);
   const [settlementHistoryLoading, setSettlementHistoryLoading] = useState(false);
   const [settlementHistoryResult, setSettlementHistoryResult] = useState<any>(null);
   const [expandedSettlementHistoryId, setExpandedSettlementHistoryId] = useState<string | null>(null);
@@ -1893,6 +1895,7 @@ const activeGroupKey =
 
     setSettlementClosePreviewLoading(true);
     setSettlementClosePreviewResult(null);
+    setSettlementCloseWritebackResult(null);
 
     try {
       const res = await fetch("/api/settlements/close-preview", {
@@ -1914,9 +1917,9 @@ const activeGroupKey =
     } catch (err: any) {
       const fallback = {
         ok: false,
-        action: "settlement-close-preview",
+        action: "paid-settlement-close-preview",
         dryRun: true,
-        error: err?.message || "Settlement close preview failed.",
+        error: err?.message || "Paid settlement close preview failed.",
         safety: {
           dryRun: true,
           previewOnly: true,
@@ -1930,6 +1933,66 @@ const activeGroupKey =
       alert(fallback.error);
     } finally {
       setSettlementClosePreviewLoading(false);
+    }
+  }
+
+  async function closePaidSettlements(masterLawsuitIdInput?: string) {
+    const masterLawsuitId = masterLawsuitIdInput || tabMasterLawsuitId;
+
+    if (!masterLawsuitId) {
+      alert("No MASTER_LAWSUIT_ID found.  Generate or connect a lawsuit before closing paid settlements.");
+      return;
+    }
+
+    if (!settlementClosePreviewResult?.ok || !settlementClosePreviewResult?.validation?.canCloseIfConfirmed) {
+      alert("Run Preview Paid Settlement Close first.  Only preview-eligible child/bill matters can be closed.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Close Paid Settlements?\\n\\nUse this only after payment is confirmed.  This will write Close Reason = PAID (SETTLEMENT) and set eligible child/bill matters to closed in Clio.  Master matters and already closed/final matters will remain blocked.  No documents or print queue records will be changed."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setSettlementCloseWritebackLoading(true);
+    setSettlementCloseWritebackResult(null);
+
+    try {
+      const res = await fetch("/api/settlements/close", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          masterLawsuitId,
+          confirmPaid: true,
+          confirmClosePaidSettlements: true,
+        }),
+      });
+
+      const json = await res.json();
+      setSettlementCloseWritebackResult(json);
+
+      if (json?.ok) {
+        await loadSettlementClosePreview(masterLawsuitId);
+      }
+    } catch (err: any) {
+      setSettlementCloseWritebackResult({
+        ok: false,
+        action: "close-paid-settlements",
+        error: err?.message || "Close Paid Settlements failed.",
+        safety: {
+          actionLabel: "Close Paid Settlements",
+          explicitPaymentConfirmationRequired: true,
+          noDocumentsGenerated: true,
+          noPrintQueueRecordsChanged: true,
+        },
+      });
+    } finally {
+      setSettlementCloseWritebackLoading(false);
     }
   }
 
@@ -4042,8 +4105,122 @@ const activeGroupKey =
               )}
 
             <div style={{ marginTop: 8, color: "#92400e", fontSize: 12 }}>
-              No close action is performed here.  Actual closure should occur only after payment is confirmed.  Final paid settlement close writeback will require a separate explicit payment-confirmation step.
+              Preview does not close anything.  Actual closure should occur only after payment is confirmed.  The Close Paid Settlements button requires explicit confirmation and writes back to Clio only for eligible child/bill matters.
             </div>
+
+            {settlementClosePreviewResult?.ok &&
+              settlementClosePreviewResult?.validation?.canCloseIfConfirmed && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: 10,
+                    border: "1px solid #fed7aa",
+                    background: "#fff7ed",
+                    borderRadius: 6,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => closePaidSettlements()}
+                    disabled={settlementCloseWritebackLoading}
+                    style={{
+                      padding: "8px 12px",
+                      border: "1px solid #991b1b",
+                      background: settlementCloseWritebackLoading ? "#f3f4f6" : "#991b1b",
+                      color: settlementCloseWritebackLoading ? "#666" : "#fff",
+                      borderRadius: 4,
+                      cursor: settlementCloseWritebackLoading ? "not-allowed" : "pointer",
+                      fontWeight: 800,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {settlementCloseWritebackLoading ? "Closing..." : "Close Paid Settlements"}
+                  </button>
+
+                  <div style={{ marginTop: 8, color: "#7f1d1d", fontSize: 12 }}>
+                    Use only after payment is confirmed.  This writes Close Reason = PAID (SETTLEMENT) and closes eligible child/bill matters in Clio.  Master matters, already closed matters, final-status matters, documents, and print queue records are not changed.
+                  </div>
+                </div>
+              )}
+
+            {settlementCloseWritebackResult && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: 10,
+                  border: settlementCloseWritebackResult.ok ? "1px solid #bbf7d0" : "1px solid #fecaca",
+                  background: settlementCloseWritebackResult.ok ? "#f0fdf4" : "#fef2f2",
+                  borderRadius: 6,
+                  fontSize: 12,
+                }}
+              >
+                <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                  Close Paid Settlements Result
+                </div>
+
+                {settlementCloseWritebackResult.error && (
+                  <div style={{ color: "#991b1b", marginBottom: 6 }}>
+                    <strong>Error:</strong> {textValue(settlementCloseWritebackResult.error)}
+                  </div>
+                )}
+
+                {settlementCloseWritebackResult.ok && (
+                  <div style={{ color: "#166534", marginBottom: 6 }}>
+                    Closed {num(settlementCloseWritebackResult.closedCount)} paid settlement child/bill matter(s) in Clio.
+                  </div>
+                )}
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+                  <div>
+                    <strong>Total:</strong>
+                    <br />
+                    {num(settlementCloseWritebackResult.count)}
+                  </div>
+                  <div>
+                    <strong>Closed:</strong>
+                    <br />
+                    {num(settlementCloseWritebackResult.closedCount)}
+                  </div>
+                  <div>
+                    <strong>Blocked:</strong>
+                    <br />
+                    {num(settlementCloseWritebackResult.blockedCount)}
+                  </div>
+                </div>
+
+                {Array.isArray(settlementCloseWritebackResult?.validation?.blockingErrors) &&
+                  settlementCloseWritebackResult.validation.blockingErrors.length > 0 && (
+                    <div style={{ color: "#92400e", marginTop: 8 }}>
+                      <strong>Blocked / Not Closed:</strong>
+                      <ul style={{ margin: "4px 0 0 18px", padding: 0 }}>
+                        {settlementCloseWritebackResult.validation.blockingErrors.map((msg: string) => (
+                          <li key={msg}>{msg}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                <details style={{ marginTop: 10 }}>
+                  <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                    Raw Close Paid Settlements JSON
+                  </summary>
+                  <pre
+                    style={{
+                      whiteSpace: "pre-wrap",
+                      overflowX: "auto",
+                      margin: "6px 0 0 0",
+                      padding: 8,
+                      background: "#fff",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: 4,
+                      fontSize: 12,
+                    }}
+                  >
+                    {JSON.stringify(settlementCloseWritebackResult, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            )}
 
             <details style={{ marginTop: 10 }}>
               <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 13 }}>

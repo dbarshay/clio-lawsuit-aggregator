@@ -49,10 +49,77 @@ export async function POST(req: NextRequest) {
     const clusterIds = parseMatterIds(mattersCFV?.value || "");
 
     if (clusterIds.length === 0) {
-      return NextResponse.json(
-        { ok: false, error: "No cluster members found" },
-        { status: 400 }
+      const providedIds: number[] = Array.from(
+        new Set<number>(
+          rawMatters
+            .map((m: any) => Number(m?.id))
+            .filter((n: number) => Number.isFinite(n) && n > 0)
+        )
       );
+
+      if (providedIds.length === 0) {
+        return NextResponse.json(
+          { ok: false, error: "No cluster members found" },
+          { status: 400 }
+        );
+      }
+
+      const preflightedProvided: Array<{ id: number; displayNumber: string }> = [];
+
+      for (const id of providedIds) {
+        const check = await preflightLawsuitMatter(id);
+
+        if (check.existingMasterValue !== existingMasterValue) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error: `Orphan consistency check failed for matter ${id}. Expected ${existingMasterValue}, found ${check.existingMasterValue || "(blank)"}. No fields were cleared.`,
+            },
+            { status: 409 }
+          );
+        }
+
+        preflightedProvided.push({
+          id,
+          displayNumber: check.matter.display_number || String(id),
+        });
+      }
+
+      const results: any[] = [];
+
+      for (const id of providedIds) {
+        try {
+          const res = await clearLawsuitFields(id);
+          results.push({ ...res, ok: true });
+        } catch (err: any) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error: `Failed clearing orphan matter ${id}: ${err?.message || "Unknown error"}`,
+              partial: results,
+            },
+            { status: 500 }
+          );
+        }
+      }
+
+      const refreshed: number[] = [];
+
+      for (const id of providedIds) {
+        await ingestMatterFromClio(id);
+        refreshed.push(id);
+      }
+
+      return NextResponse.json({
+        ok: true,
+        stage: "deaggregate-orphan",
+        clusterSize: providedIds.length,
+        cleared: providedIds.length,
+        refreshed: refreshed.length,
+        refreshedMatterIds: refreshed,
+        masterLawsuitId: existingMasterValue,
+        results,
+      });
     }
 
     // --- STEP 2: preflight ALL cluster members before any Clio mutation ---

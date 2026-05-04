@@ -1577,11 +1577,37 @@ const activeGroupKey =
             const isMaster = !!(r.isMaster || r.is_master);
             const selectable = isSelectable(r);
             const locked = isMaster || aggregated || !selectable;
+            const masterLawsuitId = textValue(r.masterLawsuitId);
             const lawsuitColor = aggregated
               ? getColorForLawsuit(String(r.masterLawsuitId))
               : "";
 
             return (
+              <>
+                {r.showGroupLabel && (
+                  <tr key={`lawsuit-band-${masterLawsuitId}`}>
+                    <td
+                      colSpan={13}
+                      style={{
+                        padding: "5px 10px",
+                        border: "1px solid #bfbfbf",
+                        background: "#d9d9d9",
+                        color: "#111827",
+                        fontSize: 13,
+                        fontWeight: 800,
+                        letterSpacing: 0.2,
+                        textAlign: "center",
+                      }}
+                    >
+                      <span style={{ color: "#6b7280" }}>•••</span>
+                      <span style={{ margin: "0 12px" }}>
+                        LAWSUIT {masterLawsuitId}
+                      </span>
+                      <span style={{ color: "#6b7280" }}>•••</span>
+                    </td>
+                  </tr>
+                )}
+
               <tr
                 key={Number(r.id)}
                 style={{
@@ -1596,7 +1622,6 @@ const activeGroupKey =
                     : "#ffffff",
                   opacity: locked ? 0.8 : 1,
                   borderLeft: aggregated ? `4px solid ${lawsuitColor}` : undefined,
-                  borderTop: r.startsNewGroup ? "22px solid #d9d9d9" : undefined,
                 }}
               >
                 <td
@@ -1706,6 +1731,7 @@ const activeGroupKey =
                   </button>
                 </td>
               </tr>
+              </>
             );
           })}
         </tbody>

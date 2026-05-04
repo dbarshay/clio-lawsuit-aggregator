@@ -529,6 +529,9 @@ export async function POST(req: NextRequest) {
 
     const claimNumber = Array.from(claimSet)[0] || null;
 
+    // Amount Sought must be computed from the selected bill matters only.
+    // Keep this before master matter creation so the Clio master lawsuit matter
+    // is never included in the amount components or missing-amount warnings.
     let amountSought;
     try {
       amountSought = computeAmountSought({ liveMatters, lawsuitOptions });

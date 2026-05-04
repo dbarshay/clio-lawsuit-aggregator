@@ -285,6 +285,7 @@ const activeGroupKey =
   const [finalizeUploadResult, setFinalizeUploadResult] = useState<any>(null);
   const [finalizationHistory, setFinalizationHistory] = useState<any>(null);
   const [finalizationHistoryLoading, setFinalizationHistoryLoading] = useState(false);
+  const [expandedFinalizationId, setExpandedFinalizationId] = useState<string | null>(null);
   const [showMetadataModal, setShowMetadataModal] = useState(false);
   const [metadataSaving, setMetadataSaving] = useState(false);
   const [metadataEdit, setMetadataEdit] = useState<LawsuitMetadataEdit>(() =>
@@ -2108,48 +2109,229 @@ const activeGroupKey =
                   )}
 
                   {finalizationHistory?.ok && Array.isArray(finalizationHistory.rows) && finalizationHistory.rows.length > 0 && (
-                    <ul style={{ margin: "8px 0 0 18px", padding: 0, fontSize: 12 }}>
+                    <div style={{ marginTop: 8, fontSize: 12 }}>
                       {finalizationHistory.rows.map((row: any) => {
                         const uploaded = Array.isArray(row.uploaded) ? row.uploaded : [];
                         const skipped = Array.isArray(row.skipped) ? row.skipped : [];
                         const duplicateSkips = skipped.filter(
                           (doc: any) => textValue(doc.reason) === "already-uploaded-to-clio"
                         );
+                        const rowKey = textValue(row.id);
+                        const isExpanded = expandedFinalizationId === rowKey;
+                        const requestedKeys = Array.isArray(row.requestedKeys) ? row.requestedKeys : [];
 
                         return (
-                          <li key={textValue(row.id)} style={{ marginBottom: 8 }}>
-                            <div>
-                              <strong>
-                                {row.finalizedAt
-                                  ? new Date(row.finalizedAt).toLocaleString()
-                                  : "Unknown date"}
-                              </strong>{" "}
-                              — {textValue(row.status) || "unknown status"}
+                          <div
+                            key={rowKey}
+                            style={{
+                              marginBottom: 10,
+                              padding: 10,
+                              background: "#fff",
+                              border: "1px solid #e2e8f0",
+                              borderRadius: 4,
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                gap: 10,
+                                alignItems: "flex-start",
+                              }}
+                            >
+                              <div>
+                                <div>
+                                  <strong>
+                                    {row.finalizedAt
+                                      ? new Date(row.finalizedAt).toLocaleString()
+                                      : "Unknown date"}
+                                  </strong>{" "}
+                                  — {textValue(row.status) || "unknown status"}
+                                </div>
+                                <div style={{ color: "#475569", marginTop: 2 }}>
+                                  Audit ID {rowKey} · Uploaded {uploaded.length} · Skipped {skipped.length}
+                                  {row.noUploadPerformed ? " · No upload performed" : ""}
+                                  {row.allowDuplicateUploads ? " · Duplicate override allowed" : ""}
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedFinalizationId(isExpanded ? null : rowKey)
+                                }
+                                style={{
+                                  fontSize: 12,
+                                  padding: "3px 8px",
+                                  border: "1px solid #94a3b8",
+                                  borderRadius: 4,
+                                  background: isExpanded ? "#e2e8f0" : "#fff",
+                                  cursor: "pointer",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {isExpanded ? "Hide Details" : "Details"}
+                              </button>
                             </div>
-                            <div style={{ color: "#475569" }}>
-                              Audit ID {textValue(row.id)} · Uploaded {uploaded.length} · Skipped {skipped.length}
-                              {row.noUploadPerformed ? " · No upload performed" : ""}
-                            </div>
+
                             {uploaded.length > 0 && (
-                              <div style={{ color: "#065f46" }}>
+                              <div style={{ color: "#065f46", marginTop: 4 }}>
                                 Uploaded:{" "}
                                 {uploaded
                                   .map((doc: any) => `${textValue(doc.label) || textValue(doc.key)}${doc.clioDocumentId ? ` (Clio ${doc.clioDocumentId})` : ""}`)
                                   .join(", ")}
                               </div>
                             )}
+
                             {duplicateSkips.length > 0 && (
-                              <div style={{ color: "#92400e" }}>
+                              <div style={{ color: "#92400e", marginTop: 4 }}>
                                 Existing Clio duplicate skip:{" "}
                                 {duplicateSkips
                                   .map((doc: any) => textValue(doc.label) || textValue(doc.key))
                                   .join(", ")}
                               </div>
                             )}
-                          </li>
+
+                            {textValue(row.error) && (
+                              <div style={{ color: "#991b1b", marginTop: 4 }}>
+                                <strong>Error:</strong> {textValue(row.error)}
+                              </div>
+                            )}
+
+                            {isExpanded && (
+                              <div
+                                style={{
+                                  marginTop: 10,
+                                  padding: 10,
+                                  background: "#f8fafc",
+                                  border: "1px solid #cbd5e1",
+                                  borderRadius: 4,
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                                    gap: 8,
+                                    marginBottom: 10,
+                                  }}
+                                >
+                                  <div>
+                                    <strong>Master Lawsuit ID:</strong>
+                                    <br />
+                                    {textValue(row.masterLawsuitId) || "—"}
+                                  </div>
+                                  <div>
+                                    <strong>Master Matter:</strong>
+                                    <br />
+                                    {textValue(row.masterDisplayNumber) || textValue(row.masterMatterId) || "—"}
+                                  </div>
+                                  <div>
+                                    <strong>Requested Docs:</strong>
+                                    <br />
+                                    {requestedKeys.length > 0 ? requestedKeys.map(textValue).join(", ") : "—"}
+                                  </div>
+                                  <div>
+                                    <strong>Audit Updated:</strong>
+                                    <br />
+                                    {row.updatedAt ? new Date(row.updatedAt).toLocaleString() : "—"}
+                                  </div>
+                                </div>
+
+                                <div style={{ marginBottom: 8 }}>
+                                  <strong>Clio Upload Target:</strong>
+                                  <pre
+                                    style={{
+                                      whiteSpace: "pre-wrap",
+                                      overflowX: "auto",
+                                      margin: "4px 0 0 0",
+                                      padding: 8,
+                                      background: "#fff",
+                                      border: "1px solid #e5e7eb",
+                                      borderRadius: 4,
+                                    }}
+                                  >
+                                    {JSON.stringify(row.clioUploadTarget || {}, null, 2)}
+                                  </pre>
+                                </div>
+
+                                <div style={{ marginBottom: 8 }}>
+                                  <strong>Uploaded Documents:</strong>
+                                  <pre
+                                    style={{
+                                      whiteSpace: "pre-wrap",
+                                      overflowX: "auto",
+                                      margin: "4px 0 0 0",
+                                      padding: 8,
+                                      background: "#fff",
+                                      border: "1px solid #e5e7eb",
+                                      borderRadius: 4,
+                                    }}
+                                  >
+                                    {JSON.stringify(uploaded, null, 2)}
+                                  </pre>
+                                </div>
+
+                                <div style={{ marginBottom: 8 }}>
+                                  <strong>Skipped Documents:</strong>
+                                  <pre
+                                    style={{
+                                      whiteSpace: "pre-wrap",
+                                      overflowX: "auto",
+                                      margin: "4px 0 0 0",
+                                      padding: 8,
+                                      background: "#fff",
+                                      border: "1px solid #e5e7eb",
+                                      borderRadius: 4,
+                                    }}
+                                  >
+                                    {JSON.stringify(skipped, null, 2)}
+                                  </pre>
+                                </div>
+
+                                <div style={{ marginBottom: 8 }}>
+                                  <strong>Validation Snapshot:</strong>
+                                  <pre
+                                    style={{
+                                      whiteSpace: "pre-wrap",
+                                      overflowX: "auto",
+                                      margin: "4px 0 0 0",
+                                      padding: 8,
+                                      background: "#fff",
+                                      border: "1px solid #e5e7eb",
+                                      borderRadius: 4,
+                                    }}
+                                  >
+                                    {JSON.stringify(row.validationSnapshot || {}, null, 2)}
+                                  </pre>
+                                </div>
+
+                                <div>
+                                  <strong>Packet Summary Snapshot:</strong>
+                                  <pre
+                                    style={{
+                                      whiteSpace: "pre-wrap",
+                                      overflowX: "auto",
+                                      margin: "4px 0 0 0",
+                                      padding: 8,
+                                      background: "#fff",
+                                      border: "1px solid #e5e7eb",
+                                      borderRadius: 4,
+                                    }}
+                                  >
+                                    {JSON.stringify(row.packetSummarySnapshot || {}, null, 2)}
+                                  </pre>
+                                </div>
+
+                                <div style={{ marginTop: 8, color: "#475569" }}>
+                                  This drilldown displays local audit/history data only.  It does not verify current Clio document existence.
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
-                    </ul>
+                    </div>
                   )}
                 </div>
               )}

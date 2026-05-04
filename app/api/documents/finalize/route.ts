@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { uploadBufferToClioMatterDocuments } from "@/lib/clioDocumentUpload";
+import {
+  findExistingClioDocumentsByFilename,
+  listClioMatterDocuments,
+  uploadBufferToClioMatterDocuments,
+} from "@/lib/clioDocumentUpload";
 
 export const runtime = "nodejs";
 
@@ -98,6 +102,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json().catch(() => ({}));
+    const allowDuplicateUploads = body?.allowDuplicateUploads === true;
 
     const masterLawsuitId = clean(body?.masterLawsuitId);
     const confirmUpload = body?.confirmUpload === true;
@@ -119,6 +124,7 @@ export async function POST(req: NextRequest) {
             "Upload not performed. This endpoint requires confirmUpload: true.",
           safety: {
             noUploadPerformed: true,
+            duplicatePreventionDefault: !allowDuplicateUploads,
             noDatabaseRecordsChanged: true,
             noOneDriveOrSharePointFoldersCreated: true,
           },
@@ -139,6 +145,7 @@ export async function POST(req: NextRequest) {
           validation,
           safety: {
             noUploadPerformed: true,
+            duplicatePreventionDefault: !allowDuplicateUploads,
             noDatabaseRecordsChanged: true,
             noOneDriveOrSharePointFoldersCreated: true,
           },
@@ -152,14 +159,44 @@ export async function POST(req: NextRequest) {
       ? preview.plannedDocuments
       : [];
 
-    const documentsToUpload = plannedDocuments.filter((document) => {
+    const selectedDocuments = plannedDocuments.filter((document) => {
       if (!document?.wouldGenerate || !document?.wouldUploadToClio) return false;
       if (!requestedKeys.length) return true;
       return requestedKeys.includes(document.key);
     });
 
+    const existingDocuments = await listClioMatterDocuments(matterId);
+    const documentsToUpload: PlannedDocument[] = [];
+
+    for (const document of selectedDocuments) {
+      const existingMatches = findExistingClioDocumentsByFilename(
+        existingDocuments,
+        document.filename
+      );
+
+      if (existingMatches.length > 0 && !allowDuplicateUploads) {
+        skipped.push({
+          key: document.key,
+          label: document.label,
+          filename: document.filename,
+          reason: "already-uploaded-to-clio",
+          existingClioDocuments: existingMatches.map((match) => ({
+            id: match.id,
+            name: match.name,
+            filename: match.filename,
+            createdAt: match.createdAt,
+            updatedAt: match.updatedAt,
+            latestDocumentVersion: match.latestDocumentVersion,
+          })),
+        });
+        continue;
+      }
+
+      documentsToUpload.push(document);
+    }
+
     for (const document of plannedDocuments) {
-      if (documentsToUpload.includes(document)) continue;
+      if (selectedDocuments.includes(document)) continue;
       skipped.push({
         key: document.key,
         label: document.label,
@@ -182,6 +219,7 @@ export async function POST(req: NextRequest) {
           skipped,
           safety: {
             noUploadPerformed: true,
+            duplicatePreventionDefault: !allowDuplicateUploads,
             noDatabaseRecordsChanged: true,
             noOneDriveOrSharePointFoldersCreated: true,
           },
@@ -222,6 +260,8 @@ export async function POST(req: NextRequest) {
       skipped,
       safety: {
         explicitUploadAction: true,
+        duplicatePreventionDefault: !allowDuplicateUploads,
+        duplicateUploadsAllowed: allowDuplicateUploads,
         previewAndDownloadRemainNonPersistent: true,
         noDatabaseRecordsChanged: true,
         noOneDriveOrSharePointFoldersCreated: true,

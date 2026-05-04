@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  findExistingClioDocumentsByFilename,
+  listClioMatterDocuments,
+} from "@/lib/clioDocumentUpload";
 
 export const runtime = "nodejs";
 
@@ -118,6 +122,48 @@ export async function GET(req: NextRequest) {
 
     const masterDisplayNumber = clean(masterMatter.displayNumber || masterLawsuitId);
 
+    let existingClioDocuments: any[] = [];
+    let existingDocumentLookupError = "";
+
+    if (canGenerate && masterMatterId) {
+      try {
+        existingClioDocuments = await listClioMatterDocuments(Number(masterMatterId));
+      } catch (err: any) {
+        existingDocumentLookupError =
+          err?.message || "Could not check existing Clio documents.";
+      }
+    }
+
+    const plannedDocumentsWithExistingStatus = plannedDocuments.map((document) => {
+      const existingMatches = findExistingClioDocumentsByFilename(
+        existingClioDocuments,
+        document.filename
+      );
+
+      return {
+        ...document,
+        alreadyUploadedToClio: existingMatches.length > 0,
+        duplicateRisk: existingMatches.length > 0,
+        existingClioDocuments: existingMatches.map((match) => ({
+          id: match.id,
+          name: match.name,
+          filename: match.filename,
+          createdAt: match.createdAt,
+          updatedAt: match.updatedAt,
+          latestDocumentVersion: match.latestDocumentVersion,
+        })),
+      };
+    });
+
+    const existingUploadMatches = plannedDocumentsWithExistingStatus
+      .filter((document) => document.alreadyUploadedToClio)
+      .map((document) => ({
+        key: document.key,
+        label: document.label,
+        filename: document.filename,
+        existingClioDocuments: document.existingClioDocuments,
+      }));
+
     return NextResponse.json({
       ok: canGenerate,
       dryRun: true,
@@ -147,7 +193,14 @@ export async function GET(req: NextRequest) {
         billCount: totals.billCount || 0,
       },
 
-      plannedDocuments,
+      plannedDocuments: plannedDocumentsWithExistingStatus,
+
+      existingDocumentCheck: {
+        attempted: Boolean(canGenerate && masterMatterId),
+        error: existingDocumentLookupError,
+        matchCount: existingUploadMatches.length,
+        matches: existingUploadMatches,
+      },
 
       validation: {
         warnings: validation.warnings || [],
@@ -161,6 +214,7 @@ export async function GET(req: NextRequest) {
         noDatabaseRecordsChanged: true,
         noOneDriveOrSharePointFoldersCreated: true,
         noUploadPerformed: true,
+        duplicateAwarenessOnly: true,
       },
 
       note:

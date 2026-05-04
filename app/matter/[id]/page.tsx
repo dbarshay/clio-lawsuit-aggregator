@@ -1863,6 +1863,24 @@ const activeGroupKey =
                             <strong>{textValue(doc.label)}:</strong>{" "}
                             {textValue(doc.filename)}
                             {textValue(doc.status) ? ` — ${textValue(doc.status)}` : ""}
+                            {doc.alreadyUploadedToClio ? (
+                              <span style={{ color: "#b45309", fontWeight: 700 }}>
+                                {" "}— already uploaded to Clio
+                              </span>
+                            ) : null}
+                            {Array.isArray(doc.existingClioDocuments) &&
+                            doc.existingClioDocuments.length > 0 ? (
+                              <ul style={{ margin: "4px 0 4px 18px", padding: 0 }}>
+                                {doc.existingClioDocuments.map((existing: any) => (
+                                  <li key={textValue(existing.id)}>
+                                    Existing Clio Document ID {textValue(existing.id)}
+                                    {textValue(existing.latestDocumentVersion?.receivedAt)
+                                      ? ` — received ${textValue(existing.latestDocumentVersion.receivedAt)}`
+                                      : ""}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
                           </li>
                         ))}
                       </ul>
@@ -1873,14 +1891,30 @@ const activeGroupKey =
                       style={{
                         marginTop: 10,
                         padding: 8,
-                        background: "#fffbeb",
-                        border: "1px solid #f59e0b",
+                        background:
+                          documentPreview.existingDocumentCheck?.matchCount > 0
+                            ? "#fef2f2"
+                            : "#fffbeb",
+                        border:
+                          documentPreview.existingDocumentCheck?.matchCount > 0
+                            ? "1px solid #dc2626"
+                            : "1px solid #f59e0b",
                         borderRadius: 4,
-                        color: "#92400e",
+                        color:
+                          documentPreview.existingDocumentCheck?.matchCount > 0
+                            ? "#991b1b"
+                            : "#92400e",
                         fontSize: 12,
                       }}
                     >
-                      <strong>Final upload is explicit:</strong> click Upload Final Documents to Clio only when these are the final print-ready copies.  Repeating the action may create duplicate documents in Clio.
+                      <strong>
+                        {documentPreview.existingDocumentCheck?.matchCount > 0
+                          ? "Existing Clio document warning:"
+                          : "Final upload is explicit:"}
+                      </strong>{" "}
+                      {documentPreview.existingDocumentCheck?.matchCount > 0
+                        ? "one or more planned final documents already exists in the Clio master matter Documents tab.  The upload endpoint skips exact filename matches by default to prevent duplicates."
+                        : "click Upload Final Documents to Clio only when these are the final print-ready copies.  Repeating the action may create duplicate documents in Clio."}
                     </div>
                   )}
 
@@ -1934,8 +1968,39 @@ const activeGroupKey =
                       </ul>
                     )}
 
+                  {Array.isArray(finalizeUploadResult.skipped) &&
+                    finalizeUploadResult.skipped.some(
+                      (doc: any) => textValue(doc.reason) === "already-uploaded-to-clio"
+                    ) && (
+                      <div
+                        style={{
+                          marginTop: 8,
+                          padding: 8,
+                          background: "#fffbeb",
+                          border: "1px solid #f59e0b",
+                          borderRadius: 4,
+                          color: "#92400e",
+                          fontSize: 12,
+                        }}
+                      >
+                        <strong>Skipped existing Clio document(s):</strong>
+                        <ul style={{ margin: "6px 0 0 18px", padding: 0 }}>
+                          {finalizeUploadResult.skipped
+                            .filter(
+                              (doc: any) =>
+                                textValue(doc.reason) === "already-uploaded-to-clio"
+                            )
+                            .map((doc: any) => (
+                              <li key={textValue(doc.key) || textValue(doc.filename)}>
+                                {textValue(doc.label)} was not uploaded again because an exact filename match already exists in Clio.
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+                    )}
+
                   <div style={{ marginTop: 8, color: "#555", fontSize: 12 }}>
-                    Uploaded only through the explicit finalization action.  No database records were changed, and no OneDrive/SharePoint folders were created.
+                    Uploaded only through the explicit finalization action.  Duplicate prevention skips exact filename matches by default.  No database records were changed, and no OneDrive/SharePoint folders were created.
                   </div>
                 </div>
               )}

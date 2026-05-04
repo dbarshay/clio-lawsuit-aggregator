@@ -12,6 +12,25 @@ type ClioUploadResult = {
   fullyUploaded: boolean;
 };
 
+export type ClioMatterDocument = {
+  id: number;
+  name: string;
+  filename: string;
+  createdAt: string;
+  updatedAt: string;
+  latestDocumentVersion: {
+    id: number | null;
+    uuid: string;
+    filename: string;
+    size: number | null;
+    contentType: string;
+    fullyUploaded: boolean;
+    receivedAt: string;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+};
+
 function clean(value: unknown): string {
   return String(value ?? "").trim();
 }
@@ -174,4 +193,74 @@ export async function uploadBufferToClioMatterDocuments(params: {
     documentVersionUuid: uuid,
     fullyUploaded,
   };
+}
+
+export async function listClioMatterDocuments(matterIdInput: number): Promise<ClioMatterDocument[]> {
+  const matterId = Number(matterIdInput);
+
+  if (!Number.isFinite(matterId) || matterId <= 0) {
+    throw new Error("Missing valid Clio matter ID for document lookup.");
+  }
+
+  const fields = [
+    "id",
+    "name",
+    "filename",
+    "created_at",
+    "updated_at",
+    "latest_document_version{id,uuid,filename,size,content_type,fully_uploaded,received_at,created_at,updated_at}",
+  ].join(",");
+
+  const res = await clioFetch(
+    `/api/v4/documents.json?matter_id=${encodeURIComponent(String(matterId))}&limit=200&fields=${encodeURIComponent(fields)}`
+  );
+
+  const json = await readClioJson(
+    res,
+    `Clio document lookup failed for matter ${matterId}`
+  );
+
+  const rows = Array.isArray(json?.data) ? json.data : [];
+
+  return rows.map((row: any) => {
+    const version = row?.latest_document_version || null;
+
+    return {
+      id: Number(row?.id),
+      name: clean(row?.name),
+      filename: clean(row?.filename),
+      createdAt: clean(row?.created_at),
+      updatedAt: clean(row?.updated_at),
+      latestDocumentVersion: version
+        ? {
+            id: version?.id == null ? null : Number(version.id),
+            uuid: clean(version?.uuid),
+            filename: clean(version?.filename),
+            size: version?.size == null ? null : Number(version.size),
+            contentType: clean(version?.content_type),
+            fullyUploaded: Boolean(version?.fully_uploaded),
+            receivedAt: clean(version?.received_at),
+            createdAt: clean(version?.created_at),
+            updatedAt: clean(version?.updated_at),
+          }
+        : null,
+    };
+  });
+}
+
+export function findExistingClioDocumentsByFilename(
+  existingDocuments: ClioMatterDocument[],
+  filename: string
+): ClioMatterDocument[] {
+  const wanted = clean(filename).toLowerCase();
+
+  if (!wanted) return [];
+
+  return existingDocuments.filter((document) => {
+    const name = clean(document?.name).toLowerCase();
+    const file = clean(document?.filename).toLowerCase();
+    const versionFile = clean(document?.latestDocumentVersion?.filename).toLowerCase();
+
+    return name === wanted || file === wanted || versionFile === wanted;
+  });
 }

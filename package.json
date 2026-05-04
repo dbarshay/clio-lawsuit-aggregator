@@ -16,7 +16,8 @@
     "verify:provider-fee-defaults-safety": "node scripts/verify-provider-fee-defaults-safety.mjs",
     "verify:current-settlement-values-safety": "node scripts/verify-current-settlement-values-safety.mjs",
     "verify:settlement-close-preview-safety": "node scripts/verify-settlement-close-preview-safety.mjs",
-    "verify:close-paid-settlements-safety": "node scripts/verify-close-paid-settlements-safety.mjs"
+    "verify:close-paid-settlements-safety": "node scripts/verify-close-paid-settlements-safety.mjs",
+    "verify:settlement-documents-preview-safety": "node scripts/verify-settlement-documents-preview-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

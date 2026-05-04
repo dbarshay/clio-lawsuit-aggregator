@@ -47,5 +47,9 @@ echo "=== RUN CLOSE PAID SETTLEMENTS SAFETY VERIFIER ==="
 npm run verify:close-paid-settlements-safety
 
 echo
+echo "=== RUN SETTLEMENT DOCUMENTS PREVIEW SAFETY VERIFIER ==="
+npm run verify:settlement-documents-preview-safety
+
+echo
 echo "=== RUN PRODUCTION WORKFLOW SMOKE TEST ==="
 npm run smoke:workflow:prod

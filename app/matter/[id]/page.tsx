@@ -1819,7 +1819,7 @@ const activeGroupKey =
         <>
           <hr style={{ margin: "18px 0 20px 0", border: 0, borderTop: "1px solid #999"  }} />
 
-          {alreadyAggregated && (
+          {activeWorkspaceTab !== "overview" && alreadyAggregated && (
         <section
           style={{
             border: "1px solid #bfbfbf",

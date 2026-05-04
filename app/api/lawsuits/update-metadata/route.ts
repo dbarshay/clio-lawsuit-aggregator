@@ -115,30 +115,30 @@ async function findMasterMatterForLawsuit(params: {
   );
 }
 
-async function writeIndexAaaNumberToClioMaster(params: {
-  masterMatter: ClioMatter;
+async function writeIndexAaaNumberToClioMatter(params: {
+  matter: ClioMatter;
   indexAaaNumber: string;
 }) {
-  const field = cfv(params.masterMatter, MATTER_CF.INDEX_AAA_NUMBER);
+  const field = cfv(params.matter, MATTER_CF.INDEX_AAA_NUMBER);
 
   if (!field?.id) {
     throw new Error(
-      `Master matter ${params.masterMatter.display_number || params.masterMatter.id} is missing INDEX / AAA NUMBER custom field value.`
+      `Matter ${params.matter.display_number || params.matter.id} is missing INDEX / AAA NUMBER custom field value.`
     );
   }
 
-  if (!params.masterMatter.etag) {
+  if (!params.matter.etag) {
     throw new Error(
-      `Master matter ${params.masterMatter.display_number || params.masterMatter.id} is missing an ETag and cannot be safely updated.`
+      `Matter ${params.matter.display_number || params.matter.id} is missing an ETag and cannot be safely updated.`
     );
   }
 
-  const res = await clioFetch(`/api/v4/matters/${params.masterMatter.id}.json`, {
+  const res = await clioFetch(`/api/v4/matters/${params.matter.id}.json`, {
     method: "PATCH",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      "If-Match": params.masterMatter.etag,
+      "If-Match": params.matter.etag,
     },
     body: JSON.stringify({
       data: {
@@ -157,17 +157,59 @@ async function writeIndexAaaNumberToClioMaster(params: {
 
   if (!res.ok) {
     throw new Error(
-      `Failed to write Index / AAA Number to Clio master matter ${params.masterMatter.display_number || params.masterMatter.id}: status ${res.status}; body ${body}`
+      `Failed to write Index / AAA Number to Clio matter ${params.matter.display_number || params.matter.id}: status ${res.status}; body ${body}`
     );
   }
 
-  const updatedMatter = await readMatterLive(Number(params.masterMatter.id));
+  const updatedMatter = await readMatterLive(Number(params.matter.id));
   await upsertClaimIndexFromMatter(updatedMatter);
 
   return {
     matterId: Number(updatedMatter.id),
     displayNumber: updatedMatter.display_number || "",
+    isMaster: isMasterMatter(updatedMatter),
     indexAaaNumber: text(cfv(updatedMatter, MATTER_CF.INDEX_AAA_NUMBER)?.value),
+  };
+}
+
+async function writeIndexAaaNumberToClioLawsuit(params: {
+  masterLawsuitId: string;
+  lawsuitMatters: string;
+  indexAaaNumber: string;
+}) {
+  const matterIds = parseMatterIds(params.lawsuitMatters);
+
+  if (matterIds.length === 0) {
+    throw new Error(
+      `No lawsuit matters found for MASTER_LAWSUIT_ID ${params.masterLawsuitId}.`
+    );
+  }
+
+  const results = [];
+
+  for (const matterId of matterIds) {
+    const matter = await readMatterLive(matterId);
+    const result = await writeIndexAaaNumberToClioMatter({
+      matter,
+      indexAaaNumber: params.indexAaaNumber,
+    });
+
+    results.push(result);
+  }
+
+  const masterWrite = results.find((result) => result.isMaster) || null;
+
+  if (!masterWrite) {
+    throw new Error(
+      `Index / AAA Number was written to ${results.length} matter(s), but no Clio master matter was identified for MASTER_LAWSUIT_ID ${params.masterLawsuitId}.`
+    );
+  }
+
+  return {
+    masterWrite,
+    matterWrites: results,
+    writtenCount: results.length,
+    indexAaaNumber: params.indexAaaNumber,
   };
 }
 
@@ -214,8 +256,9 @@ export async function POST(req: NextRequest) {
       lawsuitMatters: existing.lawsuitMatters,
     });
 
-    const clioIndexWrite = await writeIndexAaaNumberToClioMaster({
-      masterMatter,
+    const clioIndexWrite = await writeIndexAaaNumberToClioLawsuit({
+      masterLawsuitId,
+      lawsuitMatters: existing.lawsuitMatters,
       indexAaaNumber,
     });
 
@@ -234,7 +277,9 @@ export async function POST(req: NextRequest) {
       updatedPostFiling: true,
       updatedPostFilingAt: new Date().toISOString(),
       indexAaaNumberWrittenToClio: true,
-      indexAaaNumberClioMasterMatterId: clioIndexWrite.matterId,
+      indexAaaNumberClioMasterMatterId: clioIndexWrite.masterWrite?.matterId || null,
+      indexAaaNumberClioMatterIds: clioIndexWrite.matterWrites.map((item) => item.matterId),
+      indexAaaNumberClioWriteCount: clioIndexWrite.writtenCount,
     };
 
     const lawsuit = await prisma.lawsuit.update({

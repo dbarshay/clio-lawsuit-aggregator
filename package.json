@@ -10,7 +10,8 @@
     "smoke:workflow": "bash scripts/smoke-workflow.sh",
     "smoke:workflow:prod": "bash scripts/smoke-workflow.sh https://clio-lawsuit-aggregator.vercel.app",
     "verify:prod": "bash scripts/verify-prod.sh",
-    "verify:settlement-writeback-safety": "node scripts/verify-settlement-writeback-safety.mjs"
+    "verify:settlement-writeback-safety": "node scripts/verify-settlement-writeback-safety.mjs",
+    "test:settlement-blocked-audit:local": "bash scripts/test-settlement-blocked-audit-local.sh"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

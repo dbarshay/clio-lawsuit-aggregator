@@ -199,6 +199,22 @@ type LawsuitOptions = {
   notes: string;
 };
 
+type LawsuitMetadataEdit = {
+  venueSelection: string;
+  venueOther: string;
+  indexAaaNumber: string;
+  lawsuitNotes: string;
+};
+
+function defaultLawsuitMetadataEdit(): LawsuitMetadataEdit {
+  return {
+    venueSelection: "",
+    venueOther: "",
+    indexAaaNumber: "",
+    lawsuitNotes: "",
+  };
+}
+
 function defaultLawsuitOptions(): LawsuitOptions {
   return {
     venue: "",
@@ -259,6 +275,11 @@ const activeGroupKey =
   const [packetPreview, setPacketPreview] = useState<any>(null);
   const [packetPreviewOpen, setPacketPreviewOpen] = useState(false);
   const [packetLoading, setPacketLoading] = useState(false);
+  const [showMetadataModal, setShowMetadataModal] = useState(false);
+  const [metadataSaving, setMetadataSaving] = useState(false);
+  const [metadataEdit, setMetadataEdit] = useState<LawsuitMetadataEdit>(() =>
+    defaultLawsuitMetadataEdit()
+  );
 
 
   useEffect(() => {
@@ -602,6 +623,23 @@ const activeGroupKey =
     }
   }
 
+  async function fetchPacketPreview(masterLawsuitId: string) {
+    const res = await fetch(
+      `/api/documents/packet?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`
+    );
+
+    const json = await res.json();
+
+    if (!json?.packet) {
+      throw new Error(json?.error || "Document packet preview failed.");
+    }
+
+    setPacketPreview(json);
+    setPacketPreviewOpen(true);
+
+    return json;
+  }
+
   async function loadPacketPreview() {
     const masterLawsuitId = textValue(matter?.masterLawsuitId);
 
@@ -613,23 +651,99 @@ const activeGroupKey =
     setPacketLoading(true);
 
     try {
-      const res = await fetch(
-        `/api/documents/packet?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`
-      );
-
-      const json = await res.json();
-
-      if (!json?.packet) {
-        alert(json?.error || "Document packet preview failed.");
-        return;
-      }
-
-      setPacketPreview(json);
-      setPacketPreviewOpen(true);
+      await fetchPacketPreview(masterLawsuitId);
     } catch (err: any) {
       alert(err?.message || "Document packet preview failed.");
     } finally {
       setPacketLoading(false);
+    }
+  }
+
+  async function openMetadataModal() {
+    const masterLawsuitId = textValue(matter?.masterLawsuitId);
+
+    if (!masterLawsuitId) {
+      alert("This matter is not part of a lawsuit.");
+      return;
+    }
+
+    setPacketLoading(true);
+
+    try {
+      const json = packetPreview?.packet
+        ? packetPreview
+        : await fetchPacketPreview(masterLawsuitId);
+
+      const lawsuit = json?.packet?.lawsuit || null;
+      const metadata = json?.packet?.metadata || {};
+
+      setMetadataEdit({
+        venueSelection:
+          textValue(lawsuit?.venueSelection) ||
+          textValue(metadata?.venue?.selection) ||
+          textValue(lawsuit?.venue) ||
+          "",
+        venueOther: textValue(lawsuit?.venueOther),
+        indexAaaNumber:
+          textValue(lawsuit?.indexAaaNumber) ||
+          textValue(metadata?.indexAaaNumber?.value) ||
+          "",
+        lawsuitNotes:
+          textValue(lawsuit?.lawsuitNotes) ||
+          textValue(metadata?.lawsuitNotes) ||
+          "",
+      });
+
+      setShowMetadataModal(true);
+    } catch (err: any) {
+      alert(err?.message || "Could not load lawsuit metadata.");
+    } finally {
+      setPacketLoading(false);
+    }
+  }
+
+  async function saveMetadataEdit() {
+    const masterLawsuitId = textValue(matter?.masterLawsuitId);
+
+    if (!masterLawsuitId) {
+      alert("This matter is not part of a lawsuit.");
+      return;
+    }
+
+    setMetadataSaving(true);
+
+    try {
+      const venue =
+        metadataEdit.venueSelection === "Other"
+          ? metadataEdit.venueOther.trim()
+          : metadataEdit.venueSelection.trim();
+
+      const res = await fetch("/api/lawsuits/update-metadata", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          masterLawsuitId,
+          venue,
+          venueSelection: metadataEdit.venueSelection,
+          venueOther: metadataEdit.venueOther,
+          indexAaaNumber: metadataEdit.indexAaaNumber,
+          lawsuitNotes: metadataEdit.lawsuitNotes,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!json.ok) {
+        alert(json.error || "Failed to update lawsuit metadata.");
+        return;
+      }
+
+      await fetchPacketPreview(masterLawsuitId);
+      setShowMetadataModal(false);
+    } catch (err: any) {
+      alert(err?.message || "Failed to update lawsuit metadata.");
+    } finally {
+      setMetadataSaving(false);
     }
   }
 
@@ -951,26 +1065,45 @@ const activeGroupKey =
               </div>
             </div>
 
-            <button
-              onClick={loadPacketPreview}
-              disabled={packetLoading}
-              style={{
-                padding: "8px 12px",
-                border: "1px solid #2563eb",
-                background: packetLoading ? "#f3f4f6" : "#2563eb",
-                color: packetLoading ? "#666" : "#fff",
-                borderRadius: 4,
-                cursor: packetLoading ? "not-allowed" : "pointer",
-                fontWeight: 700,
-                whiteSpace: "nowrap",
-              }}
-            >
-              {packetLoading
-                ? "Loading..."
-                : packetPreviewOpen
-                ? "Refresh Packet Preview"
-                : "Load Packet Preview"}
-            </button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button
+                onClick={openMetadataModal}
+                disabled={packetLoading}
+                style={{
+                  padding: "8px 12px",
+                  border: "1px solid #4b5563",
+                  background: packetLoading ? "#f3f4f6" : "#4b5563",
+                  color: packetLoading ? "#666" : "#fff",
+                  borderRadius: 4,
+                  cursor: packetLoading ? "not-allowed" : "pointer",
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Edit Lawsuit Metadata
+              </button>
+
+              <button
+                onClick={loadPacketPreview}
+                disabled={packetLoading}
+                style={{
+                  padding: "8px 12px",
+                  border: "1px solid #2563eb",
+                  background: packetLoading ? "#f3f4f6" : "#2563eb",
+                  color: packetLoading ? "#666" : "#fff",
+                  borderRadius: 4,
+                  cursor: packetLoading ? "not-allowed" : "pointer",
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {packetLoading
+                  ? "Loading..."
+                  : packetPreviewOpen
+                  ? "Refresh Packet Preview"
+                  : "Load Packet Preview"}
+              </button>
+            </div>
           </div>
 
           {packetPreviewOpen && packetPreview?.packet && (
@@ -1317,6 +1450,161 @@ const activeGroupKey =
         </tbody>
       </table>
     </main>
+
+    {showMetadataModal && (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.45)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+        }}
+      >
+        <div
+          style={{
+            width: 520,
+            maxWidth: "calc(100vw - 32px)",
+            background: "#fff",
+            borderRadius: 8,
+            padding: 22,
+            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+          }}
+        >
+          <h2 style={{ marginTop: 0 }}>Edit Lawsuit Metadata</h2>
+
+          <p style={{ marginBottom: 16, color: "#444" }}>
+            Updates are stored locally for document packet generation.  This does not write to Clio.
+          </p>
+
+          <label style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>
+            Venue
+          </label>
+          <select
+            value={metadataEdit.venueSelection}
+            onChange={(e) =>
+              setMetadataEdit((prev) => ({
+                ...prev,
+                venueSelection: e.target.value,
+                venueOther: e.target.value === "Other" ? prev.venueOther : "",
+              }))
+            }
+            style={{
+              width: "100%",
+              padding: 10,
+              marginBottom: 10,
+              border: "1px solid #bbb",
+              borderRadius: 4,
+            }}
+          >
+            <option value="">Select Venue</option>
+            {VENUE_OPTIONS.map((venue) => (
+              <option key={venue} value={venue}>
+                {venue}
+              </option>
+            ))}
+          </select>
+
+          {metadataEdit.venueSelection === "Other" && (
+            <input
+              value={metadataEdit.venueOther}
+              onChange={(e) =>
+                setMetadataEdit((prev) => ({
+                  ...prev,
+                  venueOther: e.target.value,
+                }))
+              }
+              placeholder="Enter venue"
+              style={{
+                width: "100%",
+                padding: 10,
+                marginBottom: 14,
+                border: "1px solid #bbb",
+                borderRadius: 4,
+              }}
+            />
+          )}
+
+          <label style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>
+            Index / AAA Number
+          </label>
+          <input
+            value={metadataEdit.indexAaaNumber}
+            onChange={(e) =>
+              setMetadataEdit((prev) => ({
+                ...prev,
+                indexAaaNumber: e.target.value,
+              }))
+            }
+            placeholder="Enter after filing"
+            style={{
+              width: "100%",
+              padding: 10,
+              marginBottom: 14,
+              border: "1px solid #bbb",
+              borderRadius: 4,
+            }}
+          />
+
+          <label style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>
+            Notes
+          </label>
+          <textarea
+            value={metadataEdit.lawsuitNotes}
+            onChange={(e) =>
+              setMetadataEdit((prev) => ({
+                ...prev,
+                lawsuitNotes: e.target.value,
+              }))
+            }
+            placeholder="Optional"
+            rows={3}
+            style={{
+              width: "100%",
+              padding: 10,
+              marginBottom: 18,
+              border: "1px solid #bbb",
+              borderRadius: 4,
+              resize: "vertical",
+            }}
+          />
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <button
+              onClick={() => setShowMetadataModal(false)}
+              disabled={metadataSaving}
+              style={{
+                padding: "8px 12px",
+                border: "1px solid #aaa",
+                background: "#fff",
+                borderRadius: 4,
+                cursor: metadataSaving ? "not-allowed" : "pointer",
+              }}
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={saveMetadataEdit}
+              disabled={metadataSaving}
+              style={{
+                padding: "8px 12px",
+                border: "1px solid #2563eb",
+                background: metadataSaving ? "#f3f4f6" : "#2563eb",
+                color: metadataSaving ? "#666" : "#fff",
+                borderRadius: 4,
+                cursor: metadataSaving ? "not-allowed" : "pointer",
+                fontWeight: 700,
+              }}
+            >
+              {metadataSaving ? "Saving..." : "Save Metadata"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {showLawsuitOptionsModal && (
       <div

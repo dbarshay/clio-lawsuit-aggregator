@@ -369,6 +369,9 @@ const activeGroupKey =
   const [settlementWritebackPreviewResult, setSettlementWritebackPreviewResult] = useState<any>(null);
   const [settlementWritebackLoading, setSettlementWritebackLoading] = useState(false);
   const [settlementWritebackResult, setSettlementWritebackResult] = useState<any>(null);
+  const [settlementHistoryLoading, setSettlementHistoryLoading] = useState(false);
+  const [settlementHistoryResult, setSettlementHistoryResult] = useState<any>(null);
+  const [expandedSettlementHistoryId, setExpandedSettlementHistoryId] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -1662,6 +1665,7 @@ const activeGroupKey =
       }
 
       alert(`Settlement saved to Clio for ${num(json.count)} child/bill matter(s).`);
+      await loadSettlementHistory(masterLawsuitId);
       await expandClaim();
     } catch (err: any) {
       setSettlementWritebackResult({
@@ -1678,6 +1682,46 @@ const activeGroupKey =
       alert(err?.message || "Settlement save failed.");
     } finally {
       setSettlementWritebackLoading(false);
+    }
+  }
+
+  async function loadSettlementHistory(masterLawsuitIdInput?: string) {
+    const masterLawsuitId = masterLawsuitIdInput || tabMasterLawsuitId;
+
+    if (!masterLawsuitId) {
+      alert("No MASTER_LAWSUIT_ID found.  Generate or connect a lawsuit before loading settlement history.");
+      return;
+    }
+
+    setSettlementHistoryLoading(true);
+
+    try {
+      const res = await fetch(
+        `/api/settlements/history?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`
+      );
+      const json = await res.json();
+      setSettlementHistoryResult(json);
+
+      if (!res.ok || !json?.ok) {
+        alert(json?.error || "Could not load settlement history.");
+      }
+    } catch (err: any) {
+      setSettlementHistoryResult({
+        ok: false,
+        action: "settlement-history",
+        error: err?.message || "Could not load settlement history.",
+        safety: {
+          readOnly: true,
+          localAuditHistoryOnly: true,
+          noClioRecordsChanged: true,
+          noDatabaseRecordsChanged: true,
+          noDocumentsGenerated: true,
+          noPrintQueueRecordsChanged: true,
+        },
+      });
+      alert(err?.message || "Could not load settlement history.");
+    } finally {
+      setSettlementHistoryLoading(false);
     }
   }
 
@@ -3244,6 +3288,238 @@ const activeGroupKey =
 
           <div
             style={{
+              padding: 12,
+              border: "1px solid #cbd5e1",
+              borderRadius: 10,
+              background: "#f8fafc",
+              marginBottom: 14,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 800, marginBottom: 4 }}>
+                  Settlement Writeback History
+                </div>
+                <div style={{ color: "#475569", fontSize: 12 }}>
+                  Local audit/history only.  This does not read or change Clio settlement fields.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => loadSettlementHistory()}
+                disabled={settlementHistoryLoading || !tabMasterLawsuitId}
+                style={{
+                  padding: "7px 10px",
+                  border: "1px solid #2563eb",
+                  background: settlementHistoryLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#2563eb",
+                  color: settlementHistoryLoading || !tabMasterLawsuitId ? "#666" : "#fff",
+                  borderRadius: 4,
+                  cursor: settlementHistoryLoading || !tabMasterLawsuitId ? "not-allowed" : "pointer",
+                  fontWeight: 700,
+                }}
+              >
+                {settlementHistoryLoading ? "Loading..." : "Refresh Settlement History"}
+              </button>
+            </div>
+
+            {settlementHistoryResult?.error && (
+              <div style={{ marginTop: 10, color: "#991b1b", fontSize: 13 }}>
+                <strong>Error:</strong> {textValue(settlementHistoryResult.error)}
+              </div>
+            )}
+
+            {settlementHistoryLoading && !settlementHistoryResult && (
+              <div style={{ marginTop: 10, color: "#475569", fontSize: 13 }}>
+                Loading settlement history...
+              </div>
+            )}
+
+            {settlementHistoryResult?.ok &&
+              Array.isArray(settlementHistoryResult.rows) &&
+              settlementHistoryResult.rows.length === 0 && (
+                <div style={{ marginTop: 10, color: "#475569", fontSize: 13 }}>
+                  No settlement writeback history recorded yet.
+                </div>
+              )}
+
+            {settlementHistoryResult?.ok &&
+              Array.isArray(settlementHistoryResult.rows) &&
+              settlementHistoryResult.rows.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  {settlementHistoryResult.rows.map((row: any) => {
+                    const rowKey = textValue(row.id);
+                    const isExpanded = expandedSettlementHistoryId === rowKey;
+                    const childMatterIds = Array.isArray(row.childMatterIds) ? row.childMatterIds : [];
+
+                    return (
+                      <div
+                        key={rowKey}
+                        style={{
+                          marginBottom: 10,
+                          padding: 10,
+                          background: "#fff",
+                          border: "1px solid #e5e7eb",
+                          borderRadius: 8,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: 10,
+                            alignItems: "flex-start",
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: 800 }}>
+                              {row.finalizedAt
+                                ? new Date(row.finalizedAt).toLocaleString()
+                                : "Unknown date"}
+                            </div>
+                            <div style={{ color: "#475569", fontSize: 13, marginTop: 2 }}>
+                              Audit ID {rowKey} · Status {textValue(row.status) || "unknown"} ·
+                              {row.noWritePerformed ? " No Clio write" : " Clio write attempted"} ·
+                              Child matters: {childMatterIds.length}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedSettlementHistoryId(isExpanded ? null : rowKey)
+                            }
+                            style={{
+                              fontSize: 12,
+                              padding: "4px 9px",
+                              border: "1px solid #94a3b8",
+                              borderRadius: 4,
+                              background: isExpanded ? "#e2e8f0" : "#fff",
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {isExpanded ? "Hide Details" : "Details"}
+                          </button>
+                        </div>
+
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                            gap: 8,
+                            marginTop: 8,
+                            fontSize: 12,
+                          }}
+                        >
+                          <div>
+                            <strong>Gross:</strong>
+                            <br />
+                            {row.grossSettlement == null ? "—" : money(row.grossSettlement)}
+                          </div>
+                          <div>
+                            <strong>Settled With:</strong>
+                            <br />
+                            {textValue(row.settledWith) || "—"}
+                          </div>
+                          <div>
+                            <strong>No Write:</strong>
+                            <br />
+                            {row.noWritePerformed ? "Yes" : "No"}
+                          </div>
+                          <div>
+                            <strong>Error:</strong>
+                            <br />
+                            {textValue(row.error) || "—"}
+                          </div>
+                        </div>
+
+                        {isExpanded && (
+                          <div
+                            style={{
+                              marginTop: 10,
+                              padding: 10,
+                              background: "#f8fafc",
+                              border: "1px solid #cbd5e1",
+                              borderRadius: 4,
+                              fontSize: 12,
+                            }}
+                          >
+                            <details style={{ marginBottom: 6 }}>
+                              <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                                Raw preview snapshot JSON
+                              </summary>
+                              <pre
+                                style={{
+                                  whiteSpace: "pre-wrap",
+                                  overflowX: "auto",
+                                  margin: "6px 0 0 0",
+                                  padding: 8,
+                                  background: "#fff",
+                                  border: "1px solid #e5e7eb",
+                                  borderRadius: 4,
+                                }}
+                              >
+                                {JSON.stringify(row.previewSnapshot, null, 2)}
+                              </pre>
+                            </details>
+
+                            <details style={{ marginBottom: 6 }}>
+                              <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                                Raw readiness snapshot JSON
+                              </summary>
+                              <pre
+                                style={{
+                                  whiteSpace: "pre-wrap",
+                                  overflowX: "auto",
+                                  margin: "6px 0 0 0",
+                                  padding: 8,
+                                  background: "#fff",
+                                  border: "1px solid #e5e7eb",
+                                  borderRadius: 4,
+                                }}
+                              >
+                                {JSON.stringify(row.readinessSnapshot, null, 2)}
+                              </pre>
+                            </details>
+
+                            <details>
+                              <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                                Raw write results JSON
+                              </summary>
+                              <pre
+                                style={{
+                                  whiteSpace: "pre-wrap",
+                                  overflowX: "auto",
+                                  margin: "6px 0 0 0",
+                                  padding: 8,
+                                  background: "#fff",
+                                  border: "1px solid #e5e7eb",
+                                  borderRadius: 4,
+                                }}
+                              >
+                                {JSON.stringify(row.writeResults, null, 2)}
+                              </pre>
+                            </details>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+          </div>
+
+          <div
+            style={{
               padding: 10,
               background: "#f8fafc",
               border: "1px solid #cbd5e1",
@@ -3252,7 +3528,7 @@ const activeGroupKey =
               fontSize: 13,
             }}
           >
-            Next implementation step: convert this preview into an explicit final save/writeback workflow.  The save action should reuse the same calculation engine, write only after final user confirmation, target child/bill matters only, and refresh ClaimIndex after Clio writeback.
+            Settlement writebacks now create local audit/history records.  Final save still requires preview, readiness validation, and explicit confirmation, and writes only child/bill matters.
           </div>
         </section>
       )}

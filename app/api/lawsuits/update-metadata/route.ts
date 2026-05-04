@@ -44,6 +44,14 @@ function parseMatterIds(value: unknown): number[] {
   );
 }
 
+function displayNumberList(matters: ClioMatter[]): string {
+  return Array.from(
+    new Set(matters.map((m) => text(m.display_number)).filter(Boolean))
+  )
+    .sort((a, b) => a.localeCompare(b))
+    .join(", ");
+}
+
 function cfv(matter: ClioMatter, fieldId: number): CFV | undefined {
   return matter.custom_field_values?.find(
     (item) => Number(item?.custom_field?.id) === Number(fieldId)
@@ -81,47 +89,15 @@ async function readMatterLive(matterId: number): Promise<ClioMatter> {
   return matter;
 }
 
-async function findMasterMatterForLawsuit(params: {
-  masterLawsuitId: string;
-  lawsuitMatters: string;
-}) {
-  const matterIds = parseMatterIds(params.lawsuitMatters);
-
-  for (const matterId of matterIds) {
-    const matter = await readMatterLive(matterId);
-    if (isMasterMatter(matter)) return matter;
-  }
-
-  const indexedMaster = await prisma.claimIndex.findFirst({
-    where: {
-      master_lawsuit_id: params.masterLawsuitId,
-      description: {
-        startsWith: "MASTER LAWSUIT",
-        mode: "insensitive",
-      },
-    },
-    select: {
-      matter_id: true,
-    },
-  });
-
-  if (indexedMaster?.matter_id) {
-    const matter = await readMatterLive(Number(indexedMaster.matter_id));
-    if (isMasterMatter(matter)) return matter;
-  }
-
-  throw new Error(
-    `Could not find Clio master matter for MASTER_LAWSUIT_ID ${params.masterLawsuitId}.`
-  );
-}
-
-async function writeIndexAaaNumberToClioMatter(params: {
+async function writePostFilingFieldsToClioMatter(params: {
   matter: ClioMatter;
   indexAaaNumber: string;
+  lawsuitMatterDisplayNumbers: string;
 }) {
-  const field = cfv(params.matter, MATTER_CF.INDEX_AAA_NUMBER);
+  const indexField = cfv(params.matter, MATTER_CF.INDEX_AAA_NUMBER);
+  const brlNumbersField = cfv(params.matter, MATTER_CF.LAWSUIT_MATTER_BRL_NUMBERS);
 
-  if (!field?.id) {
+  if (!indexField?.id) {
     throw new Error(
       `Matter ${params.matter.display_number || params.matter.id} is missing INDEX / AAA NUMBER custom field value.`
     );
@@ -133,6 +109,31 @@ async function writeIndexAaaNumberToClioMatter(params: {
     );
   }
 
+  const customFieldValues: Array<{
+    id: number | string;
+    custom_field: { id: number };
+    value: string;
+  }> = [
+    {
+      id: indexField.id,
+      custom_field: { id: MATTER_CF.INDEX_AAA_NUMBER },
+      value: params.indexAaaNumber,
+    },
+  ];
+
+  const brlNumbersWrite =
+    brlNumbersField?.id && params.lawsuitMatterDisplayNumbers
+      ? {
+          id: brlNumbersField.id,
+          custom_field: { id: MATTER_CF.LAWSUIT_MATTER_BRL_NUMBERS },
+          value: params.lawsuitMatterDisplayNumbers,
+        }
+      : null;
+
+  if (brlNumbersWrite) {
+    customFieldValues.push(brlNumbersWrite);
+  }
+
   const res = await clioFetch(`/api/v4/matters/${params.matter.id}.json`, {
     method: "PATCH",
     headers: {
@@ -142,13 +143,7 @@ async function writeIndexAaaNumberToClioMatter(params: {
     },
     body: JSON.stringify({
       data: {
-        custom_field_values: [
-          {
-            id: field.id,
-            custom_field: { id: MATTER_CF.INDEX_AAA_NUMBER },
-            value: params.indexAaaNumber,
-          },
-        ],
+        custom_field_values: customFieldValues,
       },
     }),
   });
@@ -157,7 +152,7 @@ async function writeIndexAaaNumberToClioMatter(params: {
 
   if (!res.ok) {
     throw new Error(
-      `Failed to write Index / AAA Number to Clio matter ${params.matter.display_number || params.matter.id}: status ${res.status}; body ${body}`
+      `Failed to write post-filing fields to Clio matter ${params.matter.display_number || params.matter.id}: status ${res.status}; body ${body}`
     );
   }
 
@@ -169,10 +164,15 @@ async function writeIndexAaaNumberToClioMatter(params: {
     displayNumber: updatedMatter.display_number || "",
     isMaster: isMasterMatter(updatedMatter),
     indexAaaNumber: text(cfv(updatedMatter, MATTER_CF.INDEX_AAA_NUMBER)?.value),
+    lawsuitMatterDisplayNumbers: text(
+      cfv(updatedMatter, MATTER_CF.LAWSUIT_MATTER_BRL_NUMBERS)?.value
+    ),
+    wroteLawsuitMatterDisplayNumbers: Boolean(brlNumbersWrite),
+    missingLawsuitMatterDisplayNumbersField: !brlNumbersField?.id,
   };
 }
 
-async function writeIndexAaaNumberToClioLawsuit(params: {
+async function writePostFilingFieldsToClioLawsuit(params: {
   masterLawsuitId: string;
   lawsuitMatters: string;
   indexAaaNumber: string;
@@ -185,13 +185,20 @@ async function writeIndexAaaNumberToClioLawsuit(params: {
     );
   }
 
-  const results = [];
+  const liveMatters = [];
 
   for (const matterId of matterIds) {
-    const matter = await readMatterLive(matterId);
-    const result = await writeIndexAaaNumberToClioMatter({
+    liveMatters.push(await readMatterLive(matterId));
+  }
+
+  const lawsuitMatterDisplayNumbers = displayNumberList(liveMatters);
+  const results = [];
+
+  for (const matter of liveMatters) {
+    const result = await writePostFilingFieldsToClioMatter({
       matter,
       indexAaaNumber: params.indexAaaNumber,
+      lawsuitMatterDisplayNumbers,
     });
 
     results.push(result);
@@ -201,7 +208,7 @@ async function writeIndexAaaNumberToClioLawsuit(params: {
 
   if (!masterWrite) {
     throw new Error(
-      `Index / AAA Number was written to ${results.length} matter(s), but no Clio master matter was identified for MASTER_LAWSUIT_ID ${params.masterLawsuitId}.`
+      `Post-filing fields were written to ${results.length} matter(s), but no Clio master matter was identified for MASTER_LAWSUIT_ID ${params.masterLawsuitId}.`
     );
   }
 
@@ -210,6 +217,13 @@ async function writeIndexAaaNumberToClioLawsuit(params: {
     matterWrites: results,
     writtenCount: results.length,
     indexAaaNumber: params.indexAaaNumber,
+    lawsuitMatterDisplayNumbers,
+    wroteLawsuitMatterDisplayNumbersCount: results.filter(
+      (result) => result.wroteLawsuitMatterDisplayNumbers
+    ).length,
+    missingLawsuitMatterDisplayNumbersFieldMatterIds: results
+      .filter((result) => result.missingLawsuitMatterDisplayNumbersField)
+      .map((result) => result.matterId),
   };
 }
 
@@ -251,12 +265,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const masterMatter = await findMasterMatterForLawsuit({
-      masterLawsuitId,
-      lawsuitMatters: existing.lawsuitMatters,
-    });
-
-    const clioIndexWrite = await writeIndexAaaNumberToClioLawsuit({
+    const clioPostFilingWrite = await writePostFilingFieldsToClioLawsuit({
       masterLawsuitId,
       lawsuitMatters: existing.lawsuitMatters,
       indexAaaNumber,
@@ -272,14 +281,23 @@ export async function POST(req: NextRequest) {
       venue,
       venueSelection,
       venueOther,
-      indexAaaNumber: clioIndexWrite.indexAaaNumber,
+      indexAaaNumber: clioPostFilingWrite.indexAaaNumber,
       notes: lawsuitNotes,
+      lawsuitMatterDisplayNumbers: clioPostFilingWrite.lawsuitMatterDisplayNumbers,
       updatedPostFiling: true,
       updatedPostFilingAt: new Date().toISOString(),
       indexAaaNumberWrittenToClio: true,
-      indexAaaNumberClioMasterMatterId: clioIndexWrite.masterWrite?.matterId || null,
-      indexAaaNumberClioMatterIds: clioIndexWrite.matterWrites.map((item) => item.matterId),
-      indexAaaNumberClioWriteCount: clioIndexWrite.writtenCount,
+      indexAaaNumberClioMasterMatterId:
+        clioPostFilingWrite.masterWrite?.matterId || null,
+      indexAaaNumberClioMatterIds: clioPostFilingWrite.matterWrites.map(
+        (item) => item.matterId
+      ),
+      indexAaaNumberClioWriteCount: clioPostFilingWrite.writtenCount,
+      lawsuitMatterDisplayNumbersWrittenToClio: true,
+      lawsuitMatterDisplayNumbersWriteCount:
+        clioPostFilingWrite.wroteLawsuitMatterDisplayNumbersCount,
+      lawsuitMatterDisplayNumbersMissingFieldMatterIds:
+        clioPostFilingWrite.missingLawsuitMatterDisplayNumbersFieldMatterIds,
     };
 
     const lawsuit = await prisma.lawsuit.update({
@@ -288,7 +306,7 @@ export async function POST(req: NextRequest) {
         venue: venue || null,
         venueSelection: venueSelection || null,
         venueOther: venueOther || null,
-        indexAaaNumber: clioIndexWrite.indexAaaNumber || null,
+        indexAaaNumber: clioPostFilingWrite.indexAaaNumber || null,
         lawsuitNotes: lawsuitNotes || null,
         lawsuitOptions,
       },
@@ -297,7 +315,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       lawsuit,
-      clioIndexWrite,
+      clioPostFilingWrite,
     });
   } catch (err: any) {
     return NextResponse.json(

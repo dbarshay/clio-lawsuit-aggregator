@@ -75,6 +75,14 @@ function normalizeMatterList(ids: number[]): string {
     .join(",");
 }
 
+function normalizeDisplayNumberList(values: unknown[]): string {
+  return Array.from(
+    new Set(values.map(text).filter(Boolean))
+  )
+    .sort((a, b) => a.localeCompare(b))
+    .join(", ");
+}
+
 function normalizeLawsuitOptions(raw: any) {
   const rawAmountSoughtMode = String(raw?.amountSoughtMode || "balance_presuit");
   const amountSoughtMode =
@@ -303,6 +311,7 @@ async function writeLawsuitFieldsAfterLiveRecheck(params: {
   matterId: number;
   masterLawsuitId: string;
   lawsuitMatters: string;
+  lawsuitMatterDisplayNumbers?: string | null;
   claimNumber?: string | null;
   patientContactId?: string | null;
   allowSameMaster?: boolean;
@@ -338,6 +347,18 @@ async function writeLawsuitFieldsAfterLiveRecheck(params: {
       value: params.lawsuitMatters,
     },
   ];
+
+  if (params.lawsuitMatterDisplayNumbers) {
+    const brlNumbers = cfv(matter, MATTER_CF.LAWSUIT_MATTER_BRL_NUMBERS);
+
+    if (brlNumbers?.id) {
+      customFieldValues.push({
+        id: brlNumbers.id,
+        custom_field: { id: MATTER_CF.LAWSUIT_MATTER_BRL_NUMBERS },
+        value: params.lawsuitMatterDisplayNumbers,
+      });
+    }
+  }
 
   if (params.claimNumber) {
     const claim = requireClaimField(matter);
@@ -552,10 +573,16 @@ export async function POST(req: NextRequest) {
     requireWritableFields(masterMatter);
     if (claimNumber) requireClaimField(masterMatter);
 
+    const lawsuitMatterDisplayNumbers = normalizeDisplayNumberList([
+      masterMatter.display_number,
+      ...liveMatters.map((m) => m.display_number),
+    ]);
+
     await writeLawsuitFieldsAfterLiveRecheck({
       matterId: clioMasterMatterId,
       masterLawsuitId,
       lawsuitMatters,
+      lawsuitMatterDisplayNumbers,
       claimNumber,
       patientContactId: masterPatientContactId,
       allowSameMaster: true,
@@ -567,6 +594,7 @@ export async function POST(req: NextRequest) {
         matterId,
         masterLawsuitId,
         lawsuitMatters,
+        lawsuitMatterDisplayNumbers,
       });
 
       writtenMatterIds.push(matterId);

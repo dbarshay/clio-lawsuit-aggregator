@@ -34,6 +34,7 @@ function mustNotContain(label, text, needle) {
 console.log("=== VERIFY SETTLEMENT DOCUMENTS PREVIEW SAFETY ===");
 
 const route = read("app/api/settlements/documents-preview/route.ts");
+const matterPage = read("app/matter/[id]/page.tsx");
 const packageJson = read("package.json");
 const verifyProd = read("scripts/verify-prod.sh");
 
@@ -73,6 +74,21 @@ mustContain("settlement documents preview route", route, "settledAmountTotal");
 mustContain("settlement documents preview route", route, "allocatedSettlementTotal");
 mustContain("settlement documents preview route", route, "totalFeeTotal");
 mustContain("settlement documents preview route", route, "providerNetTotal");
+
+console.log("");
+console.log("=== VERIFY SETTLEMENT DOCUMENTS PREVIEW UI ===");
+mustContain("matter page", matterPage, "Settlement Documents Preview");
+mustContain("matter page", matterPage, "Preview Settlement Documents");
+mustContain("matter page", matterPage, "/api/settlements/documents-preview?masterLawsuitId=");
+mustContain("matter page", matterPage, "settlementDocumentsPreviewLoading");
+mustContain("matter page", matterPage, "settlementDocumentsPreviewResult");
+mustContain("matter page", matterPage, "async function loadSettlementDocumentsPreview");
+mustContain("matter page", matterPage, "No settlement documents are generated here.");
+mustContain("matter page", matterPage, "No Clio records, database records, or print queue records are changed.");
+mustContain("matter page", matterPage, "Raw settlement documents preview JSON");
+mustNotContain("matter page", matterPage, "Generate Settlement Documents");
+mustNotContain("matter page", matterPage, "Upload Settlement Documents to Clio");
+mustNotContain("matter page", matterPage, "Queue Settlement Documents");
 
 console.log("");
 console.log("=== VERIFY SCRIPT REGISTRATION ===");

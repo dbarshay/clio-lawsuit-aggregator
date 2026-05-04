@@ -388,6 +388,8 @@ const activeGroupKey =
   const [currentSettlementValuesLoading, setCurrentSettlementValuesLoading] = useState(false);
   const [currentSettlementValuesResult, setCurrentSettlementValuesResult] = useState<any>(null);
   const [currentSettlementValuesLoadedMasterId, setCurrentSettlementValuesLoadedMasterId] = useState<string>("");
+  const [settlementDocumentsPreviewLoading, setSettlementDocumentsPreviewLoading] = useState(false);
+  const [settlementDocumentsPreviewResult, setSettlementDocumentsPreviewResult] = useState<any>(null);
 
 
   useEffect(() => {
@@ -1885,6 +1887,52 @@ const activeGroupKey =
     }
   }
 
+  async function loadSettlementDocumentsPreview(masterLawsuitIdInput?: string) {
+    const masterLawsuitId = masterLawsuitIdInput || tabMasterLawsuitId;
+
+    if (!masterLawsuitId) {
+      alert("No MASTER_LAWSUIT_ID found.  Generate or connect a lawsuit before previewing settlement documents.");
+      return;
+    }
+
+    setSettlementDocumentsPreviewLoading(true);
+    setSettlementDocumentsPreviewResult(null);
+
+    try {
+      const res = await fetch(
+        `/api/settlements/documents-preview?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`
+      );
+
+      const json = await res.json();
+      setSettlementDocumentsPreviewResult(json);
+
+      if (!res.ok && json?.error) {
+        alert(json.error);
+      }
+    } catch (err: any) {
+      const fallback = {
+        ok: false,
+        action: "settlement-documents-preview",
+        dryRun: true,
+        error: err?.message || "Settlement documents preview failed.",
+        safety: {
+          dryRun: true,
+          previewOnly: true,
+          readOnly: true,
+          noClioRecordsChanged: true,
+          noDatabaseRecordsChanged: true,
+          noDocumentsGenerated: true,
+          noPrintQueueRecordsChanged: true,
+          noPersistentFilesCreated: true,
+        },
+      };
+      setSettlementDocumentsPreviewResult(fallback);
+      alert(fallback.error);
+    } finally {
+      setSettlementDocumentsPreviewLoading(false);
+    }
+  }
+
   async function loadSettlementClosePreview(masterLawsuitIdInput?: string) {
     const masterLawsuitId = masterLawsuitIdInput || tabMasterLawsuitId;
 
@@ -2977,7 +3025,185 @@ const activeGroupKey =
                 background: "#eff6ff",
               }}
             >
-              <div style={{ fontWeight: 800, marginBottom: 6 }}>Settlement Inputs</div>
+              <div
+              style={{
+                margin: "14px 0",
+                padding: 12,
+                border: "1px solid #bfdbfe",
+                background: "#eff6ff",
+                borderRadius: 8,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 12,
+                  flexWrap: "wrap",
+                  marginBottom: 10,
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 800, marginBottom: 4 }}>
+                    Settlement Documents Preview
+                  </div>
+                  <div style={{ color: "#1e3a8a", fontSize: 12 }}>
+                    Read-only preview of planned settlement documents using current Clio settlement values.  This does not generate documents, upload to Clio, create database records, or change the print queue.
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => loadSettlementDocumentsPreview()}
+                  disabled={settlementDocumentsPreviewLoading || !tabMasterLawsuitId}
+                  style={{
+                    padding: "7px 10px",
+                    border: "1px solid #2563eb",
+                    background: settlementDocumentsPreviewLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#2563eb",
+                    color: settlementDocumentsPreviewLoading || !tabMasterLawsuitId ? "#666" : "#fff",
+                    borderRadius: 4,
+                    cursor: settlementDocumentsPreviewLoading || !tabMasterLawsuitId ? "not-allowed" : "pointer",
+                    fontWeight: 700,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {settlementDocumentsPreviewLoading ? "Previewing..." : "Preview Settlement Documents"}
+                </button>
+              </div>
+
+              {settlementDocumentsPreviewResult?.error && (
+                <div style={{ color: "#991b1b", fontSize: 13, marginBottom: 8 }}>
+                  <strong>Error:</strong> {textValue(settlementDocumentsPreviewResult.error)}
+                </div>
+              )}
+
+              {settlementDocumentsPreviewResult?.settlementSummary && (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                    gap: 8,
+                    marginBottom: 10,
+                    fontSize: 12,
+                  }}
+                >
+                  <div>
+                    <strong>Child Matters:</strong>
+                    <br />
+                    {num(settlementDocumentsPreviewResult.settlementSummary.childMatterCount)}
+                  </div>
+                  <div>
+                    <strong>Settlement:</strong>
+                    <br />
+                    {money(settlementDocumentsPreviewResult.settlementSummary.settledAmountTotal)}
+                  </div>
+                  <div>
+                    <strong>Total Fee:</strong>
+                    <br />
+                    {money(settlementDocumentsPreviewResult.settlementSummary.totalFeeTotal)}
+                  </div>
+                  <div>
+                    <strong>Provider Net:</strong>
+                    <br />
+                    {money(settlementDocumentsPreviewResult.settlementSummary.providerNetTotal)}
+                  </div>
+                </div>
+              )}
+
+              {Array.isArray(settlementDocumentsPreviewResult?.plannedDocuments) &&
+                settlementDocumentsPreviewResult.plannedDocuments.length > 0 && (
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      background: "#fff",
+                      fontSize: 12,
+                      marginTop: 8,
+                    }}
+                  >
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Document</th>
+                        <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Status</th>
+                        <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Filename</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {settlementDocumentsPreviewResult.plannedDocuments.map((doc: any) => (
+                        <tr key={textValue(doc.key)}>
+                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                            {textValue(doc.label) || textValue(doc.key)}
+                          </td>
+                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                            {textValue(doc.status) || "—"}
+                          </td>
+                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                            {textValue(doc.filename) || "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+              {settlementDocumentsPreviewResult?.validation && (
+                <div style={{ marginTop: 8, fontSize: 12 }}>
+                  <strong>Can Preview:</strong>{" "}
+                  {settlementDocumentsPreviewResult.validation.canPreviewSettlementDocuments ? "Yes" : "No"}
+                </div>
+              )}
+
+              {Array.isArray(settlementDocumentsPreviewResult?.validation?.warnings) &&
+                settlementDocumentsPreviewResult.validation.warnings.length > 0 && (
+                  <div style={{ color: "#92400e", marginTop: 8, fontSize: 12 }}>
+                    <strong>Warnings:</strong>
+                    <ul style={{ margin: "4px 0 0 18px", padding: 0 }}>
+                      {settlementDocumentsPreviewResult.validation.warnings.map((msg: string) => (
+                        <li key={msg}>{msg}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+              {Array.isArray(settlementDocumentsPreviewResult?.validation?.blockingErrors) &&
+                settlementDocumentsPreviewResult.validation.blockingErrors.length > 0 && (
+                  <div style={{ color: "#991b1b", marginTop: 8, fontSize: 12 }}>
+                    <strong>Blocking Errors:</strong>
+                    <ul style={{ margin: "4px 0 0 18px", padding: 0 }}>
+                      {settlementDocumentsPreviewResult.validation.blockingErrors.map((msg: string) => (
+                        <li key={msg}>{msg}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+              <div style={{ marginTop: 8, color: "#1e3a8a", fontSize: 12 }}>
+                Preview only.  No settlement documents are generated here.  No Clio records, database records, or print queue records are changed.
+              </div>
+
+              <details style={{ marginTop: 10 }}>
+                <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
+                  Raw settlement documents preview JSON
+                </summary>
+                <pre
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    overflowX: "auto",
+                    margin: "6px 0 0 0",
+                    padding: 8,
+                    background: "#fff",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 4,
+                    fontSize: 12,
+                  }}
+                >
+                  {JSON.stringify(settlementDocumentsPreviewResult, null, 2)}
+                </pre>
+              </details>
+            </div>
+
+            <div style={{ fontWeight: 800, marginBottom: 6 }}>Settlement Inputs</div>
               <ul style={{ margin: "0 0 0 18px", padding: 0, color: "#1e3a8a", fontSize: 13, lineHeight: 1.5 }}>
                 <li>Gross settlement amount</li>
                 <li>Settled with / adjuster or defense contact</li>

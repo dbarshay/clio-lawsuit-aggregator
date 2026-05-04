@@ -75,12 +75,26 @@ function normalizeMatterList(ids: number[]): string {
     .join(",");
 }
 
-function normalizeDisplayNumberList(values: unknown[]): string {
+function clioMatterUrl(matterId: number | string): string {
+  return `https://app.clio.com/nc/#/matters/${matterId}`;
+}
+
+function lawsuitMatterDisplayLinkList(matters: ClioMatter[]): string {
   return Array.from(
-    new Set(values.map(text).filter(Boolean))
+    new Map(
+      matters
+        .map((matter) => {
+          const displayNumber = text(matter.display_number) || String(matter.id);
+          return [
+            displayNumber,
+            `${displayNumber} — ${clioMatterUrl(matter.id)}`,
+          ] as const;
+        })
+        .filter(([displayNumber]) => Boolean(displayNumber))
+    ).values()
   )
     .sort((a, b) => a.localeCompare(b))
-    .join(", ");
+    .join("\n");
 }
 
 function normalizeLawsuitOptions(raw: any) {
@@ -573,9 +587,9 @@ export async function POST(req: NextRequest) {
     requireWritableFields(masterMatter);
     if (claimNumber) requireClaimField(masterMatter);
 
-    const lawsuitMatterDisplayNumbers = normalizeDisplayNumberList([
-      masterMatter.display_number,
-      ...liveMatters.map((m) => m.display_number),
+    const lawsuitMatterDisplayNumbers = lawsuitMatterDisplayLinkList([
+      masterMatter,
+      ...liveMatters,
     ]);
 
     await writeLawsuitFieldsAfterLiveRecheck({

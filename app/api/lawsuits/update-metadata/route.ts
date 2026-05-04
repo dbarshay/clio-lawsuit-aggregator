@@ -44,12 +44,26 @@ function parseMatterIds(value: unknown): number[] {
   );
 }
 
+function clioMatterUrl(matterId: number | string): string {
+  return `https://app.clio.com/nc/#/matters/${matterId}`;
+}
+
 function displayNumberList(matters: ClioMatter[]): string {
   return Array.from(
-    new Set(matters.map((m) => text(m.display_number)).filter(Boolean))
+    new Map(
+      matters
+        .map((matter) => {
+          const displayNumber = text(matter.display_number) || String(matter.id);
+          return [
+            displayNumber,
+            `${displayNumber} — ${clioMatterUrl(matter.id)}`,
+          ] as const;
+        })
+        .filter(([displayNumber]) => Boolean(displayNumber))
+    ).values()
   )
     .sort((a, b) => a.localeCompare(b))
-    .join(", ");
+    .join("\n");
 }
 
 function cfv(matter: ClioMatter, fieldId: number): CFV | undefined {

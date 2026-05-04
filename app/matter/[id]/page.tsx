@@ -286,6 +286,8 @@ const activeGroupKey =
   const [finalizationHistory, setFinalizationHistory] = useState<any>(null);
   const [finalizationHistoryLoading, setFinalizationHistoryLoading] = useState(false);
   const [expandedFinalizationId, setExpandedFinalizationId] = useState<string | null>(null);
+  const [printQueuePreview, setPrintQueuePreview] = useState<any>(null);
+  const [printQueuePreviewLoading, setPrintQueuePreviewLoading] = useState(false);
   const [showMetadataModal, setShowMetadataModal] = useState(false);
   const [metadataSaving, setMetadataSaving] = useState(false);
   const [metadataEdit, setMetadataEdit] = useState<LawsuitMetadataEdit>(() =>
@@ -650,6 +652,7 @@ const activeGroupKey =
 
     if (json?.packet?.masterLawsuitId) {
       await loadFinalizationHistory(json.packet.masterLawsuitId);
+      await loadPrintQueuePreview(json.packet.masterLawsuitId);
     }
 
     return json;
@@ -938,6 +941,41 @@ const activeGroupKey =
     }
   }
 
+  async function loadPrintQueuePreview(masterLawsuitIdInput?: string) {
+    const masterLawsuitId =
+      textValue(masterLawsuitIdInput) ||
+      textValue(packetPreview?.packet?.masterLawsuitId) ||
+      textValue(matter?.masterLawsuitId);
+
+    if (!masterLawsuitId) {
+      setPrintQueuePreview(null);
+      return null;
+    }
+
+    setPrintQueuePreviewLoading(true);
+
+    try {
+      const res = await fetch(
+        `/api/documents/print-queue-preview?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}&limit=10`
+      );
+
+      const json = await res.json().catch(() => null);
+
+      setPrintQueuePreview(json);
+
+      return json;
+    } catch (err: any) {
+      setPrintQueuePreview({
+        ok: false,
+        error: err?.message || "Could not load print queue preview.",
+      });
+
+      return null;
+    } finally {
+      setPrintQueuePreviewLoading(false);
+    }
+  }
+
   async function loadFinalizePreview() {
     const masterLawsuitId =
       textValue(packetPreview?.packet?.masterLawsuitId) ||
@@ -1052,6 +1090,7 @@ const activeGroupKey =
 
       setFinalizeUploadResult(json);
       await loadFinalizationHistory(masterLawsuitId);
+      await loadPrintQueuePreview(masterLawsuitId);
 
       const uploadedCount = Array.isArray(json.uploaded) ? json.uploaded.length : 0;
       alert(`Final upload complete.\n\nUploaded to Clio: ${uploadedCount} document(s).`);
@@ -2536,6 +2575,120 @@ const activeGroupKey =
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {packetPreview?.packet?.masterLawsuitId && (
+                <div
+                  style={{
+                    marginBottom: 12,
+                    padding: 10,
+                    background: "#f8fafc",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                    <div style={{ fontWeight: 800 }}>Print Queue Preview</div>
+                    <button
+                      type="button"
+                      onClick={() => loadPrintQueuePreview(packetPreview.packet.masterLawsuitId)}
+                      disabled={printQueuePreviewLoading}
+                      style={{
+                        fontSize: 12,
+                        padding: "3px 8px",
+                        border: "1px solid #94a3b8",
+                        borderRadius: 4,
+                        background: "#fff",
+                        cursor: printQueuePreviewLoading ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {printQueuePreviewLoading ? "Loading..." : "Refresh Print Preview"}
+                    </button>
+                  </div>
+
+                  <div style={{ marginTop: 4, color: "#475569", fontSize: 12 }}>
+                    Read-only print-candidate preview from local finalization audit records.  This does not create a print queue and does not verify current Clio document existence.
+                  </div>
+
+                  {printQueuePreview?.error && (
+                    <div style={{ marginTop: 8, color: "#991b1b", fontSize: 12 }}>
+                      <strong>Error:</strong> {textValue(printQueuePreview.error)}
+                    </div>
+                  )}
+
+                  {printQueuePreviewLoading && !printQueuePreview && (
+                    <div style={{ marginTop: 8, color: "#475569", fontSize: 12 }}>
+                      Loading print queue preview...
+                    </div>
+                  )}
+
+                  {printQueuePreview?.ok && num(printQueuePreview.candidateDocumentCount) === 0 && (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        padding: 8,
+                        background: "#fff",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 4,
+                        color: "#475569",
+                        fontSize: 12,
+                      }}
+                    >
+                      No printable finalized documents are currently proposed for this lawsuit.  Duplicate-only or no-upload finalization audit rows are intentionally excluded.
+                    </div>
+                  )}
+
+                  {printQueuePreview?.ok && Array.isArray(printQueuePreview.candidateDocuments) && printQueuePreview.candidateDocuments.length > 0 && (
+                    <div style={{ marginTop: 8, fontSize: 12 }}>
+                      <div style={{ marginBottom: 6, color: "#475569" }}>
+                        Candidate documents: {num(printQueuePreview.candidateDocumentCount)}
+                      </div>
+
+                      <table
+                        style={{
+                          width: "100%",
+                          borderCollapse: "collapse",
+                          background: "#fff",
+                        }}
+                      >
+                        <thead>
+                          <tr>
+                            <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Document</th>
+                            <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Filename</th>
+                            <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Clio Document ID</th>
+                            <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Audit ID</th>
+                            <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Verified in Clio Now?</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {printQueuePreview.candidateDocuments.map((doc: any, index: number) => (
+                            <tr key={`${textValue(doc.finalizationId)}-${textValue(doc.key)}-${index}`}>
+                              <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                {textValue(doc.label) || textValue(doc.key) || "—"}
+                              </td>
+                              <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                {textValue(doc.filename) || "—"}
+                              </td>
+                              <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                {textValue(doc.clioDocumentId) || "—"}
+                              </td>
+                              <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                {textValue(doc.finalizationId) || "—"}
+                              </td>
+                              <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                {doc.currentClioExistenceVerified ? "Yes" : "No"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      <div style={{ marginTop: 8, color: "#475569" }}>
+                        These are proposed print candidates only.  The Clio Documents tab remains the record-copy source of truth.
+                      </div>
                     </div>
                   )}
                 </div>

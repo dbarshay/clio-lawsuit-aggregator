@@ -283,6 +283,8 @@ const activeGroupKey =
   const [documentPreviewLoading, setDocumentPreviewLoading] = useState(false);
   const [finalizeUploadLoading, setFinalizeUploadLoading] = useState(false);
   const [finalizeUploadResult, setFinalizeUploadResult] = useState<any>(null);
+  const [finalizationHistory, setFinalizationHistory] = useState<any>(null);
+  const [finalizationHistoryLoading, setFinalizationHistoryLoading] = useState(false);
   const [showMetadataModal, setShowMetadataModal] = useState(false);
   const [metadataSaving, setMetadataSaving] = useState(false);
   const [metadataEdit, setMetadataEdit] = useState<LawsuitMetadataEdit>(() =>
@@ -645,6 +647,10 @@ const activeGroupKey =
     setPacketPreview(json);
     setPacketPreviewOpen(true);
 
+    if (json?.packet?.masterLawsuitId) {
+      await loadFinalizationHistory(json.packet.masterLawsuitId);
+    }
+
     return json;
   }
 
@@ -896,6 +902,41 @@ const activeGroupKey =
     }
   }
 
+  async function loadFinalizationHistory(masterLawsuitIdInput?: string) {
+    const masterLawsuitId =
+      textValue(masterLawsuitIdInput) ||
+      textValue(packetPreview?.packet?.masterLawsuitId) ||
+      textValue(matter?.masterLawsuitId);
+
+    if (!masterLawsuitId) {
+      setFinalizationHistory(null);
+      return null;
+    }
+
+    setFinalizationHistoryLoading(true);
+
+    try {
+      const res = await fetch(
+        `/api/documents/finalization-history?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}&limit=10`
+      );
+
+      const json = await res.json().catch(() => null);
+
+      setFinalizationHistory(json);
+
+      return json;
+    } catch (err: any) {
+      setFinalizationHistory({
+        ok: false,
+        error: err?.message || "Could not load finalization history.",
+      });
+
+      return null;
+    } finally {
+      setFinalizationHistoryLoading(false);
+    }
+  }
+
   async function loadFinalizePreview() {
     const masterLawsuitId =
       textValue(packetPreview?.packet?.masterLawsuitId) ||
@@ -1009,6 +1050,7 @@ const activeGroupKey =
       }
 
       setFinalizeUploadResult(json);
+      await loadFinalizationHistory(masterLawsuitId);
 
       const uploadedCount = Array.isArray(json.uploaded) ? json.uploaded.length : 0;
       alert(`Final upload complete.\n\nUploaded to Clio: ${uploadedCount} document(s).`);
@@ -1999,9 +2041,116 @@ const activeGroupKey =
                       </div>
                     )}
 
+                  {finalizeUploadResult.finalizationRecord && (
+                    <div style={{ marginTop: 8, color: "#065f46", fontSize: 12 }}>
+                      <strong>Audit Record:</strong>{" "}
+                      {finalizeUploadResult.finalizationRecord.ok
+                        ? `local finalization audit record ID ${finalizeUploadResult.finalizationRecord.id}`
+                        : `audit record was not created: ${textValue(finalizeUploadResult.finalizationRecord.error) || "unknown error"}`}
+                    </div>
+                  )}
+
                   <div style={{ marginTop: 8, color: "#555", fontSize: 12 }}>
-                    Uploaded only through the explicit finalization action.  Duplicate prevention skips exact filename matches by default.  No database records were changed, and no OneDrive/SharePoint folders were created.
+                    Uploaded only through the explicit finalization action.  Duplicate prevention skips exact filename matches by default.  Local database records are audit/history only, Clio remains the source of truth, and no OneDrive/SharePoint folders were created.
                   </div>
+                </div>
+              )}
+
+              {packetPreview?.packet?.masterLawsuitId && (
+                <div
+                  style={{
+                    marginBottom: 12,
+                    padding: 10,
+                    background: "#f8fafc",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                    <div style={{ fontWeight: 800 }}>Finalization History</div>
+                    <button
+                      type="button"
+                      onClick={() => loadFinalizationHistory(packetPreview.packet.masterLawsuitId)}
+                      disabled={finalizationHistoryLoading}
+                      style={{
+                        fontSize: 12,
+                        padding: "3px 8px",
+                        border: "1px solid #94a3b8",
+                        borderRadius: 4,
+                        background: "#fff",
+                        cursor: finalizationHistoryLoading ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {finalizationHistoryLoading ? "Loading..." : "Refresh History"}
+                    </button>
+                  </div>
+
+                  <div style={{ marginTop: 4, color: "#475569", fontSize: 12 }}>
+                    Local audit/history only.  Clio Documents tab remains the source of truth for actual uploaded files.
+                  </div>
+
+                  {finalizationHistory?.error && (
+                    <div style={{ marginTop: 8, color: "#991b1b", fontSize: 12 }}>
+                      <strong>Error:</strong> {textValue(finalizationHistory.error)}
+                    </div>
+                  )}
+
+                  {finalizationHistoryLoading && !finalizationHistory && (
+                    <div style={{ marginTop: 8, color: "#475569", fontSize: 12 }}>
+                      Loading finalization history...
+                    </div>
+                  )}
+
+                  {finalizationHistory?.ok && Array.isArray(finalizationHistory.rows) && finalizationHistory.rows.length === 0 && (
+                    <div style={{ marginTop: 8, color: "#475569", fontSize: 12 }}>
+                      No finalization history recorded yet.
+                    </div>
+                  )}
+
+                  {finalizationHistory?.ok && Array.isArray(finalizationHistory.rows) && finalizationHistory.rows.length > 0 && (
+                    <ul style={{ margin: "8px 0 0 18px", padding: 0, fontSize: 12 }}>
+                      {finalizationHistory.rows.map((row: any) => {
+                        const uploaded = Array.isArray(row.uploaded) ? row.uploaded : [];
+                        const skipped = Array.isArray(row.skipped) ? row.skipped : [];
+                        const duplicateSkips = skipped.filter(
+                          (doc: any) => textValue(doc.reason) === "already-uploaded-to-clio"
+                        );
+
+                        return (
+                          <li key={textValue(row.id)} style={{ marginBottom: 8 }}>
+                            <div>
+                              <strong>
+                                {row.finalizedAt
+                                  ? new Date(row.finalizedAt).toLocaleString()
+                                  : "Unknown date"}
+                              </strong>{" "}
+                              — {textValue(row.status) || "unknown status"}
+                            </div>
+                            <div style={{ color: "#475569" }}>
+                              Audit ID {textValue(row.id)} · Uploaded {uploaded.length} · Skipped {skipped.length}
+                              {row.noUploadPerformed ? " · No upload performed" : ""}
+                            </div>
+                            {uploaded.length > 0 && (
+                              <div style={{ color: "#065f46" }}>
+                                Uploaded:{" "}
+                                {uploaded
+                                  .map((doc: any) => `${textValue(doc.label) || textValue(doc.key)}${doc.clioDocumentId ? ` (Clio ${doc.clioDocumentId})` : ""}`)
+                                  .join(", ")}
+                              </div>
+                            )}
+                            {duplicateSkips.length > 0 && (
+                              <div style={{ color: "#92400e" }}>
+                                Existing Clio duplicate skip:{" "}
+                                {duplicateSkips
+                                  .map((doc: any) => textValue(doc.label) || textValue(doc.key))
+                                  .join(", ")}
+                              </div>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </div>
               )}
 

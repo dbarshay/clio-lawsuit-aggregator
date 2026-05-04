@@ -356,9 +356,19 @@ export default function PrintQueuePage() {
                     <td style={tdStyle}>{textValue(row.masterLawsuitId) || "—"}</td>
                     <td style={tdStyle}>
                       {row.masterMatterId ? (
-                        <a href={clioMatterUrl(row.masterMatterId)} target="_blank" rel="noreferrer">
-                          {textValue(row.masterDisplayNumber) || textValue(row.masterMatterId)}
-                        </a>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          <a href={`/matter/${row.masterMatterId}`}>
+                            {textValue(row.masterDisplayNumber) || textValue(row.masterMatterId)}
+                          </a>
+                          <a
+                            href={clioMatterUrl(row.masterMatterId)}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ color: "#475569", fontSize: 11 }}
+                          >
+                            Open in Clio
+                          </a>
+                        </div>
                       ) : (
                         textValue(row.masterDisplayNumber) || "—"
                       )}

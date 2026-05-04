@@ -352,6 +352,20 @@ const activeGroupKey =
     defaultLawsuitMetadataEdit()
   );
 
+  const [settlementPreviewInput, setSettlementPreviewInput] = useState({
+    grossSettlementAmount: "",
+    settledWith: "",
+    settlementDate: "",
+    paymentExpectedDate: "",
+    allocationMode: "proportional_balance_presuit",
+    principalFeePercent: "",
+    interestAmount: "",
+    interestFeePercent: "",
+    notes: "",
+  });
+  const [settlementPreviewLoading, setSettlementPreviewLoading] = useState(false);
+  const [settlementPreviewResult, setSettlementPreviewResult] = useState<any>(null);
+
 
   useEffect(() => {
     if (!matterId) return;
@@ -1446,6 +1460,78 @@ const activeGroupKey =
     await openMetadataModalForMaster();
   }
 
+  async function loadSettlementPreview() {
+    const masterLawsuitId = tabMasterLawsuitId;
+
+    if (!masterLawsuitId) {
+      alert("No MASTER_LAWSUIT_ID found.  Generate or connect a lawsuit before previewing settlement.");
+      return;
+    }
+
+    const grossSettlementAmount = parseMoneyInput(settlementPreviewInput.grossSettlementAmount);
+
+    if (grossSettlementAmount === null || grossSettlementAmount <= 0) {
+      alert("Enter a gross settlement amount greater than zero.");
+      return;
+    }
+
+    setSettlementPreviewLoading(true);
+    setSettlementPreviewResult(null);
+
+    try {
+      const res = await fetch("/api/settlements/preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          masterLawsuitId,
+          grossSettlementAmount,
+          settledWith: settlementPreviewInput.settledWith,
+          settlementDate: settlementPreviewInput.settlementDate,
+          paymentExpectedDate: settlementPreviewInput.paymentExpectedDate,
+          allocationMode: settlementPreviewInput.allocationMode,
+          principalFeePercent: parseMoneyInput(settlementPreviewInput.principalFeePercent) ?? 0,
+          interestAmount: parseMoneyInput(settlementPreviewInput.interestAmount) ?? 0,
+          interestFeePercent: parseMoneyInput(settlementPreviewInput.interestFeePercent) ?? 0,
+          notes: settlementPreviewInput.notes,
+        }),
+      });
+
+      const json = await res.json();
+      setSettlementPreviewResult(json);
+
+      if (!res.ok || !json?.ok) {
+        const blockingErrors = Array.isArray(json?.validation?.blockingErrors)
+          ? json.validation.blockingErrors
+          : [];
+        alert(
+          json?.error ||
+            (blockingErrors.length > 0
+              ? `Settlement preview blocked:\n\n${blockingErrors.join("\n")}`
+              : "Settlement preview failed.")
+        );
+      }
+    } catch (err: any) {
+      setSettlementPreviewResult({
+        ok: false,
+        action: "settlement-preview",
+        dryRun: true,
+        error: err?.message || "Settlement preview failed.",
+        safety: {
+          noClioRecordsChanged: true,
+          noDatabaseRecordsChanged: true,
+          noDocumentsGenerated: true,
+          noPrintQueueRecordsChanged: true,
+          noPersistentFilesCreated: true,
+        },
+      });
+      alert(err?.message || "Settlement preview failed.");
+    } finally {
+      setSettlementPreviewLoading(false);
+    }
+  }
+
   async function saveMetadataEdit() {
     const masterLawsuitId = textValue(matter?.masterLawsuitId);
 
@@ -2282,6 +2368,410 @@ const activeGroupKey =
 
           <div
             style={{
+              padding: 12,
+              border: "1px solid #cbd5e1",
+              borderRadius: 10,
+              background: "#f8fafc",
+              marginBottom: 14,
+            }}
+          >
+            <div style={{ fontWeight: 800, marginBottom: 10 }}>Preview Settlement Calculation</div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                gap: 10,
+                marginBottom: 10,
+              }}
+            >
+              <label style={{ fontSize: 13, fontWeight: 700 }}>
+                Gross Settlement Amount
+                <input
+                  value={settlementPreviewInput.grossSettlementAmount}
+                  onChange={(e) =>
+                    setSettlementPreviewInput((prev) => ({
+                      ...prev,
+                      grossSettlementAmount: e.target.value,
+                    }))
+                  }
+                  placeholder="1000.00"
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    marginTop: 4,
+                    padding: 8,
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                  }}
+                />
+              </label>
+
+              <label style={{ fontSize: 13, fontWeight: 700 }}>
+                Settled With
+                <input
+                  value={settlementPreviewInput.settledWith}
+                  onChange={(e) =>
+                    setSettlementPreviewInput((prev) => ({
+                      ...prev,
+                      settledWith: e.target.value,
+                    }))
+                  }
+                  placeholder="Adjuster / defense contact"
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    marginTop: 4,
+                    padding: 8,
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                  }}
+                />
+              </label>
+
+              <label style={{ fontSize: 13, fontWeight: 700 }}>
+                Settlement Date
+                <input
+                  type="date"
+                  value={settlementPreviewInput.settlementDate}
+                  onChange={(e) =>
+                    setSettlementPreviewInput((prev) => ({
+                      ...prev,
+                      settlementDate: e.target.value,
+                    }))
+                  }
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    marginTop: 4,
+                    padding: 8,
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                  }}
+                />
+              </label>
+
+              <label style={{ fontSize: 13, fontWeight: 700 }}>
+                Payment Expected Date
+                <input
+                  type="date"
+                  value={settlementPreviewInput.paymentExpectedDate}
+                  onChange={(e) =>
+                    setSettlementPreviewInput((prev) => ({
+                      ...prev,
+                      paymentExpectedDate: e.target.value,
+                    }))
+                  }
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    marginTop: 4,
+                    padding: 8,
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                  }}
+                />
+              </label>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                gap: 10,
+                marginBottom: 10,
+              }}
+            >
+              <label style={{ fontSize: 13, fontWeight: 700 }}>
+                Allocation Mode
+                <select
+                  value={settlementPreviewInput.allocationMode}
+                  onChange={(e) =>
+                    setSettlementPreviewInput((prev) => ({
+                      ...prev,
+                      allocationMode: e.target.value,
+                    }))
+                  }
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    marginTop: 4,
+                    padding: 8,
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                    background: "#fff",
+                  }}
+                >
+                  <option value="proportional_balance_presuit">Proportional to Balance (Presuit)</option>
+                  <option value="proportional_claim_amount">Proportional to Claim Amount</option>
+                  <option value="equal">Equal Per Bill</option>
+                </select>
+              </label>
+
+              <label style={{ fontSize: 13, fontWeight: 700 }}>
+                Principal Fee %
+                <input
+                  value={settlementPreviewInput.principalFeePercent}
+                  onChange={(e) =>
+                    setSettlementPreviewInput((prev) => ({
+                      ...prev,
+                      principalFeePercent: e.target.value,
+                    }))
+                  }
+                  placeholder="0"
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    marginTop: 4,
+                    padding: 8,
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                  }}
+                />
+              </label>
+
+              <label style={{ fontSize: 13, fontWeight: 700 }}>
+                Interest Amount
+                <input
+                  value={settlementPreviewInput.interestAmount}
+                  onChange={(e) =>
+                    setSettlementPreviewInput((prev) => ({
+                      ...prev,
+                      interestAmount: e.target.value,
+                    }))
+                  }
+                  placeholder="0"
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    marginTop: 4,
+                    padding: 8,
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                  }}
+                />
+              </label>
+
+              <label style={{ fontSize: 13, fontWeight: 700 }}>
+                Interest Fee %
+                <input
+                  value={settlementPreviewInput.interestFeePercent}
+                  onChange={(e) =>
+                    setSettlementPreviewInput((prev) => ({
+                      ...prev,
+                      interestFeePercent: e.target.value,
+                    }))
+                  }
+                  placeholder="0"
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    marginTop: 4,
+                    padding: 8,
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                  }}
+                />
+              </label>
+            </div>
+
+            <label style={{ display: "block", fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
+              Notes
+              <textarea
+                value={settlementPreviewInput.notes}
+                onChange={(e) =>
+                  setSettlementPreviewInput((prev) => ({
+                    ...prev,
+                    notes: e.target.value,
+                  }))
+                }
+                placeholder="Preview notes only.  Not saved."
+                rows={2}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  marginTop: 4,
+                  padding: 8,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 4,
+                  resize: "vertical",
+                }}
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={loadSettlementPreview}
+              disabled={settlementPreviewLoading || !tabMasterLawsuitId}
+              style={{
+                padding: "8px 12px",
+                border: "1px solid #2563eb",
+                background:
+                  settlementPreviewLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#2563eb",
+                color: settlementPreviewLoading || !tabMasterLawsuitId ? "#666" : "#fff",
+                borderRadius: 4,
+                cursor:
+                  settlementPreviewLoading || !tabMasterLawsuitId ? "not-allowed" : "pointer",
+                fontWeight: 700,
+              }}
+            >
+              {settlementPreviewLoading ? "Previewing..." : "Preview Settlement"}
+            </button>
+
+            <div style={{ marginTop: 8, color: "#475569", fontSize: 12 }}>
+              Preview only.  This does not write to Clio, does not write to the database, does not generate documents,
+              and does not change the print queue.
+            </div>
+          </div>
+
+          {settlementPreviewResult && (
+            <div
+              style={{
+                padding: 12,
+                border: settlementPreviewResult.ok ? "1px solid #bbf7d0" : "1px solid #fecaca",
+                borderRadius: 10,
+                background: settlementPreviewResult.ok ? "#f0fdf4" : "#fef2f2",
+                marginBottom: 14,
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 8 }}>
+                Settlement Preview Result
+              </div>
+
+              {settlementPreviewResult.error && (
+                <div style={{ color: "#991b1b", marginBottom: 8 }}>
+                  <strong>Error:</strong> {textValue(settlementPreviewResult.error)}
+                </div>
+              )}
+
+              {Array.isArray(settlementPreviewResult.validation?.blockingErrors) &&
+                settlementPreviewResult.validation.blockingErrors.length > 0 && (
+                  <div style={{ color: "#991b1b", marginBottom: 8 }}>
+                    <strong>Blocking Errors:</strong>
+                    <ul style={{ margin: "4px 0 0 18px", padding: 0 }}>
+                      {settlementPreviewResult.validation.blockingErrors.map((msg: string) => (
+                        <li key={msg}>{msg}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+              {Array.isArray(settlementPreviewResult.validation?.warnings) &&
+                settlementPreviewResult.validation.warnings.length > 0 && (
+                  <div style={{ color: "#92400e", marginBottom: 8 }}>
+                    <strong>Warnings:</strong>
+                    <ul style={{ margin: "4px 0 0 18px", padding: 0 }}>
+                      {settlementPreviewResult.validation.warnings.map((msg: string) => (
+                        <li key={msg}>{msg}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+              {settlementPreviewResult.totals && (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                    gap: 8,
+                    marginBottom: 10,
+                    fontSize: 13,
+                  }}
+                >
+                  <div>
+                    <strong>Gross Settlement:</strong>
+                    <br />
+                    {money(settlementPreviewResult.totals.grossSettlementAmount)}
+                  </div>
+                  <div>
+                    <strong>Total Firm Fee:</strong>
+                    <br />
+                    {money(settlementPreviewResult.totals.totalFeeTotal)}
+                  </div>
+                  <div>
+                    <strong>Provider Net:</strong>
+                    <br />
+                    {money(settlementPreviewResult.totals.providerNetTotal)}
+                  </div>
+                  <div>
+                    <strong>Bill Count:</strong>
+                    <br />
+                    {num(settlementPreviewResult.totals.childMatterCount)}
+                  </div>
+                </div>
+              )}
+
+              {Array.isArray(settlementPreviewResult.rows) && settlementPreviewResult.rows.length > 0 && (
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    background: "#fff",
+                    fontSize: 12,
+                    marginTop: 8,
+                  }}
+                >
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Matter</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Bill</th>
+                      <th style={{ textAlign: "right", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Allocated</th>
+                      <th style={{ textAlign: "right", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Interest</th>
+                      <th style={{ textAlign: "right", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Firm Fee</th>
+                      <th style={{ textAlign: "right", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Provider Net</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {settlementPreviewResult.rows.map((row: any) => (
+                      <tr key={textValue(row.matterId)}>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                          {textValue(row.displayNumber) || textValue(row.matterId)}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                          {textValue(row.billNumber) || "—"}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5, textAlign: "right" }}>
+                          {money(row.allocatedSettlement)}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5, textAlign: "right" }}>
+                          {money(row.interestAmount)}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5, textAlign: "right" }}>
+                          {money(row.totalFee)}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5, textAlign: "right" }}>
+                          {money(row.providerNet)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              <details style={{ marginTop: 10 }}>
+                <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
+                  Raw settlement preview JSON
+                </summary>
+                <pre
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    overflowX: "auto",
+                    margin: "6px 0 0 0",
+                    padding: 8,
+                    background: "#fff",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 4,
+                    fontSize: 12,
+                  }}
+                >
+                  {JSON.stringify(settlementPreviewResult, null, 2)}
+                </pre>
+              </details>
+            </div>
+          )}
+
+          <div
+            style={{
               padding: 10,
               background: "#f8fafc",
               border: "1px solid #cbd5e1",
@@ -2290,7 +2780,7 @@ const activeGroupKey =
               fontSize: 13,
             }}
           >
-            Next implementation step: add a non-persistent settlement calculation preview endpoint.  It should calculate from live Clio matter data, exclude master matters, and avoid any Clio or local database writes until an explicit final save action exists.
+            Next implementation step: convert this preview into an explicit final save/writeback workflow.  The save action should reuse the same calculation engine, write only after final user confirmation, target child/bill matters only, and refresh ClaimIndex after Clio writeback.
           </div>
         </section>
       )}

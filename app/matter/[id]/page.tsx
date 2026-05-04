@@ -256,6 +256,9 @@ const activeGroupKey =
   const [lawsuitOptions, setLawsuitOptions] = useState<LawsuitOptions>(() =>
     defaultLawsuitOptions()
   );
+  const [packetPreview, setPacketPreview] = useState<any>(null);
+  const [packetPreviewOpen, setPacketPreviewOpen] = useState(false);
+  const [packetLoading, setPacketLoading] = useState(false);
 
 
   useEffect(() => {
@@ -599,6 +602,37 @@ const activeGroupKey =
     }
   }
 
+  async function loadPacketPreview() {
+    const masterLawsuitId = textValue(matter?.masterLawsuitId);
+
+    if (!masterLawsuitId) {
+      alert("This matter is not part of a lawsuit.");
+      return;
+    }
+
+    setPacketLoading(true);
+
+    try {
+      const res = await fetch(
+        `/api/documents/packet?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`
+      );
+
+      const json = await res.json();
+
+      if (!json?.packet) {
+        alert(json?.error || "Document packet preview failed.");
+        return;
+      }
+
+      setPacketPreview(json);
+      setPacketPreviewOpen(true);
+    } catch (err: any) {
+      alert(err?.message || "Document packet preview failed.");
+    } finally {
+      setPacketLoading(false);
+    }
+  }
+
   const totals = useMemo(() => {
     return rows.reduce(
       (acc, r) => {
@@ -888,6 +922,224 @@ const activeGroupKey =
       </div>
 
       <hr style={{ margin: "18px 0 20px 0", border: 0, borderTop: "1px solid #999"  }} />
+
+      {alreadyAggregated && (
+        <section
+          style={{
+            border: "1px solid #bfbfbf",
+            borderRadius: 6,
+            padding: 14,
+            marginBottom: 16,
+            background: "#fbfbfb",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              marginBottom: packetPreviewOpen && packetPreview?.packet ? 12 : 0,
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 16 }}>
+                Document Packet Preview
+              </div>
+              <div style={{ fontSize: 13, color: "#555", marginTop: 3 }}>
+                Read-only packet data for MASTER LAWSUIT ID {textValue(matter?.masterLawsuitId)}.
+              </div>
+            </div>
+
+            <button
+              onClick={loadPacketPreview}
+              disabled={packetLoading}
+              style={{
+                padding: "8px 12px",
+                border: "1px solid #2563eb",
+                background: packetLoading ? "#f3f4f6" : "#2563eb",
+                color: packetLoading ? "#666" : "#fff",
+                borderRadius: 4,
+                cursor: packetLoading ? "not-allowed" : "pointer",
+                fontWeight: 700,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {packetLoading
+                ? "Loading..."
+                : packetPreviewOpen
+                ? "Refresh Packet Preview"
+                : "Load Packet Preview"}
+            </button>
+          </div>
+
+          {packetPreviewOpen && packetPreview?.packet && (
+            <div
+              style={{
+                borderTop: "1px solid #ddd",
+                paddingTop: 12,
+                fontSize: 13,
+              }}
+            >
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                  gap: 10,
+                  marginBottom: 12,
+                }}
+              >
+                <div>
+                  <strong>Venue:</strong>
+                  <br />
+                  {textValue(packetPreview.packet.metadata?.venue?.value) || "—"}
+                </div>
+                <div>
+                  <strong>Amount Sought:</strong>
+                  <br />
+                  {money(packetPreview.packet.metadata?.amountSought?.amount)}
+                  {" "}
+                  ({textValue(packetPreview.packet.metadata?.amountSought?.mode) || "—"})
+                </div>
+                <div>
+                  <strong>Index / AAA:</strong>
+                  <br />
+                  {textValue(packetPreview.packet.metadata?.indexAaaNumber?.value) || "—"}
+                </div>
+                <div>
+                  <strong>Can Generate:</strong>
+                  <br />
+                  {packetPreview.packet.validation?.canGenerate ? "Yes" : "No"}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                  gap: 10,
+                  marginBottom: 12,
+                }}
+              >
+                <div>
+                  <strong>Provider:</strong>
+                  <br />
+                  {textValue(packetPreview.packet.metadata?.provider?.value) || "—"}
+                </div>
+                <div>
+                  <strong>Patient:</strong>
+                  <br />
+                  {textValue(packetPreview.packet.metadata?.patient?.value) || "—"}
+                </div>
+                <div>
+                  <strong>Insurer:</strong>
+                  <br />
+                  {textValue(packetPreview.packet.metadata?.insurer?.value) || "—"}
+                </div>
+                <div>
+                  <strong>Claim:</strong>
+                  <br />
+                  {textValue(packetPreview.packet.metadata?.claimNumber?.value) || "—"}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+                  gap: 10,
+                  marginBottom: 12,
+                  padding: 10,
+                  background: "#fff",
+                  border: "1px solid #ddd",
+                  borderRadius: 4,
+                }}
+              >
+                <div>
+                  <strong>Bills:</strong>
+                  <br />
+                  {num(packetPreview.packet.totals?.billCount)}
+                </div>
+                <div>
+                  <strong>Claim Total:</strong>
+                  <br />
+                  {money(packetPreview.packet.totals?.claimAmountTotal)}
+                </div>
+                <div>
+                  <strong>Voluntary Paid:</strong>
+                  <br />
+                  {money(packetPreview.packet.totals?.paymentVoluntaryTotal)}
+                </div>
+                <div>
+                  <strong>Balance Presuit:</strong>
+                  <br />
+                  {money(packetPreview.packet.totals?.balancePresuitTotal)}
+                </div>
+                <div>
+                  <strong>Balance:</strong>
+                  <br />
+                  {money(packetPreview.packet.totals?.balanceAmountTotal)}
+                </div>
+              </div>
+
+              {packetPreview.packet.validation?.blockingErrors?.length > 0 && (
+                <div style={{ color: "#991b1b", marginBottom: 8 }}>
+                  <strong>Blocking Errors:</strong>{" "}
+                  {packetPreview.packet.validation.blockingErrors.join("; ")}
+                </div>
+              )}
+
+              {packetPreview.packet.validation?.warnings?.length > 0 && (
+                <div style={{ color: "#92400e", marginBottom: 8 }}>
+                  <strong>Warnings:</strong>{" "}
+                  {packetPreview.packet.validation.warnings.join("; ")}
+                </div>
+              )}
+
+              <details style={{ marginTop: 8 }}>
+                <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                  Child Bill Matters
+                </summary>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    marginTop: 8,
+                    background: "#fff",
+                  }}
+                >
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Matter</th>
+                      <th style={thStyle}>Patient</th>
+                      <th style={thStyle}>Provider</th>
+                      <th style={thStyle}>DOS</th>
+                      <th style={thStyle}>Claim Amount</th>
+                      <th style={thStyle}>Balance Presuit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(packetPreview.packet.childMatters || []).map((child: any) => (
+                      <tr key={String(child.matterId)}>
+                        <td style={tdStyle}>{textValue(child.displayNumber)}</td>
+                        <td style={tdStyle}>{textValue(child.patientName)}</td>
+                        <td style={tdStyle}>{textValue(child.providerName)}</td>
+                        <td style={tdStyle}>{formatDOS(child.dosStart, child.dosEnd)}</td>
+                        <td style={{ ...tdStyle, textAlign: "right" }}>
+                          {money(child.claimAmount)}
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: "right" }}>
+                          {money(child.balancePresuit)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
+            </div>
+          )}
+        </section>
+      )}
 
       
 <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>

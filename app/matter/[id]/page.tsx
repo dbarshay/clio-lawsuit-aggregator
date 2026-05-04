@@ -3529,8 +3529,9 @@ const activeGroupKey =
         >
           <h2 style={{ marginTop: 0 }}>Edit Lawsuit Metadata</h2>
 
-          <p style={{ marginBottom: 16, color: "#444" }}>
-            Updates are stored locally for document packet generation.  This does not write to Clio.
+          <p style={{ marginBottom: 16, color: "#444", lineHeight: 1.45 }}>
+            Venue, Amount Sought, and notes are stored locally for lawsuit metadata and document packet generation.
+            Index / AAA Number and lawsuit matter display numbers are written to Clio as post-filing fields.
           </p>
 
           <label style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>

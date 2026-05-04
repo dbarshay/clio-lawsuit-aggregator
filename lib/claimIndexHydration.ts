@@ -76,10 +76,12 @@ export async function indexMatterFromClioPayload(m: any) {
 
   const patientId = getField(m, PATIENT_FIELD_ID);
   const insurerId = getField(m, INSURANCE_COMPANY_FIELD_ID);
+  const settledWithId = getField(m, SETTLED_WITH_FIELD_ID);
 
-  const [patientName, insurerName] = await Promise.all([
+  const [patientName, insurerName, settledWithName] = await Promise.all([
     getContactName(patientId),
     getContactName(insurerId),
+    getContactName(settledWithId),
   ]);
 
   const row = {
@@ -97,9 +99,7 @@ export async function indexMatterFromClioPayload(m: any) {
     claim_amount: num(getField(m, CLAIM_AMOUNT_FIELD_ID)),
     settled_amount: num(getField(m, SETTLED_AMOUNT_FIELD_ID)),
     
-    settled_with: getField(m, SETTLED_WITH_FIELD_ID)
-      ? String(getField(m, SETTLED_WITH_FIELD_ID))
-      : null,
+    settled_with: settledWithName || (settledWithId ? String(settledWithId) : null),
     allocated_settlement: num(getField(m, ALLOCATED_SETTLEMENT_FIELD_ID)),
     interest_amount: num(getField(m, INTEREST_AMOUNT_FIELD_ID)),
     principal_fee: num(getField(m, PRINCIPAL_FEE_FIELD_ID)),

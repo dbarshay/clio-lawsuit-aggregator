@@ -54,10 +54,12 @@ export async function upsertClaimIndexFromMatter(matter: any) {
   const insurerRaw = cf(MATTER_CF.INSURANCE_COMPANY);
   const rawDenialReason = cf(MATTER_CF.DENIAL_REASON);
   const closeReasonRaw = cf(CLOSE_REASON_LITIGATION_ARBITRATION);
+  const settledWithRaw = cf(MATTER_CF.SETTLED_WITH);
 
-  const [patientName, insurerName] = await Promise.all([
+  const [patientName, insurerName, settledWithName] = await Promise.all([
     getContactName(patientRaw),
     getContactName(insurerRaw),
+    getContactName(settledWithRaw),
   ]);
 
     // --- SELECTOR-FIRST EXTRACTION ---
@@ -106,7 +108,7 @@ export async function upsertClaimIndexFromMatter(matter: any) {
     // --- FINANCIALS ---
     claim_amount: claimAmount,
     settled_amount: num(cf(MATTER_CF.SETTLED_AMOUNT)),
-    settled_with: str(cf(MATTER_CF.SETTLED_WITH)),
+    settled_with: settledWithName || str(settledWithRaw),
     allocated_settlement: num(cf(MATTER_CF.ALLOCATED_SETTLEMENT)),
     interest_amount: num(cf(MATTER_CF.INTEREST_AMOUNT)),
     principal_fee: num(cf(MATTER_CF.PRINCIPAL_FEE)),

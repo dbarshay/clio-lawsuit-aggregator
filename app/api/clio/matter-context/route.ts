@@ -110,10 +110,12 @@ export async function GET(req: NextRequest) {
     const insurerId = getCustomFieldValue(matter, MATTER_CF.INSURANCE_COMPANY);
     const rawDenialReason = getCustomFieldValue(matter, MATTER_CF.DENIAL_REASON);
     const closeReasonRaw = getCustomFieldValue(matter, CLOSE_REASON_LITIGATION_ARBITRATION);
+    const settledWithId = getCustomFieldValue(matter, MATTER_CF.SETTLED_WITH);
 
-    const [patientName, insurerName] = await Promise.all([
+    const [patientName, insurerName, settledWithName] = await Promise.all([
       getContactName(patientId),
       getContactName(insurerId),
+      getContactName(settledWithId),
     ]);
 
     const normalized = {
@@ -136,7 +138,8 @@ export async function GET(req: NextRequest) {
       settledAmount: getCustomFieldValue(matter, MATTER_CF.SETTLED_AMOUNT),
 
       
-      settledWith: getCustomFieldValue(matter, MATTER_CF.SETTLED_WITH),
+      settledWith: settledWithName,
+      settledWithContactId: settledWithId,
       allocatedSettlement: getCustomFieldValue(matter, MATTER_CF.ALLOCATED_SETTLEMENT),
       interestAmount: getCustomFieldValue(matter, MATTER_CF.INTEREST_AMOUNT),
       principalFee: getCustomFieldValue(matter, MATTER_CF.PRINCIPAL_FEE),

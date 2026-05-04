@@ -6,6 +6,8 @@ export type SettlementAllocationMode =
 export type SettlementPreviewInput = {
   grossSettlementAmount: number;
   settledWith?: string;
+  settledWithContactId?: number | string | null;
+  settledWithContactName?: string;
   settlementDate?: string;
   paymentExpectedDate?: string;
   allocationMode?: SettlementAllocationMode;
@@ -92,6 +94,9 @@ export function buildSettlementPreview(params: {
   const grossSettlementAmount = money(input.grossSettlementAmount);
   const interestAmount = money(input.interestAmount || 0);
   const principalSettlementAmount = money(grossSettlementAmount - interestAmount);
+  const settledWithContactIdRaw = clean(input.settledWithContactId);
+  const settledWithContactId = Number(settledWithContactIdRaw);
+  const settledWithContactName = clean(input.settledWithContactName || input.settledWith);
 
   const allocationMode: SettlementAllocationMode =
     input.allocationMode === "proportional_claim_amount" || input.allocationMode === "equal"
@@ -105,6 +110,9 @@ export function buildSettlementPreview(params: {
   const blockingErrors: string[] = [];
 
   if (!masterLawsuitId) blockingErrors.push("Missing masterLawsuitId.");
+  if (!Number.isFinite(settledWithContactId) || settledWithContactId <= 0) {
+    blockingErrors.push("Settled With must be selected from Clio contacts.");
+  }
   if (grossSettlementAmount <= 0) blockingErrors.push("Gross settlement amount must be greater than zero.");
   if (interestAmount < 0) blockingErrors.push("Interest amount cannot be negative.");
   if (interestAmount > grossSettlementAmount) {
@@ -198,7 +206,8 @@ export function buildSettlementPreview(params: {
         displayNumber: row.displayNumber || "",
         fields: {
           SETTLED_AMOUNT: grossSettlementAmount,
-          SETTLED_WITH: clean(input.settledWith),
+          SETTLED_WITH: settledWithContactId,
+          SETTLED_WITH_NAME: settledWithContactName,
           ALLOCATED_SETTLEMENT: allocatedPrincipalSettlement,
           INTEREST_AMOUNT: allocatedInterest,
           PRINCIPAL_FEE: principalFee,
@@ -239,7 +248,9 @@ export function buildSettlementPreview(params: {
 
     input: {
       grossSettlementAmount,
-      settledWith: clean(input.settledWith),
+      settledWith: settledWithContactName,
+      settledWithContactId: Number.isFinite(settledWithContactId) ? settledWithContactId : null,
+      settledWithContactName,
       settlementDate: clean(input.settlementDate),
       paymentExpectedDate: clean(input.paymentExpectedDate),
       allocationMode,

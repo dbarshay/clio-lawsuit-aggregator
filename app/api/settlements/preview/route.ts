@@ -35,7 +35,9 @@ export async function POST(req: NextRequest) {
     const masterLawsuitId = clean(body.masterLawsuitId);
     const input: SettlementPreviewInput = {
       grossSettlementAmount: Number(body.grossSettlementAmount),
-      settledWith: clean(body.settledWith),
+      settledWith: clean(body.settledWithContactName || body.settledWith),
+      settledWithContactId: body.settledWithContactId,
+      settledWithContactName: clean(body.settledWithContactName || body.settledWith),
       settlementDate: clean(body.settlementDate),
       paymentExpectedDate: clean(body.paymentExpectedDate),
       allocationMode: body.allocationMode,

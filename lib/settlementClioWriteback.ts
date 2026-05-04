@@ -20,7 +20,8 @@ type ClioMatter = {
 
 export type SettlementWritebackFields = {
   SETTLED_AMOUNT: number;
-  SETTLED_WITH: string;
+  SETTLED_WITH: number;
+  SETTLED_WITH_NAME?: string;
   ALLOCATED_SETTLEMENT: number;
   INTEREST_AMOUNT: number;
   PRINCIPAL_FEE: number;
@@ -148,8 +149,19 @@ function buildSettlementCustomFieldPayload(params: {
     const rawValue = params.requested.fields[item.key];
     const value =
       item.key === "SETTLED_WITH"
-        ? text(rawValue)
+        ? Number(rawValue)
         : money(rawValue);
+
+    if (
+      item.key === "SETTLED_WITH" &&
+      (!Number.isFinite(Number(rawValue)) || Number(rawValue) <= 0)
+    ) {
+      missingRequiredFields.push({
+        key: item.key,
+        fieldId: item.fieldId,
+      });
+      continue;
+    }
 
     payload.push({
       id: cfv.id,

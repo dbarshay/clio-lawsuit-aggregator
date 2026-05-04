@@ -355,6 +355,9 @@ const activeGroupKey =
   const [settlementPreviewInput, setSettlementPreviewInput] = useState({
     grossSettlementAmount: "",
     settledWith: "",
+    settledWithContactId: "",
+    settledWithContactName: "",
+    settledWithContactSearch: "",
     settlementDate: "",
     paymentExpectedDate: "",
     allocationMode: "proportional_balance_presuit",
@@ -364,6 +367,8 @@ const activeGroupKey =
     notes: "",
   });
   const [settlementPreviewLoading, setSettlementPreviewLoading] = useState(false);
+  const [settledWithContactResults, setSettledWithContactResults] = useState<any[]>([]);
+  const [settledWithContactLoading, setSettledWithContactLoading] = useState(false);
   const [settlementPreviewResult, setSettlementPreviewResult] = useState<any>(null);
   const [settlementWritebackPreviewLoading, setSettlementWritebackPreviewLoading] = useState(false);
   const [settlementWritebackPreviewResult, setSettlementWritebackPreviewResult] = useState<any>(null);
@@ -1467,6 +1472,55 @@ const activeGroupKey =
     await openMetadataModalForMaster();
   }
 
+  async function searchSettledWithContacts() {
+    const query = textValue(settlementPreviewInput.settledWithContactSearch || settlementPreviewInput.settledWith);
+
+    if (query.length < 2) {
+      alert("Enter at least 2 characters to search Clio contacts.");
+      return;
+    }
+
+    setSettledWithContactLoading(true);
+
+    try {
+      const res = await fetch(`/api/clio/contacts/search?q=${encodeURIComponent(query)}`);
+      const json = await res.json();
+
+      if (!res.ok || !json?.ok) {
+        alert(json?.error || "Could not search Clio contacts.");
+        setSettledWithContactResults([]);
+        return;
+      }
+
+      setSettledWithContactResults(Array.isArray(json.contacts) ? json.contacts : []);
+    } catch (err: any) {
+      alert(err?.message || "Could not search Clio contacts.");
+      setSettledWithContactResults([]);
+    } finally {
+      setSettledWithContactLoading(false);
+    }
+  }
+
+  function selectSettledWithContact(contact: any) {
+    const id = textValue(contact?.id);
+    const name = textValue(contact?.name);
+
+    if (!id || !name) return;
+
+    setSettlementPreviewInput({
+      ...settlementPreviewInput,
+      settledWith: name,
+      settledWithContactId: id,
+      settledWithContactName: name,
+      settledWithContactSearch: name,
+    });
+
+    setSettledWithContactResults([]);
+    setSettlementPreviewResult(null);
+    setSettlementWritebackPreviewResult(null);
+    setSettlementWritebackResult(null);
+  }
+
   async function loadSettlementPreview() {
     const masterLawsuitId = tabMasterLawsuitId;
 
@@ -1482,6 +1536,11 @@ const activeGroupKey =
       return;
     }
 
+    if (!textValue(settlementPreviewInput.settledWithContactId)) {
+      alert("Select Settled With from Clio contacts before previewing settlement.");
+      return;
+    }
+
     setSettlementPreviewLoading(true);
     setSettlementPreviewResult(null);
 
@@ -1494,7 +1553,9 @@ const activeGroupKey =
         body: JSON.stringify({
           masterLawsuitId,
           grossSettlementAmount,
-          settledWith: settlementPreviewInput.settledWith,
+          settledWith: settlementPreviewInput.settledWithContactName || settlementPreviewInput.settledWith,
+          settledWithContactId: settlementPreviewInput.settledWithContactId,
+          settledWithContactName: settlementPreviewInput.settledWithContactName || settlementPreviewInput.settledWith,
           settlementDate: settlementPreviewInput.settlementDate,
           paymentExpectedDate: settlementPreviewInput.paymentExpectedDate,
           allocationMode: settlementPreviewInput.allocationMode,
@@ -2602,24 +2663,83 @@ const activeGroupKey =
 
               <label style={{ fontSize: 13, fontWeight: 700 }}>
                 Settled With
-                <input
-                  value={settlementPreviewInput.settledWith}
-                  onChange={(e) =>
-                    setSettlementPreviewInput((prev) => ({
-                      ...prev,
-                      settledWith: e.target.value,
-                    }))
-                  }
-                  placeholder="Adjuster / defense contact"
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    marginTop: 4,
-                    padding: 8,
-                    border: "1px solid #cbd5e1",
-                    borderRadius: 4,
-                  }}
-                />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    value={settlementPreviewInput.settledWithContactSearch}
+                    onChange={(e) =>
+                      setSettlementPreviewInput({
+                        ...settlementPreviewInput,
+                        settledWithContactSearch: e.target.value,
+                        settledWithContactId: "",
+                        settledWithContactName: "",
+                        settledWith: e.target.value,
+                      })
+                    }
+                    placeholder="Search Clio contacts"
+                    style={{
+                      width: "100%",
+                      padding: 8,
+                      border: "1px solid #cbd5e1",
+                      borderRadius: 4,
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={searchSettledWithContacts}
+                    disabled={settledWithContactLoading}
+                    style={{
+                      padding: "8px 10px",
+                      border: "1px solid #2563eb",
+                      background: settledWithContactLoading ? "#f3f4f6" : "#2563eb",
+                      color: settledWithContactLoading ? "#666" : "#fff",
+                      borderRadius: 4,
+                      cursor: settledWithContactLoading ? "not-allowed" : "pointer",
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {settledWithContactLoading ? "Searching..." : "Search"}
+                  </button>
+                </div>
+
+                {settlementPreviewInput.settledWithContactId && (
+                  <div style={{ marginTop: 6, fontSize: 12, color: "#166534", fontWeight: 700 }}>
+                    Selected Clio contact: {settlementPreviewInput.settledWithContactName} (ID {settlementPreviewInput.settledWithContactId})
+                  </div>
+                )}
+
+                {settledWithContactResults.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: 6,
+                      border: "1px solid #cbd5e1",
+                      borderRadius: 6,
+                      overflow: "hidden",
+                      background: "#fff",
+                    }}
+                  >
+                    {settledWithContactResults.map((contact: any) => (
+                      <button
+                        key={contact.id}
+                        type="button"
+                        onClick={() => selectSettledWithContact(contact)}
+                        style={{
+                          display: "block",
+                          width: "100%",
+                          padding: "8px 10px",
+                          textAlign: "left",
+                          border: "none",
+                          borderBottom: "1px solid #e5e7eb",
+                          background: "#fff",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <strong>{contact.name}</strong>
+                        {contact.type ? <span style={{ color: "#64748b" }}> — {contact.type}</span> : null}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </label>
 
               <label style={{ fontSize: 13, fontWeight: 700 }}>

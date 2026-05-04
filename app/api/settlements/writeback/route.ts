@@ -73,7 +73,7 @@ async function recordSettlementWritebackAudit(params: {
         masterLawsuitId: params.masterLawsuitId,
         status: params.status,
         grossSettlement: num(fields.SETTLED_AMOUNT),
-        settledWith: clean(fields.SETTLED_WITH) || null,
+        settledWith: clean(fields.SETTLED_WITH_NAME || fields.SETTLED_WITH) || null,
         settlementDate: null,
         allocationMode: null,
         childMatterIds: jsonSafe(childMatterIdsFromRows(params.rows)),

@@ -748,6 +748,102 @@ const activeGroupKey =
     }
   }
 
+  function buildFilingDemandSummaryText(packet: any): string {
+    const metadata = packet?.metadata || {};
+    const totals = packet?.totals || {};
+    const children = Array.isArray(packet?.childMatters) ? packet.childMatters : [];
+
+    const provider = textValue(metadata?.provider?.value) || "—";
+    const patient = textValue(metadata?.patient?.value) || "—";
+    const insurer = textValue(metadata?.insurer?.value) || "—";
+    const claimNumber = textValue(metadata?.claimNumber?.value) || "—";
+    const indexAaaNumber = textValue(metadata?.indexAaaNumber?.value) || "—";
+    const venue = textValue(metadata?.venue?.value) || "—";
+    const amountSought = money(metadata?.amountSought?.amount);
+    const amountMode = textValue(metadata?.amountSought?.mode) || "—";
+
+    const dosValues = Array.from(
+      new Set(
+        children
+          .map((child: any) => formatDOS(child.dosStart, child.dosEnd))
+          .filter(Boolean)
+      )
+    );
+
+    const denialReasons = Array.from(
+      new Set(
+        children
+          .map((child: any) => textValue(child.denialReason))
+          .filter(Boolean)
+      )
+    );
+
+    const lines: string[] = [];
+
+    lines.push("FILING / DEMAND SUMMARY");
+    lines.push("");
+    lines.push(provider);
+    lines.push(`as assignee of ${patient}`);
+    lines.push("against");
+    lines.push(insurer);
+
+    lines.push("");
+    lines.push(`Venue: ${venue}`);
+    lines.push(`Index / AAA No.: ${indexAaaNumber}`);
+    lines.push(`Claim No.: ${claimNumber}`);
+    lines.push(`Amount Sought: ${amountSought} (${amountMode})`);
+
+    lines.push("");
+    lines.push(`Bill Count: ${num(totals.billCount)}`);
+    lines.push(`Claim Amount Total: ${money(totals.claimAmountTotal)}`);
+    lines.push(`Payment Voluntary Total: ${money(totals.paymentVoluntaryTotal)}`);
+    lines.push(`Balance Presuit Total: ${money(totals.balancePresuitTotal)}`);
+
+    if (dosValues.length > 0) {
+      lines.push(`Date(s) of Service: ${dosValues.join("; ")}`);
+    }
+
+    if (denialReasons.length > 0) {
+      lines.push(`Denial Reason(s): ${denialReasons.join("; ")}`);
+    }
+
+    lines.push("");
+    lines.push("Bill Matter(s):");
+
+    if (children.length === 0) {
+      lines.push("—");
+    } else {
+      for (const child of children) {
+        lines.push(
+          [
+            textValue(child.displayNumber) || "—",
+            `DOS: ${formatDOS(child.dosStart, child.dosEnd) || "—"}`,
+            `Claim Amount: ${money(child.claimAmount)}`,
+            `Balance Presuit: ${money(child.balancePresuit)}`,
+          ].join(" | ")
+        );
+      }
+    }
+
+    return lines.join("\n");
+  }
+
+  async function copyFilingDemandSummary() {
+    if (!packetPreview?.packet) {
+      alert("Load the packet preview first.");
+      return;
+    }
+
+    const summary = buildFilingDemandSummaryText(packetPreview.packet);
+
+    try {
+      await navigator.clipboard.writeText(summary);
+      alert("Filing / demand summary copied to clipboard.");
+    } catch {
+      alert("Could not copy to clipboard.");
+    }
+  }
+
   async function openMetadataModal() {
     const masterLawsuitId = textValue(matter?.masterLawsuitId);
 
@@ -1324,7 +1420,29 @@ const activeGroupKey =
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: 8,
+                  marginBottom: 10,
+                }}
+              >
+                <button
+                  onClick={copyFilingDemandSummary}
+                  style={{
+                    padding: "8px 12px",
+                    border: "1px solid #047857",
+                    background: "#047857",
+                    color: "#fff",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  Copy Filing / Demand Summary
+                </button>
+
                 <button
                   onClick={copyPacketSummary}
                   style={{

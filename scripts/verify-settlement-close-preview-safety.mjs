@@ -34,6 +34,7 @@ function mustNotContain(label, text, needle) {
 console.log("=== VERIFY SETTLEMENT CLOSE PREVIEW SAFETY ===");
 
 const route = read("app/api/settlements/close-preview/route.ts");
+const matterPage = read("app/matter/[id]/page.tsx");
 const packageJson = read("package.json");
 const verifyProd = read("scripts/verify-prod.sh");
 
@@ -64,6 +65,19 @@ mustContain("close preview route", route, "Matter already has a closed status or
 mustContain("close preview route", route, "canCloseIfConfirmed");
 mustContain("close preview route", route, "PAID (SETTLEMENT)");
 mustContain("close preview route", route, "master_lawsuit_id: masterLawsuitId");
+
+console.log("");
+console.log("=== VERIFY CLOSE PREVIEW UI IS PREVIEW-ONLY ===");
+mustContain("matter page", matterPage, "Settlement Close Preview");
+mustContain("matter page", matterPage, "Preview Settlement Close");
+mustContain("matter page", matterPage, "/api/settlements/close-preview");
+mustContain("matter page", matterPage, "Dry-run only.");
+mustContain("matter page", matterPage, "No close action is performed here.");
+mustContain("matter page", matterPage, "Final close writeback will require a separate explicit confirmation step.");
+mustContain("matter page", matterPage, "settlementClosePreviewResult");
+mustContain("matter page", matterPage, "settlementClosePreviewLoading");
+mustNotContain("matter page", matterPage, "Close Settlement Matters Now");
+mustNotContain("matter page", matterPage, "Confirm Settlement Close");
 
 console.log("");
 console.log("=== VERIFY SCRIPT REGISTRATION ===");

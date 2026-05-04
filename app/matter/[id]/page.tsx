@@ -378,6 +378,8 @@ const activeGroupKey =
   const [settlementWritebackPreviewResult, setSettlementWritebackPreviewResult] = useState<any>(null);
   const [settlementWritebackLoading, setSettlementWritebackLoading] = useState(false);
   const [settlementWritebackResult, setSettlementWritebackResult] = useState<any>(null);
+  const [settlementClosePreviewLoading, setSettlementClosePreviewLoading] = useState(false);
+  const [settlementClosePreviewResult, setSettlementClosePreviewResult] = useState<any>(null);
   const [settlementHistoryLoading, setSettlementHistoryLoading] = useState(false);
   const [settlementHistoryResult, setSettlementHistoryResult] = useState<any>(null);
   const [expandedSettlementHistoryId, setExpandedSettlementHistoryId] = useState<string | null>(null);
@@ -1825,6 +1827,8 @@ const activeGroupKey =
       }
 
       alert(`Settlement saved to Clio for ${num(json.count)} child/bill matter(s).`);
+      setSettlementClosePreviewResult(null);
+      await loadCurrentSettlementValues(masterLawsuitId);
       await loadSettlementHistory(masterLawsuitId);
       await expandClaim();
     } catch (err: any) {
@@ -1876,6 +1880,64 @@ const activeGroupKey =
       });
     } finally {
       setCurrentSettlementValuesLoading(false);
+    }
+  }
+
+  async function loadSettlementClosePreview(masterLawsuitIdInput?: string) {
+    const masterLawsuitId = masterLawsuitIdInput || tabMasterLawsuitId;
+
+    if (!masterLawsuitId) {
+      alert("No MASTER_LAWSUIT_ID found.  Generate or connect a lawsuit before previewing settlement close.");
+      return;
+    }
+
+    setSettlementClosePreviewLoading(true);
+    setSettlementClosePreviewResult(null);
+
+    try {
+      const res = await fetch("/api/settlements/close-preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          masterLawsuitId,
+        }),
+      });
+
+      const json = await res.json();
+      setSettlementClosePreviewResult(json);
+
+      if (!res.ok || !json?.ok) {
+        const blockingErrors = Array.isArray(json?.validation?.blockingErrors)
+          ? json.validation.blockingErrors
+          : [];
+
+        if (blockingErrors.length > 0) {
+          alert(`Settlement close preview has no eligible matters:\n\n${blockingErrors.join("\n")}`);
+        } else if (json?.error) {
+          alert(json.error);
+        }
+      }
+    } catch (err: any) {
+      const fallback = {
+        ok: false,
+        action: "settlement-close-preview",
+        dryRun: true,
+        error: err?.message || "Settlement close preview failed.",
+        safety: {
+          dryRun: true,
+          previewOnly: true,
+          noClioRecordsChanged: true,
+          noDatabaseRecordsChanged: true,
+          noDocumentsGenerated: true,
+          noPrintQueueRecordsChanged: true,
+        },
+      };
+      setSettlementClosePreviewResult(fallback);
+      alert(fallback.error);
+    } finally {
+      setSettlementClosePreviewLoading(false);
     }
   }
 
@@ -3844,6 +3906,173 @@ const activeGroupKey =
               </details>
             </div>
           )}
+
+          <div
+            style={{
+              padding: 12,
+              border: "1px solid #fef3c7",
+              borderRadius: 10,
+              background: "#fffbeb",
+              marginBottom: 14,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 12,
+                flexWrap: "wrap",
+                marginBottom: 10,
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 800, marginBottom: 4 }}>
+                  Settlement Close Preview
+                </div>
+                <div style={{ color: "#92400e", fontSize: 12 }}>
+                  Dry-run only.  This previews which child/bill matters would be eligible to close as PAID (SETTLEMENT).  It does not write to Clio, ClaimIndex, documents, or the print queue.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => loadSettlementClosePreview()}
+                disabled={settlementClosePreviewLoading || !tabMasterLawsuitId}
+                style={{
+                  padding: "7px 10px",
+                  border: "1px solid #b45309",
+                  background: settlementClosePreviewLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#b45309",
+                  color: settlementClosePreviewLoading || !tabMasterLawsuitId ? "#666" : "#fff",
+                  borderRadius: 4,
+                  cursor: settlementClosePreviewLoading || !tabMasterLawsuitId ? "not-allowed" : "pointer",
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {settlementClosePreviewLoading ? "Previewing..." : "Preview Settlement Close"}
+              </button>
+            </div>
+
+            {settlementClosePreviewResult?.error && (
+              <div style={{ color: "#991b1b", fontSize: 13, marginBottom: 8 }}>
+                <strong>Error:</strong> {textValue(settlementClosePreviewResult.error)}
+              </div>
+            )}
+
+            {settlementClosePreviewResult?.validation && (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                  gap: 8,
+                  marginBottom: 10,
+                  fontSize: 12,
+                }}
+              >
+                <div>
+                  <strong>Can Close:</strong>
+                  <br />
+                  {settlementClosePreviewResult.validation.canCloseIfConfirmed ? "Yes" : "No"}
+                </div>
+                <div>
+                  <strong>Closable:</strong>
+                  <br />
+                  {num(settlementClosePreviewResult.validation.closableCount)}
+                </div>
+                <div>
+                  <strong>Blocked:</strong>
+                  <br />
+                  {num(settlementClosePreviewResult.validation.blockedCount)}
+                </div>
+                <div>
+                  <strong>Close Reason:</strong>
+                  <br />
+                  PAID (SETTLEMENT)
+                </div>
+              </div>
+            )}
+
+            {Array.isArray(settlementClosePreviewResult?.validation?.blockingErrors) &&
+              settlementClosePreviewResult.validation.blockingErrors.length > 0 && (
+                <div style={{ color: "#92400e", marginBottom: 8, fontSize: 12 }}>
+                  <strong>Blocking / Already Final:</strong>
+                  <ul style={{ margin: "4px 0 0 18px", padding: 0 }}>
+                    {settlementClosePreviewResult.validation.blockingErrors.map((msg: string) => (
+                      <li key={msg}>{msg}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+            {Array.isArray(settlementClosePreviewResult?.results) &&
+              settlementClosePreviewResult.results.length > 0 && (
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    background: "#fff",
+                    fontSize: 12,
+                    marginTop: 8,
+                  }}
+                >
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Matter</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Status</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Master?</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Eligible</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Existing Final Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {settlementClosePreviewResult.results.map((row: any) => (
+                      <tr key={textValue(row.matterId)}>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                          {textValue(row.displayNumber) || textValue(row.matterId)}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                          {textValue(row.status) || "—"}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                          {row.isMasterMatter ? "Yes" : "No"}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                          {row.canCloseIfConfirmed ? "Yes" : "No"}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                          {textValue(row.existingCloseReasonValue) || "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+            <div style={{ marginTop: 8, color: "#92400e", fontSize: 12 }}>
+              No close action is performed here.  Final close writeback will require a separate explicit confirmation step.
+            </div>
+
+            <details style={{ marginTop: 10 }}>
+              <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
+                Raw settlement close preview JSON
+              </summary>
+              <pre
+                style={{
+                  whiteSpace: "pre-wrap",
+                  overflowX: "auto",
+                  margin: "6px 0 0 0",
+                  padding: 8,
+                  background: "#fff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 4,
+                  fontSize: 12,
+                }}
+              >
+                {JSON.stringify(settlementClosePreviewResult, null, 2)}
+              </pre>
+            </details>
+          </div>
 
           <div
             style={{

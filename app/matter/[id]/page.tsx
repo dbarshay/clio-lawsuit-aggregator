@@ -2916,6 +2916,54 @@ const activeGroupKey =
               />
             </label>
 
+            <div
+              style={{
+                marginBottom: 10,
+                padding: 10,
+                border: "1px solid #dbeafe",
+                borderRadius: 8,
+                background: "#eff6ff",
+                fontSize: 13,
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                Current Settlement Contact Selection
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                  gap: 8,
+                }}
+              >
+                <div>
+                  <strong>Selected Person:</strong>
+                  <br />
+                  {textValue(settlementPreviewInput.settledWithContactName) || "—"}
+                </div>
+                <div>
+                  <strong>Clio Contact ID:</strong>
+                  <br />
+                  {textValue(settlementPreviewInput.settledWithContactId) || "—"}
+                </div>
+                <div>
+                  <strong>Contact Type:</strong>
+                  <br />
+                  {textValue(settlementPreviewInput.settledWithContactType) || "—"}
+                </div>
+                <div>
+                  <strong>Source:</strong>
+                  <br />
+                  {textValue(settlementPreviewInput.settledWithContactId)
+                    ? "Selected from Clio person-contact search"
+                    : "No Clio person contact selected"}
+                </div>
+              </div>
+              <div style={{ marginTop: 6, color: "#1e3a8a", fontSize: 12 }}>
+                SETTLED_WITH must be selected from Clio contacts and must validate as a Person contact before writeback.
+              </div>
+            </div>
+
             <button
               type="button"
               onClick={loadSettlementPreview}
@@ -3169,7 +3217,7 @@ const activeGroupKey =
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
                     gap: 8,
                     marginBottom: 10,
                     fontSize: 13,
@@ -3194,6 +3242,11 @@ const activeGroupKey =
                     <strong>Master Blocks:</strong>
                     <br />
                     {num(settlementWritebackPreviewResult.validation.masterMatterBlockedCount)}
+                  </div>
+                  <div>
+                    <strong>Invalid Contacts:</strong>
+                    <br />
+                    {num(settlementWritebackPreviewResult.validation.invalidContactCount)}
                   </div>
                 </div>
               )}
@@ -3225,6 +3278,8 @@ const activeGroupKey =
                       <tr>
                         <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Matter</th>
                         <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Ready</th>
+                        <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Settled With</th>
+                        <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Contact Type</th>
                         <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Master?</th>
                         <th style={{ textAlign: "right", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Missing CFVs</th>
                         <th style={{ textAlign: "right", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Planned Fields</th>
@@ -3238,6 +3293,12 @@ const activeGroupKey =
                           </td>
                           <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
                             {row.ok ? "Yes" : "No"}
+                          </td>
+                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                            {textValue(row.settledWithContact?.name) || textValue(row.settledWithContact?.id) || "—"}
+                          </td>
+                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                            {textValue(row.settledWithContact?.type) || "—"}
                           </td>
                           <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
                             {row.isMasterMatter ? "Yes" : "No"}
@@ -3461,6 +3522,97 @@ const activeGroupKey =
               </div>
             )}
 
+            {settlementHistoryResult?.ok &&
+              Array.isArray(settlementHistoryResult.rows) &&
+              settlementHistoryResult.rows.length > 0 &&
+              (() => {
+                const latestSettlementRow = settlementHistoryResult.rows[0];
+                const latestPreviewRows = Array.isArray(latestSettlementRow.previewSnapshot?.rows)
+                  ? latestSettlementRow.previewSnapshot.rows
+                  : [];
+                const latestWriteRows = Array.isArray(latestSettlementRow.writeResults)
+                  ? latestSettlementRow.writeResults
+                  : [];
+                const latestReadinessRows = Array.isArray(latestSettlementRow.readinessSnapshot?.results)
+                  ? latestSettlementRow.readinessSnapshot.results
+                  : [];
+                const latestReadinessContact = latestReadinessRows.find((r: any) => r?.settledWithContact)?.settledWithContact;
+
+                return (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      padding: 10,
+                      border: "1px solid #bfdbfe",
+                      borderRadius: 8,
+                      background: "#eff6ff",
+                      fontSize: 13,
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, marginBottom: 8 }}>
+                      Latest Written Settlement Snapshot
+                    </div>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                        gap: 8,
+                      }}
+                    >
+                      <div>
+                        <strong>Audit Status:</strong>
+                        <br />
+                        {textValue(latestSettlementRow.status) || "—"}
+                      </div>
+                      <div>
+                        <strong>Settled With:</strong>
+                        <br />
+                        {textValue(latestReadinessContact?.name) ||
+                          textValue(latestSettlementRow.settledWith) ||
+                          "—"}
+                      </div>
+                      <div>
+                        <strong>Contact ID / Type:</strong>
+                        <br />
+                        {textValue(latestReadinessContact?.id) || "—"}
+                        {textValue(latestReadinessContact?.type)
+                          ? ` / ${textValue(latestReadinessContact.type)}`
+                          : ""}
+                      </div>
+                      <div>
+                        <strong>Finalized:</strong>
+                        <br />
+                        {latestSettlementRow.finalizedAt
+                          ? new Date(latestSettlementRow.finalizedAt).toLocaleString()
+                          : "—"}
+                      </div>
+                      <div>
+                        <strong>Gross:</strong>
+                        <br />
+                        {latestSettlementRow.grossSettlement == null
+                          ? "—"
+                          : money(latestSettlementRow.grossSettlement)}
+                      </div>
+                      <div>
+                        <strong>Preview Rows:</strong>
+                        <br />
+                        {num(latestPreviewRows.length)}
+                      </div>
+                      <div>
+                        <strong>Write Results:</strong>
+                        <br />
+                        {num(latestWriteRows.length)}
+                      </div>
+                      <div>
+                        <strong>Source:</strong>
+                        <br />
+                        Local settlement audit/history plus saved readiness snapshot
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
             {settlementHistoryLoading && !settlementHistoryResult && (
               <div style={{ marginTop: 10, color: "#475569", fontSize: 13 }}>
                 Loading settlement history...
@@ -3538,7 +3690,7 @@ const activeGroupKey =
                         <div
                           style={{
                             display: "grid",
-                            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                            gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
                             gap: 8,
                             marginTop: 8,
                             fontSize: 12,
@@ -3552,7 +3704,17 @@ const activeGroupKey =
                           <div>
                             <strong>Settled With:</strong>
                             <br />
-                            {textValue(row.settledWith) || "—"}
+                            {textValue(row.readinessSnapshot?.results?.[0]?.settledWithContact?.name) ||
+                              textValue(row.settledWith) ||
+                              "—"}
+                          </div>
+                          <div>
+                            <strong>Contact ID / Type:</strong>
+                            <br />
+                            {textValue(row.readinessSnapshot?.results?.[0]?.settledWithContact?.id) || "—"}
+                            {textValue(row.readinessSnapshot?.results?.[0]?.settledWithContact?.type)
+                              ? ` / ${textValue(row.readinessSnapshot.results[0].settledWithContact.type)}`
+                              : ""}
                           </div>
                           <div>
                             <strong>No Write:</strong>

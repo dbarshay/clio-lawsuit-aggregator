@@ -365,6 +365,8 @@ const activeGroupKey =
   });
   const [settlementPreviewLoading, setSettlementPreviewLoading] = useState(false);
   const [settlementPreviewResult, setSettlementPreviewResult] = useState<any>(null);
+  const [settlementWritebackPreviewLoading, setSettlementWritebackPreviewLoading] = useState(false);
+  const [settlementWritebackPreviewResult, setSettlementWritebackPreviewResult] = useState<any>(null);
 
 
   useEffect(() => {
@@ -1529,6 +1531,70 @@ const activeGroupKey =
       alert(err?.message || "Settlement preview failed.");
     } finally {
       setSettlementPreviewLoading(false);
+    }
+  }
+
+  async function loadSettlementWritebackPreview() {
+    const masterLawsuitId = tabMasterLawsuitId;
+
+    if (!masterLawsuitId) {
+      alert("No MASTER_LAWSUIT_ID found.  Generate or connect a lawsuit before validating settlement writeback.");
+      return;
+    }
+
+    if (!settlementPreviewResult?.ok || !Array.isArray(settlementPreviewResult.rows)) {
+      alert("Run a successful settlement preview before validating Clio writeback readiness.");
+      return;
+    }
+
+    setSettlementWritebackPreviewLoading(true);
+    setSettlementWritebackPreviewResult(null);
+
+    try {
+      const res = await fetch("/api/settlements/writeback-preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          masterLawsuitId,
+          rows: settlementPreviewResult.rows.map((row: any) => ({
+            clioWritebackPreview: row.clioWritebackPreview,
+          })),
+        }),
+      });
+
+      const json = await res.json();
+      setSettlementWritebackPreviewResult(json);
+
+      if (!res.ok || !json?.ok) {
+        const blockingErrors = Array.isArray(json?.validation?.blockingErrors)
+          ? json.validation.blockingErrors
+          : [];
+        alert(
+          json?.error ||
+            (blockingErrors.length > 0
+              ? `Settlement writeback readiness blocked:\n\n${blockingErrors.join("\n")}`
+              : "Settlement writeback readiness validation failed.")
+        );
+      }
+    } catch (err: any) {
+      setSettlementWritebackPreviewResult({
+        ok: false,
+        action: "settlement-writeback-preview",
+        dryRun: true,
+        error: err?.message || "Settlement writeback readiness validation failed.",
+        safety: {
+          noClioRecordsChanged: true,
+          noDatabaseRecordsChanged: true,
+          noDocumentsGenerated: true,
+          noPrintQueueRecordsChanged: true,
+          noPersistentFilesCreated: true,
+        },
+      });
+      alert(err?.message || "Settlement writeback readiness validation failed.");
+    } finally {
+      setSettlementWritebackPreviewLoading(false);
     }
   }
 
@@ -2748,6 +2814,64 @@ const activeGroupKey =
                 </table>
               )}
 
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: 10,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 8,
+                  background: "#f8fafc",
+                }}
+              >
+                <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                  Clio Writeback Readiness
+                </div>
+                <p style={{ margin: "0 0 8px", color: "#475569", fontSize: 12 }}>
+                  Dry-run validation only.  This checks whether the child/bill matters have the required existing Clio custom field value records for final settlement writeback.
+                </p>
+                <button
+                  type="button"
+                  onClick={loadSettlementWritebackPreview}
+                  disabled={
+                    settlementWritebackPreviewLoading ||
+                    !settlementPreviewResult?.ok ||
+                    !Array.isArray(settlementPreviewResult?.rows) ||
+                    settlementPreviewResult.rows.length === 0
+                  }
+                  style={{
+                    padding: "7px 10px",
+                    border: "1px solid #0f766e",
+                    background:
+                      settlementWritebackPreviewLoading ||
+                      !settlementPreviewResult?.ok ||
+                      !Array.isArray(settlementPreviewResult?.rows) ||
+                      settlementPreviewResult.rows.length === 0
+                        ? "#f3f4f6"
+                        : "#0f766e",
+                    color:
+                      settlementWritebackPreviewLoading ||
+                      !settlementPreviewResult?.ok ||
+                      !Array.isArray(settlementPreviewResult?.rows) ||
+                      settlementPreviewResult.rows.length === 0
+                        ? "#666"
+                        : "#fff",
+                    borderRadius: 4,
+                    cursor:
+                      settlementWritebackPreviewLoading ||
+                      !settlementPreviewResult?.ok ||
+                      !Array.isArray(settlementPreviewResult?.rows) ||
+                      settlementPreviewResult.rows.length === 0
+                        ? "not-allowed"
+                        : "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  {settlementWritebackPreviewLoading
+                    ? "Validating..."
+                    : "Validate Clio Writeback Readiness"}
+                </button>
+              </div>
+
               <details style={{ marginTop: 10 }}>
                 <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
                   Raw settlement preview JSON
@@ -2765,6 +2889,145 @@ const activeGroupKey =
                   }}
                 >
                   {JSON.stringify(settlementPreviewResult, null, 2)}
+                </pre>
+              </details>
+            </div>
+          )}
+
+          {settlementWritebackPreviewResult && (
+            <div
+              style={{
+                padding: 12,
+                border: settlementWritebackPreviewResult.ok ? "1px solid #bbf7d0" : "1px solid #fecaca",
+                borderRadius: 10,
+                background: settlementWritebackPreviewResult.ok ? "#f0fdf4" : "#fef2f2",
+                marginBottom: 14,
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 8 }}>
+                Clio Writeback Readiness Result
+              </div>
+
+              {settlementWritebackPreviewResult.error && (
+                <div style={{ color: "#991b1b", marginBottom: 8 }}>
+                  <strong>Error:</strong> {textValue(settlementWritebackPreviewResult.error)}
+                </div>
+              )}
+
+              {settlementWritebackPreviewResult.validation && (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                    gap: 8,
+                    marginBottom: 10,
+                    fontSize: 13,
+                  }}
+                >
+                  <div>
+                    <strong>Ready to Save:</strong>
+                    <br />
+                    {settlementWritebackPreviewResult.validation.canWriteIfConfirmed ? "Yes" : "No"}
+                  </div>
+                  <div>
+                    <strong>Rows Checked:</strong>
+                    <br />
+                    {num(settlementWritebackPreviewResult.count)}
+                  </div>
+                  <div>
+                    <strong>Missing CFVs:</strong>
+                    <br />
+                    {num(settlementWritebackPreviewResult.validation.missingRequiredFieldCount)}
+                  </div>
+                  <div>
+                    <strong>Master Blocks:</strong>
+                    <br />
+                    {num(settlementWritebackPreviewResult.validation.masterMatterBlockedCount)}
+                  </div>
+                </div>
+              )}
+
+              {Array.isArray(settlementWritebackPreviewResult.validation?.blockingErrors) &&
+                settlementWritebackPreviewResult.validation.blockingErrors.length > 0 && (
+                  <div style={{ color: "#991b1b", marginBottom: 8 }}>
+                    <strong>Blocking Errors:</strong>
+                    <ul style={{ margin: "4px 0 0 18px", padding: 0 }}>
+                      {settlementWritebackPreviewResult.validation.blockingErrors.map((msg: string) => (
+                        <li key={msg}>{msg}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+              {Array.isArray(settlementWritebackPreviewResult.results) &&
+                settlementWritebackPreviewResult.results.length > 0 && (
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      background: "#fff",
+                      fontSize: 12,
+                      marginTop: 8,
+                    }}
+                  >
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Matter</th>
+                        <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Ready</th>
+                        <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Master?</th>
+                        <th style={{ textAlign: "right", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Missing CFVs</th>
+                        <th style={{ textAlign: "right", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Planned Fields</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {settlementWritebackPreviewResult.results.map((row: any) => (
+                        <tr key={textValue(row.matterId)}>
+                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                            {textValue(row.displayNumber) || textValue(row.matterId)}
+                          </td>
+                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                            {row.ok ? "Yes" : "No"}
+                          </td>
+                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                            {row.isMasterMatter ? "Yes" : "No"}
+                          </td>
+                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5, textAlign: "right" }}>
+                            {Array.isArray(row.missingRequiredFields)
+                              ? row.missingRequiredFields.length
+                              : 0}
+                          </td>
+                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5, textAlign: "right" }}>
+                            {Array.isArray(row.plannedCustomFieldValues)
+                              ? row.plannedCustomFieldValues.length
+                              : 0}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+              <div style={{ marginTop: 8, color: "#475569", fontSize: 12 }}>
+                Dry-run only.  No Clio records, database records, documents, or print queue records were changed.
+              </div>
+
+              <details style={{ marginTop: 10 }}>
+                <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
+                  Raw Clio writeback readiness JSON
+                </summary>
+                <pre
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    overflowX: "auto",
+                    margin: "6px 0 0 0",
+                    padding: 8,
+                    background: "#fff",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 4,
+                    fontSize: 12,
+                  }}
+                >
+                  {JSON.stringify(settlementWritebackPreviewResult, null, 2)}
                 </pre>
               </details>
             </div>

@@ -88,9 +88,9 @@ export async function GET(req: NextRequest) {
       key: "summons-complaint",
       label: "Summons and Complaint",
       filename: `${baseName} - Summons and Complaint.docx`,
-      endpoint: null,
-      status: "not-built-yet",
-      availableNow: false,
+      endpoint: `/api/documents/summons-complaint?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`,
+      status: canGenerate ? "ready" : "blocked",
+      availableNow: true,
     },
   ];
 

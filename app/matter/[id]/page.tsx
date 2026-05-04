@@ -644,6 +644,25 @@ const activeGroupKey =
     return json;
   }
 
+  async function loadPacketPreviewForMaster(masterLawsuitId: string) {
+    const cleanMasterLawsuitId = textValue(masterLawsuitId);
+
+    if (!cleanMasterLawsuitId) {
+      alert("No Master Lawsuit ID found.");
+      return;
+    }
+
+    setPacketLoading(true);
+
+    try {
+      await fetchPacketPreview(cleanMasterLawsuitId);
+    } catch (err: any) {
+      alert(err?.message || "Document packet preview failed.");
+    } finally {
+      setPacketLoading(false);
+    }
+  }
+
   async function loadPacketPreview() {
     const masterLawsuitId = textValue(matter?.masterLawsuitId);
 
@@ -652,15 +671,7 @@ const activeGroupKey =
       return;
     }
 
-    setPacketLoading(true);
-
-    try {
-      await fetchPacketPreview(masterLawsuitId);
-    } catch (err: any) {
-      alert(err?.message || "Document packet preview failed.");
-    } finally {
-      setPacketLoading(false);
-    }
+    await loadPacketPreviewForMaster(masterLawsuitId);
   }
 
   function buildPacketSummaryText(packet: any): string {
@@ -1246,7 +1257,7 @@ const activeGroupKey =
                 Document Packet Preview
               </div>
               <div style={{ fontSize: 13, color: "#555", marginTop: 3 }}>
-                Read-only packet data for MASTER LAWSUIT ID {textValue(matter?.masterLawsuitId)}.
+                Read-only packet data for MASTER LAWSUIT ID {textValue(packetPreview?.packet?.masterLawsuitId) || textValue(matter?.masterLawsuitId)}.
               </div>
             </div>
 
@@ -1583,7 +1594,7 @@ const activeGroupKey =
               : "";
 
             return (
-              <>
+              <div key={`row-fragment-${Number(r.id)}`} style={{ display: "contents" }}>
                 {r.showGroupLabel && (
                   <tr key={`lawsuit-band-${masterLawsuitId}`}>
                     <td
@@ -1596,14 +1607,46 @@ const activeGroupKey =
                         fontSize: 13,
                         fontWeight: 800,
                         letterSpacing: 0.2,
-                        textAlign: "center",
                       }}
                     >
-                      <span style={{ color: "#6b7280" }}>•••</span>
-                      <span style={{ margin: "0 12px" }}>
-                        LAWSUIT {masterLawsuitId}
-                      </span>
-                      <span style={{ color: "#6b7280" }}>•••</span>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr auto 1fr",
+                          alignItems: "center",
+                          gap: 10,
+                        }}
+                      >
+                        <span />
+
+                        <div style={{ textAlign: "center" }}>
+                          <span style={{ color: "#6b7280" }}>•••</span>
+                          <span style={{ margin: "0 12px" }}>
+                            LAWSUIT {masterLawsuitId}
+                          </span>
+                          <span style={{ color: "#6b7280" }}>•••</span>
+                        </div>
+
+                        <div style={{ textAlign: "right" }}>
+                          <button
+                            type="button"
+                            onClick={() => loadPacketPreviewForMaster(masterLawsuitId)}
+                            disabled={packetLoading}
+                            style={{
+                              padding: "3px 8px",
+                              border: "1px solid #2563eb",
+                              background: packetLoading ? "#f3f4f6" : "#2563eb",
+                              color: packetLoading ? "#666" : "#fff",
+                              borderRadius: 4,
+                              cursor: packetLoading ? "not-allowed" : "pointer",
+                              fontWeight: 700,
+                              fontSize: 12,
+                            }}
+                          >
+                            Packet Preview
+                          </button>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -1731,7 +1774,7 @@ const activeGroupKey =
                   </button>
                 </td>
               </tr>
-              </>
+              </div>
             );
           })}
         </tbody>

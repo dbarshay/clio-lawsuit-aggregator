@@ -206,6 +206,8 @@ type LawsuitOptions = {
 type LawsuitMetadataEdit = {
   venueSelection: string;
   venueOther: string;
+  amountSoughtMode: AmountSoughtMode;
+  customAmountSought: string;
   indexAaaNumber: string;
   lawsuitNotes: string;
 };
@@ -214,6 +216,8 @@ function defaultLawsuitMetadataEdit(): LawsuitMetadataEdit {
   return {
     venueSelection: "",
     venueOther: "",
+    amountSoughtMode: "balance_presuit",
+    customAmountSought: "",
     indexAaaNumber: "",
     lawsuitNotes: "",
   };
@@ -1364,6 +1368,15 @@ const activeGroupKey =
           textValue(lawsuit?.venue) ||
           "",
         venueOther: textValue(lawsuit?.venueOther),
+        amountSoughtMode:
+          textValue(lawsuit?.amountSoughtMode) === "claim_amount" ||
+          textValue(lawsuit?.amountSoughtMode) === "custom"
+            ? (textValue(lawsuit?.amountSoughtMode) as AmountSoughtMode)
+            : "balance_presuit",
+        customAmountSought:
+          textValue(lawsuit?.customAmountSought) ||
+          textValue(metadata?.amountSought?.customAmount) ||
+          "",
         indexAaaNumber:
           textValue(lawsuit?.indexAaaNumber) ||
           textValue(metadata?.indexAaaNumber?.value) ||
@@ -1410,6 +1423,11 @@ const activeGroupKey =
           venue,
           venueSelection: metadataEdit.venueSelection,
           venueOther: metadataEdit.venueOther,
+          amountSoughtMode: metadataEdit.amountSoughtMode,
+          customAmountSought:
+            metadataEdit.amountSoughtMode === "custom"
+              ? parseMoneyInput(metadataEdit.customAmountSought)
+              : null,
           indexAaaNumber: metadataEdit.indexAaaNumber,
           lawsuitNotes: metadataEdit.lawsuitNotes,
         }),
@@ -3563,6 +3581,92 @@ const activeGroupKey =
             />
           )}
 
+          <fieldset
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: 6,
+              padding: 12,
+              margin: "8px 0 14px",
+            }}
+          >
+            <legend style={{ fontWeight: 700, padding: "0 6px" }}>
+              Amount Sought
+            </legend>
+
+            <label style={{ display: "block", marginBottom: 8 }}>
+              <input
+                type="radio"
+                name="metadataAmountSoughtMode"
+                value="balance_presuit"
+                checked={metadataEdit.amountSoughtMode === "balance_presuit"}
+                onChange={() =>
+                  setMetadataEdit((prev) => ({
+                    ...prev,
+                    amountSoughtMode: "balance_presuit",
+                    customAmountSought: "",
+                  }))
+                }
+                style={{ marginRight: 8 }}
+              />
+              Balance (Presuit) — default
+            </label>
+
+            <label style={{ display: "block", marginBottom: 8 }}>
+              <input
+                type="radio"
+                name="metadataAmountSoughtMode"
+                value="claim_amount"
+                checked={metadataEdit.amountSoughtMode === "claim_amount"}
+                onChange={() =>
+                  setMetadataEdit((prev) => ({
+                    ...prev,
+                    amountSoughtMode: "claim_amount",
+                    customAmountSought: "",
+                  }))
+                }
+                style={{ marginRight: 8 }}
+              />
+              Claim Amount
+            </label>
+
+            <label style={{ display: "block", marginBottom: 8 }}>
+              <input
+                type="radio"
+                name="metadataAmountSoughtMode"
+                value="custom"
+                checked={metadataEdit.amountSoughtMode === "custom"}
+                onChange={() =>
+                  setMetadataEdit((prev) => ({
+                    ...prev,
+                    amountSoughtMode: "custom",
+                  }))
+                }
+                style={{ marginRight: 8 }}
+              />
+              Custom Amount
+            </label>
+
+            {metadataEdit.amountSoughtMode === "custom" && (
+              <input
+                value={metadataEdit.customAmountSought}
+                onChange={(e) =>
+                  setMetadataEdit((prev) => ({
+                    ...prev,
+                    customAmountSought: e.target.value,
+                  }))
+                }
+                placeholder="Enter total lawsuit amount sought"
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  marginTop: 2,
+                  border: "1px solid #bbb",
+                  borderRadius: 4,
+                }}
+              />
+            )}
+          </fieldset>
+
           <label style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>
             Index / AAA Number
           </label>
@@ -3624,14 +3728,33 @@ const activeGroupKey =
 
             <button
               onClick={saveMetadataEdit}
-              disabled={metadataSaving}
+              disabled={
+                metadataSaving ||
+                (metadataEdit.amountSoughtMode === "custom" &&
+                  parseMoneyInput(metadataEdit.customAmountSought) === null)
+              }
               style={{
                 padding: "8px 12px",
                 border: "1px solid #2563eb",
-                background: metadataSaving ? "#f3f4f6" : "#2563eb",
-                color: metadataSaving ? "#666" : "#fff",
+                background:
+                  metadataSaving ||
+                  (metadataEdit.amountSoughtMode === "custom" &&
+                    parseMoneyInput(metadataEdit.customAmountSought) === null)
+                    ? "#f3f4f6"
+                    : "#2563eb",
+                color:
+                  metadataSaving ||
+                  (metadataEdit.amountSoughtMode === "custom" &&
+                    parseMoneyInput(metadataEdit.customAmountSought) === null)
+                    ? "#666"
+                    : "#fff",
                 borderRadius: 4,
-                cursor: metadataSaving ? "not-allowed" : "pointer",
+                cursor:
+                  metadataSaving ||
+                  (metadataEdit.amountSoughtMode === "custom" &&
+                    parseMoneyInput(metadataEdit.customAmountSought) === null)
+                    ? "not-allowed"
+                    : "pointer",
                 fontWeight: 700,
               }}
             >

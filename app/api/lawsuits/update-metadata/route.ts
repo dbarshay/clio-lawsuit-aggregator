@@ -56,6 +56,99 @@ function displayNumberList(matters: ClioMatter[]): string {
     .join(", ");
 }
 
+function amountNumber(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  const cleaned = String(value).replace(/[$,\s]/g, "");
+  if (!cleaned) return null;
+
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+function normalizeAmountSoughtMode(value: unknown): "balance_presuit" | "claim_amount" | "custom" {
+  const mode = text(value);
+
+  if (mode === "claim_amount" || mode === "custom") {
+    return mode;
+  }
+
+  return "balance_presuit";
+}
+
+function customFieldNumber(matter: ClioMatter, fieldId: number): number | null {
+  return amountNumber(cfv(matter, fieldId)?.value);
+}
+
+function computeAmountSought(params: {
+  liveMatters: ClioMatter[];
+  amountSoughtMode: "balance_presuit" | "claim_amount" | "custom";
+  customAmountSought: number | null;
+}) {
+  const mode = params.amountSoughtMode;
+
+  if (mode === "custom") {
+    if (params.customAmountSought === null) {
+      throw new Error("Custom Amount is required when Amount Sought is set to Custom Amount.");
+    }
+
+    return {
+      mode,
+      amountSought: params.customAmountSought,
+      customAmountSought: params.customAmountSought,
+      sourceField: "custom",
+      selectedMatterCount: params.liveMatters.length,
+      components: params.liveMatters.map((matter) => ({
+        matterId: matter.id,
+        displayNumber: matter.display_number || "",
+        amount: null,
+      })),
+      missingAmountMatterIds: [],
+    };
+  }
+
+  const fieldId =
+    mode === "claim_amount"
+      ? MATTER_CF.CLAIM_AMOUNT
+      : MATTER_CF.BALANCE_PRESUIT;
+
+  const sourceField =
+    mode === "claim_amount" ? "CLAIM_AMOUNT" : "BALANCE_PRESUIT";
+
+  const components = params.liveMatters.map((matter) => {
+    const amount = customFieldNumber(matter, fieldId);
+
+    return {
+      matterId: matter.id,
+      displayNumber: matter.display_number || "",
+      amount,
+    };
+  });
+
+  const missingAmountMatterIds = components
+    .filter((item) => item.amount === null)
+    .map((item) => item.matterId);
+
+  const amountSought = components.reduce(
+    (sum, item) => sum + (item.amount ?? 0),
+    0
+  );
+
+  return {
+    mode,
+    amountSought,
+    customAmountSought: null,
+    sourceField,
+    selectedMatterCount: params.liveMatters.length,
+    components,
+    missingAmountMatterIds,
+  };
+}
+
 function cfv(matter: ClioMatter, fieldId: number): CFV | undefined {
   return matter.custom_field_values?.find(
     (item) => Number(item?.custom_field?.id) === Number(fieldId)
@@ -219,6 +312,7 @@ async function writePostFilingFieldsToClioLawsuit(params: {
   return {
     masterWrite,
     matterWrites: results,
+    liveMatters,
     writtenCount: results.length,
     indexAaaNumber: params.indexAaaNumber,
     lawsuitMatterDisplayNumbers,
@@ -242,6 +336,16 @@ export async function POST(req: NextRequest) {
       venueSelection === "Other" ? venueOther : text(body?.venue || venueSelection);
     const indexAaaNumber = text(body?.indexAaaNumber);
     const lawsuitNotes = text(body?.lawsuitNotes);
+    const amountSoughtMode = normalizeAmountSoughtMode(body?.amountSoughtMode);
+    const customAmountSought =
+      amountSoughtMode === "custom" ? amountNumber(body?.customAmountSought) : null;
+
+    if (amountSoughtMode === "custom" && customAmountSought === null) {
+      return NextResponse.json(
+        { ok: false, error: "Custom Amount is required when Amount Sought is set to Custom Amount." },
+        { status: 400 }
+      );
+    }
 
     if (!masterLawsuitId) {
       return NextResponse.json(
@@ -280,11 +384,19 @@ export async function POST(req: NextRequest) {
         ? (existing.lawsuitOptions as Record<string, unknown>)
         : {};
 
+    const amountSought = computeAmountSought({
+      liveMatters: clioPostFilingWrite.liveMatters,
+      amountSoughtMode,
+      customAmountSought,
+    });
+
     const lawsuitOptions = {
       ...existingOptions,
       venue,
       venueSelection,
       venueOther,
+      amountSoughtMode,
+      customAmountSought,
       indexAaaNumber: clioPostFilingWrite.indexAaaNumber,
       notes: lawsuitNotes,
       lawsuitMatterDisplayNumbers: clioPostFilingWrite.lawsuitMatterDisplayNumbers,
@@ -313,12 +425,17 @@ export async function POST(req: NextRequest) {
         indexAaaNumber: clioPostFilingWrite.indexAaaNumber || null,
         lawsuitNotes: lawsuitNotes || null,
         lawsuitOptions,
+        amountSoughtMode: amountSought.mode,
+        amountSought: amountSought.amountSought,
+        customAmountSought: amountSought.customAmountSought,
+        amountSoughtBreakdown: amountSought,
       },
     });
 
     return NextResponse.json({
       ok: true,
       lawsuit,
+      amountSought,
       clioPostFilingWrite,
     });
   } catch (err: any) {

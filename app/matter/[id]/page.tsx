@@ -371,6 +371,8 @@ const activeGroupKey =
   const [settledWithContactResults, setSettledWithContactResults] = useState<any[]>([]);
   const [settledWithContactLoading, setSettledWithContactLoading] = useState(false);
   const [settlementPreviewResult, setSettlementPreviewResult] = useState<any>(null);
+  const [providerFeeDefaultsLoading, setProviderFeeDefaultsLoading] = useState(false);
+  const [providerFeeDefaultsResult, setProviderFeeDefaultsResult] = useState<any>(null);
   const [settlementWritebackPreviewLoading, setSettlementWritebackPreviewLoading] = useState(false);
   const [settlementWritebackPreviewResult, setSettlementWritebackPreviewResult] = useState<any>(null);
   const [settlementWritebackLoading, setSettlementWritebackLoading] = useState(false);
@@ -1521,6 +1523,75 @@ const activeGroupKey =
     setSettlementPreviewResult(null);
     setSettlementWritebackPreviewResult(null);
     setSettlementWritebackResult(null);
+  }
+
+  async function loadProviderFeeDefaultsFromClio() {
+    if (!matterId) {
+      alert("No matterId found.  Open a matter before loading provider fee defaults.");
+      return;
+    }
+
+    setProviderFeeDefaultsLoading(true);
+    setProviderFeeDefaultsResult(null);
+
+    try {
+      const res = await fetch(
+        `/api/settlements/provider-fee-defaults?matterId=${encodeURIComponent(String(matterId))}`
+      );
+      const json = await res.json();
+      setProviderFeeDefaultsResult(json);
+
+      if (!res.ok || !json?.ok) {
+        alert(json?.error || "Could not load provider fee defaults from Clio.");
+        return;
+      }
+
+      const principalDefault = json?.defaults?.principalFeePercent;
+      const interestDefault = json?.defaults?.interestFeePercent;
+
+      if (principalDefault == null && interestDefault == null) {
+        const missing = Array.isArray(json?.validation?.missingDefaults)
+          ? json.validation.missingDefaults.join(", ")
+          : "provider fee defaults";
+        alert(`No provider fee defaults are populated in Clio for this provider.  Missing: ${missing}.  You may enter the percentages manually.`);
+        return;
+      }
+
+      setSettlementPreviewInput((prev) => ({
+        ...prev,
+        principalFeePercent:
+          principalDefault == null ? prev.principalFeePercent : String(principalDefault),
+        interestFeePercent:
+          interestDefault == null ? prev.interestFeePercent : String(interestDefault),
+      }));
+      setSettlementPreviewResult(null);
+      setSettlementWritebackPreviewResult(null);
+      setSettlementWritebackResult(null);
+
+      if (principalDefault == null || interestDefault == null) {
+        const missing = Array.isArray(json?.validation?.missingDefaults)
+          ? json.validation.missingDefaults.join(", ")
+          : "one or more provider fee defaults";
+        alert(`Partial provider fee defaults loaded.  Missing: ${missing}.  Any missing percentage field was left unchanged and may be entered manually.`);
+      }
+    } catch (err: any) {
+      const fallback = {
+        ok: false,
+        action: "settlement-provider-fee-defaults",
+        error: err?.message || "Could not load provider fee defaults from Clio.",
+        safety: {
+          readOnly: true,
+          noClioRecordsChanged: true,
+          noDatabaseRecordsChanged: true,
+          noDocumentsGenerated: true,
+          noPrintQueueRecordsChanged: true,
+        },
+      };
+      setProviderFeeDefaultsResult(fallback);
+      alert(fallback.error);
+    } finally {
+      setProviderFeeDefaultsLoading(false);
+    }
   }
 
   async function loadSettlementPreview() {
@@ -2845,6 +2916,9 @@ const activeGroupKey =
                     borderRadius: 4,
                   }}
                 />
+                <div style={{ marginTop: 4, color: "#64748b", fontSize: 11 }}>
+                  Defaults from provider contact: Retainer Principal NF.
+                </div>
               </label>
 
               <label style={{ fontSize: 13, fontWeight: 700 }}>
@@ -2889,7 +2963,94 @@ const activeGroupKey =
                     borderRadius: 4,
                   }}
                 />
+                <div style={{ marginTop: 4, color: "#64748b", fontSize: 11 }}>
+                  Defaults from provider contact: Retainer Interest.
+                </div>
               </label>
+            </div>
+
+            <div
+              style={{
+                marginBottom: 10,
+                padding: 10,
+                border: "1px solid #dbeafe",
+                borderRadius: 8,
+                background: "#eff6ff",
+                fontSize: 13,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+                <div>
+                  <div style={{ fontWeight: 800 }}>Provider Fee Defaults</div>
+                  <div style={{ color: "#1e3a8a", fontSize: 12 }}>
+                    Read-only lookup from the Clio provider/client contact.  Applies Retainer Principal NF and Retainer Interest to this preview form only.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={loadProviderFeeDefaultsFromClio}
+                  disabled={providerFeeDefaultsLoading || !matterId}
+                  style={{
+                    padding: "7px 10px",
+                    border: "1px solid #2563eb",
+                    background: providerFeeDefaultsLoading || !matterId ? "#f3f4f6" : "#2563eb",
+                    color: providerFeeDefaultsLoading || !matterId ? "#666" : "#fff",
+                    borderRadius: 4,
+                    cursor: providerFeeDefaultsLoading || !matterId ? "not-allowed" : "pointer",
+                    fontWeight: 700,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {providerFeeDefaultsLoading ? "Loading..." : "Load Provider Defaults"}
+                </button>
+              </div>
+
+              {providerFeeDefaultsResult && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                    gap: 8,
+                    color: providerFeeDefaultsResult.ok ? "#166534" : "#991b1b",
+                  }}
+                >
+                  <div>
+                    <strong>Provider:</strong>
+                    <br />
+                    {textValue(providerFeeDefaultsResult.providerContact?.name) || "—"}
+                  </div>
+                  <div>
+                    <strong>Principal %:</strong>
+                    <br />
+                    {providerFeeDefaultsResult.defaults?.principalFeePercent == null
+                      ? "—"
+                      : providerFeeDefaultsResult.defaults.principalFeePercent}
+                  </div>
+                  <div>
+                    <strong>Interest %:</strong>
+                    <br />
+                    {providerFeeDefaultsResult.defaults?.interestFeePercent == null
+                      ? "—"
+                      : providerFeeDefaultsResult.defaults.interestFeePercent}
+                  </div>
+                  <div>
+                    <strong>Source:</strong>
+                    <br />
+                    {providerFeeDefaultsResult.ok
+                      ? "Clio provider contact"
+                      : textValue(providerFeeDefaultsResult.error) || "Error"}
+                  </div>
+                </div>
+              )}
+
+              {providerFeeDefaultsResult?.ok &&
+                Array.isArray(providerFeeDefaultsResult.validation?.missingDefaults) &&
+                providerFeeDefaultsResult.validation.missingDefaults.length > 0 && (
+                  <div style={{ marginTop: 8, color: "#92400e", fontSize: 12 }}>
+                    Missing Clio default(s): {providerFeeDefaultsResult.validation.missingDefaults.join(", ")}.  Missing values are not blocking; enter them manually if needed.
+                  </div>
+                )}
             </div>
 
             <label style={{ display: "block", fontSize: 13, fontWeight: 700, marginBottom: 10 }}>

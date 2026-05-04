@@ -94,6 +94,73 @@ function findCFV(matter: ClioMatter, fieldId: number): CFV | undefined {
   return matter.custom_field_values?.find((cfv) => cfId(cfv) === Number(fieldId));
 }
 
+type ContactValidation = {
+  ok: boolean;
+  id: number | null;
+  name: string | null;
+  type: string | null;
+  error?: string;
+};
+
+function isPersonContactType(type: unknown): boolean {
+  return text(type).toLowerCase() === "person";
+}
+
+async function readClioContact(contactId: unknown): Promise<ContactValidation> {
+  const id = Number(contactId);
+
+  if (!Number.isFinite(id) || id <= 0) {
+    return {
+      ok: false,
+      id: null,
+      name: null,
+      type: null,
+      error: "SETTLED_WITH must be a valid Clio person contact ID.",
+    };
+  }
+
+  const res = await clioFetch(
+    `/api/v4/contacts/${id}.json?fields=${encodeURIComponent("id,name,type")}`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    }
+  );
+
+  const body = await res.text();
+
+  if (!res.ok) {
+    return {
+      ok: false,
+      id,
+      name: null,
+      type: null,
+      error: `Could not read SETTLED_WITH contact ${id} from Clio: status ${res.status}; body ${body}`,
+    };
+  }
+
+  const contact = body ? JSON.parse(body)?.data : null;
+  const contactType = text(contact?.type);
+
+  if (!isPersonContactType(contactType)) {
+    return {
+      ok: false,
+      id,
+      name: text(contact?.name) || null,
+      type: contactType || null,
+      error: `SETTLED_WITH must be a Person contact. Selected contact ${text(contact?.name) || id} is type ${contactType || "unknown"}.`,
+    };
+  }
+
+  return {
+    ok: true,
+    id,
+    name: text(contact?.name) || String(id),
+    type: contactType,
+  };
+}
+
 async function readMatterLive(matterId: number): Promise<ClioMatter> {
   const res = await clioFetch(
     `/api/v4/matters/${matterId}.json?fields=${encodeURIComponent(LIVE_FIELDS)}`,
@@ -212,14 +279,30 @@ export async function previewSettlementWritebackToClio(params: {
     requested: params.request,
   });
 
+  const settledWithContact = await readClioContact(params.request.fields.SETTLED_WITH);
+  const invalidContactFields = settledWithContact.ok
+    ? []
+    : [
+        {
+          key: "SETTLED_WITH",
+          fieldId: MATTER_CF.SETTLED_WITH,
+          contact: settledWithContact,
+        },
+      ];
+
   return {
-    ok: payloadPlan.missingRequiredFields.length === 0 && !isMasterMatter(matter),
+    ok:
+      payloadPlan.missingRequiredFields.length === 0 &&
+      invalidContactFields.length === 0 &&
+      !isMasterMatter(matter),
     action: "settlement-writeback-preview",
     dryRun: true,
     matterId,
     displayNumber: matter.display_number || params.request.displayNumber || String(matterId),
     isMasterMatter: isMasterMatter(matter),
     missingRequiredFields: payloadPlan.missingRequiredFields,
+    invalidContactFields,
+    settledWithContact,
     foundFieldValueIds: payloadPlan.foundFieldValueIds,
     plannedCustomFieldValues: payloadPlan.payload,
     safety: {

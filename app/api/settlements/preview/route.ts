@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
       settledWith: clean(body.settledWithContactName || body.settledWith),
       settledWithContactId: body.settledWithContactId,
       settledWithContactName: clean(body.settledWithContactName || body.settledWith),
+      settledWithContactType: clean(body.settledWithContactType),
       settlementDate: clean(body.settlementDate),
       paymentExpectedDate: clean(body.paymentExpectedDate),
       allocationMode: body.allocationMode,

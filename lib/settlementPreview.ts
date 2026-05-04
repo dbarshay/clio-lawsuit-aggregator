@@ -8,6 +8,7 @@ export type SettlementPreviewInput = {
   settledWith?: string;
   settledWithContactId?: number | string | null;
   settledWithContactName?: string;
+  settledWithContactType?: string;
   settlementDate?: string;
   paymentExpectedDate?: string;
   allocationMode?: SettlementAllocationMode;
@@ -97,6 +98,7 @@ export function buildSettlementPreview(params: {
   const settledWithContactIdRaw = clean(input.settledWithContactId);
   const settledWithContactId = Number(settledWithContactIdRaw);
   const settledWithContactName = clean(input.settledWithContactName || input.settledWith);
+  const settledWithContactType = clean(input.settledWithContactType);
 
   const allocationMode: SettlementAllocationMode =
     input.allocationMode === "proportional_claim_amount" || input.allocationMode === "equal"
@@ -251,6 +253,7 @@ export function buildSettlementPreview(params: {
       settledWith: settledWithContactName,
       settledWithContactId: Number.isFinite(settledWithContactId) ? settledWithContactId : null,
       settledWithContactName,
+      settledWithContactType,
       settlementDate: clean(input.settlementDate),
       paymentExpectedDate: clean(input.paymentExpectedDate),
       allocationMode,

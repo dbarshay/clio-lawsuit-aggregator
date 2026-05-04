@@ -79,10 +79,17 @@ export async function POST(req: NextRequest) {
 
     const masterMatterBlockedResults = results.filter((result: any) => result.isMasterMatter);
 
+    const invalidContactResults = results.filter(
+      (result: any) =>
+        Array.isArray(result.invalidContactFields) &&
+        result.invalidContactFields.length > 0
+    );
+
     const ok =
       results.length > 0 &&
       missingRequiredFieldResults.length === 0 &&
       masterMatterBlockedResults.length === 0 &&
+      invalidContactResults.length === 0 &&
       results.every((result: any) => result.ok);
 
     return NextResponse.json(
@@ -97,6 +104,7 @@ export async function POST(req: NextRequest) {
           canWriteIfConfirmed: ok,
           missingRequiredFieldCount: missingRequiredFieldResults.length,
           masterMatterBlockedCount: masterMatterBlockedResults.length,
+          invalidContactCount: invalidContactResults.length,
           blockingErrors: [
             ...missingRequiredFieldResults.map(
               (result: any) =>
@@ -105,6 +113,12 @@ export async function POST(req: NextRequest) {
             ...masterMatterBlockedResults.map(
               (result: any) =>
                 `Matter ${result.displayNumber || result.matterId} is a master matter and cannot receive settlement financial writeback.`
+            ),
+            ...invalidContactResults.flatMap((result: any) =>
+              result.invalidContactFields.map(
+                (field: any) =>
+                  `Matter ${result.displayNumber || result.matterId}: ${field?.contact?.error || "SETTLED_WITH must be a Clio Person contact."}`
+              )
             ),
           ],
         },

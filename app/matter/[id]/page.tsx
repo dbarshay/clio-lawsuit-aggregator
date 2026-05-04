@@ -357,6 +357,7 @@ const activeGroupKey =
     settledWith: "",
     settledWithContactId: "",
     settledWithContactName: "",
+    settledWithContactType: "",
     settledWithContactSearch: "",
     settlementDate: "",
     paymentExpectedDate: "",
@@ -1512,6 +1513,7 @@ const activeGroupKey =
       settledWith: name,
       settledWithContactId: id,
       settledWithContactName: name,
+      settledWithContactType: textValue(contact?.type),
       settledWithContactSearch: name,
     });
 
@@ -1556,6 +1558,7 @@ const activeGroupKey =
           settledWith: settlementPreviewInput.settledWithContactName || settlementPreviewInput.settledWith,
           settledWithContactId: settlementPreviewInput.settledWithContactId,
           settledWithContactName: settlementPreviewInput.settledWithContactName || settlementPreviewInput.settledWith,
+          settledWithContactType: settlementPreviewInput.settledWithContactType,
           settlementDate: settlementPreviewInput.settlementDate,
           paymentExpectedDate: settlementPreviewInput.paymentExpectedDate,
           allocationMode: settlementPreviewInput.allocationMode,
@@ -2672,6 +2675,7 @@ const activeGroupKey =
                         settledWithContactSearch: e.target.value,
                         settledWithContactId: "",
                         settledWithContactName: "",
+                        settledWithContactType: "",
                         settledWith: e.target.value,
                       })
                     }
@@ -2704,7 +2708,7 @@ const activeGroupKey =
 
                 {settlementPreviewInput.settledWithContactId && (
                   <div style={{ marginTop: 6, fontSize: 12, color: "#166534", fontWeight: 700 }}>
-                    Selected Clio contact: {settlementPreviewInput.settledWithContactName} (ID {settlementPreviewInput.settledWithContactId})
+                    Selected Clio person contact: {settlementPreviewInput.settledWithContactName} (ID {settlementPreviewInput.settledWithContactId})
                   </div>
                 )}
 

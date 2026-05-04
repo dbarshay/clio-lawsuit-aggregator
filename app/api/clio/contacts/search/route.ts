@@ -31,6 +31,7 @@ function filterContacts(contacts: any[], query: string) {
   return contacts
     .map(normalizeContact)
     .filter((contact) => Number.isFinite(contact.id) && contact.name)
+    .filter((contact) => clean(contact.type).toLowerCase() === "person")
     .filter((contact) => !q || contact.name.toLowerCase().includes(q))
     .slice(0, 25);
 }
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
   try {
     const query = clean(req.nextUrl.searchParams.get("q"));
 
-    if (query.length < 2) {
+    if (query.length < 1) {
       return NextResponse.json({
         ok: true,
         action: "clio-contact-search",
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
         count: 0,
         contacts: [],
         safety: safetyReadOnly(),
-        note: "Enter at least 2 characters to search Clio contacts.",
+        note: "Enter at least 1 character to search Clio person contacts.",
       });
     }
 
@@ -100,6 +101,7 @@ export async function GET(req: NextRequest) {
       query,
       count: contacts.length,
       contacts,
+      contactTypeFilter: "Person",
       safety: safetyReadOnly(),
     });
   } catch (err: any) {

@@ -150,6 +150,11 @@ export async function GET(req: NextRequest) {
         MATTER_CF.MASTER_LAWSUIT_ID
       ),
 
+      lawsuitMatters: getCustomFieldValue(
+        matter,
+        MATTER_CF.LAWSUIT_MATTERS
+      ),
+
       patient: {
         id: patientId,
         name: patientName,

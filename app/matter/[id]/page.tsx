@@ -421,6 +421,7 @@ const activeGroupKey =
         `MASTER CREATED\n\nMaster Matter ID: ${json.masterMatterId}\nMaster Lawsuit ID: ${json.masterLawsuitId}`
       );
 
+      await new Promise((r) => setTimeout(r, 2000));
       window.location.reload();
     } catch (err: any) {
       alert(err?.message || "Lawsuit build failed");

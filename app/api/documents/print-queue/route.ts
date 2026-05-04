@@ -28,6 +28,43 @@ function toJsonSafe(value: unknown): any {
   }
 }
 
+const PRINT_QUEUE_STATUS_TRANSITIONS: Record<string, {
+  status: string;
+  printDecision: string | null;
+  setPrintedAt: boolean;
+}> = {
+  queued: {
+    status: "queued",
+    printDecision: null,
+    setPrintedAt: false,
+  },
+  printed: {
+    status: "printed",
+    printDecision: "printed",
+    setPrintedAt: true,
+  },
+  hold: {
+    status: "hold",
+    printDecision: "hold",
+    setPrintedAt: false,
+  },
+  skipped: {
+    status: "skipped",
+    printDecision: "skipped",
+    setPrintedAt: false,
+  },
+};
+
+function allowedPrintQueueStatus(value: unknown): string {
+  const status = clean(value).toLowerCase();
+
+  if (!PRINT_QUEUE_STATUS_TRANSITIONS[status]) {
+    return "";
+  }
+
+  return status;
+}
+
 function uniqueQueueKeyFor(candidate: any): string {
   const masterLawsuitId = clean(candidate?.masterLawsuitId);
   const masterMatterId = clean(candidate?.masterMatterId);
@@ -292,3 +329,144 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json().catch(() => ({}));
+    const id = numberOrNull(body?.id);
+    const nextStatus = allowedPrintQueueStatus(body?.status);
+    const notes = clean(body?.notes);
+    const confirmStatusUpdate = body?.confirmStatusUpdate === true;
+
+    if (!id) {
+      return NextResponse.json(
+        {
+          ok: false,
+          action: "print-queue-status-update",
+          error: "Missing print queue item id.",
+          safety: {
+            noPrintQueueRecordsChanged: true,
+            noClioRecordsChanged: true,
+            noDocumentUploadsPerformed: true,
+            noOneDriveOrSharePointFoldersCreated: true,
+            noDocumentContentsChanged: true,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!nextStatus) {
+      return NextResponse.json(
+        {
+          ok: false,
+          action: "print-queue-status-update",
+          error: "Invalid status.  Allowed statuses are queued, printed, hold, and skipped.",
+          allowedStatuses: Object.keys(PRINT_QUEUE_STATUS_TRANSITIONS),
+          safety: {
+            noPrintQueueRecordsChanged: true,
+            noClioRecordsChanged: true,
+            noDocumentUploadsPerformed: true,
+            noOneDriveOrSharePointFoldersCreated: true,
+            noDocumentContentsChanged: true,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!confirmStatusUpdate) {
+      return NextResponse.json(
+        {
+          ok: false,
+          action: "print-queue-status-update",
+          error: "Print queue status was not updated.  This endpoint requires confirmStatusUpdate: true.",
+          safety: {
+            explicitActionRequired: true,
+            noPrintQueueRecordsChanged: true,
+            noClioRecordsChanged: true,
+            noDocumentUploadsPerformed: true,
+            noOneDriveOrSharePointFoldersCreated: true,
+            noDocumentContentsChanged: true,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    const existing = await prisma.documentPrintQueueItem.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        {
+          ok: false,
+          action: "print-queue-status-update",
+          error: `No print queue item exists with id ${id}.`,
+          safety: {
+            noPrintQueueRecordsChanged: true,
+            noClioRecordsChanged: true,
+            noDocumentUploadsPerformed: true,
+            noOneDriveOrSharePointFoldersCreated: true,
+            noDocumentContentsChanged: true,
+          },
+        },
+        { status: 404 }
+      );
+    }
+
+    const transition = PRINT_QUEUE_STATUS_TRANSITIONS[nextStatus];
+
+    const updated = await prisma.documentPrintQueueItem.update({
+      where: { id },
+      data: {
+        status: transition.status,
+        printDecision: transition.printDecision,
+        printedAt: transition.setPrintedAt
+          ? existing.printedAt ?? new Date()
+          : nextStatus === "queued"
+            ? null
+            : existing.printedAt,
+        notes: notes || existing.notes,
+      },
+    });
+
+    return NextResponse.json({
+      ok: true,
+      action: "print-queue-status-update",
+      id,
+      previousStatus: existing.status,
+      status: updated.status,
+      printDecision: updated.printDecision,
+      printedAt: updated.printedAt,
+      notes: updated.notes,
+      row: updated,
+      safety: {
+        explicitActionConfirmed: true,
+        onlyLocalPrintQueueRecordChanged: true,
+        noClioRecordsChanged: true,
+        noDocumentUploadsPerformed: true,
+        noOneDriveOrSharePointFoldersCreated: true,
+        noDocumentContentsChanged: true,
+        clioDocumentsTabRemainsSourceOfTruth: true,
+      },
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      {
+        ok: false,
+        action: "print-queue-status-update",
+        error: err?.message || "Could not update print queue status.",
+        safety: {
+          noClioRecordsChanged: true,
+          noDocumentUploadsPerformed: true,
+          noOneDriveOrSharePointFoldersCreated: true,
+          noDocumentContentsChanged: true,
+        },
+      },
+      { status: 500 }
+    );
+  }
+}
+

@@ -292,6 +292,8 @@ const activeGroupKey =
   const [printQueueAddResult, setPrintQueueAddResult] = useState<any>(null);
   const [printQueueList, setPrintQueueList] = useState<any>(null);
   const [printQueueListLoading, setPrintQueueListLoading] = useState(false);
+  const [printQueueStatusLoadingId, setPrintQueueStatusLoadingId] = useState<number | null>(null);
+  const [printQueueStatusResult, setPrintQueueStatusResult] = useState<any>(null);
   const [showMetadataModal, setShowMetadataModal] = useState(false);
   const [metadataSaving, setMetadataSaving] = useState(false);
   const [metadataEdit, setMetadataEdit] = useState<LawsuitMetadataEdit>(() =>
@@ -657,6 +659,7 @@ const activeGroupKey =
     if (json?.packet?.masterLawsuitId) {
       await loadFinalizationHistory(json.packet.masterLawsuitId);
       await loadPrintQueuePreview(json.packet.masterLawsuitId);
+      await loadPrintQueueList(json.packet.masterLawsuitId);
     }
 
     return json;
@@ -1056,6 +1059,74 @@ const activeGroupKey =
       });
     } finally {
       setPrintQueueAddLoading(false);
+    }
+  }
+
+
+  async function updatePrintQueueStatus(row: any, status: "queued" | "printed" | "hold" | "skipped") {
+    const id = Number(row?.id);
+    const masterLawsuitId =
+      textValue(row?.masterLawsuitId) ||
+      textValue(packetPreview?.packet?.masterLawsuitId) ||
+      textValue(matter?.masterLawsuitId);
+
+    if (!Number.isFinite(id) || id <= 0) {
+      setPrintQueueStatusResult({
+        ok: false,
+        error: "Missing print queue item id.",
+      });
+      return;
+    }
+
+    const label =
+      status === "printed"
+        ? "mark this document as printed"
+        : status === "hold"
+          ? "place this document on hold"
+          : status === "skipped"
+            ? "mark this document as skipped"
+            : "return this document to queued status";
+
+    const confirmed = confirm(
+      `UPDATE PRINT QUEUE STATUS\n\n` +
+        `Document: ${textValue(row?.documentLabel) || textValue(row?.documentKey) || "—"}\n` +
+        `Filename: ${textValue(row?.filename) || "—"}\n\n` +
+        `This will ${label}.\n\n` +
+        `This updates only the local print queue record.  It will not change Clio, upload documents, create folders, or modify document contents.\n\n` +
+        `Continue?`
+    );
+
+    if (!confirmed) return;
+
+    setPrintQueueStatusLoadingId(id);
+    setPrintQueueStatusResult(null);
+
+    try {
+      const res = await fetch("/api/documents/print-queue", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id,
+          status,
+          confirmStatusUpdate: true,
+        }),
+      });
+
+      const json = await res.json().catch(() => null);
+      setPrintQueueStatusResult(json);
+
+      if (json?.ok && masterLawsuitId) {
+        await loadPrintQueueList(masterLawsuitId);
+      }
+    } catch (err: any) {
+      setPrintQueueStatusResult({
+        ok: false,
+        error: err?.message || "Could not update print queue status.",
+      });
+    } finally {
+      setPrintQueueStatusLoadingId(null);
     }
   }
 
@@ -2729,8 +2800,31 @@ const activeGroupKey =
                     </div>
 
                     <div style={{ color: "#475569", marginBottom: 6 }}>
-                      Read-only list of local print queue records for this lawsuit.  This does not verify current Clio document existence and does not update print status.
+                      Local print queue records for this lawsuit.  Status controls update only local print queue records; they do not change Clio, upload documents, create folders, or modify document contents.
                     </div>
+
+                    {printQueueStatusResult && (
+                      <div
+                        style={{
+                          marginBottom: 8,
+                          padding: 8,
+                          background: printQueueStatusResult.ok ? "#f0fdf4" : "#fef2f2",
+                          border: `1px solid ${printQueueStatusResult.ok ? "#bbf7d0" : "#fecaca"}`,
+                          borderRadius: 4,
+                          color: printQueueStatusResult.ok ? "#166534" : "#991b1b",
+                        }}
+                      >
+                        {printQueueStatusResult.ok ? (
+                          <>
+                            Print queue status updated to {textValue(printQueueStatusResult.status) || "—"}.
+                          </>
+                        ) : (
+                          <>
+                            <strong>Error:</strong> {textValue(printQueueStatusResult.error)}
+                          </>
+                        )}
+                      </div>
+                    )}
 
                     {printQueueListLoading && !printQueueList && (
                       <div style={{ color: "#475569" }}>Loading print queue...</div>
@@ -2762,7 +2856,9 @@ const activeGroupKey =
                             <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Filename</th>
                             <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Status</th>
                             <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Queued At</th>
+                            <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Printed At</th>
                             <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Clio Document ID</th>
+                            <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2781,7 +2877,50 @@ const activeGroupKey =
                                 {textValue(row.queuedAt) || "—"}
                               </td>
                               <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                {textValue(row.printedAt) || "—"}
+                              </td>
+                              <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
                                 {textValue(row.clioDocumentId) || "—"}
+                              </td>
+                              <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                                  {(["printed", "hold", "skipped", "queued"] as const).map((statusOption) => (
+                                    <button
+                                      key={`${textValue(row.id)}-${statusOption}`}
+                                      type="button"
+                                      onClick={() => updatePrintQueueStatus(row, statusOption)}
+                                      disabled={
+                                        printQueueStatusLoadingId === Number(row.id) ||
+                                        textValue(row.status).toLowerCase() === statusOption
+                                      }
+                                      style={{
+                                        fontSize: 11,
+                                        padding: "2px 6px",
+                                        border: "1px solid #94a3b8",
+                                        borderRadius: 4,
+                                        background:
+                                          textValue(row.status).toLowerCase() === statusOption
+                                            ? "#e2e8f0"
+                                            : "#fff",
+                                        cursor:
+                                          printQueueStatusLoadingId === Number(row.id) ||
+                                          textValue(row.status).toLowerCase() === statusOption
+                                            ? "not-allowed"
+                                            : "pointer",
+                                      }}
+                                    >
+                                      {printQueueStatusLoadingId === Number(row.id)
+                                        ? "Updating..."
+                                        : statusOption === "printed"
+                                          ? "Printed"
+                                          : statusOption === "hold"
+                                            ? "Hold"
+                                            : statusOption === "skipped"
+                                              ? "Skipped"
+                                              : "Re-Queue"}
+                                    </button>
+                                  ))}
+                                </div>
                               </td>
                             </tr>
                           ))}

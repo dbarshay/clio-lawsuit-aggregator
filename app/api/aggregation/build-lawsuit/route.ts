@@ -95,6 +95,88 @@ function normalizeLawsuitOptions(raw: any) {
   };
 }
 
+function amountNumber(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  const cleaned = String(value).replace(/[$,\s]/g, "");
+  if (!cleaned) return null;
+
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+function customFieldNumber(matter: ClioMatter, fieldId: number): number | null {
+  return amountNumber(cfv(matter, fieldId)?.value);
+}
+
+function computeAmountSought(params: {
+  liveMatters: ClioMatter[];
+  lawsuitOptions: ReturnType<typeof normalizeLawsuitOptions>;
+}) {
+  const mode = params.lawsuitOptions.amountSoughtMode;
+
+  if (mode === "custom") {
+    if (params.lawsuitOptions.customAmountSought === null) {
+      throw new Error("Custom Amount is required when Amount Sought is set to Custom Amount.");
+    }
+
+    return {
+      mode,
+      amountSought: params.lawsuitOptions.customAmountSought,
+      customAmountSought: params.lawsuitOptions.customAmountSought,
+      sourceField: "custom",
+      selectedMatterCount: params.liveMatters.length,
+      components: params.liveMatters.map((matter) => ({
+        matterId: matter.id,
+        displayNumber: matter.display_number || "",
+        amount: null,
+      })),
+      missingAmountMatterIds: [],
+    };
+  }
+
+  const fieldId =
+    mode === "claim_amount"
+      ? MATTER_CF.CLAIM_AMOUNT
+      : MATTER_CF.BALANCE_PRESUIT;
+
+  const sourceField =
+    mode === "claim_amount" ? "CLAIM_AMOUNT" : "BALANCE_PRESUIT";
+
+  const components = params.liveMatters.map((matter) => {
+    const amount = customFieldNumber(matter, fieldId);
+
+    return {
+      matterId: matter.id,
+      displayNumber: matter.display_number || "",
+      amount,
+    };
+  });
+
+  const missingAmountMatterIds = components
+    .filter((item) => item.amount === null)
+    .map((item) => item.matterId);
+
+  const amountSought = components.reduce(
+    (sum, item) => sum + (item.amount ?? 0),
+    0
+  );
+
+  return {
+    mode,
+    amountSought,
+    customAmountSought: null,
+    sourceField,
+    selectedMatterCount: params.liveMatters.length,
+    components,
+    missingAmountMatterIds,
+  };
+}
+
 async function readMatterLive(matterId: number): Promise<ClioMatter> {
   const res = await clioFetch(
     `/api/v4/matters/${matterId}.json?fields=${encodeURIComponent(LIVE_FIELDS)}`,
@@ -414,6 +496,20 @@ export async function POST(req: NextRequest) {
 
     const claimNumber = Array.from(claimSet)[0] || null;
 
+    let amountSought;
+    try {
+      amountSought = computeAmountSought({ liveMatters, lawsuitOptions });
+    } catch (amountErr: any) {
+      return NextResponse.json(
+        {
+          ok: false,
+          stage: "preflight",
+          error: amountErr?.message || "Amount Sought calculation failed.",
+        },
+        { status: 400 }
+      );
+    }
+
     const patientSet = new Set(liveMatters.map(patientValue).filter(Boolean));
     const multiplePatientsContactId =
       process.env.CLIO_MULTIPLE_PATIENTS_CONTACT_ID || "2507344805";
@@ -478,6 +574,10 @@ export async function POST(req: NextRequest) {
         claimNumber,
         lawsuitMatters,
         sharedFolderPath: "",
+        amountSoughtMode: amountSought.mode,
+        amountSought: amountSought.amountSought,
+        customAmountSought: amountSought.customAmountSought,
+        amountSoughtBreakdown: amountSought,
       },
     });
 
@@ -486,6 +586,7 @@ export async function POST(req: NextRequest) {
       stage: "completed",
       lawsuitId: lawsuit.id,
       lawsuitOptions,
+      amountSought,
       masterMatterId: clioMasterMatterId,
       masterLawsuitId,
       lawsuitMatters,

@@ -176,6 +176,47 @@ const VALID_CLOSE_REASONS = [
   "TRANSFERRED TO LB",
 ];
 
+const VENUE_OPTIONS = [
+  "Civil Court of the City of New York, Queens County",
+  "Civil Court of the City of New York, Kings County",
+  "Civil Court of the City of New York, New York County",
+  "Civil Court of the City of New York, Bronx County",
+  "Civil Court of the City of New York, Richmond County",
+  "Nassau County District Court",
+  "Suffolk County District Court",
+  "AAA No-Fault Arbitration",
+  "Other",
+];
+
+type AmountSoughtMode = "balance_presuit" | "claim_amount" | "custom";
+
+type LawsuitOptions = {
+  venue: string;
+  venueOther: string;
+  amountSoughtMode: AmountSoughtMode;
+  customAmountSought: string;
+  indexAaaNumber: string;
+  notes: string;
+};
+
+function defaultLawsuitOptions(): LawsuitOptions {
+  return {
+    venue: "",
+    venueOther: "",
+    amountSoughtMode: "balance_presuit",
+    customAmountSought: "",
+    indexAaaNumber: "",
+    notes: "",
+  };
+}
+
+function parseMoneyInput(v: string): number | null {
+  const cleaned = String(v || "").replace(/[$,\s]/g, "");
+  if (!cleaned) return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
 export default function Page({ params }: { params: Promise<{ id: string }> }) {
   const [matterId, setMatterId] = useState<string>("");
 
@@ -211,6 +252,10 @@ const activeGroupKey =
   const [closing, setClosing] = useState(false);
   const [closeMatterTarget, setCloseMatterTarget] = useState<any>(null);
   const [showClosed, setShowClosed] = useState(true);
+  const [showLawsuitOptionsModal, setShowLawsuitOptionsModal] = useState(false);
+  const [lawsuitOptions, setLawsuitOptions] = useState<LawsuitOptions>(() =>
+    defaultLawsuitOptions()
+  );
 
 
   useEffect(() => {
@@ -377,7 +422,7 @@ const activeGroupKey =
     }
   }
 
-  async function aggregate() {
+  async function submitAggregationWithOptions() {
     if (submitting) return;
 
     const selectedRows = rows.filter((r) => selected.includes(Number(r.id)));
@@ -407,6 +452,21 @@ const activeGroupKey =
         body: JSON.stringify({
           baseMatterId: Number(matter.id),
           selectedMatterIds: selectedRows.map((r) => Number(r.id)),
+          lawsuitOptions: {
+            venue:
+              lawsuitOptions.venue === "Other"
+                ? lawsuitOptions.venueOther.trim()
+                : lawsuitOptions.venue.trim(),
+            venueSelection: lawsuitOptions.venue,
+            venueOther: lawsuitOptions.venueOther.trim(),
+            amountSoughtMode: lawsuitOptions.amountSoughtMode,
+            customAmountSought:
+              lawsuitOptions.amountSoughtMode === "custom"
+                ? parseMoneyInput(lawsuitOptions.customAmountSought)
+                : null,
+            indexAaaNumber: lawsuitOptions.indexAaaNumber.trim(),
+            notes: lawsuitOptions.notes.trim(),
+          },
         }),
       });
 
@@ -416,6 +476,8 @@ const activeGroupKey =
         alert(json.error || "Lawsuit build failed");
         return;
       }
+
+      setShowLawsuitOptionsModal(false);
 
       alert(
         `MASTER CREATED\n\nMaster Matter ID: ${json.masterMatterId}\nMaster Lawsuit ID: ${json.masterLawsuitId}`
@@ -431,6 +493,29 @@ const activeGroupKey =
   }
 
   
+
+  function openLawsuitOptionsModal() {
+    if (submitting) return;
+
+    const selectedRows = rows.filter((r) => selected.includes(Number(r.id)));
+
+    if (selectedRows.length === 0) {
+      alert("Select at least one matter.");
+      return;
+    }
+
+    const invalid = selectedRows.filter(
+      (r) => isAggregated(r) || !isSelectable(r)
+    );
+
+    if (invalid.length > 0) {
+      alert("One or more selected matters are not eligible for lawsuit generation.");
+      return;
+    }
+
+    setLawsuitOptions(defaultLawsuitOptions());
+    setShowLawsuitOptionsModal(true);
+  }
 
   async function deaggregateCluster() {
     if (!matter?.masterLawsuitId) {
@@ -644,7 +729,7 @@ const activeGroupKey =
           />
 
           <button
-            onClick={aggregate}
+            onClick={openLawsuitOptionsModal}
             disabled={submitting || selected.length === 0}
             style={{
               width: 220,
@@ -663,12 +748,14 @@ const activeGroupKey =
             }}
           >
             {submitting
-              ? "Aggregating..."
-              : selected.length > 0
-              ? "Aggregate Selected Matters"
+              ? "Generating..."
+              : selected.length === 1
+              ? "Generate Lawsuit"
+              : selected.length > 1
+              ? "Aggregate / Generate Lawsuit"
               : alreadyAggregated
               ? "Main Matter Already Aggregated"
-              : "Select Matters to Aggregate"}
+              : "Select Matters to Generate"}
           </button>
 
           {alreadyAggregated && (
@@ -978,6 +1065,267 @@ const activeGroupKey =
         </tbody>
       </table>
     </main>
+
+    {showLawsuitOptionsModal && (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.45)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+        }}
+      >
+        <div
+          style={{
+            width: 560,
+            maxWidth: "calc(100vw - 32px)",
+            background: "#fff",
+            borderRadius: 8,
+            padding: 22,
+            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+          }}
+        >
+          <h2 style={{ marginTop: 0 }}>Lawsuit Generation Options</h2>
+
+          <p style={{ marginBottom: 16, color: "#444" }}>
+            These options will be attached to this lawsuit generation request.  Stage 1 accepts
+            and logs the options without changing the existing aggregation pipeline.
+          </p>
+
+          <label style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>
+            Venue
+          </label>
+          <select
+            value={lawsuitOptions.venue}
+            onChange={(e) =>
+              setLawsuitOptions((prev) => ({
+                ...prev,
+                venue: e.target.value,
+                venueOther: e.target.value === "Other" ? prev.venueOther : "",
+              }))
+            }
+            style={{
+              width: "100%",
+              padding: 10,
+              marginBottom: 10,
+              border: "1px solid #bbb",
+              borderRadius: 4,
+            }}
+          >
+            <option value="">Select Venue</option>
+            {VENUE_OPTIONS.map((venue) => (
+              <option key={venue} value={venue}>
+                {venue}
+              </option>
+            ))}
+          </select>
+
+          {lawsuitOptions.venue === "Other" && (
+            <input
+              value={lawsuitOptions.venueOther}
+              onChange={(e) =>
+                setLawsuitOptions((prev) => ({
+                  ...prev,
+                  venueOther: e.target.value,
+                }))
+              }
+              placeholder="Enter venue"
+              style={{
+                width: "100%",
+                padding: 10,
+                marginBottom: 14,
+                border: "1px solid #bbb",
+                borderRadius: 4,
+              }}
+            />
+          )}
+
+          <fieldset
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: 6,
+              padding: 12,
+              margin: "8px 0 14px",
+            }}
+          >
+            <legend style={{ fontWeight: 700, padding: "0 6px" }}>
+              Amount Sought
+            </legend>
+
+            <label style={{ display: "block", marginBottom: 8 }}>
+              <input
+                type="radio"
+                name="amountSoughtMode"
+                value="balance_presuit"
+                checked={lawsuitOptions.amountSoughtMode === "balance_presuit"}
+                onChange={() =>
+                  setLawsuitOptions((prev) => ({
+                    ...prev,
+                    amountSoughtMode: "balance_presuit",
+                    customAmountSought: "",
+                  }))
+                }
+                style={{ marginRight: 8 }}
+              />
+              Balance (Presuit) — default
+            </label>
+
+            <label style={{ display: "block", marginBottom: 8 }}>
+              <input
+                type="radio"
+                name="amountSoughtMode"
+                value="claim_amount"
+                checked={lawsuitOptions.amountSoughtMode === "claim_amount"}
+                onChange={() =>
+                  setLawsuitOptions((prev) => ({
+                    ...prev,
+                    amountSoughtMode: "claim_amount",
+                    customAmountSought: "",
+                  }))
+                }
+                style={{ marginRight: 8 }}
+              />
+              Claim Amount
+            </label>
+
+            <label style={{ display: "block", marginBottom: 8 }}>
+              <input
+                type="radio"
+                name="amountSoughtMode"
+                value="custom"
+                checked={lawsuitOptions.amountSoughtMode === "custom"}
+                onChange={() =>
+                  setLawsuitOptions((prev) => ({
+                    ...prev,
+                    amountSoughtMode: "custom",
+                  }))
+                }
+                style={{ marginRight: 8 }}
+              />
+              Custom Amount
+            </label>
+
+            {lawsuitOptions.amountSoughtMode === "custom" && (
+              <input
+                value={lawsuitOptions.customAmountSought}
+                onChange={(e) =>
+                  setLawsuitOptions((prev) => ({
+                    ...prev,
+                    customAmountSought: e.target.value,
+                  }))
+                }
+                placeholder="Enter total lawsuit amount sought"
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  marginTop: 2,
+                  border: "1px solid #bbb",
+                  borderRadius: 4,
+                }}
+              />
+            )}
+          </fieldset>
+
+          <label style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>
+            Index / AAA Number
+          </label>
+          <input
+            value={lawsuitOptions.indexAaaNumber}
+            onChange={(e) =>
+              setLawsuitOptions((prev) => ({
+                ...prev,
+                indexAaaNumber: e.target.value,
+              }))
+            }
+            placeholder="Optional"
+            style={{
+              width: "100%",
+              padding: 10,
+              marginBottom: 14,
+              border: "1px solid #bbb",
+              borderRadius: 4,
+            }}
+          />
+
+          <label style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>
+            Additional Metadata / Notes
+          </label>
+          <textarea
+            value={lawsuitOptions.notes}
+            onChange={(e) =>
+              setLawsuitOptions((prev) => ({
+                ...prev,
+                notes: e.target.value,
+              }))
+            }
+            placeholder="Optional"
+            rows={3}
+            style={{
+              width: "100%",
+              padding: 10,
+              marginBottom: 18,
+              border: "1px solid #bbb",
+              borderRadius: 4,
+              resize: "vertical",
+            }}
+          />
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <button
+              onClick={() => setShowLawsuitOptionsModal(false)}
+              disabled={submitting}
+              style={{
+                padding: "8px 12px",
+                border: "1px solid #aaa",
+                background: "#fff",
+                borderRadius: 4,
+                cursor: submitting ? "not-allowed" : "pointer",
+              }}
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={submitAggregationWithOptions}
+              disabled={
+                submitting ||
+                (lawsuitOptions.amountSoughtMode === "custom" &&
+                  parseMoneyInput(lawsuitOptions.customAmountSought) === null)
+              }
+              style={{
+                padding: "8px 12px",
+                border: "1px solid #0070f3",
+                background:
+                  submitting ||
+                  (lawsuitOptions.amountSoughtMode === "custom" &&
+                    parseMoneyInput(lawsuitOptions.customAmountSought) === null)
+                    ? "#f3f4f6"
+                    : "#0070f3",
+                color:
+                  submitting ||
+                  (lawsuitOptions.amountSoughtMode === "custom" &&
+                    parseMoneyInput(lawsuitOptions.customAmountSought) === null)
+                    ? "#666"
+                    : "#fff",
+                borderRadius: 4,
+                cursor:
+                  submitting ||
+                  (lawsuitOptions.amountSoughtMode === "custom" &&
+                    parseMoneyInput(lawsuitOptions.customAmountSought) === null)
+                    ? "not-allowed"
+                    : "pointer",
+                fontWeight: 700,
+              }}
+            >
+              {submitting ? "Generating..." : "Confirm"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {showCloseModal && (
       <div

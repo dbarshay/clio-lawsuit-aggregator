@@ -75,6 +75,26 @@ function normalizeMatterList(ids: number[]): string {
     .join(",");
 }
 
+function normalizeLawsuitOptions(raw: any) {
+  const amountSoughtMode = String(raw?.amountSoughtMode || "balance_presuit");
+
+  return {
+    venue: text(raw?.venue),
+    venueSelection: text(raw?.venueSelection),
+    venueOther: text(raw?.venueOther),
+    amountSoughtMode:
+      amountSoughtMode === "claim_amount" || amountSoughtMode === "custom"
+        ? amountSoughtMode
+        : "balance_presuit",
+    customAmountSought:
+      Number.isFinite(Number(raw?.customAmountSought)) && Number(raw?.customAmountSought) >= 0
+        ? Number(raw?.customAmountSought)
+        : null,
+    indexAaaNumber: text(raw?.indexAaaNumber),
+    notes: text(raw?.notes),
+  };
+}
+
 async function readMatterLive(matterId: number): Promise<ClioMatter> {
   const res = await clioFetch(
     `/api/v4/matters/${matterId}.json?fields=${encodeURIComponent(LIVE_FIELDS)}`,
@@ -334,6 +354,13 @@ export async function POST(req: NextRequest) {
 
     const baseMatterId = Number(body?.baseMatterId);
     const selectedMatterIds = normalizeMatterIds(body?.selectedMatterIds);
+    const lawsuitOptions = normalizeLawsuitOptions(body?.lawsuitOptions);
+
+    console.log("build-lawsuit lawsuitOptions stage-1", {
+      baseMatterId,
+      selectedMatterIds,
+      lawsuitOptions,
+    });
 
     if (!Number.isFinite(baseMatterId) || baseMatterId <= 0) {
       return NextResponse.json(
@@ -458,6 +485,7 @@ export async function POST(req: NextRequest) {
       ok: true,
       stage: "completed",
       lawsuitId: lawsuit.id,
+      lawsuitOptions,
       masterMatterId: clioMasterMatterId,
       masterLawsuitId,
       lawsuitMatters,

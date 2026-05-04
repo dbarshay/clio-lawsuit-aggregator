@@ -14,7 +14,8 @@
     "test:settlement-blocked-audit:local": "bash scripts/test-settlement-blocked-audit-local.sh",
     "verify:settled-with-person-contact-safety": "node scripts/verify-settled-with-person-contact-safety.mjs",
     "verify:provider-fee-defaults-safety": "node scripts/verify-provider-fee-defaults-safety.mjs",
-    "verify:current-settlement-values-safety": "node scripts/verify-current-settlement-values-safety.mjs"
+    "verify:current-settlement-values-safety": "node scripts/verify-current-settlement-values-safety.mjs",
+    "verify:settlement-close-preview-safety": "node scripts/verify-settlement-close-preview-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

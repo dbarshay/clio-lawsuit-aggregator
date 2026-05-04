@@ -39,5 +39,9 @@ echo "=== RUN CURRENT SETTLEMENT VALUES SAFETY VERIFIER ==="
 npm run verify:current-settlement-values-safety
 
 echo
+echo "=== RUN SETTLEMENT CLOSE PREVIEW SAFETY VERIFIER ==="
+npm run verify:settlement-close-preview-safety
+
+echo
 echo "=== RUN PRODUCTION WORKFLOW SMOKE TEST ==="
 npm run smoke:workflow:prod

@@ -1925,8 +1925,24 @@ const activeGroupKey =
                   justifyContent: "flex-end",
                   gap: 8,
                   marginBottom: 10,
+                  flexWrap: "wrap",
                 }}
               >
+                <a
+                  href="/print-queue"
+                  style={{
+                    padding: "8px 12px",
+                    border: "1px solid #94a3b8",
+                    background: "#fff",
+                    color: "#0f172a",
+                    borderRadius: 4,
+                    textDecoration: "none",
+                    fontWeight: 700,
+                  }}
+                >
+                  Daily Print Queue
+                </a>
+
                 <button
                   onClick={loadDocumentGenerationPreview}
                   disabled={documentPreviewLoading}

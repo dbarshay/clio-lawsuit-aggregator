@@ -204,7 +204,38 @@ export default function LawsuitsPage() {
 
   return (
     <main style={{ padding: 20, maxWidth: 1400, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 24, marginBottom: 12 }}>Lawsuit Aggregation</h1>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 12,
+          marginBottom: 12,
+        }}
+      >
+        <div>
+          <h1 style={{ fontSize: 24, margin: "0 0 4px 0" }}>Lawsuit Aggregation</h1>
+          <div style={{ color: "#475569", fontSize: 13 }}>
+            Search, aggregate, and manage lawsuit matter groups.
+          </div>
+        </div>
+
+        <a
+          href="/print-queue"
+          style={{
+            fontSize: 13,
+            padding: "6px 10px",
+            border: "1px solid #94a3b8",
+            borderRadius: 6,
+            color: "#0f172a",
+            textDecoration: "none",
+            background: "#fff",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Daily Print Queue
+        </a>
+      </div>
 
       <div style={searchGrid}>
         <input placeholder="Claim number" value={claim} onChange={(e) => setClaim(e.target.value)} style={input} />

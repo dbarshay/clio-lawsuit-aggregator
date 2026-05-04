@@ -893,6 +893,22 @@ const activeGroupKey =
     }
   }
 
+  function downloadBillScheduleDocx() {
+    const masterLawsuitId = textValue(packetPreview?.packet?.masterLawsuitId || matter?.masterLawsuitId);
+
+    if (!masterLawsuitId) {
+      alert("No Master Lawsuit ID found.");
+      return;
+    }
+
+    window.open(
+      `/api/documents/bill-schedule?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
+
+
   async function openMetadataModalForMaster(masterLawsuitIdInput?: string) {
     const masterLawsuitId =
       textValue(masterLawsuitIdInput) || textValue(matter?.masterLawsuitId);
@@ -1498,6 +1514,21 @@ const activeGroupKey =
                   }}
                 >
                   {documentPreviewLoading ? "Checking..." : "Generate Documents Preview"}
+                </button>
+
+                <button
+                  onClick={downloadBillScheduleDocx}
+                  style={{
+                    padding: "8px 12px",
+                    border: "1px solid #0f766e",
+                    background: "#0f766e",
+                    color: "#fff",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  Download Bill Schedule
                 </button>
 
                 <button

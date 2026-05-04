@@ -381,6 +381,9 @@ const activeGroupKey =
   const [settlementHistoryLoading, setSettlementHistoryLoading] = useState(false);
   const [settlementHistoryResult, setSettlementHistoryResult] = useState<any>(null);
   const [expandedSettlementHistoryId, setExpandedSettlementHistoryId] = useState<string | null>(null);
+  const [currentSettlementValuesLoading, setCurrentSettlementValuesLoading] = useState(false);
+  const [currentSettlementValuesResult, setCurrentSettlementValuesResult] = useState<any>(null);
+  const [currentSettlementValuesLoadedMasterId, setCurrentSettlementValuesLoadedMasterId] = useState<string>("");
 
 
   useEffect(() => {
@@ -1842,6 +1845,40 @@ const activeGroupKey =
     }
   }
 
+  async function loadCurrentSettlementValues(masterLawsuitIdInput?: string) {
+    const masterLawsuitId = masterLawsuitIdInput || tabMasterLawsuitId;
+
+    if (!masterLawsuitId) {
+      return;
+    }
+
+    setCurrentSettlementValuesLoading(true);
+
+    try {
+      const res = await fetch(
+        `/api/settlements/current-values?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`
+      );
+      const json = await res.json();
+      setCurrentSettlementValuesResult(json);
+    } catch (err: any) {
+      setCurrentSettlementValuesResult({
+        ok: false,
+        action: "settlement-current-values",
+        error: err?.message || "Could not load current Clio settlement values.",
+        safety: {
+          readOnly: true,
+          liveClioReadOnly: true,
+          noClioRecordsChanged: true,
+          noDatabaseRecordsChanged: true,
+          noDocumentsGenerated: true,
+          noPrintQueueRecordsChanged: true,
+        },
+      });
+    } finally {
+      setCurrentSettlementValuesLoading(false);
+    }
+  }
+
   async function loadSettlementHistory(masterLawsuitIdInput?: string) {
     const masterLawsuitId = masterLawsuitIdInput || tabMasterLawsuitId;
 
@@ -2028,6 +2065,15 @@ const activeGroupKey =
   const tabMasterLawsuitId =
     textValue(packetPreview?.packet?.masterLawsuitId) ||
     textValue(matter?.masterLawsuitId);
+
+  useEffect(() => {
+    if (activeWorkspaceTab !== "settlement") return;
+    if (!tabMasterLawsuitId) return;
+    if (currentSettlementValuesLoadedMasterId === tabMasterLawsuitId) return;
+
+    setCurrentSettlementValuesLoadedMasterId(tabMasterLawsuitId);
+    void loadCurrentSettlementValues(tabMasterLawsuitId);
+  }, [activeWorkspaceTab, tabMasterLawsuitId, currentSettlementValuesLoadedMasterId]);
 
 
   return (
@@ -2301,6 +2347,170 @@ const activeGroupKey =
                 No lawsuit generated yet
               </div>
             )}
+          </div>
+
+          <div
+            style={{
+              padding: 12,
+              border: "1px solid #cbd5e1",
+              borderRadius: 10,
+              background: "#ffffff",
+              marginBottom: 14,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 12,
+                flexWrap: "wrap",
+                marginBottom: 10,
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 800, marginBottom: 4 }}>
+                  Current Clio Settlement Values
+                </div>
+                <div style={{ color: "#475569", fontSize: 12 }}>
+                  Live read-only Clio readback for child/bill matters.  This does not write to Clio, ClaimIndex, documents, or the print queue.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => loadCurrentSettlementValues()}
+                disabled={currentSettlementValuesLoading || !tabMasterLawsuitId}
+                style={{
+                  padding: "7px 10px",
+                  border: "1px solid #2563eb",
+                  background: currentSettlementValuesLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#2563eb",
+                  color: currentSettlementValuesLoading || !tabMasterLawsuitId ? "#666" : "#fff",
+                  borderRadius: 4,
+                  cursor: currentSettlementValuesLoading || !tabMasterLawsuitId ? "not-allowed" : "pointer",
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {currentSettlementValuesLoading ? "Refreshing..." : "Refresh Clio Values"}
+              </button>
+            </div>
+
+            {currentSettlementValuesResult?.error && (
+              <div style={{ color: "#991b1b", fontSize: 13, marginBottom: 8 }}>
+                <strong>Error:</strong> {textValue(currentSettlementValuesResult.error)}
+              </div>
+            )}
+
+            {currentSettlementValuesResult?.ok && currentSettlementValuesResult.totals && (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+                  gap: 8,
+                  marginBottom: 10,
+                  fontSize: 12,
+                }}
+              >
+                <div>
+                  <strong>Bill Matters:</strong>
+                  <br />
+                  {num(currentSettlementValuesResult.totals.childMatterCount)}
+                </div>
+                <div>
+                  <strong>Settled Amount:</strong>
+                  <br />
+                  {money(currentSettlementValuesResult.totals.settledAmountTotal)}
+                </div>
+                <div>
+                  <strong>Allocated:</strong>
+                  <br />
+                  {money(currentSettlementValuesResult.totals.allocatedSettlementTotal)}
+                </div>
+                <div>
+                  <strong>Total Fee:</strong>
+                  <br />
+                  {money(currentSettlementValuesResult.totals.totalFeeTotal)}
+                </div>
+                <div>
+                  <strong>Provider Net:</strong>
+                  <br />
+                  {money(currentSettlementValuesResult.totals.providerNetTotal)}
+                </div>
+              </div>
+            )}
+
+            {currentSettlementValuesResult?.ok &&
+              Array.isArray(currentSettlementValuesResult.rows) &&
+              currentSettlementValuesResult.rows.length > 0 && (
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    background: "#fff",
+                    fontSize: 12,
+                  }}
+                >
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Matter</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Bill</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Settled With</th>
+                      <th style={{ textAlign: "right", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Settled</th>
+                      <th style={{ textAlign: "right", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Allocated</th>
+                      <th style={{ textAlign: "right", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Interest</th>
+                      <th style={{ textAlign: "right", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Principal Fee</th>
+                      <th style={{ textAlign: "right", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Interest Fee</th>
+                      <th style={{ textAlign: "right", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Provider Net</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentSettlementValuesResult.rows.map((row: any) => (
+                      <tr key={textValue(row.matterId)}>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                          {textValue(row.displayNumber) || textValue(row.matterId)}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                          {textValue(row.billNumber) || "—"}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                          {textValue(row.settledWith) || "—"}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5, textAlign: "right" }}>
+                          {row.settledAmount == null ? "—" : money(row.settledAmount)}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5, textAlign: "right" }}>
+                          {row.allocatedSettlement == null ? "—" : money(row.allocatedSettlement)}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5, textAlign: "right" }}>
+                          {row.interestAmount == null ? "—" : money(row.interestAmount)}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5, textAlign: "right" }}>
+                          {row.principalFee == null ? "—" : money(row.principalFee)}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5, textAlign: "right" }}>
+                          {row.interestFee == null ? "—" : money(row.interestFee)}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5, textAlign: "right" }}>
+                          {row.providerNet == null ? "—" : money(row.providerNet)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+            {currentSettlementValuesResult?.ok &&
+              Array.isArray(currentSettlementValuesResult.rows) &&
+              currentSettlementValuesResult.rows.length === 0 && (
+                <div style={{ color: "#475569", fontSize: 13 }}>
+                  No child/bill settlement values were found for this master lawsuit.
+                </div>
+              )}
+
+            <div style={{ marginTop: 8, color: "#475569", fontSize: 12 }}>
+              Source: {textValue(currentSettlementValuesResult?.source) || "live Clio readback when loaded"}.
+            </div>
           </div>
 
           <div

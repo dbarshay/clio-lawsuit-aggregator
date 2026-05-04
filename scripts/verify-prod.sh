@@ -35,5 +35,9 @@ echo "=== RUN PROVIDER FEE DEFAULTS SAFETY VERIFIER ==="
 npm run verify:provider-fee-defaults-safety
 
 echo
+echo "=== RUN CURRENT SETTLEMENT VALUES SAFETY VERIFIER ==="
+npm run verify:current-settlement-values-safety
+
+echo
 echo "=== RUN PRODUCTION WORKFLOW SMOKE TEST ==="
 npm run smoke:workflow:prod

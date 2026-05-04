@@ -367,6 +367,8 @@ const activeGroupKey =
   const [settlementPreviewResult, setSettlementPreviewResult] = useState<any>(null);
   const [settlementWritebackPreviewLoading, setSettlementWritebackPreviewLoading] = useState(false);
   const [settlementWritebackPreviewResult, setSettlementWritebackPreviewResult] = useState<any>(null);
+  const [settlementWritebackLoading, setSettlementWritebackLoading] = useState(false);
+  const [settlementWritebackResult, setSettlementWritebackResult] = useState<any>(null);
 
 
   useEffect(() => {
@@ -1595,6 +1597,87 @@ const activeGroupKey =
       alert(err?.message || "Settlement writeback readiness validation failed.");
     } finally {
       setSettlementWritebackPreviewLoading(false);
+    }
+  }
+
+  async function saveSettlementToClio() {
+    const masterLawsuitId = tabMasterLawsuitId;
+
+    if (!masterLawsuitId) {
+      alert("No MASTER_LAWSUIT_ID found.  Generate or connect a lawsuit before saving settlement to Clio.");
+      return;
+    }
+
+    if (!settlementPreviewResult?.ok || !Array.isArray(settlementPreviewResult.rows)) {
+      alert("Run a successful settlement preview before saving to Clio.");
+      return;
+    }
+
+    if (!settlementWritebackPreviewResult?.ok || !settlementWritebackPreviewResult?.validation?.canWriteIfConfirmed) {
+      alert("Validate Clio writeback readiness successfully before saving to Clio.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "This will write final settlement values to the child/bill matter(s) in Clio.\n\n" +
+        "It will not write settlement financial values to the master matter.\n" +
+        "It will not generate documents or change the print queue.\n\n" +
+        "Continue?"
+    );
+
+    if (!confirmed) return;
+
+    setSettlementWritebackLoading(true);
+    setSettlementWritebackResult(null);
+
+    try {
+      const res = await fetch("/api/settlements/writeback", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          masterLawsuitId,
+          confirmWrite: true,
+          rows: settlementPreviewResult.rows.map((row: any) => ({
+            clioWritebackPreview: row.clioWritebackPreview,
+          })),
+        }),
+      });
+
+      const json = await res.json();
+      setSettlementWritebackResult(json);
+
+      if (!res.ok || !json?.ok) {
+        const blockingErrors = Array.isArray(json?.readiness?.validation?.blockingErrors)
+          ? json.readiness.validation.blockingErrors
+          : [];
+        alert(
+          json?.error ||
+            (blockingErrors.length > 0
+              ? `Settlement save blocked:\n\n${blockingErrors.join("\n")}`
+              : "Settlement save failed.")
+        );
+        return;
+      }
+
+      alert(`Settlement saved to Clio for ${num(json.count)} child/bill matter(s).`);
+      await expandClaim();
+    } catch (err: any) {
+      setSettlementWritebackResult({
+        ok: false,
+        action: "settlement-writeback",
+        error: err?.message || "Settlement save failed.",
+        safety: {
+          clioRecordsMayHaveChanged: true,
+          noDocumentsGenerated: true,
+          noPrintQueueRecordsChanged: true,
+          noPersistentFilesCreated: true,
+        },
+      });
+      alert(err?.message || "Settlement save failed.");
+    } finally {
+      setSettlementWritebackLoading(false);
     }
   }
 
@@ -3011,6 +3094,43 @@ const activeGroupKey =
                 Dry-run only.  No Clio records, database records, documents, or print queue records were changed.
               </div>
 
+              {settlementWritebackPreviewResult?.ok &&
+                settlementWritebackPreviewResult?.validation?.canWriteIfConfirmed && (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      padding: 10,
+                      border: "1px solid #f59e0b",
+                      borderRadius: 8,
+                      background: "#fffbeb",
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                      Final Settlement Save
+                    </div>
+                    <p style={{ margin: "0 0 8px", color: "#92400e", fontSize: 12 }}>
+                      This is the explicit final Clio writeback action.  It writes settlement values only to child/bill matters.
+                      It does not write settlement financial values to the master matter, generate documents, or change the print queue.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={saveSettlementToClio}
+                      disabled={settlementWritebackLoading}
+                      style={{
+                        padding: "8px 12px",
+                        border: "1px solid #b45309",
+                        background: settlementWritebackLoading ? "#f3f4f6" : "#b45309",
+                        color: settlementWritebackLoading ? "#666" : "#fff",
+                        borderRadius: 4,
+                        cursor: settlementWritebackLoading ? "not-allowed" : "pointer",
+                        fontWeight: 800,
+                      }}
+                    >
+                      {settlementWritebackLoading ? "Saving..." : "Save Settlement to Clio"}
+                    </button>
+                  </div>
+                )}
+
               <details style={{ marginTop: 10 }}>
                 <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
                   Raw Clio writeback readiness JSON
@@ -3028,6 +3148,95 @@ const activeGroupKey =
                   }}
                 >
                   {JSON.stringify(settlementWritebackPreviewResult, null, 2)}
+                </pre>
+              </details>
+            </div>
+          )}
+
+          {settlementWritebackResult && (
+            <div
+              style={{
+                padding: 12,
+                border: settlementWritebackResult.ok ? "1px solid #bbf7d0" : "1px solid #fecaca",
+                borderRadius: 10,
+                background: settlementWritebackResult.ok ? "#f0fdf4" : "#fef2f2",
+                marginBottom: 14,
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 8 }}>
+                Final Settlement Save Result
+              </div>
+
+              {settlementWritebackResult.error && (
+                <div style={{ color: "#991b1b", marginBottom: 8 }}>
+                  <strong>Error:</strong> {textValue(settlementWritebackResult.error)}
+                </div>
+              )}
+
+              {settlementWritebackResult.ok && (
+                <div style={{ color: "#166534", marginBottom: 8 }}>
+                  Settlement values were written to Clio for {num(settlementWritebackResult.count)} child/bill matter(s).
+                  ClaimIndex was refreshed after writeback.
+                </div>
+              )}
+
+              {Array.isArray(settlementWritebackResult.results) &&
+                settlementWritebackResult.results.length > 0 && (
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      background: "#fff",
+                      fontSize: 12,
+                      marginTop: 8,
+                    }}
+                  >
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Matter</th>
+                        <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>OK</th>
+                        <th style={{ textAlign: "right", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Fields Written</th>
+                        <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>ClaimIndex Refreshed</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {settlementWritebackResult.results.map((row: any) => (
+                        <tr key={textValue(row.matterId)}>
+                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                            {textValue(row.displayNumber) || textValue(row.matterId)}
+                          </td>
+                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                            {row.ok ? "Yes" : "No"}
+                          </td>
+                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5, textAlign: "right" }}>
+                            {num(row.customFieldCount)}
+                          </td>
+                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                            {row.claimIndexRefreshed ? "Yes" : "No"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+              <details style={{ marginTop: 10 }}>
+                <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
+                  Raw final settlement save JSON
+                </summary>
+                <pre
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    overflowX: "auto",
+                    margin: "6px 0 0 0",
+                    padding: 8,
+                    background: "#fff",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 4,
+                    fontSize: 12,
+                  }}
+                >
+                  {JSON.stringify(settlementWritebackResult, null, 2)}
                 </pre>
               </details>
             </div>

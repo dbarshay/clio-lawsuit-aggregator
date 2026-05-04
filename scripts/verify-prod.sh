@@ -51,5 +51,9 @@ echo "=== RUN SETTLEMENT DOCUMENTS PREVIEW SAFETY VERIFIER ==="
 npm run verify:settlement-documents-preview-safety
 
 echo
+echo "=== RUN SETTLEMENT SUMMARY DOCX SAFETY VERIFIER ==="
+npm run verify:settlement-summary-docx-safety
+
+echo
 echo "=== RUN PRODUCTION WORKFLOW SMOKE TEST ==="
 npm run smoke:workflow:prod

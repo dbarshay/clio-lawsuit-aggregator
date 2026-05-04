@@ -373,6 +373,7 @@ const activeGroupKey =
   const [settlementPreviewResult, setSettlementPreviewResult] = useState<any>(null);
   const [providerFeeDefaultsLoading, setProviderFeeDefaultsLoading] = useState(false);
   const [providerFeeDefaultsResult, setProviderFeeDefaultsResult] = useState<any>(null);
+  const [providerFeeDefaultsAutoLoadedMatterId, setProviderFeeDefaultsAutoLoadedMatterId] = useState<string>("");
   const [settlementWritebackPreviewLoading, setSettlementWritebackPreviewLoading] = useState(false);
   const [settlementWritebackPreviewResult, setSettlementWritebackPreviewResult] = useState<any>(null);
   const [settlementWritebackLoading, setSettlementWritebackLoading] = useState(false);
@@ -1525,9 +1526,13 @@ const activeGroupKey =
     setSettlementWritebackResult(null);
   }
 
-  async function loadProviderFeeDefaultsFromClio() {
+  async function loadProviderFeeDefaultsFromClio(options?: { silent?: boolean }) {
+    const silent = !!options?.silent;
+
     if (!matterId) {
-      alert("No matterId found.  Open a matter before loading provider fee defaults.");
+      if (!silent) {
+        alert("No matterId found.  Open a matter before loading provider fee defaults.");
+      }
       return;
     }
 
@@ -1542,7 +1547,9 @@ const activeGroupKey =
       setProviderFeeDefaultsResult(json);
 
       if (!res.ok || !json?.ok) {
-        alert(json?.error || "Could not load provider fee defaults from Clio.");
+        if (!silent) {
+          alert(json?.error || "Could not load provider fee defaults from Clio.");
+        }
         return;
       }
 
@@ -1550,10 +1557,12 @@ const activeGroupKey =
       const interestDefault = json?.defaults?.interestFeePercent;
 
       if (principalDefault == null && interestDefault == null) {
-        const missing = Array.isArray(json?.validation?.missingDefaults)
-          ? json.validation.missingDefaults.join(", ")
-          : "provider fee defaults";
-        alert(`No provider fee defaults are populated in Clio for this provider.  Missing: ${missing}.  You may enter the percentages manually.`);
+        if (!silent) {
+          const missing = Array.isArray(json?.validation?.missingDefaults)
+            ? json.validation.missingDefaults.join(", ")
+            : "provider fee defaults";
+          alert(`No provider fee defaults are populated in Clio for this provider.  Missing: ${missing}.  You may enter the percentages manually.`);
+        }
         return;
       }
 
@@ -1568,7 +1577,7 @@ const activeGroupKey =
       setSettlementWritebackPreviewResult(null);
       setSettlementWritebackResult(null);
 
-      if (principalDefault == null || interestDefault == null) {
+      if (!silent && (principalDefault == null || interestDefault == null)) {
         const missing = Array.isArray(json?.validation?.missingDefaults)
           ? json.validation.missingDefaults.join(", ")
           : "one or more provider fee defaults";
@@ -1588,11 +1597,24 @@ const activeGroupKey =
         },
       };
       setProviderFeeDefaultsResult(fallback);
-      alert(fallback.error);
+      if (!silent) {
+        alert(fallback.error);
+      }
     } finally {
       setProviderFeeDefaultsLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (activeWorkspaceTab !== "settlement") return;
+    if (!matterId) return;
+
+    const matterKey = String(matterId);
+    if (providerFeeDefaultsAutoLoadedMatterId === matterKey) return;
+
+    setProviderFeeDefaultsAutoLoadedMatterId(matterKey);
+    void loadProviderFeeDefaultsFromClio({ silent: true });
+  }, [activeWorkspaceTab, matterId, providerFeeDefaultsAutoLoadedMatterId]);
 
   async function loadSettlementPreview() {
     const masterLawsuitId = tabMasterLawsuitId;
@@ -2979,30 +3001,11 @@ const activeGroupKey =
                 fontSize: 13,
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-                <div>
-                  <div style={{ fontWeight: 800 }}>Provider Fee Defaults</div>
-                  <div style={{ color: "#1e3a8a", fontSize: 12 }}>
-                    Read-only lookup from the Clio provider/client contact.  Applies Retainer Principal NF and Retainer Interest to this preview form only.
-                  </div>
+              <div>
+                <div style={{ fontWeight: 800 }}>Provider Fee Defaults</div>
+                <div style={{ color: "#1e3a8a", fontSize: 12 }}>
+                  Auto-loads when this tab opens from the read-only Clio provider/client contact defaults for this preview form only.
                 </div>
-                <button
-                  type="button"
-                  onClick={loadProviderFeeDefaultsFromClio}
-                  disabled={providerFeeDefaultsLoading || !matterId}
-                  style={{
-                    padding: "7px 10px",
-                    border: "1px solid #2563eb",
-                    background: providerFeeDefaultsLoading || !matterId ? "#f3f4f6" : "#2563eb",
-                    color: providerFeeDefaultsLoading || !matterId ? "#666" : "#fff",
-                    borderRadius: 4,
-                    cursor: providerFeeDefaultsLoading || !matterId ? "not-allowed" : "pointer",
-                    fontWeight: 700,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {providerFeeDefaultsLoading ? "Loading..." : "Load Provider Defaults"}
-                </button>
               </div>
 
               {providerFeeDefaultsResult && (

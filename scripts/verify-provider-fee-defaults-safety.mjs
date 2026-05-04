@@ -78,14 +78,17 @@ mustContain("matter page", matterPage, "principalDefault == null ? prev.principa
 mustContain("matter page", matterPage, "interestDefault == null ? prev.interestFeePercent : String(interestDefault)");
 
 console.log("");
-console.log("=== VERIFY UI CONTROL IS PREVIEW-ONLY ===");
-mustContain("matter page", matterPage, "Load Provider Defaults");
+console.log("=== VERIFY UI AUTO-LOAD IS PREVIEW-ONLY ===");
+mustContain("matter page", matterPage, "activeWorkspaceTab !== \"settlement\"");
+mustContain("matter page", matterPage, "providerFeeDefaultsAutoLoadedMatterId");
+mustContain("matter page", matterPage, "loadProviderFeeDefaultsFromClio({ silent: true })");
 mustContain("matter page", matterPage, "/api/settlements/provider-fee-defaults?matterId=");
 mustContain("matter page", matterPage, "setSettlementPreviewInput");
 mustContain("matter page", matterPage, "setSettlementPreviewResult(null)");
 mustContain("matter page", matterPage, "setSettlementWritebackPreviewResult(null)");
 mustContain("matter page", matterPage, "setSettlementWritebackResult(null)");
-mustContain("matter page", matterPage, "Read-only lookup from the Clio provider/client contact.");
+mustContain("matter page", matterPage, "Auto-loads when this tab opens from the read-only Clio provider/client contact defaults");
+mustNotContain("matter page", matterPage, "Load Provider Defaults");
 
 console.log("");
 console.log("=== VERIFY SCRIPT REGISTRATION ===");

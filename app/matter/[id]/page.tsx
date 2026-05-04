@@ -98,6 +98,10 @@ function statusDisplay(status?: string) {
   return status;
 }
 
+function clioMatterUrl(matterId: any): string {
+  return `https://app.clio.com/nc/#/matters/${matterId}`;
+}
+
 function textValue(v: any): string {
   if (v == null) return "";
   if (typeof v === "string" || typeof v === "number") return String(v);
@@ -1229,7 +1233,7 @@ const activeGroupKey =
                 </div>
               )}
 
-              <details style={{ marginTop: 8 }}>
+              <details open style={{ marginTop: 8 }}>
                 <summary style={{ cursor: "pointer", fontWeight: 700 }}>
                   Child Bill Matters
                 </summary>
@@ -1254,7 +1258,24 @@ const activeGroupKey =
                   <tbody>
                     {(packetPreview.packet.childMatters || []).map((child: any) => (
                       <tr key={String(child.matterId)}>
-                        <td style={tdStyle}>{textValue(child.displayNumber)}</td>
+                        <td style={tdStyle}>
+                          {child.matterId ? (
+                            <a
+                              href={clioMatterUrl(child.matterId)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                color: "#2563eb",
+                                fontWeight: 700,
+                                textDecoration: "underline",
+                              }}
+                            >
+                              {textValue(child.displayNumber)}
+                            </a>
+                          ) : (
+                            textValue(child.displayNumber)
+                          )}
+                        </td>
                         <td style={tdStyle}>{textValue(child.patientName)}</td>
                         <td style={tdStyle}>{textValue(child.providerName)}</td>
                         <td style={tdStyle}>{formatDOS(child.dosStart, child.dosEnd)}</td>

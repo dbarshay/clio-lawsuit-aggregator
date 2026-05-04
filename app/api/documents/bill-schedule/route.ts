@@ -46,12 +46,17 @@ function formatDos(start: unknown, end: unknown): string {
   return s || e || "";
 }
 
-function safeFilePart(value: unknown): string {
+function safeFilePart(value: unknown, maxLength = 120): string {
   return clean(value)
     .replace(/[\/\\:*?"<>|#%{}~&]/g, "-")
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, 120);
+    .slice(0, maxLength);
+}
+
+function safeDocxFilename(baseName: unknown): string {
+  const base = safeFilePart(baseName, 150).replace(/\.+$/g, "");
+  return `${base || "Bill Schedule"}.docx`;
 }
 
 function paragraph(text: unknown, options?: { bold?: boolean; size?: number }) {
@@ -313,8 +318,8 @@ export async function GET(req: NextRequest) {
     const buffer = await Packer.toBuffer(doc);
     const body = new Uint8Array(buffer);
 
-    const filename = safeFilePart(
-      `${masterDisplay} - ${provider || "Provider"} aao ${patient || "Patient"} v ${insurer || "Insurer"} - Claim ${claimNumber || "No Claim"} - Bill Schedule.docx`
+    const filename = safeDocxFilename(
+      `${masterDisplay} - ${provider || "Provider"} aao ${patient || "Patient"} v ${insurer || "Insurer"} - Claim ${claimNumber || "No Claim"} - Bill Schedule`
     );
 
     return new NextResponse(body, {

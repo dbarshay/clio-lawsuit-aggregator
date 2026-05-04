@@ -1121,11 +1121,31 @@ const activeGroupKey =
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
                   gap: 10,
                   marginBottom: 12,
                 }}
               >
+                <div>
+                  <strong>Master Matter:</strong>
+                  <br />
+                  {packetPreview.packet.masterMatter?.matterId ? (
+                    <a
+                      href={clioMatterUrl(packetPreview.packet.masterMatter.matterId)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: "#2563eb",
+                        fontWeight: 700,
+                        textDecoration: "underline",
+                      }}
+                    >
+                      {textValue(packetPreview.packet.masterMatter.displayNumber) || "Open in Clio"}
+                    </a>
+                  ) : (
+                    "—"
+                  )}
+                </div>
                 <div>
                   <strong>Venue:</strong>
                   <br />

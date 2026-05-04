@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   AlignmentType,
+  BorderStyle,
   Document,
   HeadingLevel,
   Packer,
+  PageOrientation,
   Paragraph,
   Table,
   TableCell,
+  TableLayoutType,
   TableRow,
   TextRun,
+  VerticalAlign,
   WidthType,
 } from "docx";
 
@@ -88,29 +92,39 @@ function tableCell(
     bold?: boolean;
     width?: number;
     align?: (typeof AlignmentType)[keyof typeof AlignmentType];
+    size?: number;
+    shade?: string;
   }
 ) {
   return new TableCell({
     width: options?.width
       ? { size: options.width, type: WidthType.PERCENTAGE }
       : undefined,
+    verticalAlign: VerticalAlign.CENTER,
+    shading: options?.shade ? { fill: options.shade } : undefined,
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 1, color: "BFBFBF" },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: "BFBFBF" },
+      left: { style: BorderStyle.SINGLE, size: 1, color: "BFBFBF" },
+      right: { style: BorderStyle.SINGLE, size: 1, color: "BFBFBF" },
+    },
     children: [
       new Paragraph({
         alignment: options?.align || AlignmentType.LEFT,
         children: [
           new TextRun({
-            text: clean(text),
+            text: clean(text) || "—",
             bold: Boolean(options?.bold),
-            size: 18,
+            size: options?.size ?? 16,
           }),
         ],
       }),
     ],
     margins: {
-      top: 80,
-      bottom: 80,
-      left: 80,
-      right: 80,
+      top: 70,
+      bottom: 70,
+      left: 70,
+      right: 70,
     },
   });
 }
@@ -122,8 +136,8 @@ function makeInfoTable(rows: Array<[string, unknown]>) {
       ([label, value]) =>
         new TableRow({
           children: [
-            tableCell(label, { bold: true, width: 28 }),
-            tableCell(clean(value) || "—", { width: 72 }),
+            tableCell(label, { bold: true, width: 28, shade: "F3F4F6", size: 18 }),
+            tableCell(clean(value) || "—", { width: 72, size: 18 }),
           ],
         })
     ),
@@ -134,17 +148,17 @@ function makeBillScheduleTable(childMatters: any[], totals: any) {
   const header = new TableRow({
     tableHeader: true,
     children: [
-      tableCell("Matter", { bold: true, width: 8 }),
-      tableCell("Bill No.", { bold: true, width: 7 }),
-      tableCell("Patient", { bold: true, width: 11 }),
-      tableCell("Provider", { bold: true, width: 14 }),
-      tableCell("DOS", { bold: true, width: 9 }),
-      tableCell("Claim Amount", { bold: true, width: 9 }),
-      tableCell("Payment Voluntary", { bold: true, width: 10 }),
-      tableCell("Balance Presuit", { bold: true, width: 9 }),
-      tableCell("Denial Reason", { bold: true, width: 14 }),
-      tableCell("Index / AAA", { bold: true, width: 5 }),
-      tableCell("Status", { bold: true, width: 4 }),
+      tableCell("Matter", { bold: true, width: 8, shade: "E5E7EB" }),
+      tableCell("Bill No.", { bold: true, width: 7, shade: "E5E7EB" }),
+      tableCell("Patient", { bold: true, width: 11, shade: "E5E7EB" }),
+      tableCell("Provider", { bold: true, width: 14, shade: "E5E7EB" }),
+      tableCell("DOS", { bold: true, width: 9, shade: "E5E7EB" }),
+      tableCell("Claim Amount", { bold: true, width: 9, shade: "E5E7EB" }),
+      tableCell("Payment Voluntary", { bold: true, width: 10, shade: "E5E7EB" }),
+      tableCell("Balance Presuit", { bold: true, width: 9, shade: "E5E7EB" }),
+      tableCell("Denial Reason", { bold: true, width: 14, shade: "E5E7EB" }),
+      tableCell("Index / AAA", { bold: true, width: 5, shade: "E5E7EB" }),
+      tableCell("Status", { bold: true, width: 4, shade: "E5E7EB" }),
     ],
   });
 
@@ -169,7 +183,7 @@ function makeBillScheduleTable(childMatters: any[], totals: any) {
 
   const totalRow = new TableRow({
     children: [
-      tableCell("TOTALS", { bold: true }),
+      tableCell("TOTALS", { bold: true, shade: "F3F4F6" }),
       tableCell(""),
       tableCell(""),
       tableCell(""),
@@ -194,6 +208,7 @@ function makeBillScheduleTable(childMatters: any[], totals: any) {
 
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
+    layout: TableLayoutType.FIXED,
     rows: [header, ...bodyRows, totalRow],
   });
 }
@@ -277,11 +292,14 @@ export async function GET(req: NextRequest) {
         {
           properties: {
             page: {
+              size: {
+                orientation: PageOrientation.LANDSCAPE,
+              },
               margin: {
-                top: 720,
-                right: 540,
-                bottom: 720,
-                left: 540,
+                top: 540,
+                right: 360,
+                bottom: 540,
+                left: 360,
               },
             },
           },
@@ -289,8 +307,8 @@ export async function GET(req: NextRequest) {
             new Paragraph({
               heading: HeadingLevel.TITLE,
               alignment: AlignmentType.CENTER,
-              children: [new TextRun({ text: "Bill Schedule", bold: true, size: 36 })],
-              spacing: { after: 240 },
+              children: [new TextRun({ text: "BILL SCHEDULE", bold: true, size: 34 })],
+              spacing: { after: 120 },
             }),
 
             new Paragraph({
@@ -299,18 +317,29 @@ export async function GET(req: NextRequest) {
                 new TextRun({
                   text: `${provider || "Provider"} a/a/o ${patient || "Patient"} v. ${insurer || "Insurer"}`,
                   bold: true,
-                  size: 24,
+                  size: 22,
                 }),
               ],
-              spacing: { after: 260 },
+              spacing: { after: 80 },
             }),
 
-            paragraph("Lawsuit Information", { bold: true, size: 26 }),
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: `${venue || "Venue"} | Index / AAA No.: ${indexAaaNumber || "—"} | Claim No.: ${claimNumber || "—"}`,
+                  size: 18,
+                }),
+              ],
+              spacing: { after: 220 },
+            }),
+
+            paragraph("Lawsuit Information", { bold: true, size: 24 }),
             makeInfoTable(infoRows),
 
             new Paragraph({ text: "", spacing: { after: 180 } }),
 
-            paragraph("Child Bill Matters", { bold: true, size: 26 }),
+            paragraph("Child Bill Matters", { bold: true, size: 24 }),
             makeBillScheduleTable(childMatters, totals),
 
             new Paragraph({ text: "", spacing: { after: 180 } }),

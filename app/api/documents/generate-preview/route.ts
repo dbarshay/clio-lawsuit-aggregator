@@ -69,22 +69,28 @@ export async function GET(req: NextRequest) {
 
   const plannedDocuments = [
     {
-      key: "summons-complaint",
-      label: "Summons and Complaint",
-      filename: `${baseName} - Summons and Complaint.docx`,
-      status: canGenerate ? "ready" : "blocked",
-    },
-    {
       key: "bill-schedule",
       label: "Bill Schedule",
       filename: `${baseName} - Bill Schedule.docx`,
+      endpoint: `/api/documents/bill-schedule?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`,
       status: canGenerate ? "ready" : "blocked",
+      availableNow: true,
     },
     {
       key: "packet-summary",
       label: "Packet Summary",
-      filename: `${baseName} - Packet Summary.pdf`,
+      filename: `${baseName} - Packet Summary.docx`,
+      endpoint: `/api/documents/packet-summary?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`,
       status: canGenerate ? "ready" : "blocked",
+      availableNow: true,
+    },
+    {
+      key: "summons-complaint",
+      label: "Summons and Complaint",
+      filename: `${baseName} - Summons and Complaint.docx`,
+      endpoint: null,
+      status: "not-built-yet",
+      availableNow: false,
     },
   ];
 

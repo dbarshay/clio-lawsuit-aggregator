@@ -281,6 +281,8 @@ const activeGroupKey =
   const [packetLoading, setPacketLoading] = useState(false);
   const [documentPreview, setDocumentPreview] = useState<any>(null);
   const [documentPreviewLoading, setDocumentPreviewLoading] = useState(false);
+  const [finalizeUploadLoading, setFinalizeUploadLoading] = useState(false);
+  const [finalizeUploadResult, setFinalizeUploadResult] = useState<any>(null);
   const [showMetadataModal, setShowMetadataModal] = useState(false);
   const [metadataSaving, setMetadataSaving] = useState(false);
   const [metadataEdit, setMetadataEdit] = useState<LawsuitMetadataEdit>(() =>
@@ -882,6 +884,7 @@ const activeGroupKey =
       }
 
       setDocumentPreview(json);
+      setFinalizeUploadResult(null);
 
       if (!json.ok && json?.validation?.blockingErrors?.length) {
         alert(`Documents are blocked:\n\n${json.validation.blockingErrors.join("\n")}`);
@@ -918,6 +921,7 @@ const activeGroupKey =
       }
 
       setDocumentPreview(json);
+      setFinalizeUploadResult(null);
 
       if (!json.ok && json?.validation?.blockingErrors?.length) {
         alert(`Finalization is blocked:\n\n${json.validation.blockingErrors.join("\n")}`);
@@ -926,6 +930,98 @@ const activeGroupKey =
       alert(err?.message || "Finalize documents preview failed.");
     } finally {
       setDocumentPreviewLoading(false);
+    }
+  }
+
+
+  async function uploadFinalDocumentsToClio() {
+    if (finalizeUploadLoading) return;
+
+    const masterLawsuitId =
+      textValue(packetPreview?.packet?.masterLawsuitId) ||
+      textValue(matter?.masterLawsuitId);
+
+    if (!masterLawsuitId) {
+      alert("Load a lawsuit packet first.");
+      return;
+    }
+
+    if (documentPreview?.action !== "finalize-preview" || !documentPreview?.ok) {
+      alert("Run Finalize Documents Preview successfully before uploading final documents to Clio.");
+      return;
+    }
+
+    const plannedDocuments = Array.isArray(documentPreview?.plannedDocuments)
+      ? documentPreview.plannedDocuments
+      : [];
+
+    const uploadableDocuments = plannedDocuments.filter(
+      (doc: any) => doc?.wouldGenerate && doc?.wouldUploadToClio
+    );
+
+    if (uploadableDocuments.length === 0) {
+      alert("No final documents are ready for upload.");
+      return;
+    }
+
+    const targetDisplay =
+      textValue(documentPreview?.clioUploadTarget?.displayNumber) || "the Clio master matter";
+    const targetMatterId = textValue(documentPreview?.clioUploadTarget?.matterId);
+
+    const documentList = uploadableDocuments
+      .map((doc: any) => `- ${textValue(doc.label) || textValue(doc.key)}: ${textValue(doc.filename)}`)
+      .join("\n");
+
+    const confirmed = confirm(
+      `FINALIZE AND UPLOAD TO CLIO\n\n` +
+        `Target: ${targetDisplay}${targetMatterId ? ` / Matter ID ${targetMatterId}` : ""}\n\n` +
+        `This will upload the following final document copy/copies to the Clio master matter Documents tab:\n\n` +
+        `${documentList}\n\n` +
+        `This is an explicit finalization action. Preview and download actions remain non-persistent.\n\n` +
+        `WARNING: Running this again may create duplicate uploaded documents in Clio.\n\n` +
+        `Continue?`
+    );
+
+    if (!confirmed) return;
+
+    setFinalizeUploadLoading(true);
+    setFinalizeUploadResult(null);
+
+    try {
+      const res = await fetch("/api/documents/finalize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          masterLawsuitId,
+          confirmUpload: true,
+          documentKeys: uploadableDocuments.map((doc: any) => textValue(doc.key)).filter(Boolean),
+        }),
+      });
+
+      const json = await res.json().catch(() => null);
+
+      if (!res.ok || !json?.ok) {
+        setFinalizeUploadResult(json || { ok: false, error: "Finalize upload failed." });
+        alert(json?.error || "Finalize upload failed.");
+        return;
+      }
+
+      setFinalizeUploadResult(json);
+
+      const uploadedCount = Array.isArray(json.uploaded) ? json.uploaded.length : 0;
+      alert(`Final upload complete.\n\nUploaded to Clio: ${uploadedCount} document(s).`);
+    } catch (err: any) {
+      const result = {
+        ok: false,
+        error: err?.message || "Finalize upload failed.",
+      };
+
+      setFinalizeUploadResult(result);
+      alert(result.error);
+    } finally {
+      setFinalizeUploadLoading(false);
     }
   }
 
@@ -1584,7 +1680,7 @@ const activeGroupKey =
 
                 <button
                   onClick={loadFinalizePreview}
-                  disabled={documentPreviewLoading}
+                  disabled={documentPreviewLoading || finalizeUploadLoading}
                   style={{
                     padding: "8px 12px",
                     border: "1px solid #9333ea",
@@ -1596,6 +1692,46 @@ const activeGroupKey =
                   }}
                 >
                   {documentPreviewLoading ? "Checking..." : "Finalize Documents Preview"}
+                </button>
+
+                <button
+                  onClick={uploadFinalDocumentsToClio}
+                  disabled={
+                    documentPreviewLoading ||
+                    finalizeUploadLoading ||
+                    documentPreview?.action !== "finalize-preview" ||
+                    !documentPreview?.ok
+                  }
+                  style={{
+                    padding: "8px 12px",
+                    border: "1px solid #b45309",
+                    background:
+                      documentPreviewLoading ||
+                      finalizeUploadLoading ||
+                      documentPreview?.action !== "finalize-preview" ||
+                      !documentPreview?.ok
+                        ? "#f3f4f6"
+                        : "#b45309",
+                    color:
+                      documentPreviewLoading ||
+                      finalizeUploadLoading ||
+                      documentPreview?.action !== "finalize-preview" ||
+                      !documentPreview?.ok
+                        ? "#666"
+                        : "#fff",
+                    borderRadius: 4,
+                    cursor:
+                      documentPreviewLoading ||
+                      finalizeUploadLoading ||
+                      documentPreview?.action !== "finalize-preview" ||
+                      !documentPreview?.ok
+                        ? "not-allowed"
+                        : "pointer",
+                    fontWeight: 700,
+                  }}
+                  title="Requires a successful Finalize Documents Preview first."
+                >
+                  {finalizeUploadLoading ? "Uploading..." : "Upload Final Documents to Clio"}
                 </button>
 
                 <button
@@ -1732,9 +1868,74 @@ const activeGroupKey =
                       </ul>
                     )}
 
+                  {documentPreview.action === "finalize-preview" && documentPreview.ok && (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: 8,
+                        background: "#fffbeb",
+                        border: "1px solid #f59e0b",
+                        borderRadius: 4,
+                        color: "#92400e",
+                        fontSize: 12,
+                      }}
+                    >
+                      <strong>Final upload is explicit:</strong> click Upload Final Documents to Clio only when these are the final print-ready copies.  Repeating the action may create duplicate documents in Clio.
+                    </div>
+                  )}
+
                   <div style={{ marginTop: 8, color: "#555", fontSize: 12 }}>
                     {textValue(documentPreview.note) ||
                       "Dry run only.  No files were created, no Clio records were changed, and no database records were changed."}
+                  </div>
+                </div>
+              )}
+
+              {finalizeUploadResult && (
+                <div
+                  style={{
+                    marginBottom: 12,
+                    padding: 10,
+                    background: finalizeUploadResult.ok ? "#ecfdf5" : "#fef2f2",
+                    border: finalizeUploadResult.ok
+                      ? "1px solid #10b981"
+                      : "1px solid #dc2626",
+                    borderRadius: 4,
+                  }}
+                >
+                  <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                    Final Upload Result
+                  </div>
+
+                  <div style={{ marginBottom: 6 }}>
+                    <strong>Status:</strong>{" "}
+                    {finalizeUploadResult.ok ? "Uploaded to Clio" : "Failed"}
+                  </div>
+
+                  {textValue(finalizeUploadResult.error) && (
+                    <div style={{ marginBottom: 6, color: "#991b1b" }}>
+                      <strong>Error:</strong> {textValue(finalizeUploadResult.error)}
+                    </div>
+                  )}
+
+                  {Array.isArray(finalizeUploadResult.uploaded) &&
+                    finalizeUploadResult.uploaded.length > 0 && (
+                      <ul style={{ margin: "6px 0 0 18px", padding: 0 }}>
+                        {finalizeUploadResult.uploaded.map((doc: any) => (
+                          <li key={textValue(doc.clioDocumentId) || textValue(doc.filename)}>
+                            <strong>{textValue(doc.label)}:</strong>{" "}
+                            {textValue(doc.filename)}
+                            {doc.clioDocumentId
+                              ? ` — Clio Document ID ${doc.clioDocumentId}`
+                              : ""}
+                            {doc.fullyUploaded ? " — fully uploaded" : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                  <div style={{ marginTop: 8, color: "#555", fontSize: 12 }}>
+                    Uploaded only through the explicit finalization action.  No database records were changed, and no OneDrive/SharePoint folders were created.
                   </div>
                 </div>
               )}

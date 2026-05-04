@@ -1815,9 +1815,11 @@ const activeGroupKey =
         </section>
       )}
 
-      <hr style={{ margin: "18px 0 20px 0", border: 0, borderTop: "1px solid #999"  }} />
+      {activeWorkspaceTab !== "settlement" && (
+        <>
+          <hr style={{ margin: "18px 0 20px 0", border: 0, borderTop: "1px solid #999"  }} />
 
-      {alreadyAggregated && (
+          {alreadyAggregated && (
         <section
           style={{
             border: "1px solid #bfbfbf",
@@ -3581,6 +3583,9 @@ const activeGroupKey =
           })}
         </tbody>
       </table>
+        </>
+      )}
+
     </main>
 
     {showMetadataModal && (

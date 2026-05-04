@@ -2119,6 +2119,11 @@ const activeGroupKey =
                         const rowKey = textValue(row.id);
                         const isExpanded = expandedFinalizationId === rowKey;
                         const requestedKeys = Array.isArray(row.requestedKeys) ? row.requestedKeys : [];
+                        const uploadTarget = row.clioUploadTarget || {};
+                        const validation = row.validationSnapshot || {};
+                        const packetSummary = row.packetSummarySnapshot || {};
+                        const validationWarnings = Array.isArray(validation.warnings) ? validation.warnings : [];
+                        const validationBlockingErrors = Array.isArray(validation.blockingErrors) ? validation.blockingErrors : [];
 
                         return (
                           <div
@@ -2238,76 +2243,219 @@ const activeGroupKey =
                                   </div>
                                 </div>
 
-                                <div style={{ marginBottom: 8 }}>
-                                  <strong>Clio Upload Target:</strong>
-                                  <pre
-                                    style={{
-                                      whiteSpace: "pre-wrap",
-                                      overflowX: "auto",
-                                      margin: "4px 0 0 0",
-                                      padding: 8,
-                                      background: "#fff",
-                                      border: "1px solid #e5e7eb",
-                                      borderRadius: 4,
-                                    }}
-                                  >
-                                    {JSON.stringify(row.clioUploadTarget || {}, null, 2)}
-                                  </pre>
+                                <div
+                                  style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                                    gap: 8,
+                                    marginBottom: 10,
+                                    padding: 8,
+                                    background: "#fff",
+                                    border: "1px solid #e5e7eb",
+                                    borderRadius: 4,
+                                  }}
+                                >
+                                  <div>
+                                    <strong>Clio Target Type:</strong>
+                                    <br />
+                                    {textValue(uploadTarget.type) || "—"}
+                                  </div>
+                                  <div>
+                                    <strong>Target Matter ID:</strong>
+                                    <br />
+                                    {textValue(uploadTarget.matterId) || textValue(row.masterMatterId) || "—"}
+                                  </div>
+                                  <div>
+                                    <strong>Would Upload To Clio:</strong>
+                                    <br />
+                                    {uploadTarget.wouldUploadToClio ? "Yes" : "No"}
+                                  </div>
                                 </div>
 
-                                <div style={{ marginBottom: 8 }}>
-                                  <strong>Uploaded Documents:</strong>
-                                  <pre
-                                    style={{
-                                      whiteSpace: "pre-wrap",
-                                      overflowX: "auto",
-                                      margin: "4px 0 0 0",
-                                      padding: 8,
-                                      background: "#fff",
-                                      border: "1px solid #e5e7eb",
-                                      borderRadius: 4,
-                                    }}
-                                  >
-                                    {JSON.stringify(uploaded, null, 2)}
-                                  </pre>
+                                <div style={{ marginBottom: 10 }}>
+                                  <strong>Uploaded Documents</strong>
+                                  {uploaded.length === 0 ? (
+                                    <div style={{ color: "#475569", marginTop: 4 }}>
+                                      No documents were uploaded in this finalization attempt.
+                                    </div>
+                                  ) : (
+                                    <table
+                                      style={{
+                                        width: "100%",
+                                        borderCollapse: "collapse",
+                                        marginTop: 4,
+                                        background: "#fff",
+                                      }}
+                                    >
+                                      <thead>
+                                        <tr>
+                                          <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Document</th>
+                                          <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Filename</th>
+                                          <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Clio Document ID</th>
+                                          <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Fully Uploaded</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {uploaded.map((doc: any, index: number) => (
+                                          <tr key={`${textValue(doc.key) || textValue(doc.filename)}-${index}`}>
+                                            <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                              {textValue(doc.label) || textValue(doc.key) || "—"}
+                                            </td>
+                                            <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                              {textValue(doc.filename) || "—"}
+                                            </td>
+                                            <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                              {textValue(doc.clioDocumentId) || "—"}
+                                            </td>
+                                            <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                              {doc.fullyUploaded ? "Yes" : "No"}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  )}
                                 </div>
 
-                                <div style={{ marginBottom: 8 }}>
-                                  <strong>Skipped Documents:</strong>
-                                  <pre
-                                    style={{
-                                      whiteSpace: "pre-wrap",
-                                      overflowX: "auto",
-                                      margin: "4px 0 0 0",
-                                      padding: 8,
-                                      background: "#fff",
-                                      border: "1px solid #e5e7eb",
-                                      borderRadius: 4,
-                                    }}
-                                  >
-                                    {JSON.stringify(skipped, null, 2)}
-                                  </pre>
+                                <div style={{ marginBottom: 10 }}>
+                                  <strong>Skipped Documents</strong>
+                                  {skipped.length === 0 ? (
+                                    <div style={{ color: "#475569", marginTop: 4 }}>
+                                      No documents were skipped in this finalization attempt.
+                                    </div>
+                                  ) : (
+                                    <table
+                                      style={{
+                                        width: "100%",
+                                        borderCollapse: "collapse",
+                                        marginTop: 4,
+                                        background: "#fff",
+                                      }}
+                                    >
+                                      <thead>
+                                        <tr>
+                                          <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Document</th>
+                                          <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Reason</th>
+                                          <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Filename</th>
+                                          <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Existing Clio Docs</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {skipped.map((doc: any, index: number) => (
+                                          <tr key={`${textValue(doc.key) || textValue(doc.filename)}-${index}`}>
+                                            <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                              {textValue(doc.label) || textValue(doc.key) || "—"}
+                                            </td>
+                                            <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                              {textValue(doc.reason) || "—"}
+                                            </td>
+                                            <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                              {textValue(doc.filename) || "—"}
+                                            </td>
+                                            <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                              {Array.isArray(doc.existingClioDocuments)
+                                                ? doc.existingClioDocuments.length
+                                                : 0}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  )}
                                 </div>
 
-                                <div style={{ marginBottom: 8 }}>
-                                  <strong>Validation Snapshot:</strong>
-                                  <pre
-                                    style={{
-                                      whiteSpace: "pre-wrap",
-                                      overflowX: "auto",
-                                      margin: "4px 0 0 0",
-                                      padding: 8,
-                                      background: "#fff",
-                                      border: "1px solid #e5e7eb",
-                                      borderRadius: 4,
-                                    }}
-                                  >
-                                    {JSON.stringify(row.validationSnapshot || {}, null, 2)}
-                                  </pre>
+                                <div
+                                  style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                                    gap: 8,
+                                    marginBottom: 10,
+                                    padding: 8,
+                                    background: "#fff",
+                                    border: "1px solid #e5e7eb",
+                                    borderRadius: 4,
+                                  }}
+                                >
+                                  <div>
+                                    <strong>Can Generate:</strong>
+                                    <br />
+                                    {validation.canGenerate ? "Yes" : "No"}
+                                  </div>
+                                  <div>
+                                    <strong>Warnings:</strong>
+                                    <br />
+                                    {validationWarnings.length}
+                                  </div>
+                                  <div>
+                                    <strong>Blocking Errors:</strong>
+                                    <br />
+                                    {validationBlockingErrors.length}
+                                  </div>
+                                  <div>
+                                    <strong>Amount Mode:</strong>
+                                    <br />
+                                    {textValue(packetSummary.amountSoughtMode) || "—"}
+                                  </div>
                                 </div>
 
-                                <div>
-                                  <strong>Packet Summary Snapshot:</strong>
+                                <div
+                                  style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                                    gap: 8,
+                                    marginBottom: 10,
+                                    padding: 8,
+                                    background: "#fff",
+                                    border: "1px solid #e5e7eb",
+                                    borderRadius: 4,
+                                  }}
+                                >
+                                  <div>
+                                    <strong>Venue:</strong>
+                                    <br />
+                                    {textValue(packetSummary.venue) || "—"}
+                                  </div>
+                                  <div>
+                                    <strong>Provider:</strong>
+                                    <br />
+                                    {textValue(packetSummary.provider) || "—"}
+                                  </div>
+                                  <div>
+                                    <strong>Patient:</strong>
+                                    <br />
+                                    {textValue(packetSummary.patient) || "—"}
+                                  </div>
+                                  <div>
+                                    <strong>Insurer:</strong>
+                                    <br />
+                                    {textValue(packetSummary.insurer) || "—"}
+                                  </div>
+                                  <div>
+                                    <strong>Claim Number:</strong>
+                                    <br />
+                                    {textValue(packetSummary.claimNumber) || "—"}
+                                  </div>
+                                  <div>
+                                    <strong>Bill Count:</strong>
+                                    <br />
+                                    {textValue(packetSummary.billCount) || "—"}
+                                  </div>
+                                  <div>
+                                    <strong>Amount Sought:</strong>
+                                    <br />
+                                    {textValue(packetSummary.amountSought) ? money(packetSummary.amountSought) : "—"}
+                                  </div>
+                                  <div>
+                                    <strong>Index / AAA:</strong>
+                                    <br />
+                                    {textValue(packetSummary.indexAaaNumber) || "—"}
+                                  </div>
+                                </div>
+
+                                <details style={{ marginBottom: 6 }}>
+                                  <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                                    Raw Clio upload target JSON
+                                  </summary>
                                   <pre
                                     style={{
                                       whiteSpace: "pre-wrap",
@@ -2319,9 +2467,66 @@ const activeGroupKey =
                                       borderRadius: 4,
                                     }}
                                   >
-                                    {JSON.stringify(row.packetSummarySnapshot || {}, null, 2)}
+                                    {JSON.stringify(uploadTarget, null, 2)}
                                   </pre>
-                                </div>
+                                </details>
+
+                                <details style={{ marginBottom: 6 }}>
+                                  <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                                    Raw uploaded/skipped documents JSON
+                                  </summary>
+                                  <pre
+                                    style={{
+                                      whiteSpace: "pre-wrap",
+                                      overflowX: "auto",
+                                      margin: "4px 0 0 0",
+                                      padding: 8,
+                                      background: "#fff",
+                                      border: "1px solid #e5e7eb",
+                                      borderRadius: 4,
+                                    }}
+                                  >
+                                    {JSON.stringify({ uploaded, skipped }, null, 2)}
+                                  </pre>
+                                </details>
+
+                                <details style={{ marginBottom: 6 }}>
+                                  <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                                    Raw validation snapshot JSON
+                                  </summary>
+                                  <pre
+                                    style={{
+                                      whiteSpace: "pre-wrap",
+                                      overflowX: "auto",
+                                      margin: "4px 0 0 0",
+                                      padding: 8,
+                                      background: "#fff",
+                                      border: "1px solid #e5e7eb",
+                                      borderRadius: 4,
+                                    }}
+                                  >
+                                    {JSON.stringify(validation, null, 2)}
+                                  </pre>
+                                </details>
+
+                                <details>
+                                  <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                                    Raw packet summary snapshot JSON
+                                  </summary>
+                                  <pre
+                                    style={{
+                                      whiteSpace: "pre-wrap",
+                                      overflowX: "auto",
+                                      margin: "4px 0 0 0",
+                                      padding: 8,
+                                      background: "#fff",
+                                      border: "1px solid #e5e7eb",
+                                      borderRadius: 4,
+                                    }}
+                                  >
+                                    {JSON.stringify(packetSummary, null, 2)}
+                                  </pre>
+                                </details>
 
                                 <div style={{ marginTop: 8, color: "#475569" }}>
                                   This drilldown displays local audit/history data only.  It does not verify current Clio document existence.

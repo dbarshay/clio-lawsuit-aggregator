@@ -1816,11 +1816,265 @@ const activeGroupKey =
 
       {activeWorkspaceTab === "lawsuit" && (
         <section style={tabPlaceholderPanelStyle}>
-          <h2 style={{ marginTop: 0 }}>Lawsuit</h2>
-          <p style={tabPlaceholderTextStyle}>
-            Lawsuit workspace placeholder.  Existing lawsuit generation, metadata, and matter table controls
-            remain available below while this tab is separated into dedicated sections.
-          </p>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: 12,
+              flexWrap: "wrap",
+              marginBottom: 14,
+            }}
+          >
+            <div>
+              <h2 style={{ marginTop: 0, marginBottom: 6 }}>Matter-Level Lawsuit Workspace</h2>
+              <p style={tabPlaceholderTextStyle}>
+                Lawsuit generation and metadata controls for this matter group.  Clio remains the source of truth,
+                and Amount Sought calculations continue to exclude master matters.
+              </p>
+            </div>
+
+            {tabMasterLawsuitId ? (
+              <div
+                style={{
+                  padding: "6px 10px",
+                  border: "1px solid #fecaca",
+                  background: "#fef2f2",
+                  color: "#991b1b",
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                MASTER LAWSUIT ID: {tabMasterLawsuitId}
+              </div>
+            ) : (
+              <div
+                style={{
+                  padding: "6px 10px",
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#475569",
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                No lawsuit generated yet
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: 10,
+              marginBottom: 14,
+            }}
+          >
+            <div
+              style={{
+                padding: 10,
+                border: "1px solid #e5e7eb",
+                borderRadius: 8,
+                background: "#f8fafc",
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 4 }}>Selected Matters</div>
+              <div style={{ color: "#475569", fontSize: 13 }}>
+                {selected.length} selected for lawsuit generation.
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: 10,
+                border: "1px solid #e5e7eb",
+                borderRadius: 8,
+                background: "#f8fafc",
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 4 }}>Claim Amount</div>
+              <div style={{ color: "#475569", fontSize: 13 }}>{money(totals.claim)}</div>
+            </div>
+
+            <div
+              style={{
+                padding: 10,
+                border: "1px solid #e5e7eb",
+                borderRadius: 8,
+                background: "#f8fafc",
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 4 }}>Balance (Presuit)</div>
+              <div style={{ color: "#475569", fontSize: 13 }}>{money(totals.balance)}</div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              flexWrap: "wrap",
+              marginBottom: 12,
+            }}
+          >
+            <button
+              type="button"
+              onClick={openLawsuitOptionsModal}
+              disabled={submitting || selected.length === 0}
+              style={{
+                padding: "8px 12px",
+                border: "1px solid #0070f3",
+                background: submitting || selected.length === 0 ? "#f3f4f6" : "#0070f3",
+                color: submitting || selected.length === 0 ? "#666" : "#fff",
+                borderRadius: 4,
+                cursor: submitting || selected.length === 0 ? "not-allowed" : "pointer",
+                fontWeight: 700,
+              }}
+            >
+              {submitting
+                ? "Generating..."
+                : selected.length === 1
+                ? "Generate Lawsuit"
+                : selected.length > 1
+                ? "Aggregate / Generate Lawsuit"
+                : "Select Matters to Generate"}
+            </button>
+
+            {alreadyAggregated && (
+              <button
+                type="button"
+                onClick={deaggregateCluster}
+                style={{
+                  padding: "8px 12px",
+                  border: "1px solid #dc3545",
+                  background: "#dc3545",
+                  color: "#fff",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontWeight: 700,
+                }}
+              >
+                De-aggregate Lawsuit
+              </button>
+            )}
+
+            {alreadyAggregated && (
+              <button
+                type="button"
+                onClick={openMetadataModal}
+                disabled={packetLoading}
+                style={{
+                  padding: "8px 12px",
+                  border: "1px solid #4b5563",
+                  background: packetLoading ? "#f3f4f6" : "#4b5563",
+                  color: packetLoading ? "#666" : "#fff",
+                  borderRadius: 4,
+                  cursor: packetLoading ? "not-allowed" : "pointer",
+                  fontWeight: 700,
+                }}
+              >
+                Edit Lawsuit Metadata
+              </button>
+            )}
+
+            {alreadyAggregated && (
+              <button
+                type="button"
+                onClick={loadPacketPreview}
+                disabled={packetLoading}
+                style={{
+                  padding: "8px 12px",
+                  border: "1px solid #2563eb",
+                  background: packetLoading ? "#f3f4f6" : "#2563eb",
+                  color: packetLoading ? "#666" : "#fff",
+                  borderRadius: 4,
+                  cursor: packetLoading ? "not-allowed" : "pointer",
+                  fontWeight: 700,
+                }}
+              >
+                {packetLoading ? "Loading..." : "Refresh Lawsuit Packet Data"}
+              </button>
+            )}
+          </div>
+
+          {alreadyAggregated ? (
+            <div
+              style={{
+                padding: 10,
+                background: "#f8fafc",
+                border: "1px solid #cbd5e1",
+                borderRadius: 8,
+                color: "#475569",
+                fontSize: 13,
+              }}
+            >
+              Existing lawsuit metadata and document packet data can be reviewed here and in the Documents tab.
+              Final document upload to Clio remains explicit only.
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: 10,
+                background: "#fffbeb",
+                border: "1px solid #f59e0b",
+                borderRadius: 8,
+                color: "#92400e",
+                fontSize: 13,
+              }}
+            >
+              Select one or more eligible matters, then generate the lawsuit.  Single-matter lawsuit generation remains supported.
+            </div>
+          )}
+
+          {packetPreview?.packet && activeWorkspaceTab === "lawsuit" && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: 10,
+                background: "#ffffff",
+                border: "1px solid #e5e7eb",
+                borderRadius: 8,
+                fontSize: 13,
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 8 }}>Current Lawsuit Packet Summary</div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                  gap: 8,
+                }}
+              >
+                <div>
+                  <strong>Venue:</strong>
+                  <br />
+                  {textValue(packetPreview.packet.metadata?.venue?.value) || "—"}
+                </div>
+                <div>
+                  <strong>Amount Sought:</strong>
+                  <br />
+                  {money(packetPreview.packet.metadata?.amountSought?.amount)}
+                  {" "}
+                  ({textValue(packetPreview.packet.metadata?.amountSought?.mode) || "—"})
+                </div>
+                <div>
+                  <strong>Index / AAA:</strong>
+                  <br />
+                  {textValue(packetPreview.packet.metadata?.indexAaaNumber?.value) || "—"}
+                </div>
+                <div>
+                  <strong>Can Generate Docs:</strong>
+                  <br />
+                  {packetPreview.packet.validation?.canGenerate ? "Yes" : "No"}
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       )}
 

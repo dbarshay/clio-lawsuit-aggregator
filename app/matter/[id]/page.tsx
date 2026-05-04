@@ -1343,8 +1343,8 @@ const activeGroupKey =
           <h2 style={{ marginTop: 0 }}>Lawsuit Generation Options</h2>
 
           <p style={{ marginBottom: 16, color: "#444" }}>
-            These options will be attached to this lawsuit generation request.  Stage 1 accepts
-            and logs the options without changing the existing aggregation pipeline.
+            These options will be stored with the lawsuit and used for amount-sought calculation,
+            document packet metadata, and future document generation.
           </p>
 
           <label style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>

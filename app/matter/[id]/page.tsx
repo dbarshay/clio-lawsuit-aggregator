@@ -279,6 +279,8 @@ const activeGroupKey =
   const [packetPreview, setPacketPreview] = useState<any>(null);
   const [packetPreviewOpen, setPacketPreviewOpen] = useState(false);
   const [packetLoading, setPacketLoading] = useState(false);
+  const [documentPreview, setDocumentPreview] = useState<any>(null);
+  const [documentPreviewLoading, setDocumentPreviewLoading] = useState(false);
   const [showMetadataModal, setShowMetadataModal] = useState(false);
   const [metadataSaving, setMetadataSaving] = useState(false);
   const [metadataEdit, setMetadataEdit] = useState<LawsuitMetadataEdit>(() =>
@@ -852,6 +854,42 @@ const activeGroupKey =
       alert("Filing / demand summary copied to clipboard.");
     } catch {
       alert("Could not copy to clipboard.");
+    }
+  }
+
+  async function loadDocumentGenerationPreview() {
+    const masterLawsuitId =
+      textValue(packetPreview?.packet?.masterLawsuitId) ||
+      textValue(matter?.masterLawsuitId);
+
+    if (!masterLawsuitId) {
+      alert("Load a lawsuit packet first.");
+      return;
+    }
+
+    setDocumentPreviewLoading(true);
+
+    try {
+      const res = await fetch(
+        `/api/documents/generate-preview?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`
+      );
+
+      const json = await res.json();
+
+      if (!json) {
+        alert("Document generation preview failed.");
+        return;
+      }
+
+      setDocumentPreview(json);
+
+      if (!json.ok && json?.validation?.blockingErrors?.length) {
+        alert(`Documents are blocked:\n\n${json.validation.blockingErrors.join("\n")}`);
+      }
+    } catch (err: any) {
+      alert(err?.message || "Document generation preview failed.");
+    } finally {
+      setDocumentPreviewLoading(false);
     }
   }
 
@@ -1447,6 +1485,22 @@ const activeGroupKey =
                 }}
               >
                 <button
+                  onClick={loadDocumentGenerationPreview}
+                  disabled={documentPreviewLoading}
+                  style={{
+                    padding: "8px 12px",
+                    border: "1px solid #7c3aed",
+                    background: documentPreviewLoading ? "#f3f4f6" : "#7c3aed",
+                    color: documentPreviewLoading ? "#666" : "#fff",
+                    borderRadius: 4,
+                    cursor: documentPreviewLoading ? "not-allowed" : "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  {documentPreviewLoading ? "Checking..." : "Generate Documents Preview"}
+                </button>
+
+                <button
                   onClick={copyFilingDemandSummary}
                   style={{
                     padding: "8px 12px",
@@ -1476,6 +1530,50 @@ const activeGroupKey =
                   Copy Packet Summary
                 </button>
               </div>
+
+              {documentPreview && (
+                <div
+                  style={{
+                    marginBottom: 12,
+                    padding: 10,
+                    background: documentPreview.ok ? "#ecfdf5" : "#fef2f2",
+                    border: documentPreview.ok
+                      ? "1px solid #10b981"
+                      : "1px solid #dc2626",
+                    borderRadius: 4,
+                  }}
+                >
+                  <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                    Document Generation Preview
+                  </div>
+
+                  <div style={{ marginBottom: 6 }}>
+                    <strong>Output Folder:</strong>{" "}
+                    {textValue(documentPreview.folderPath) || "—"}
+                  </div>
+
+                  <div style={{ marginBottom: 6 }}>
+                    <strong>Status:</strong>{" "}
+                    {documentPreview.ok ? "Ready" : "Blocked"}
+                  </div>
+
+                  {Array.isArray(documentPreview.plannedDocuments) &&
+                    documentPreview.plannedDocuments.length > 0 && (
+                      <ul style={{ margin: "6px 0 0 18px", padding: 0 }}>
+                        {documentPreview.plannedDocuments.map((doc: any) => (
+                          <li key={textValue(doc.key) || textValue(doc.filename)}>
+                            <strong>{textValue(doc.label)}:</strong>{" "}
+                            {textValue(doc.filename)}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                  <div style={{ marginTop: 8, color: "#555", fontSize: 12 }}>
+                    Dry run only.  No files were created, no Clio records were changed, and no database records were changed.
+                  </div>
+                </div>
+              )}
 
               {packetPreview.packet.validation?.blockingErrors?.length > 0 && (
                 <div style={{ color: "#991b1b", marginBottom: 8 }}>

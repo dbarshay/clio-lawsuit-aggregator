@@ -134,14 +134,17 @@ function makeBillScheduleTable(childMatters: any[], totals: any) {
   const header = new TableRow({
     tableHeader: true,
     children: [
-      tableCell("Matter", { bold: true, width: 10 }),
-      tableCell("Patient", { bold: true, width: 13 }),
-      tableCell("Provider", { bold: true, width: 17 }),
-      tableCell("DOS", { bold: true, width: 11 }),
-      tableCell("Claim Amount", { bold: true, width: 10 }),
-      tableCell("Payment Voluntary", { bold: true, width: 11 }),
-      tableCell("Balance Presuit", { bold: true, width: 10 }),
-      tableCell("Denial Reason", { bold: true, width: 18 }),
+      tableCell("Matter", { bold: true, width: 8 }),
+      tableCell("Bill No.", { bold: true, width: 7 }),
+      tableCell("Patient", { bold: true, width: 11 }),
+      tableCell("Provider", { bold: true, width: 14 }),
+      tableCell("DOS", { bold: true, width: 9 }),
+      tableCell("Claim Amount", { bold: true, width: 9 }),
+      tableCell("Payment Voluntary", { bold: true, width: 10 }),
+      tableCell("Balance Presuit", { bold: true, width: 9 }),
+      tableCell("Denial Reason", { bold: true, width: 14 }),
+      tableCell("Index / AAA", { bold: true, width: 5 }),
+      tableCell("Status", { bold: true, width: 4 }),
     ],
   });
 
@@ -150,6 +153,7 @@ function makeBillScheduleTable(childMatters: any[], totals: any) {
       new TableRow({
         children: [
           tableCell(matter.displayNumber || matter.matterId || ""),
+          tableCell(matter.billNumber || ""),
           tableCell(matter.patientName || ""),
           tableCell(matter.providerName || ""),
           tableCell(formatDos(matter.dosStart, matter.dosEnd)),
@@ -157,6 +161,8 @@ function makeBillScheduleTable(childMatters: any[], totals: any) {
           tableCell(formatMoney(matter.paymentVoluntary), { align: AlignmentType.RIGHT }),
           tableCell(formatMoney(matter.balancePresuit), { align: AlignmentType.RIGHT }),
           tableCell(matter.denialReason || ""),
+          tableCell(matter.indexAaaNumber || ""),
+          tableCell(matter.status || ""),
         ],
       })
   );
@@ -164,6 +170,7 @@ function makeBillScheduleTable(childMatters: any[], totals: any) {
   const totalRow = new TableRow({
     children: [
       tableCell("TOTALS", { bold: true }),
+      tableCell(""),
       tableCell(""),
       tableCell(""),
       tableCell(""),
@@ -180,6 +187,8 @@ function makeBillScheduleTable(childMatters: any[], totals: any) {
         align: AlignmentType.RIGHT,
       }),
       tableCell(`Bill Count: ${totals.billCount ?? childMatters.length}`, { bold: true }),
+      tableCell(""),
+      tableCell(""),
     ],
   });
 

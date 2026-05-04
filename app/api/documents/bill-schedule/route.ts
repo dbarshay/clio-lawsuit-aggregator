@@ -139,18 +139,13 @@ function tableCell(
   });
 }
 
-function makeInfoTable(rows: Array<[string, unknown]>) {
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: rows.map(
-      ([label, value]) =>
-        new TableRow({
-          children: [
-            tableCell(label, { bold: true, width: 28, shade: "F3F4F6", size: 18 }),
-            tableCell(clean(value) || "—", { width: 72, size: 18 }),
-          ],
-        })
-    ),
+function summaryLine(label: string, value: unknown) {
+  return new Paragraph({
+    children: [
+      new TextRun({ text: `${label}: `, bold: true, size: 21 }),
+      new TextRun({ text: clean(value) || "—", size: 21 }),
+    ],
+    spacing: { after: 70 },
   });
 }
 
@@ -281,7 +276,7 @@ export async function GET(req: NextRequest) {
 
     const masterDisplay = masterMatter.displayNumber || masterLawsuitId;
 
-    const infoRows: Array<[string, unknown]> = [
+    const summaryRows: Array<[string, unknown]> = [
       ["Master Lawsuit ID", masterLawsuitId],
       ["Master Matter", masterDisplay],
       ["Amount Sought", `${formatMoney(amountSought)} (${formatAmountMode(amountSoughtMode)})`],
@@ -335,19 +330,14 @@ export async function GET(req: NextRequest) {
             }),
 
             paragraph("Summary", { bold: true, size: 24 }),
-            makeInfoTable(infoRows),
+            ...summaryRows.map(([label, value]) => summaryLine(label, value)),
 
-            new Paragraph({ text: "", spacing: { after: 180 } }),
+            new Paragraph({ text: "", spacing: { after: 150 } }),
 
             paragraph("Child Bill Matters", { bold: true, size: 24 }),
             makeBillScheduleTable(childMatters, totals),
 
-            new Paragraph({ text: "", spacing: { after: 180 } }),
-
-            labelValue("Total Claim Amount", formatMoney(totals.claimAmountTotal)),
-            labelValue("Total Payment Voluntary", formatMoney(totals.paymentVoluntaryTotal)),
-            labelValue("Total Balance Presuit", formatMoney(totals.balancePresuitTotal)),
-            labelValue("Bill Count", totals.billCount ?? childMatters.length),
+            new Paragraph({ text: "", spacing: { after: 80 } }),
           ],
         },
       ],

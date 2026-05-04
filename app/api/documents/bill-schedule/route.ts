@@ -149,42 +149,77 @@ function summaryLine(label: string, value: unknown) {
   });
 }
 
+function detailCell(label: string, value: unknown) {
+  const cleanValue = clean(value);
+
+  return new TableCell({
+    columnSpan: 6,
+    verticalAlign: VerticalAlign.CENTER,
+    shading: { fill: "FAFAFA" },
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 1, color: "D1D5DB" },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: "D1D5DB" },
+      left: { style: BorderStyle.SINGLE, size: 1, color: "BFBFBF" },
+      right: { style: BorderStyle.SINGLE, size: 1, color: "BFBFBF" },
+    },
+    children: [
+      new Paragraph({
+        children: [
+          new TextRun({ text: `${label}: `, bold: true, size: 16 }),
+          new TextRun({ text: cleanValue || "—", size: 16 }),
+        ],
+      }),
+    ],
+    margins: {
+      top: 60,
+      bottom: 60,
+      left: 80,
+      right: 80,
+    },
+  });
+}
+
 function makeBillScheduleTable(childMatters: any[], totals: any) {
   const header = new TableRow({
     tableHeader: true,
     children: [
-      tableCell("Matter", { bold: true, width: 10, shade: "E5E7EB", size: 17 }),
-      tableCell("Patient", { bold: true, width: 13, shade: "E5E7EB", size: 17 }),
-      tableCell("Provider", { bold: true, width: 18, shade: "E5E7EB", size: 17 }),
-      tableCell("DOS", { bold: true, width: 12, shade: "E5E7EB", size: 17 }),
-      tableCell("Claim Amount", { bold: true, width: 11, shade: "E5E7EB", size: 17 }),
-      tableCell("Payment Voluntary", { bold: true, width: 12, shade: "E5E7EB", size: 17 }),
-      tableCell("Balance Presuit", { bold: true, width: 11, shade: "E5E7EB", size: 17 }),
-      tableCell("Denial Reason", { bold: true, width: 13, shade: "E5E7EB", size: 17 }),
+      tableCell("Matter", { bold: true, width: 13, shade: "E5E7EB", size: 17 }),
+      tableCell("Patient", { bold: true, width: 18, shade: "E5E7EB", size: 17 }),
+      tableCell("DOS", { bold: true, width: 17, shade: "E5E7EB", size: 17 }),
+      tableCell("Claim Amount", { bold: true, width: 17, shade: "E5E7EB", size: 17 }),
+      tableCell("Payment Voluntary", { bold: true, width: 18, shade: "E5E7EB", size: 17 }),
+      tableCell("Balance Presuit", { bold: true, width: 17, shade: "E5E7EB", size: 17 }),
     ],
   });
 
-  const bodyRows = childMatters.map(
-    (matter: any) =>
-      new TableRow({
-        children: [
-          tableCell(matter.displayNumber || matter.matterId || ""),
-          tableCell(matter.patientName || ""),
-          tableCell(matter.providerName || ""),
-          tableCell(formatDos(matter.dosStart, matter.dosEnd)),
-          tableCell(formatMoney(matter.claimAmount), { align: AlignmentType.RIGHT }),
-          tableCell(formatMoney(matter.paymentVoluntary), { align: AlignmentType.RIGHT }),
-          tableCell(formatMoney(matter.balancePresuit), { align: AlignmentType.RIGHT }),
-          tableCell(matter.denialReason || ""),
-        ],
-      })
-  );
+  const bodyRows = childMatters.flatMap((matter: any) => [
+    new TableRow({
+      children: [
+        tableCell(matter.displayNumber || matter.matterId || ""),
+        tableCell(matter.patientName || ""),
+        tableCell(formatDos(matter.dosStart, matter.dosEnd)),
+        tableCell(formatMoney(matter.claimAmount), { align: AlignmentType.RIGHT }),
+        tableCell(formatMoney(matter.paymentVoluntary), { align: AlignmentType.RIGHT }),
+        tableCell(formatMoney(matter.balancePresuit), { align: AlignmentType.RIGHT }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        detailCell(
+          "Provider / Denial Reason",
+          `${clean(matter.providerName) || "—"} | ${clean(matter.denialReason) || "—"}`
+        ),
+      ],
+    }),
+  ]);
 
   const totalRow = new TableRow({
     children: [
       tableCell("TOTALS", { bold: true, shade: "F3F4F6" }),
-      tableCell(""),
-      tableCell(""),
+      tableCell(`Bill Count: ${totals.billCount ?? childMatters.length}`, {
+        bold: true,
+        shade: "F3F4F6",
+      }),
       tableCell(""),
       tableCell(formatMoney(totals.claimAmountTotal), {
         bold: true,
@@ -199,10 +234,6 @@ function makeBillScheduleTable(childMatters: any[], totals: any) {
       tableCell(formatMoney(totals.balancePresuitTotal), {
         bold: true,
         align: AlignmentType.RIGHT,
-        shade: "F3F4F6",
-      }),
-      tableCell(`Bill Count: ${totals.billCount ?? childMatters.length}`, {
-        bold: true,
         shade: "F3F4F6",
       }),
     ],

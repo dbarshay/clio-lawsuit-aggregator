@@ -9,7 +9,7 @@
     "lint": "eslint",
     "smoke:workflow": "bash scripts/smoke-workflow.sh",
     "smoke:workflow:prod": "bash scripts/smoke-workflow.sh https://clio-lawsuit-aggregator.vercel.app",
-    "verify:prod": "git status --short && git log --oneline --decorate -1 && npm run smoke:workflow:prod"
+    "verify:prod": "bash scripts/verify-prod.sh"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

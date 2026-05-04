@@ -58,7 +58,18 @@ model ClaimIndex {
   insurer_name            String?
   claim_amount            Float?
   settled_amount          Float?
-  payment_amount          Float?
+  
+  settled_with              String?
+  allocated_settlement      Float?
+  interest_amount           Float?
+  principal_fee             Float?
+  interest_fee              Float?
+  total_fee                 Float?
+  provider_net              Float?
+  provider_principal_net    Float?
+  provider_interest_net     Float?
+  overdue_days              Float?
+payment_amount          Float?
   balance_amount          Float?
   bill_number             String?
   dos_start               String?

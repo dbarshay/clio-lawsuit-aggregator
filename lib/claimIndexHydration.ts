@@ -12,6 +12,16 @@ const DOS_START_FIELD_ID = 22145960;
 const DOS_END_FIELD_ID = 22145975;
 const DENIAL_REASON_FIELD_ID = 22146035;
 const SETTLED_AMOUNT_FIELD_ID = 22146080;
+const SETTLED_WITH_FIELD_ID = 22146110;
+const ALLOCATED_SETTLEMENT_FIELD_ID = 22287260;
+const INTEREST_AMOUNT_FIELD_ID = 22287275;
+const PRINCIPAL_FEE_FIELD_ID = 22287290;
+const INTEREST_FEE_FIELD_ID = 22287305;
+const TOTAL_FEE_FIELD_ID = 22287320;
+const PROVIDER_NET_FIELD_ID = 22287335;
+const OVERDUE_DAYS_FIELD_ID = 22287350;
+const PROVIDER_PRINCIPAL_NET_FIELD_ID = 22287365;
+const PROVIDER_INTEREST_NET_FIELD_ID = 22287380;
 const MASTER_LAWSUIT_ID_FIELD_ID = 22294835;
 const PAYMENT_VOLUNTARY_FIELD_ID = 22296515;
 const BALANCE_PRESUIT_FIELD_ID = 22296530;
@@ -86,7 +96,20 @@ export async function indexMatterFromClioPayload(m: any) {
 
     claim_amount: num(getField(m, CLAIM_AMOUNT_FIELD_ID)),
     settled_amount: num(getField(m, SETTLED_AMOUNT_FIELD_ID)),
-    payment_amount:
+    
+    settled_with: getField(m, SETTLED_WITH_FIELD_ID)
+      ? String(getField(m, SETTLED_WITH_FIELD_ID))
+      : null,
+    allocated_settlement: num(getField(m, ALLOCATED_SETTLEMENT_FIELD_ID)),
+    interest_amount: num(getField(m, INTEREST_AMOUNT_FIELD_ID)),
+    principal_fee: num(getField(m, PRINCIPAL_FEE_FIELD_ID)),
+    interest_fee: num(getField(m, INTEREST_FEE_FIELD_ID)),
+    total_fee: num(getField(m, TOTAL_FEE_FIELD_ID)),
+    provider_net: num(getField(m, PROVIDER_NET_FIELD_ID)),
+    provider_principal_net: num(getField(m, PROVIDER_PRINCIPAL_NET_FIELD_ID)),
+    provider_interest_net: num(getField(m, PROVIDER_INTEREST_NET_FIELD_ID)),
+    overdue_days: num(getField(m, OVERDUE_DAYS_FIELD_ID)),
+payment_amount:
       num(m.pending_payment_total) ||
       num(m.collected) ||
       num(m.paid) ||

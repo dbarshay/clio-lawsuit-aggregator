@@ -135,7 +135,18 @@ export async function GET(req: NextRequest) {
       indexNumber: getCustomFieldValue(matter, MATTER_CF.INDEX_AAA_NUMBER),
       settledAmount: getCustomFieldValue(matter, MATTER_CF.SETTLED_AMOUNT),
 
-      paymentVoluntary: getCustomFieldValue(
+      
+      settledWith: getCustomFieldValue(matter, MATTER_CF.SETTLED_WITH),
+      allocatedSettlement: getCustomFieldValue(matter, MATTER_CF.ALLOCATED_SETTLEMENT),
+      interestAmount: getCustomFieldValue(matter, MATTER_CF.INTEREST_AMOUNT),
+      principalFee: getCustomFieldValue(matter, MATTER_CF.PRINCIPAL_FEE),
+      interestFee: getCustomFieldValue(matter, MATTER_CF.INTEREST_FEE),
+      totalFee: getCustomFieldValue(matter, MATTER_CF.TOTAL_FEE),
+      providerNet: getCustomFieldValue(matter, MATTER_CF.PROVIDER_NET),
+      providerPrincipalNet: getCustomFieldValue(matter, MATTER_CF.PROVIDER_PRINCIPAL_NET),
+      providerInterestNet: getCustomFieldValue(matter, MATTER_CF.PROVIDER_INTEREST_NET),
+      overdueDays: getCustomFieldValue(matter, MATTER_CF.OVERDUE_DAYS),
+paymentVoluntary: getCustomFieldValue(
         matter,
         MATTER_CF.PAYMENT_VOLUNTARY
       ),

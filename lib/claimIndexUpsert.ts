@@ -106,7 +106,18 @@ export async function upsertClaimIndexFromMatter(matter: any) {
     // --- FINANCIALS ---
     claim_amount: claimAmount,
     settled_amount: num(cf(MATTER_CF.SETTLED_AMOUNT)),
-    payment_amount: paymentAmount,
+    
+    settled_with: str(cf(MATTER_CF.SETTLED_WITH)),
+    allocated_settlement: num(cf(MATTER_CF.ALLOCATED_SETTLEMENT)),
+    interest_amount: num(cf(MATTER_CF.INTEREST_AMOUNT)),
+    principal_fee: num(cf(MATTER_CF.PRINCIPAL_FEE)),
+    interest_fee: num(cf(MATTER_CF.INTEREST_FEE)),
+    total_fee: num(cf(MATTER_CF.TOTAL_FEE)),
+    provider_net: num(cf(MATTER_CF.PROVIDER_NET)),
+    provider_principal_net: num(cf(MATTER_CF.PROVIDER_PRINCIPAL_NET)),
+    provider_interest_net: num(cf(MATTER_CF.PROVIDER_INTEREST_NET)),
+    overdue_days: num(cf(MATTER_CF.OVERDUE_DAYS)),
+payment_amount: paymentAmount,
     balance_amount: balanceAmount,
 
     // --- BILL DATA ---

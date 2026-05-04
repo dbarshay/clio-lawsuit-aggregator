@@ -908,6 +908,21 @@ const activeGroupKey =
     );
   }
 
+  function downloadPacketSummaryDocx() {
+    const masterLawsuitId = textValue(packetPreview?.packet?.masterLawsuitId || matter?.masterLawsuitId);
+
+    if (!masterLawsuitId) {
+      alert("No Master Lawsuit ID found.");
+      return;
+    }
+
+    window.open(
+      `/api/documents/packet-summary?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
+
 
   async function openMetadataModalForMaster(masterLawsuitIdInput?: string) {
     const masterLawsuitId =
@@ -1529,6 +1544,21 @@ const activeGroupKey =
                   }}
                 >
                   Download Bill Schedule
+                </button>
+
+                <button
+                  onClick={downloadPacketSummaryDocx}
+                  style={{
+                    padding: "8px 12px",
+                    border: "1px solid #0369a1",
+                    background: "#0369a1",
+                    color: "#fff",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  Download Packet Summary
                 </button>
 
                 <button

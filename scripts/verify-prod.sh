@@ -23,5 +23,9 @@ echo "=== VERIFY TOP COMMIT ==="
 git log --oneline --decorate -1
 
 echo
+echo "=== RUN SETTLEMENT WRITEBACK SAFETY VERIFIER ==="
+npm run verify:settlement-writeback-safety
+
+echo
 echo "=== RUN PRODUCTION WORKFLOW SMOKE TEST ==="
 npm run smoke:workflow:prod

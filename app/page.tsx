@@ -24,7 +24,7 @@ export default function Home() {
           }}
         >
           <h1 style={{ fontSize: 28, margin: "0 0 8px 0" }}>
-            Clio Lawsuit Aggregator
+            Barsh Matters
           </h1>
 
           <p style={{ margin: 0, color: "#475569", fontSize: 14, lineHeight: 1.5 }}>

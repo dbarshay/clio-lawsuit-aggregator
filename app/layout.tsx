@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Clio Lawsuit Aggregator",
+  title: "Barsh Matters",
   description: "Lawsuit aggregation, document finalization, and print queue workflow.",
 };
 

@@ -89,7 +89,8 @@ mustContain("settlement documents preview route", previewRoute, "noDatabaseRecor
 mustContain("settlement documents preview route", previewRoute, "noPrintQueueRecordCreated: true");
 mustContain("settlement documents preview route", previewRoute, "Provider Remittance Breakdown");
 mustContain("settlement documents preview route", previewRoute, "Attorney Fee Breakdown");
-mustContain("settlement documents preview route", previewRoute, "availableNow: false");
+mustContain("settlement documents preview route", previewRoute, 'generationEndpoint: "/api/settlements/provider-remittance-breakdown"');
+mustContain("settlement documents preview route", previewRoute, 'generationEndpoint: "/api/settlements/attorney-fee-breakdown"');
 
 console.log();
 console.log("=== VERIFY SCRIPT REGISTRATION ===");

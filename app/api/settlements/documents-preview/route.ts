@@ -184,9 +184,13 @@ export async function GET(req: NextRequest) {
         key: "attorney-fee-breakdown",
         label: "Attorney Fee Breakdown",
         filename: `${baseName} - Attorney Fee Breakdown.docx`,
-        status: blockingErrors.length === 0 ? "ready-preview-only" : "blocked",
-        availableNow: false,
-        generationEndpointPlanned: "/api/settlements/attorney-fee-breakdown",
+        status: blockingErrors.length === 0 ? "ready-route-only-docx" : "blocked",
+        availableNow: true,
+        generationEndpoint: "/api/settlements/attorney-fee-breakdown",
+        routeOnly: true,
+        noUploadToClio: true,
+        noDatabaseRecordCreated: true,
+        noPrintQueueRecordCreated: true,
       },
     ];
 

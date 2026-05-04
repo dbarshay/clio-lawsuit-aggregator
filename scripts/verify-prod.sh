@@ -59,5 +59,9 @@ echo "=== RUN PROVIDER REMITTANCE DOCX SAFETY VERIFIER ==="
 npm run verify:provider-remittance-docx-safety
 
 echo
+echo "=== RUN ATTORNEY FEE DOCX SAFETY VERIFIER ==="
+npm run verify:attorney-fee-docx-safety
+
+echo
 echo "=== RUN PRODUCTION WORKFLOW SMOKE TEST ==="
 npm run smoke:workflow:prod

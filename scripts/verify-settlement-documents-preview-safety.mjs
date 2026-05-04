@@ -63,8 +63,15 @@ console.log("=== VERIFY PLANNED SETTLEMENT DOCUMENTS ===");
 mustContain("settlement documents preview route", route, "Settlement Summary");
 mustContain("settlement documents preview route", route, "Provider Remittance Breakdown");
 mustContain("settlement documents preview route", route, "Attorney Fee Breakdown");
-mustContain("settlement documents preview route", route, "ready-preview-only");
-mustContain("settlement documents preview route", route, "availableNow: false");
+mustContain("settlement documents preview route", route, "ready-route-only-docx");
+mustContain("settlement documents preview route", route, 'generationEndpoint: "/api/settlements/settlement-summary"');
+mustContain("settlement documents preview route", route, 'generationEndpoint: "/api/settlements/provider-remittance-breakdown"');
+mustContain("settlement documents preview route", route, 'generationEndpoint: "/api/settlements/attorney-fee-breakdown"');
+mustContain("settlement documents preview route", route, "availableNow: true");
+mustContain("settlement documents preview route", route, "routeOnly: true");
+mustContain("settlement documents preview route", route, "noUploadToClio: true");
+mustContain("settlement documents preview route", route, "noDatabaseRecordCreated: true");
+mustContain("settlement documents preview route", route, "noPrintQueueRecordCreated: true");
 
 console.log("");
 console.log("=== VERIFY CURRENT CLIO VALUES READBACK INTEGRATION ===");

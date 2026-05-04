@@ -19,7 +19,8 @@
     "verify:close-paid-settlements-safety": "node scripts/verify-close-paid-settlements-safety.mjs",
     "verify:settlement-documents-preview-safety": "node scripts/verify-settlement-documents-preview-safety.mjs",
     "verify:settlement-summary-docx-safety": "node scripts/verify-settlement-summary-docx-safety.mjs",
-    "verify:provider-remittance-docx-safety": "node scripts/verify-provider-remittance-docx-safety.mjs"
+    "verify:provider-remittance-docx-safety": "node scripts/verify-provider-remittance-docx-safety.mjs",
+    "verify:attorney-fee-docx-safety": "node scripts/verify-attorney-fee-docx-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

@@ -2090,11 +2090,208 @@ const activeGroupKey =
 
       {activeWorkspaceTab === "settlement" && (
         <section style={tabPlaceholderPanelStyle}>
-          <h2 style={{ marginTop: 0 }}>Settlement</h2>
-          <p style={tabPlaceholderTextStyle}>
-            Settlement workflow placeholder.  This tab is intentionally read-only and does not change Clio,
-            ClaimIndex, documents, finalization records, or print queue records.
-          </p>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: 12,
+              flexWrap: "wrap",
+              marginBottom: 14,
+            }}
+          >
+            <div>
+              <h2 style={{ marginTop: 0, marginBottom: 6 }}>Settlement Intake / Planning</h2>
+              <p style={tabPlaceholderTextStyle}>
+                Read-only settlement workspace draft.  This panel does not change Clio, ClaimIndex, document records,
+                finalization records, or print queue records.
+              </p>
+            </div>
+
+            {tabMasterLawsuitId ? (
+              <div
+                style={{
+                  padding: "6px 10px",
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#0f172a",
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                MASTER LAWSUIT ID: {tabMasterLawsuitId}
+              </div>
+            ) : (
+              <div
+                style={{
+                  padding: "6px 10px",
+                  border: "1px solid #fde68a",
+                  background: "#fffbeb",
+                  color: "#92400e",
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                No lawsuit connected yet
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+              gap: 10,
+              marginBottom: 14,
+            }}
+          >
+            <div
+              style={{
+                padding: 10,
+                border: "1px solid #e5e7eb",
+                borderRadius: 8,
+                background: "#f8fafc",
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 4 }}>Provider</div>
+              <div style={{ color: "#475569", fontSize: 13 }}>{providerValue(matter) || "—"}</div>
+            </div>
+
+            <div
+              style={{
+                padding: 10,
+                border: "1px solid #e5e7eb",
+                borderRadius: 8,
+                background: "#f8fafc",
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 4 }}>Insurer</div>
+              <div style={{ color: "#475569", fontSize: 13 }}>{insurerValue(matter) || "—"}</div>
+            </div>
+
+            <div
+              style={{
+                padding: 10,
+                border: "1px solid #e5e7eb",
+                borderRadius: 8,
+                background: "#f8fafc",
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 4 }}>Claim Number</div>
+              <div style={{ color: "#475569", fontSize: 13 }}>{textValue(matter?.claimNumber) || "—"}</div>
+            </div>
+
+            <div
+              style={{
+                padding: 10,
+                border: "1px solid #e5e7eb",
+                borderRadius: 8,
+                background: "#f8fafc",
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 4 }}>Balance (Presuit)</div>
+              <div style={{ color: "#475569", fontSize: 13 }}>{money(totals.balance)}</div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: 10,
+              marginBottom: 14,
+            }}
+          >
+            <div
+              style={{
+                padding: 12,
+                border: "1px solid #dbeafe",
+                borderRadius: 10,
+                background: "#eff6ff",
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 6 }}>Settlement Inputs</div>
+              <ul style={{ margin: "0 0 0 18px", padding: 0, color: "#1e3a8a", fontSize: 13, lineHeight: 1.5 }}>
+                <li>Gross settlement amount</li>
+                <li>Settled with / adjuster or defense contact</li>
+                <li>Settlement date and payment expected date</li>
+                <li>Principal allocation method</li>
+                <li>Interest allocation method</li>
+              </ul>
+            </div>
+
+            <div
+              style={{
+                padding: 12,
+                border: "1px solid #dcfce7",
+                borderRadius: 10,
+                background: "#f0fdf4",
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 6 }}>Calculated Outputs</div>
+              <ul style={{ margin: "0 0 0 18px", padding: 0, color: "#166534", fontSize: 13, lineHeight: 1.5 }}>
+                <li>Allocated settlement per bill</li>
+                <li>Principal fee and interest fee</li>
+                <li>Total firm fee</li>
+                <li>Provider principal net</li>
+                <li>Provider interest net and total provider net</li>
+              </ul>
+            </div>
+
+            <div
+              style={{
+                padding: 12,
+                border: "1px solid #fef3c7",
+                borderRadius: 10,
+                background: "#fffbeb",
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 6 }}>Safety Rules</div>
+              <ul style={{ margin: "0 0 0 18px", padding: 0, color: "#92400e", fontSize: 13, lineHeight: 1.5 }}>
+                <li>Clio remains source of truth for matter data.</li>
+                <li>Settlement writeback must be explicit only.</li>
+                <li>Preview calculations should be non-persistent.</li>
+                <li>Provider-specific fee percentages must come from Clio contact data.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: 12,
+              border: "1px solid #e5e7eb",
+              borderRadius: 10,
+              background: "#ffffff",
+              marginBottom: 14,
+            }}
+          >
+            <div style={{ fontWeight: 800, marginBottom: 8 }}>Proposed Settlement Workflow</div>
+            <ol style={{ margin: "0 0 0 20px", padding: 0, color: "#475569", fontSize: 13, lineHeight: 1.6 }}>
+              <li>Load live lawsuit/bill data from Clio and current local lawsuit context.</li>
+              <li>Enter or preview gross settlement details without saving.</li>
+              <li>Calculate allocation, fees, and provider net amounts per bill.</li>
+              <li>Review warnings before any writeback.</li>
+              <li>Explicitly save final settlement values to the appropriate child/bill matters only.</li>
+              <li>Generate settlement documents and add final print-ready copies through the existing document workflow.</li>
+            </ol>
+          </div>
+
+          <div
+            style={{
+              padding: 10,
+              background: "#f8fafc",
+              border: "1px solid #cbd5e1",
+              borderRadius: 8,
+              color: "#475569",
+              fontSize: 13,
+            }}
+          >
+            Next implementation step: add a non-persistent settlement calculation preview endpoint.  It should calculate from live Clio matter data, exclude master matters, and avoid any Clio or local database writes until an explicit final save action exists.
+          </div>
         </section>
       )}
 

@@ -1589,6 +1589,9 @@ const activeGroupKey =
   };
 
   const alreadyAggregated = isAggregated(matter);
+  const tabMasterLawsuitId =
+    textValue(packetPreview?.packet?.masterLawsuitId) ||
+    textValue(matter?.masterLawsuitId);
 
 
   return (
@@ -1843,11 +1846,329 @@ const activeGroupKey =
 
       {activeWorkspaceTab === "print_queue" && (
         <section style={tabPlaceholderPanelStyle}>
-          <h2 style={{ marginTop: 0 }}>Print Queue</h2>
-          <p style={tabPlaceholderTextStyle}>
-            Matter-level print queue controls will be separated here next.  The global daily print queue remains
-            available at /print-queue, and print queue status changes remain local-only.
-          </p>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <h2 style={{ marginTop: 0, marginBottom: 6 }}>Matter-Level Print Queue</h2>
+              <p style={tabPlaceholderTextStyle}>
+                Local print queue workflow for this lawsuit.  Status controls update only local print queue records;
+                they do not change Clio, upload documents, create folders, or modify document contents.
+              </p>
+            </div>
+
+            <a
+              href="/print-queue"
+              style={{
+                padding: "8px 12px",
+                border: "1px solid #94a3b8",
+                background: "#fff",
+                color: "#0f172a",
+                borderRadius: 4,
+                textDecoration: "none",
+                fontWeight: 700,
+                whiteSpace: "nowrap",
+              }}
+            >
+              Open Global Daily Print Queue
+            </a>
+          </div>
+
+          {!tabMasterLawsuitId ? (
+            <div style={{ marginTop: 12, color: "#475569" }}>
+              No MASTER_LAWSUIT_ID is available yet.  Generate or connect a lawsuit before loading matter-level print queue records.
+            </div>
+          ) : (
+            <>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  marginTop: 14,
+                  marginBottom: 12,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => loadPrintQueuePreview(tabMasterLawsuitId)}
+                  disabled={printQueuePreviewLoading}
+                  style={{
+                    padding: "7px 10px",
+                    border: "1px solid #0f766e",
+                    background: printQueuePreviewLoading ? "#f3f4f6" : "#0f766e",
+                    color: printQueuePreviewLoading ? "#666" : "#fff",
+                    borderRadius: 4,
+                    cursor: printQueuePreviewLoading ? "not-allowed" : "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  {printQueuePreviewLoading ? "Loading..." : "Refresh Print Preview"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => loadPrintQueueList(tabMasterLawsuitId)}
+                  disabled={printQueueListLoading}
+                  style={{
+                    padding: "7px 10px",
+                    border: "1px solid #2563eb",
+                    background: printQueueListLoading ? "#f3f4f6" : "#2563eb",
+                    color: printQueueListLoading ? "#666" : "#fff",
+                    borderRadius: 4,
+                    cursor: printQueueListLoading ? "not-allowed" : "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  {printQueueListLoading ? "Loading..." : "Refresh Queue List"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => addVerifiedCandidatesToPrintQueue(tabMasterLawsuitId)}
+                  disabled={
+                    printQueueAddLoading ||
+                    !printQueuePreview?.ok ||
+                    !Array.isArray(printQueuePreview?.candidateDocuments) ||
+                    printQueuePreview.candidateDocuments.length === 0
+                  }
+                  style={{
+                    padding: "7px 10px",
+                    border: "1px solid #b45309",
+                    background:
+                      printQueueAddLoading ||
+                      !printQueuePreview?.ok ||
+                      !Array.isArray(printQueuePreview?.candidateDocuments) ||
+                      printQueuePreview.candidateDocuments.length === 0
+                        ? "#f3f4f6"
+                        : "#b45309",
+                    color:
+                      printQueueAddLoading ||
+                      !printQueuePreview?.ok ||
+                      !Array.isArray(printQueuePreview?.candidateDocuments) ||
+                      printQueuePreview.candidateDocuments.length === 0
+                        ? "#666"
+                        : "#fff",
+                    borderRadius: 4,
+                    cursor:
+                      printQueueAddLoading ||
+                      !printQueuePreview?.ok ||
+                      !Array.isArray(printQueuePreview?.candidateDocuments) ||
+                      printQueuePreview.candidateDocuments.length === 0
+                        ? "not-allowed"
+                        : "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  {printQueueAddLoading ? "Adding..." : "Add Verified Candidates"}
+                </button>
+              </div>
+
+              {printQueueStatusResult && (
+                <div
+                  style={{
+                    marginBottom: 12,
+                    padding: 10,
+                    background: printQueueStatusResult.ok ? "#f0fdf4" : "#fef2f2",
+                    border: `1px solid ${printQueueStatusResult.ok ? "#bbf7d0" : "#fecaca"}`,
+                    borderRadius: 4,
+                    color: printQueueStatusResult.ok ? "#166534" : "#991b1b",
+                  }}
+                >
+                  {printQueueStatusResult.ok ? (
+                    <>Print queue status updated to {textValue(printQueueStatusResult.status) || "—"}.</>
+                  ) : (
+                    <>
+                      <strong>Error:</strong> {textValue(printQueueStatusResult.error)}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {printQueueList?.ok && (
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    marginBottom: 10,
+                  }}
+                >
+                  {([
+                    ["", "All", "all"],
+                    ["queued", "Queued", "queued"],
+                    ["printed", "Printed", "printed"],
+                    ["hold", "Hold", "hold"],
+                    ["skipped", "Skipped", "skipped"],
+                  ] as const).map(([value, label, countKey]) => {
+                    const active = printQueueStatusFilter === value;
+                    const count = num(printQueueList?.statusCounts?.[countKey]);
+
+                    return (
+                      <button
+                        key={countKey}
+                        type="button"
+                        onClick={() => changePrintQueueStatusFilter(value)}
+                        disabled={printQueueListLoading}
+                        style={{
+                          fontSize: 12,
+                          padding: "4px 9px",
+                          border: `1px solid ${active ? "#0f172a" : "#94a3b8"}`,
+                          borderRadius: 999,
+                          background: active ? "#e2e8f0" : "#fff",
+                          cursor: printQueueListLoading ? "not-allowed" : "pointer",
+                          fontWeight: active ? 800 : 500,
+                        }}
+                      >
+                        {label}: {count}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {printQueueListLoading && !printQueueList && (
+                <div style={{ color: "#475569" }}>Loading print queue...</div>
+              )}
+
+              {printQueueList?.error && (
+                <div style={{ color: "#991b1b", marginBottom: 10 }}>
+                  <strong>Error:</strong> {textValue(printQueueList.error)}
+                </div>
+              )}
+
+              {printQueueList?.ok && num(printQueueList.count) === 0 && (
+                <div style={{ color: "#475569", marginBottom: 10 }}>
+                  {printQueueStatusFilter
+                    ? `No print queue items currently match status "${printQueueStatusFilter}" for this lawsuit.`
+                    : "No documents are currently queued for printing for this lawsuit."}
+                </div>
+              )}
+
+              {printQueueList?.ok && Array.isArray(printQueueList.rows) && printQueueList.rows.length > 0 && (
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    background: "#fff",
+                    fontSize: 12,
+                    marginBottom: 14,
+                  }}
+                >
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Document</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Filename</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Status</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Clio Document ID</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {printQueueList.rows.map((row: any) => (
+                      <tr key={textValue(row.id)}>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                          {textValue(row.documentLabel) || textValue(row.documentKey) || "—"}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                          {textValue(row.filename) || "—"}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                          {textValue(row.status) || "—"}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                          {textValue(row.clioDocumentId) || "—"}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                            {(["queued", "printed", "hold", "skipped"] as const).map((statusOption) => (
+                              <button
+                                key={statusOption}
+                                type="button"
+                                onClick={() => updatePrintQueueStatus(row, statusOption)}
+                                disabled={
+                                  printQueueStatusLoadingId === num(row.id) ||
+                                  textValue(row.status) === statusOption
+                                }
+                                style={{
+                                  fontSize: 11,
+                                  padding: "2px 6px",
+                                  border: "1px solid #94a3b8",
+                                  borderRadius: 4,
+                                  background:
+                                    textValue(row.status) === statusOption ? "#e2e8f0" : "#fff",
+                                  cursor:
+                                    printQueueStatusLoadingId === num(row.id) ||
+                                    textValue(row.status) === statusOption
+                                      ? "not-allowed"
+                                      : "pointer",
+                                }}
+                              >
+                                {statusOption}
+                              </button>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {printQueuePreview?.error && (
+                <div style={{ color: "#991b1b", marginBottom: 10 }}>
+                  <strong>Error:</strong> {textValue(printQueuePreview.error)}
+                </div>
+              )}
+
+              {printQueuePreviewLoading && !printQueuePreview && (
+                <div style={{ color: "#475569" }}>Loading print candidates...</div>
+              )}
+
+              {printQueuePreview?.ok && num(printQueuePreview.candidateDocumentCount) === 0 && (
+                <div style={{ color: "#475569" }}>
+                  No verified print candidates are available yet.  Finalize documents before adding them to the print queue.
+                </div>
+              )}
+
+              {printQueuePreview?.ok &&
+                Array.isArray(printQueuePreview.candidateDocuments) &&
+                printQueuePreview.candidateDocuments.length > 0 && (
+                  <div
+                    style={{
+                      padding: 10,
+                      background: "#f8fafc",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: 4,
+                      fontSize: 12,
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                      Verified Print Candidates: {num(printQueuePreview.candidateDocumentCount)}
+                    </div>
+                    <ul style={{ margin: "6px 0 0 18px", padding: 0 }}>
+                      {printQueuePreview.candidateDocuments.map((doc: any, index: number) => (
+                        <li key={`${textValue(doc.documentKey)}-${index}`}>
+                          <strong>{textValue(doc.documentLabel) || textValue(doc.documentKey)}:</strong>{" "}
+                          {textValue(doc.filename) || "—"}
+                          {doc.alreadyQueued ? " — already queued" : ""}
+                        </li>
+                      ))}
+                    </ul>
+                    <div style={{ marginTop: 8, color: "#475569" }}>
+                      These are proposed print candidates only.  Each listed document has been verified against the current Clio master matter Documents tab.
+                    </div>
+                  </div>
+                )}
+            </>
+          )}
         </section>
       )}
 

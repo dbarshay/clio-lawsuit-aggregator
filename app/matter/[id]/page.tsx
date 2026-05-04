@@ -1641,51 +1641,6 @@ const activeGroupKey =
               : "Select Matters to Generate"}
           </button>
 
-          <section
-        style={{
-          margin: "16px 0",
-          padding: 12,
-          border: "1px solid #e2e8f0",
-          borderRadius: 14,
-          background: "#f8fafc",
-        }}
-      >
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {matterWorkspaceTabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveWorkspaceTab(tab.key)}
-              style={matterWorkspaceTabStyle(activeWorkspaceTab === tab.key)}
-              title={tab.note}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 13 }}>
-          Barsh Matters workspace shell.  Existing matter workflows remain unchanged while the page is organized into workflow tabs.
-        </p>
-      </section>
-
-      {activeWorkspaceTab === "settlement" && (
-        <section
-          style={{
-            border: "1px solid #e5e7eb",
-            borderRadius: 14,
-            padding: 18,
-            background: "#ffffff",
-            marginTop: 16,
-          }}
-        >
-          <h2 style={{ marginTop: 0 }}>Settlement</h2>
-          <p style={{ color: "#475569", lineHeight: 1.5, marginBottom: 0 }}>
-            Settlement workflow placeholder.  This tab is intentionally read-only and does not change Clio,
-            ClaimIndex, documents, finalization records, or print queue records.
-          </p>
-        </section>
-      )}
-
           {alreadyAggregated && (
             <button
               onClick={deaggregateCluster}
@@ -1814,6 +1769,51 @@ const activeGroupKey =
           </div>
         </div>
       </div>
+
+      <section
+        style={{
+          margin: "4px 0 18px",
+          padding: 14,
+          border: "1px solid #e2e8f0",
+          borderRadius: 14,
+          background: "#f8fafc",
+        }}
+      >
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {matterWorkspaceTabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveWorkspaceTab(tab.key)}
+              style={matterWorkspaceTabStyle(activeWorkspaceTab === tab.key)}
+              title={tab.note}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 13 }}>
+          Barsh Matters workspace shell.  Existing matter workflows remain unchanged while the page is organized into workflow tabs.
+        </p>
+      </section>
+
+      {activeWorkspaceTab === "settlement" && (
+        <section
+          style={{
+            border: "1px solid #e5e7eb",
+            borderRadius: 14,
+            padding: 18,
+            background: "#ffffff",
+            margin: "0 0 18px",
+          }}
+        >
+          <h2 style={{ marginTop: 0 }}>Settlement</h2>
+          <p style={{ color: "#475569", lineHeight: 1.5, marginBottom: 0 }}>
+            Settlement workflow placeholder.  This tab is intentionally read-only and does not change Clio,
+            ClaimIndex, documents, finalization records, or print queue records.
+          </p>
+        </section>
+      )}
 
       <hr style={{ margin: "18px 0 20px 0", border: 0, borderTop: "1px solid #999"  }} />
 

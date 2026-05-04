@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 function num(v: any) {
   const n = Number(v);
@@ -855,8 +855,9 @@ const activeGroupKey =
     }
   }
 
-  async function openMetadataModal() {
-    const masterLawsuitId = textValue(matter?.masterLawsuitId);
+  async function openMetadataModalForMaster(masterLawsuitIdInput?: string) {
+    const masterLawsuitId =
+      textValue(masterLawsuitIdInput) || textValue(matter?.masterLawsuitId);
 
     if (!masterLawsuitId) {
       alert("This matter is not part of a lawsuit.");
@@ -866,9 +867,11 @@ const activeGroupKey =
     setPacketLoading(true);
 
     try {
-      const json = packetPreview?.packet
-        ? packetPreview
-        : await fetchPacketPreview(masterLawsuitId);
+      const currentPreviewMasterId = textValue(packetPreview?.packet?.masterLawsuitId);
+      const json =
+        packetPreview?.packet && currentPreviewMasterId === masterLawsuitId
+          ? packetPreview
+          : await fetchPacketPreview(masterLawsuitId);
 
       const lawsuit = json?.packet?.lawsuit || null;
       const metadata = json?.packet?.metadata || {};
@@ -896,6 +899,10 @@ const activeGroupKey =
     } finally {
       setPacketLoading(false);
     }
+  }
+
+  async function openMetadataModal() {
+    await openMetadataModalForMaster();
   }
 
   async function saveMetadataEdit() {
@@ -1594,7 +1601,7 @@ const activeGroupKey =
               : "";
 
             return (
-              <div key={`row-fragment-${Number(r.id)}`} style={{ display: "contents" }}>
+              <Fragment key={`row-fragment-${Number(r.id)}`}>
                 {r.showGroupLabel && (
                   <tr key={`lawsuit-band-${masterLawsuitId}`}>
                     <td
@@ -1627,7 +1634,31 @@ const activeGroupKey =
                           <span style={{ color: "#6b7280" }}>•••</span>
                         </div>
 
-                        <div style={{ textAlign: "right" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            gap: 6,
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => openMetadataModalForMaster(masterLawsuitId)}
+                            disabled={packetLoading}
+                            style={{
+                              padding: "3px 8px",
+                              border: "1px solid #4b5563",
+                              background: packetLoading ? "#f3f4f6" : "#4b5563",
+                              color: packetLoading ? "#666" : "#fff",
+                              borderRadius: 4,
+                              cursor: packetLoading ? "not-allowed" : "pointer",
+                              fontWeight: 700,
+                              fontSize: 12,
+                            }}
+                          >
+                            Edit Metadata
+                          </button>
+
                           <button
                             type="button"
                             onClick={() => loadPacketPreviewForMaster(masterLawsuitId)}
@@ -1774,7 +1805,7 @@ const activeGroupKey =
                   </button>
                 </td>
               </tr>
-              </div>
+              </Fragment>
             );
           })}
         </tbody>

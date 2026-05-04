@@ -265,6 +265,20 @@ function matterWorkspaceTabStyle(active: boolean) {
   };
 }
 
+const tabPlaceholderPanelStyle: React.CSSProperties = {
+  border: "1px solid #e5e7eb",
+  borderRadius: 14,
+  padding: 18,
+  background: "#ffffff",
+  margin: "0 0 18px",
+};
+
+const tabPlaceholderTextStyle: React.CSSProperties = {
+  color: "#475569",
+  lineHeight: 1.5,
+  marginBottom: 0,
+};
+
 function parseMoneyInput(v: string): number | null {
   const cleaned = String(v || "").replace(/[$,\s]/g, "");
   if (!cleaned) return null;
@@ -1797,20 +1811,52 @@ const activeGroupKey =
         </p>
       </section>
 
+      {activeWorkspaceTab === "lawsuit" && (
+        <section style={tabPlaceholderPanelStyle}>
+          <h2 style={{ marginTop: 0 }}>Lawsuit</h2>
+          <p style={tabPlaceholderTextStyle}>
+            Lawsuit workspace placeholder.  Existing lawsuit generation, metadata, and matter table controls
+            remain available below while this tab is separated into dedicated sections.
+          </p>
+        </section>
+      )}
+
+      {activeWorkspaceTab === "documents" && !alreadyAggregated && (
+        <section style={tabPlaceholderPanelStyle}>
+          <h2 style={{ marginTop: 0 }}>Documents</h2>
+          <p style={tabPlaceholderTextStyle}>
+            Document generation becomes available after a lawsuit is generated or the matter is connected to a
+            MASTER_LAWSUIT_ID.  Preview and download actions remain non-persistent; final upload to Clio remains explicit only.
+          </p>
+        </section>
+      )}
+
       {activeWorkspaceTab === "settlement" && (
-        <section
-          style={{
-            border: "1px solid #e5e7eb",
-            borderRadius: 14,
-            padding: 18,
-            background: "#ffffff",
-            margin: "0 0 18px",
-          }}
-        >
+        <section style={tabPlaceholderPanelStyle}>
           <h2 style={{ marginTop: 0 }}>Settlement</h2>
-          <p style={{ color: "#475569", lineHeight: 1.5, marginBottom: 0 }}>
+          <p style={tabPlaceholderTextStyle}>
             Settlement workflow placeholder.  This tab is intentionally read-only and does not change Clio,
             ClaimIndex, documents, finalization records, or print queue records.
+          </p>
+        </section>
+      )}
+
+      {activeWorkspaceTab === "print_queue" && (
+        <section style={tabPlaceholderPanelStyle}>
+          <h2 style={{ marginTop: 0 }}>Print Queue</h2>
+          <p style={tabPlaceholderTextStyle}>
+            Matter-level print queue controls will be separated here next.  The global daily print queue remains
+            available at /print-queue, and print queue status changes remain local-only.
+          </p>
+        </section>
+      )}
+
+      {activeWorkspaceTab === "audit_history" && (
+        <section style={tabPlaceholderPanelStyle}>
+          <h2 style={{ marginTop: 0 }}>Audit / History</h2>
+          <p style={tabPlaceholderTextStyle}>
+            Audit and finalization history will be separated here next.  These records remain local workflow history only;
+            the Clio master matter Documents tab remains the record-copy source of truth.
           </p>
         </section>
       )}

@@ -290,6 +290,8 @@ const activeGroupKey =
   const [printQueuePreviewLoading, setPrintQueuePreviewLoading] = useState(false);
   const [printQueueAddLoading, setPrintQueueAddLoading] = useState(false);
   const [printQueueAddResult, setPrintQueueAddResult] = useState<any>(null);
+  const [printQueueList, setPrintQueueList] = useState<any>(null);
+  const [printQueueListLoading, setPrintQueueListLoading] = useState(false);
   const [showMetadataModal, setShowMetadataModal] = useState(false);
   const [metadataSaving, setMetadataSaving] = useState(false);
   const [metadataEdit, setMetadataEdit] = useState<LawsuitMetadataEdit>(() =>
@@ -978,6 +980,41 @@ const activeGroupKey =
     }
   }
 
+  async function loadPrintQueueList(masterLawsuitIdInput?: string) {
+    const masterLawsuitId =
+      textValue(masterLawsuitIdInput) ||
+      textValue(packetPreview?.packet?.masterLawsuitId) ||
+      textValue(matter?.masterLawsuitId);
+
+    if (!masterLawsuitId) {
+      setPrintQueueList(null);
+      return null;
+    }
+
+    setPrintQueueListLoading(true);
+
+    try {
+      const res = await fetch(
+        `/api/documents/print-queue?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}&limit=20`
+      );
+
+      const json = await res.json().catch(() => null);
+      setPrintQueueList(json);
+
+      return json;
+    } catch (err: any) {
+      setPrintQueueList({
+        ok: false,
+        error: err?.message || "Could not load print queue.",
+      });
+
+      return null;
+    } finally {
+      setPrintQueueListLoading(false);
+    }
+  }
+
+
   async function addVerifiedCandidatesToPrintQueue(masterLawsuitIdInput?: string) {
     const masterLawsuitId =
       masterLawsuitIdInput || packetPreview?.packet?.masterLawsuitId || "";
@@ -1010,6 +1047,7 @@ const activeGroupKey =
 
       if (json?.ok) {
         await loadPrintQueuePreview(masterLawsuitId);
+        await loadPrintQueueList(masterLawsuitId);
       }
     } catch (err: any) {
       setPrintQueueAddResult({
@@ -2638,25 +2676,118 @@ const activeGroupKey =
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                     <div style={{ fontWeight: 800 }}>Print Queue Preview</div>
-                    <button
-                      type="button"
-                      onClick={() => loadPrintQueuePreview(packetPreview.packet.masterLawsuitId)}
-                      disabled={printQueuePreviewLoading}
-                      style={{
-                        fontSize: 12,
-                        padding: "3px 8px",
-                        border: "1px solid #94a3b8",
-                        borderRadius: 4,
-                        background: "#fff",
-                        cursor: printQueuePreviewLoading ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      {printQueuePreviewLoading ? "Loading..." : "Refresh Print Preview"}
-                    </button>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={() => loadPrintQueuePreview(packetPreview.packet.masterLawsuitId)}
+                        disabled={printQueuePreviewLoading}
+                        style={{
+                          fontSize: 12,
+                          padding: "3px 8px",
+                          border: "1px solid #94a3b8",
+                          borderRadius: 4,
+                          background: "#fff",
+                          cursor: printQueuePreviewLoading ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {printQueuePreviewLoading ? "Loading..." : "Refresh Print Preview"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => loadPrintQueueList(packetPreview.packet.masterLawsuitId)}
+                        disabled={printQueueListLoading}
+                        style={{
+                          fontSize: 12,
+                          padding: "3px 8px",
+                          border: "1px solid #94a3b8",
+                          borderRadius: 4,
+                          background: "#fff",
+                          cursor: printQueueListLoading ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {printQueueListLoading ? "Loading..." : "Refresh Queue List"}
+                      </button>
+                    </div>
                   </div>
 
                   <div style={{ marginTop: 4, color: "#475569", fontSize: 12 }}>
                     Read-only print-candidate preview from local finalization audit records, verified against the current Clio master matter Documents tab.  This does not create a print queue.
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 8,
+                      padding: 8,
+                      background: "#fff",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: 4,
+                      fontSize: 12,
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, marginBottom: 4 }}>
+                      Existing Print Queue Items
+                    </div>
+
+                    <div style={{ color: "#475569", marginBottom: 6 }}>
+                      Read-only list of local print queue records for this lawsuit.  This does not verify current Clio document existence and does not update print status.
+                    </div>
+
+                    {printQueueListLoading && !printQueueList && (
+                      <div style={{ color: "#475569" }}>Loading print queue...</div>
+                    )}
+
+                    {printQueueList?.error && (
+                      <div style={{ color: "#991b1b" }}>
+                        <strong>Error:</strong> {textValue(printQueueList.error)}
+                      </div>
+                    )}
+
+                    {printQueueList?.ok && num(printQueueList.count) === 0 && (
+                      <div style={{ color: "#475569" }}>
+                        No documents are currently queued for printing for this lawsuit.
+                      </div>
+                    )}
+
+                    {printQueueList?.ok && Array.isArray(printQueueList.rows) && printQueueList.rows.length > 0 && (
+                      <table
+                        style={{
+                          width: "100%",
+                          borderCollapse: "collapse",
+                          background: "#fff",
+                        }}
+                      >
+                        <thead>
+                          <tr>
+                            <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Document</th>
+                            <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Filename</th>
+                            <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Status</th>
+                            <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Queued At</th>
+                            <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 4 }}>Clio Document ID</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {printQueueList.rows.map((row: any) => (
+                            <tr key={textValue(row.id)}>
+                              <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                {textValue(row.documentLabel) || textValue(row.documentKey) || "—"}
+                              </td>
+                              <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                {textValue(row.filename) || "—"}
+                              </td>
+                              <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                {textValue(row.status) || "—"}
+                              </td>
+                              <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                {textValue(row.queuedAt) || "—"}
+                              </td>
+                              <td style={{ borderBottom: "1px solid #f1f5f9", padding: 4 }}>
+                                {textValue(row.clioDocumentId) || "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
 
                   {printQueuePreview?.error && (

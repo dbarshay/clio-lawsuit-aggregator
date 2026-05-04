@@ -76,19 +76,27 @@ function normalizeMatterList(ids: number[]): string {
 }
 
 function normalizeLawsuitOptions(raw: any) {
-  const amountSoughtMode = String(raw?.amountSoughtMode || "balance_presuit");
+  const rawAmountSoughtMode = String(raw?.amountSoughtMode || "balance_presuit");
+  const amountSoughtMode =
+    rawAmountSoughtMode === "claim_amount" || rawAmountSoughtMode === "custom"
+      ? rawAmountSoughtMode
+      : "balance_presuit";
+
+  const rawCustomAmount =
+    raw?.customAmountSought === null || raw?.customAmountSought === undefined
+      ? null
+      : Number(raw.customAmountSought);
 
   return {
     venue: text(raw?.venue),
     venueSelection: text(raw?.venueSelection),
     venueOther: text(raw?.venueOther),
-    amountSoughtMode:
-      amountSoughtMode === "claim_amount" || amountSoughtMode === "custom"
-        ? amountSoughtMode
-        : "balance_presuit",
+    amountSoughtMode,
     customAmountSought:
-      Number.isFinite(Number(raw?.customAmountSought)) && Number(raw?.customAmountSought) >= 0
-        ? Number(raw?.customAmountSought)
+      amountSoughtMode === "custom" &&
+      Number.isFinite(rawCustomAmount) &&
+      Number(rawCustomAmount) >= 0
+        ? Number(rawCustomAmount)
         : null,
     indexAaaNumber: text(raw?.indexAaaNumber),
     notes: text(raw?.notes),

@@ -23,6 +23,10 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const lawsuit = await prisma.lawsuit.findUnique({
+    where: { masterLawsuitId },
+  });
+
   const rawRows = await prisma.claimIndex.findMany({
     where: {
       master_lawsuit_id: masterLawsuitId,
@@ -51,6 +55,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     masterLawsuitId,
+    lawsuit,
     count: rows.length,
     masterCount: masterRows.length,
     childCount: childRows.length,

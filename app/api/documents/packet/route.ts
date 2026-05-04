@@ -131,6 +131,29 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const lawsuit = await prisma.lawsuit.findUnique({
+    where: { masterLawsuitId },
+    select: {
+      id: true,
+      masterLawsuitId: true,
+      claimNumber: true,
+      lawsuitMatters: true,
+      sharedFolderPath: true,
+      venue: true,
+      venueSelection: true,
+      venueOther: true,
+      indexAaaNumber: true,
+      lawsuitNotes: true,
+      lawsuitOptions: true,
+      amountSoughtMode: true,
+      amountSought: true,
+      customAmountSought: true,
+      amountSoughtBreakdown: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
   const refresh = await forceRefreshOnlyThisLawsuit(masterLawsuitId);
 
   const rawRows = await prisma.claimIndex.findMany({
@@ -196,11 +219,29 @@ export async function GET(req: NextRequest) {
   );
 
   const indexAaaNumber = deriveField(
-    master?.index_aaa_number,
+    lawsuit?.indexAaaNumber || master?.index_aaa_number,
     childRows.map((row: any) => row.index_aaa_number),
     "index/AAA number",
     warnings
   );
+
+  if (!lawsuit) {
+    warnings.push("No local Lawsuit row found for MASTER_LAWSUIT_ID; packet is using ClaimIndex-derived metadata only.");
+  }
+
+  const amountSought = lawsuit
+    ? {
+        mode: lawsuit.amountSoughtMode,
+        amount: money(lawsuit.amountSought),
+        customAmount: lawsuit.customAmountSought === null ? null : money(lawsuit.customAmountSought),
+        breakdown: lawsuit.amountSoughtBreakdown,
+      }
+    : {
+        mode: "balance_presuit",
+        amount: null,
+        customAmount: null,
+        breakdown: null,
+      };
 
   const childMatters = childRows.map((row: any) => ({
     matterId: row.matter_id,
@@ -242,6 +283,15 @@ export async function GET(req: NextRequest) {
       insurer,
       claimNumber,
       indexAaaNumber,
+      venue: {
+        value: lawsuit?.venue || "",
+        selection: lawsuit?.venueSelection || "",
+        other: lawsuit?.venueOther || "",
+        source: lawsuit?.venue ? "lawsuit" : "missing",
+      },
+      lawsuitNotes: lawsuit?.lawsuitNotes || "",
+      lawsuitOptions: lawsuit?.lawsuitOptions || null,
+      amountSought,
       caption: {
         providerName: provider.value,
         patientName: patient.value,
@@ -249,6 +299,28 @@ export async function GET(req: NextRequest) {
         claimNumber: claimNumber.value,
       },
     },
+
+    lawsuit: lawsuit
+      ? {
+          id: lawsuit.id,
+          masterLawsuitId: lawsuit.masterLawsuitId,
+          claimNumber: lawsuit.claimNumber,
+          lawsuitMatters: lawsuit.lawsuitMatters,
+          sharedFolderPath: lawsuit.sharedFolderPath,
+          venue: lawsuit.venue,
+          venueSelection: lawsuit.venueSelection,
+          venueOther: lawsuit.venueOther,
+          indexAaaNumber: lawsuit.indexAaaNumber,
+          lawsuitNotes: lawsuit.lawsuitNotes,
+          lawsuitOptions: lawsuit.lawsuitOptions,
+          amountSoughtMode: lawsuit.amountSoughtMode,
+          amountSought: lawsuit.amountSought,
+          customAmountSought: lawsuit.customAmountSought,
+          amountSoughtBreakdown: lawsuit.amountSoughtBreakdown,
+          createdAt: lawsuit.createdAt,
+          updatedAt: lawsuit.updatedAt,
+        }
+      : null,
 
     masterMatter: master
       ? {

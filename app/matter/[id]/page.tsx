@@ -292,6 +292,7 @@ const activeGroupKey =
   const [printQueueAddResult, setPrintQueueAddResult] = useState<any>(null);
   const [printQueueList, setPrintQueueList] = useState<any>(null);
   const [printQueueListLoading, setPrintQueueListLoading] = useState(false);
+  const [printQueueStatusFilter, setPrintQueueStatusFilter] = useState<"" | "queued" | "printed" | "hold" | "skipped">("");
   const [printQueueStatusLoadingId, setPrintQueueStatusLoadingId] = useState<number | null>(null);
   const [printQueueStatusResult, setPrintQueueStatusResult] = useState<any>(null);
   const [showMetadataModal, setShowMetadataModal] = useState(false);
@@ -983,11 +984,17 @@ const activeGroupKey =
     }
   }
 
-  async function loadPrintQueueList(masterLawsuitIdInput?: string) {
+  async function loadPrintQueueList(
+    masterLawsuitIdInput?: string,
+    statusFilterInput?: "" | "queued" | "printed" | "hold" | "skipped"
+  ) {
     const masterLawsuitId =
       textValue(masterLawsuitIdInput) ||
       textValue(packetPreview?.packet?.masterLawsuitId) ||
       textValue(matter?.masterLawsuitId);
+
+    const statusFilter =
+      statusFilterInput === undefined ? printQueueStatusFilter : statusFilterInput;
 
     if (!masterLawsuitId) {
       setPrintQueueList(null);
@@ -997,9 +1004,15 @@ const activeGroupKey =
     setPrintQueueListLoading(true);
 
     try {
-      const res = await fetch(
-        `/api/documents/print-queue?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}&limit=20`
-      );
+      const url = new URL("/api/documents/print-queue", window.location.origin);
+      url.searchParams.set("masterLawsuitId", masterLawsuitId);
+      url.searchParams.set("limit", "20");
+
+      if (statusFilter) {
+        url.searchParams.set("status", statusFilter);
+      }
+
+      const res = await fetch(url.toString());
 
       const json = await res.json().catch(() => null);
       setPrintQueueList(json);
@@ -1014,6 +1027,21 @@ const activeGroupKey =
       return null;
     } finally {
       setPrintQueueListLoading(false);
+    }
+  }
+
+
+  async function changePrintQueueStatusFilter(
+    nextStatusFilter: "" | "queued" | "printed" | "hold" | "skipped"
+  ) {
+    setPrintQueueStatusFilter(nextStatusFilter);
+
+    const masterLawsuitId =
+      textValue(packetPreview?.packet?.masterLawsuitId) ||
+      textValue(matter?.masterLawsuitId);
+
+    if (masterLawsuitId) {
+      await loadPrintQueueList(masterLawsuitId, nextStatusFilter);
     }
   }
 
@@ -2826,6 +2854,49 @@ const activeGroupKey =
                       </div>
                     )}
 
+                    {printQueueList?.ok && (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 6,
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                          marginBottom: 8,
+                        }}
+                      >
+                        {([
+                          ["", "All", "all"],
+                          ["queued", "Queued", "queued"],
+                          ["printed", "Printed", "printed"],
+                          ["hold", "Hold", "hold"],
+                          ["skipped", "Skipped", "skipped"],
+                        ] as const).map(([value, label, countKey]) => {
+                          const active = printQueueStatusFilter === value;
+                          const count = num(printQueueList?.statusCounts?.[countKey]);
+
+                          return (
+                            <button
+                              key={countKey}
+                              type="button"
+                              onClick={() => changePrintQueueStatusFilter(value)}
+                              disabled={printQueueListLoading}
+                              style={{
+                                fontSize: 12,
+                                padding: "3px 8px",
+                                border: `1px solid ${active ? "#0f172a" : "#94a3b8"}`,
+                                borderRadius: 999,
+                                background: active ? "#e2e8f0" : "#fff",
+                                cursor: printQueueListLoading ? "not-allowed" : "pointer",
+                                fontWeight: active ? 800 : 500,
+                              }}
+                            >
+                              {label}: {count}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     {printQueueListLoading && !printQueueList && (
                       <div style={{ color: "#475569" }}>Loading print queue...</div>
                     )}
@@ -2838,7 +2909,9 @@ const activeGroupKey =
 
                     {printQueueList?.ok && num(printQueueList.count) === 0 && (
                       <div style={{ color: "#475569" }}>
-                        No documents are currently queued for printing for this lawsuit.
+                        {printQueueStatusFilter
+                          ? `No print queue items currently match status "${printQueueStatusFilter}" for this lawsuit.`
+                          : "No documents are currently queued for printing for this lawsuit."}
                       </div>
                     )}
 

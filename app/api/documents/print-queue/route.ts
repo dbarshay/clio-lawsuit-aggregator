@@ -119,14 +119,42 @@ export async function GET(req: NextRequest) {
     const status = clean(req.nextUrl.searchParams.get("status"));
     const limit = positiveInt(req.nextUrl.searchParams.get("limit"), 50, 200);
 
+    const whereBase = {
+      ...(masterLawsuitId ? { masterLawsuitId } : {}),
+    };
+
     const rows = await prisma.documentPrintQueueItem.findMany({
       where: {
-        ...(masterLawsuitId ? { masterLawsuitId } : {}),
+        ...whereBase,
         ...(status ? { status } : {}),
       },
       orderBy: { queuedAt: "desc" },
       take: limit,
     });
+
+    const groupedCounts = await prisma.documentPrintQueueItem.groupBy({
+      by: ["status"],
+      where: whereBase,
+      _count: {
+        _all: true,
+      },
+    });
+
+    const statusCounts = groupedCounts.reduce(
+      (acc: Record<string, number>, row: any) => {
+        const key = clean(row.status) || "unknown";
+        acc[key] = Number(row._count?._all || 0);
+        acc.all += Number(row._count?._all || 0);
+        return acc;
+      },
+      {
+        all: 0,
+        queued: 0,
+        printed: 0,
+        hold: 0,
+        skipped: 0,
+      }
+    );
 
     return NextResponse.json({
       ok: true,
@@ -135,6 +163,7 @@ export async function GET(req: NextRequest) {
       masterLawsuitId: masterLawsuitId || null,
       status: status || null,
       count: rows.length,
+      statusCounts,
       rows,
       safety: {
         readOnly: true,

@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           ok: false,
-          action: "settlement-close-preview",
+          action: "paid-settlement-close-preview",
           error: "Missing masterLawsuitId",
           safety: safetyPreviewOnly(),
         },
@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       ok,
-      action: "settlement-close-preview",
+      action: "paid-settlement-close-preview",
       dryRun: true,
       masterLawsuitId,
       count: results.length,
@@ -166,15 +166,15 @@ export async function POST(req: NextRequest) {
       },
       safety: safetyPreviewOnly(),
       note:
-        "Preview only. This endpoint identifies child/bill matters eligible for PAID (SETTLEMENT) close after settlement, but does not write to Clio, the database, documents, or the print queue.",
+        "Preview only. This endpoint identifies child/bill matters that may be eligible to be marked closed as PAID (SETTLEMENT) after payment is confirmed.  Settlement agreement or settlement financial writeback alone is not enough to close a matter.  This endpoint does not write to Clio, the database, documents, or the print queue.",
     });
   } catch (err: any) {
     return NextResponse.json(
       {
         ok: false,
-        action: "settlement-close-preview",
+        action: "paid-settlement-close-preview",
         dryRun: true,
-        error: err?.message || "Settlement close preview failed.",
+        error: err?.message || "Paid settlement close preview failed.",
         safety: safetyPreviewOnly(),
       },
       { status: 500 }

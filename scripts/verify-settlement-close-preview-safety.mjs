@@ -40,7 +40,7 @@ const verifyProd = read("scripts/verify-prod.sh");
 
 console.log("");
 console.log("=== VERIFY CLOSE PREVIEW IS NON-DESTRUCTIVE ===");
-mustContain("close preview route", route, 'action: "settlement-close-preview"');
+mustContain("close preview route", route, 'action: "paid-settlement-close-preview"');
 mustContain("close preview route", route, "dryRun: true");
 mustContain("close preview route", route, "previewOnly: true");
 mustContain("close preview route", route, "noClioRecordsChanged: true");
@@ -68,15 +68,18 @@ mustContain("close preview route", route, "master_lawsuit_id: masterLawsuitId");
 
 console.log("");
 console.log("=== VERIFY CLOSE PREVIEW UI IS PREVIEW-ONLY ===");
-mustContain("matter page", matterPage, "Settlement Close Preview");
-mustContain("matter page", matterPage, "Preview Settlement Close");
+mustContain("matter page", matterPage, "Paid Settlement Close Preview");
+mustContain("matter page", matterPage, "Preview Paid Settlement Close");
 mustContain("matter page", matterPage, "/api/settlements/close-preview");
 mustContain("matter page", matterPage, "Dry-run only.");
+mustContain("matter page", matterPage, "after payment is confirmed");
+mustContain("matter page", matterPage, "Settlement agreement or settlement financial writeback alone is not enough to close a matter.");
 mustContain("matter page", matterPage, "No close action is performed here.");
-mustContain("matter page", matterPage, "Final close writeback will require a separate explicit confirmation step.");
+mustContain("matter page", matterPage, "Final paid settlement close writeback will require a separate explicit payment-confirmation step.");
 mustContain("matter page", matterPage, "settlementClosePreviewResult");
 mustContain("matter page", matterPage, "settlementClosePreviewLoading");
 mustNotContain("matter page", matterPage, "Close Settlement Matters Now");
+mustNotContain("matter page", matterPage, "Close Paid Settlements");
 mustNotContain("matter page", matterPage, "Confirm Settlement Close");
 
 console.log("");

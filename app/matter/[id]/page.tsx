@@ -3920,10 +3920,10 @@ const activeGroupKey =
             >
               <div>
                 <div style={{ fontWeight: 800, marginBottom: 4 }}>
-                  Settlement Close Preview
+                  Paid Settlement Close Preview
                 </div>
                 <div style={{ color: "#92400e", fontSize: 12 }}>
-                  Dry-run only.  This previews which child/bill matters would be eligible to close as PAID (SETTLEMENT).  It does not write to Clio, ClaimIndex, documents, or the print queue.
+                  Dry-run only.  This previews which child/bill matters may be eligible to be marked closed as PAID (SETTLEMENT) after payment is confirmed.  Settlement agreement or settlement financial writeback alone is not enough to close a matter.  It does not write to Clio, ClaimIndex, documents, or the print queue.
                 </div>
               </div>
 
@@ -3942,7 +3942,7 @@ const activeGroupKey =
                   whiteSpace: "nowrap",
                 }}
               >
-                {settlementClosePreviewLoading ? "Previewing..." : "Preview Settlement Close"}
+                {settlementClosePreviewLoading ? "Previewing..." : "Preview Paid Settlement Close"}
               </button>
             </div>
 
@@ -4042,7 +4042,7 @@ const activeGroupKey =
               )}
 
             <div style={{ marginTop: 8, color: "#92400e", fontSize: 12 }}>
-              No close action is performed here.  Final close writeback will require a separate explicit confirmation step.
+              No close action is performed here.  Actual closure should occur only after payment is confirmed.  Final paid settlement close writeback will require a separate explicit payment-confirmation step.
             </div>
 
             <details style={{ marginTop: 10 }}>

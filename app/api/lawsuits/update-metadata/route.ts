@@ -90,6 +90,7 @@ function computeAmountSought(params: {
   customAmountSought: number | null;
 }) {
   const mode = params.amountSoughtMode;
+  const billMatters = params.liveMatters.filter((matter) => !isMasterMatter(matter));
 
   if (mode === "custom") {
     if (params.customAmountSought === null) {
@@ -101,8 +102,11 @@ function computeAmountSought(params: {
       amountSought: params.customAmountSought,
       customAmountSought: params.customAmountSought,
       sourceField: "custom",
-      selectedMatterCount: params.liveMatters.length,
-      components: params.liveMatters.map((matter) => ({
+      selectedMatterCount: billMatters.length,
+      excludedMasterMatterIds: params.liveMatters
+        .filter((matter) => isMasterMatter(matter))
+        .map((matter) => Number(matter.id)),
+      components: billMatters.map((matter) => ({
         matterId: matter.id,
         displayNumber: matter.display_number || "",
         amount: null,
@@ -119,7 +123,7 @@ function computeAmountSought(params: {
   const sourceField =
     mode === "claim_amount" ? "CLAIM_AMOUNT" : "BALANCE_PRESUIT";
 
-  const components = params.liveMatters.map((matter) => {
+  const components = billMatters.map((matter) => {
     const amount = customFieldNumber(matter, fieldId);
 
     return {
@@ -143,7 +147,10 @@ function computeAmountSought(params: {
     amountSought,
     customAmountSought: null,
     sourceField,
-    selectedMatterCount: params.liveMatters.length,
+    selectedMatterCount: billMatters.length,
+    excludedMasterMatterIds: params.liveMatters
+      .filter((matter) => isMasterMatter(matter))
+      .map((matter) => Number(matter.id)),
     components,
     missingAmountMatterIds,
   };

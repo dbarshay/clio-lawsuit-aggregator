@@ -149,3 +149,34 @@ model DocumentFinalization {
   @@index([finalizedAt])
 }
 
+
+model DocumentPrintQueueItem {
+  id                         Int       @id @default(autoincrement())
+  uniqueQueueKey             String    @unique
+  masterLawsuitId            String
+  masterMatterId             Int
+  masterDisplayNumber        String?
+  finalizationId             Int?
+  documentKey                String
+  documentLabel              String?
+  filename                   String
+  clioDocumentId             String?
+  clioDocumentName           String?
+  clioDocumentVersionUuid    String?
+  status                     String    @default("queued")
+  documentSnapshot           Json?
+  sourceFinalizationSnapshot Json?
+  queuedAt                   DateTime  @default(now())
+  printedAt                  DateTime?
+  printDecision              String?
+  notes                      String?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  @@index([masterLawsuitId])
+  @@index([masterMatterId])
+  @@index([status])
+  @@index([queuedAt])
+  @@index([clioDocumentId])
+}
+

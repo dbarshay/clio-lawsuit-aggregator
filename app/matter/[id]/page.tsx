@@ -288,6 +288,8 @@ const activeGroupKey =
   const [expandedFinalizationId, setExpandedFinalizationId] = useState<string | null>(null);
   const [printQueuePreview, setPrintQueuePreview] = useState<any>(null);
   const [printQueuePreviewLoading, setPrintQueuePreviewLoading] = useState(false);
+  const [printQueueAddLoading, setPrintQueueAddLoading] = useState(false);
+  const [printQueueAddResult, setPrintQueueAddResult] = useState<any>(null);
   const [showMetadataModal, setShowMetadataModal] = useState(false);
   const [metadataSaving, setMetadataSaving] = useState(false);
   const [metadataEdit, setMetadataEdit] = useState<LawsuitMetadataEdit>(() =>
@@ -975,6 +977,50 @@ const activeGroupKey =
       setPrintQueuePreviewLoading(false);
     }
   }
+
+  async function addVerifiedCandidatesToPrintQueue(masterLawsuitIdInput?: string) {
+    const masterLawsuitId =
+      masterLawsuitIdInput || packetPreview?.packet?.masterLawsuitId || "";
+
+    if (!masterLawsuitId) {
+      setPrintQueueAddResult({
+        ok: false,
+        error: "No MASTER_LAWSUIT_ID is available for print queue creation.",
+      });
+      return;
+    }
+
+    setPrintQueueAddLoading(true);
+    setPrintQueueAddResult(null);
+
+    try {
+      const res = await fetch("/api/documents/print-queue", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          masterLawsuitId,
+          confirmAdd: true,
+        }),
+      });
+
+      const json = await res.json();
+      setPrintQueueAddResult(json);
+
+      if (json?.ok) {
+        await loadPrintQueuePreview(masterLawsuitId);
+      }
+    } catch (err: any) {
+      setPrintQueueAddResult({
+        ok: false,
+        error: err?.message || "Could not add documents to the print queue.",
+      });
+    } finally {
+      setPrintQueueAddLoading(false);
+    }
+  }
+
 
   async function loadFinalizePreview() {
     const masterLawsuitId =
@@ -2643,9 +2689,62 @@ const activeGroupKey =
 
                   {printQueuePreview?.ok && Array.isArray(printQueuePreview.candidateDocuments) && printQueuePreview.candidateDocuments.length > 0 && (
                     <div style={{ marginTop: 8, fontSize: 12 }}>
-                      <div style={{ marginBottom: 6, color: "#475569" }}>
-                        Candidate documents: {num(printQueuePreview.candidateDocumentCount)}
+                      <div
+                        style={{
+                          marginBottom: 6,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          alignItems: "center",
+                          color: "#475569",
+                        }}
+                      >
+                        <div>
+                          Candidate documents: {num(printQueuePreview.candidateDocumentCount)}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => addVerifiedCandidatesToPrintQueue(packetPreview.packet.masterLawsuitId)}
+                          disabled={printQueueAddLoading}
+                          style={{
+                            fontSize: 12,
+                            padding: "3px 8px",
+                            border: "1px solid #15803d",
+                            borderRadius: 4,
+                            background: "#f0fdf4",
+                            color: "#166534",
+                            cursor: printQueueAddLoading ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {printQueueAddLoading ? "Adding..." : "Add Verified Candidates to Print Queue"}
+                        </button>
                       </div>
+
+                      {printQueueAddResult && (
+                        <div
+                          style={{
+                            marginBottom: 8,
+                            padding: 8,
+                            background: printQueueAddResult.ok ? "#f0fdf4" : "#fef2f2",
+                            border: `1px solid ${printQueueAddResult.ok ? "#bbf7d0" : "#fecaca"}`,
+                            borderRadius: 4,
+                            color: printQueueAddResult.ok ? "#166534" : "#991b1b",
+                          }}
+                        >
+                          {printQueueAddResult.ok ? (
+                            <>
+                              Added {num(printQueueAddResult.createdCount)} document(s) to the print queue.
+                              {num(printQueueAddResult.existingCount) > 0
+                                ? `  ${num(printQueueAddResult.existingCount)} duplicate queue item(s) were already present.`
+                                : ""}
+                            </>
+                          ) : (
+                            <>
+                              <strong>Error:</strong> {textValue(printQueueAddResult.error)}
+                            </>
+                          )}
+                        </div>
+                      )}
 
                       <table
                         style={{

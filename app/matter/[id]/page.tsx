@@ -893,6 +893,42 @@ const activeGroupKey =
     }
   }
 
+  async function loadFinalizePreview() {
+    const masterLawsuitId =
+      textValue(packetPreview?.packet?.masterLawsuitId) ||
+      textValue(matter?.masterLawsuitId);
+
+    if (!masterLawsuitId) {
+      alert("Load a lawsuit packet first.");
+      return;
+    }
+
+    setDocumentPreviewLoading(true);
+
+    try {
+      const res = await fetch(
+        `/api/documents/finalize-preview?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`
+      );
+
+      const json = await res.json();
+
+      if (!json) {
+        alert("Finalize documents preview failed.");
+        return;
+      }
+
+      setDocumentPreview(json);
+
+      if (!json.ok && json?.validation?.blockingErrors?.length) {
+        alert(`Finalization is blocked:\n\n${json.validation.blockingErrors.join("\n")}`);
+      }
+    } catch (err: any) {
+      alert(err?.message || "Finalize documents preview failed.");
+    } finally {
+      setDocumentPreviewLoading(false);
+    }
+  }
+
   function downloadBillScheduleDocx() {
     const masterLawsuitId = textValue(packetPreview?.packet?.masterLawsuitId || matter?.masterLawsuitId);
 
@@ -1547,6 +1583,22 @@ const activeGroupKey =
                 </button>
 
                 <button
+                  onClick={loadFinalizePreview}
+                  disabled={documentPreviewLoading}
+                  style={{
+                    padding: "8px 12px",
+                    border: "1px solid #9333ea",
+                    background: documentPreviewLoading ? "#f3f4f6" : "#9333ea",
+                    color: documentPreviewLoading ? "#666" : "#fff",
+                    borderRadius: 4,
+                    cursor: documentPreviewLoading ? "not-allowed" : "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  {documentPreviewLoading ? "Checking..." : "Finalize Documents Preview"}
+                </button>
+
+                <button
                   onClick={downloadBillScheduleDocx}
                   style={{
                     padding: "8px 12px",
@@ -1635,13 +1687,32 @@ const activeGroupKey =
                   }}
                 >
                   <div style={{ fontWeight: 800, marginBottom: 6 }}>
-                    Document Generation Preview
+                    {documentPreview.action === "finalize-preview"
+                      ? "Finalize Documents Preview"
+                      : "Document Generation Preview"}
                   </div>
 
-                  <div style={{ marginBottom: 6 }}>
-                    <strong>Output Folder:</strong>{" "}
-                    {textValue(documentPreview.folderPath) || "—"}
-                  </div>
+                  {documentPreview.action === "finalize-preview" ? (
+                    <>
+                      <div style={{ marginBottom: 6 }}>
+                        <strong>Clio Upload Target:</strong>{" "}
+                        {textValue(documentPreview.clioUploadTarget?.displayNumber) || "—"}
+                        {documentPreview.clioUploadTarget?.matterId
+                          ? ` / Matter ID ${documentPreview.clioUploadTarget.matterId}`
+                          : ""}
+                      </div>
+
+                      <div style={{ marginBottom: 6 }}>
+                        <strong>Upload Destination:</strong>{" "}
+                        {textValue(documentPreview.clioUploadTarget?.type) || "—"}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ marginBottom: 6 }}>
+                      <strong>Output Folder:</strong>{" "}
+                      {textValue(documentPreview.folderPath) || "—"}
+                    </div>
+                  )}
 
                   <div style={{ marginBottom: 6 }}>
                     <strong>Status:</strong>{" "}
@@ -1655,13 +1726,15 @@ const activeGroupKey =
                           <li key={textValue(doc.key) || textValue(doc.filename)}>
                             <strong>{textValue(doc.label)}:</strong>{" "}
                             {textValue(doc.filename)}
+                            {textValue(doc.status) ? ` — ${textValue(doc.status)}` : ""}
                           </li>
                         ))}
                       </ul>
                     )}
 
                   <div style={{ marginTop: 8, color: "#555", fontSize: 12 }}>
-                    Dry run only.  No files were created, no Clio records were changed, and no database records were changed.
+                    {textValue(documentPreview.note) ||
+                      "Dry run only.  No files were created, no Clio records were changed, and no database records were changed."}
                   </div>
                 </div>
               )}

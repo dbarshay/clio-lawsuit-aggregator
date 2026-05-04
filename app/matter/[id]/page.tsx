@@ -234,6 +234,37 @@ function defaultLawsuitOptions(): LawsuitOptions {
   };
 }
 
+type MatterWorkspaceTab =
+  | "overview"
+  | "lawsuit"
+  | "documents"
+  | "settlement"
+  | "print_queue"
+  | "audit_history";
+
+const matterWorkspaceTabs: Array<{ key: MatterWorkspaceTab; label: string; note: string }> = [
+  { key: "overview", label: "Overview", note: "Matter and sibling context" },
+  { key: "lawsuit", label: "Lawsuit", note: "Aggregation and lawsuit metadata" },
+  { key: "documents", label: "Documents", note: "Preview, finalize, and Clio upload" },
+  { key: "settlement", label: "Settlement", note: "Settlement workflow placeholder" },
+  { key: "print_queue", label: "Print Queue", note: "Matter-level print workflow" },
+  { key: "audit_history", label: "Audit / History", note: "Local workflow history" },
+];
+
+function matterWorkspaceTabStyle(active: boolean) {
+  return {
+    border: "1px solid " + (active ? "#0f172a" : "#cbd5e1"),
+    background: active ? "#0f172a" : "#ffffff",
+    color: active ? "#ffffff" : "#0f172a",
+    borderRadius: 999,
+    padding: "8px 12px",
+    fontSize: 13,
+    fontWeight: 800,
+    cursor: "pointer",
+    whiteSpace: "nowrap" as const,
+  };
+}
+
 function parseMoneyInput(v: string): number | null {
   const cleaned = String(v || "").replace(/[$,\s]/g, "");
   if (!cleaned) return null;
@@ -299,6 +330,8 @@ const activeGroupKey =
   const [printQueueStatusFilter, setPrintQueueStatusFilter] = useState<"" | "queued" | "printed" | "hold" | "skipped">("");
   const [printQueueStatusLoadingId, setPrintQueueStatusLoadingId] = useState<number | null>(null);
   const [printQueueStatusResult, setPrintQueueStatusResult] = useState<any>(null);
+  const [activeWorkspaceTab, setActiveWorkspaceTab] =
+    useState<MatterWorkspaceTab>("overview");
   const [showMetadataModal, setShowMetadataModal] = useState(false);
   const [metadataSaving, setMetadataSaving] = useState(false);
   const [metadataEdit, setMetadataEdit] = useState<LawsuitMetadataEdit>(() =>
@@ -1607,6 +1640,51 @@ const activeGroupKey =
               ? "Main Matter Already Aggregated"
               : "Select Matters to Generate"}
           </button>
+
+          <section
+        style={{
+          margin: "16px 0",
+          padding: 12,
+          border: "1px solid #e2e8f0",
+          borderRadius: 14,
+          background: "#f8fafc",
+        }}
+      >
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {matterWorkspaceTabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveWorkspaceTab(tab.key)}
+              style={matterWorkspaceTabStyle(activeWorkspaceTab === tab.key)}
+              title={tab.note}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 13 }}>
+          Barsh Matters workspace shell.  Existing matter workflows remain unchanged while the page is organized into workflow tabs.
+        </p>
+      </section>
+
+      {activeWorkspaceTab === "settlement" && (
+        <section
+          style={{
+            border: "1px solid #e5e7eb",
+            borderRadius: 14,
+            padding: 18,
+            background: "#ffffff",
+            marginTop: 16,
+          }}
+        >
+          <h2 style={{ marginTop: 0 }}>Settlement</h2>
+          <p style={{ color: "#475569", lineHeight: 1.5, marginBottom: 0 }}>
+            Settlement workflow placeholder.  This tab is intentionally read-only and does not change Clio,
+            ClaimIndex, documents, finalization records, or print queue records.
+          </p>
+        </section>
+      )}
 
           {alreadyAggregated && (
             <button

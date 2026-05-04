@@ -210,12 +210,43 @@ export async function POST(req: NextRequest) {
     }
 
     if (!documentsToUpload.length) {
+      const duplicateOnlySkip =
+        selectedDocuments.length > 0 &&
+        selectedDocuments.every((document) =>
+          skipped.some(
+            (skip) =>
+              clean(skip?.key) === clean(document?.key) &&
+              clean(skip?.reason) === "already-uploaded-to-clio"
+          )
+        );
+
+      if (duplicateOnlySkip) {
+        return NextResponse.json({
+          ok: true,
+          action: "finalize-upload",
+          status: "nothing-uploaded-existing-documents-skipped",
+          message:
+            "No upload was performed because all selected documents already exist in Clio by exact filename match.",
+          requestedKeys,
+          uploaded: [],
+          skipped,
+          safety: {
+            noUploadPerformed: true,
+            duplicatePreventionDefault: !allowDuplicateUploads,
+            noDatabaseRecordsChanged: true,
+            noOneDriveOrSharePointFoldersCreated: true,
+          },
+        });
+      }
+
       return NextResponse.json(
         {
           ok: false,
           action: "finalize-upload",
+          status: "nothing-selected-for-upload",
           error: "No final documents were selected for upload.",
           requestedKeys,
+          uploaded: [],
           skipped,
           safety: {
             noUploadPerformed: true,

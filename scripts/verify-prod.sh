@@ -27,5 +27,9 @@ echo "=== RUN SETTLEMENT WRITEBACK SAFETY VERIFIER ==="
 npm run verify:settlement-writeback-safety
 
 echo
+echo "=== RUN SETTLED WITH PERSON-CONTACT SAFETY VERIFIER ==="
+npm run verify:settled-with-person-contact-safety
+
+echo
 echo "=== RUN PRODUCTION WORKFLOW SMOKE TEST ==="
 npm run smoke:workflow:prod

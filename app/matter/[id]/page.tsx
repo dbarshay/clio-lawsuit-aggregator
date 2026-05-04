@@ -923,6 +923,21 @@ const activeGroupKey =
     );
   }
 
+  function downloadSummonsComplaintDocx() {
+    const masterLawsuitId = textValue(packetPreview?.packet?.masterLawsuitId || matter?.masterLawsuitId);
+
+    if (!masterLawsuitId) {
+      alert("No Master Lawsuit ID found.");
+      return;
+    }
+
+    window.open(
+      `/api/documents/summons-complaint?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
+
 
   async function openMetadataModalForMaster(masterLawsuitIdInput?: string) {
     const masterLawsuitId =
@@ -1559,6 +1574,21 @@ const activeGroupKey =
                   }}
                 >
                   Download Packet Summary
+                </button>
+
+                <button
+                  onClick={downloadSummonsComplaintDocx}
+                  style={{
+                    padding: "8px 12px",
+                    border: "1px solid #7c3aed",
+                    background: "#7c3aed",
+                    color: "#fff",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  Download Summons and Complaint
                 </button>
 
                 <button

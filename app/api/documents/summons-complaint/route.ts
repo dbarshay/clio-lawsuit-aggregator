@@ -128,11 +128,10 @@ function captionLine(text: unknown, options?: { bold?: boolean; size?: number })
 
 function pleadingNumber(number: number, text: unknown) {
   return new Paragraph({
-    numbering: {
-      reference: "pleading-numbering",
-      level: 0,
-    },
-    children: [new TextRun({ text: clean(text), size: 22 })],
+    children: [
+      new TextRun({ text: `${number}. `, size: 22 }),
+      new TextRun({ text: clean(text), size: 22 }),
+    ],
     spacing: { after: 120 },
   });
 }
@@ -365,26 +364,6 @@ export async function GET(req: NextRequest) {
     const amountSoughtText = `${formatMoney(amountSought)} (${formatAmountMode(amountSoughtMode)})`;
 
     const doc = new Document({
-      numbering: {
-        config: [
-          {
-            reference: "pleading-numbering",
-            levels: [
-              {
-                level: 0,
-                format: "decimal",
-                text: "%1.",
-                alignment: AlignmentType.LEFT,
-                style: {
-                  paragraph: {
-                    indent: { left: 720, hanging: 360 },
-                  },
-                },
-              },
-            ],
-          },
-        ],
-      },
       sections: [
         {
           properties: {

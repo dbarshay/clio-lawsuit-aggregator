@@ -663,6 +663,91 @@ const activeGroupKey =
     }
   }
 
+  function buildPacketSummaryText(packet: any): string {
+    const metadata = packet?.metadata || {};
+    const totals = packet?.totals || {};
+    const validation = packet?.validation || {};
+    const masterMatter = packet?.masterMatter || {};
+    const children = Array.isArray(packet?.childMatters) ? packet.childMatters : [];
+
+    const lines: string[] = [];
+
+    lines.push("DOCUMENT PACKET SUMMARY");
+    lines.push("");
+    lines.push(`Master Lawsuit ID: ${textValue(packet?.masterLawsuitId) || "—"}`);
+    lines.push(`Master Matter: ${textValue(masterMatter.displayNumber) || "—"}`);
+    lines.push(`Venue: ${textValue(metadata?.venue?.value) || "—"}`);
+    lines.push(`Index / AAA Number: ${textValue(metadata?.indexAaaNumber?.value) || "—"}`);
+    lines.push(
+      `Amount Sought: ${money(metadata?.amountSought?.amount)} (${textValue(metadata?.amountSought?.mode) || "—"})`
+    );
+
+    lines.push("");
+    lines.push("CAPTION / CLAIM METADATA");
+    lines.push(`Provider: ${textValue(metadata?.provider?.value) || "—"}`);
+    lines.push(`Patient: ${textValue(metadata?.patient?.value) || "—"}`);
+    lines.push(`Insurer: ${textValue(metadata?.insurer?.value) || "—"}`);
+    lines.push(`Claim Number: ${textValue(metadata?.claimNumber?.value) || "—"}`);
+
+    lines.push("");
+    lines.push("TOTALS");
+    lines.push(`Bill Count: ${num(totals.billCount)}`);
+    lines.push(`Claim Amount Total: ${money(totals.claimAmountTotal)}`);
+    lines.push(`Payment Voluntary Total: ${money(totals.paymentVoluntaryTotal)}`);
+    lines.push(`Balance Presuit Total: ${money(totals.balancePresuitTotal)}`);
+    lines.push(`Balance Amount Total: ${money(totals.balanceAmountTotal)}`);
+
+    lines.push("");
+    lines.push("CHILD BILL MATTERS");
+
+    if (children.length === 0) {
+      lines.push("—");
+    } else {
+      for (const child of children) {
+        lines.push(
+          [
+            textValue(child.displayNumber) || "—",
+            `Patient: ${textValue(child.patientName) || "—"}`,
+            `Provider: ${textValue(child.providerName) || "—"}`,
+            `DOS: ${formatDOS(child.dosStart, child.dosEnd) || "—"}`,
+            `Claim Amount: ${money(child.claimAmount)}`,
+            `Balance Presuit: ${money(child.balancePresuit)}`,
+          ].join(" | ")
+        );
+      }
+    }
+
+    if (validation?.warnings?.length) {
+      lines.push("");
+      lines.push("WARNINGS");
+      for (const warning of validation.warnings) lines.push(`- ${warning}`);
+    }
+
+    if (validation?.blockingErrors?.length) {
+      lines.push("");
+      lines.push("BLOCKING ERRORS");
+      for (const error of validation.blockingErrors) lines.push(`- ${error}`);
+    }
+
+    return lines.join("\n");
+  }
+
+  async function copyPacketSummary() {
+    if (!packetPreview?.packet) {
+      alert("Load the packet preview first.");
+      return;
+    }
+
+    const summary = buildPacketSummaryText(packetPreview.packet);
+
+    try {
+      await navigator.clipboard.writeText(summary);
+      alert("Packet summary copied to clipboard.");
+    } catch {
+      alert("Could not copy to clipboard.");
+    }
+  }
+
   async function openMetadataModal() {
     const masterLawsuitId = textValue(matter?.masterLawsuitId);
 
@@ -1237,6 +1322,23 @@ const activeGroupKey =
                   <br />
                   {money(packetPreview.packet.totals?.balanceAmountTotal)}
                 </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+                <button
+                  onClick={copyPacketSummary}
+                  style={{
+                    padding: "8px 12px",
+                    border: "1px solid #111827",
+                    background: "#111827",
+                    color: "#fff",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  Copy Packet Summary
+                </button>
               </div>
 
               {packetPreview.packet.validation?.blockingErrors?.length > 0 && (

@@ -1908,16 +1908,8 @@ const activeGroupKey =
       const json = await res.json();
       setSettlementClosePreviewResult(json);
 
-      if (!res.ok || !json?.ok) {
-        const blockingErrors = Array.isArray(json?.validation?.blockingErrors)
-          ? json.validation.blockingErrors
-          : [];
-
-        if (blockingErrors.length > 0) {
-          alert(`Settlement close preview has no eligible matters:\n\n${blockingErrors.join("\n")}`);
-        } else if (json?.error) {
-          alert(json.error);
-        }
+      if (!res.ok && json?.error) {
+        alert(json.error);
       }
     } catch (err: any) {
       const fallback = {

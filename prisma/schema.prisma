@@ -149,7 +149,6 @@ model DocumentFinalization {
   @@index([finalizedAt])
 }
 
-
 model DocumentPrintQueueItem {
   id                         Int       @id @default(autoincrement())
   uniqueQueueKey             String    @unique
@@ -180,3 +179,26 @@ model DocumentPrintQueueItem {
   @@index([clioDocumentId])
 }
 
+model SettlementWriteback {
+  id                Int      @id @default(autoincrement())
+  masterLawsuitId   String
+  status            String
+  grossSettlement   Float?
+  settledWith       String?
+  settlementDate    String?
+  allocationMode    String?
+  childMatterIds    Json?
+  previewSnapshot   Json?
+  readinessSnapshot Json?
+  writeResults      Json?
+  safetySnapshot    Json?
+  error             String?
+  noWritePerformed  Boolean  @default(false)
+  finalizedAt       DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([masterLawsuitId])
+  @@index([status])
+  @@index([finalizedAt])
+}

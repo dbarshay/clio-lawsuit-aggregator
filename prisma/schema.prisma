@@ -23,6 +23,12 @@ model Lawsuit {
   claimNumber           String?
   lawsuitMatters        String
   sharedFolderPath      String
+  venue                 String?
+  venueSelection        String?
+  venueOther            String?
+  indexAaaNumber        String?
+  lawsuitNotes          String?
+  lawsuitOptions        Json?
   amountSoughtMode      String   @default("balance_presuit")
   amountSought          Float?
   customAmountSought    Float?

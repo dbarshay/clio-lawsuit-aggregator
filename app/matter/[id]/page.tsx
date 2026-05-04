@@ -3127,22 +3127,56 @@ const activeGroupKey =
                         <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Document</th>
                         <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Status</th>
                         <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Filename</th>
+                        <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Route-only DOCX</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {settlementDocumentsPreviewResult.plannedDocuments.map((doc: any) => (
-                        <tr key={textValue(doc.key)}>
-                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
-                            {textValue(doc.label) || textValue(doc.key)}
-                          </td>
-                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
-                            {textValue(doc.status) || "—"}
-                          </td>
-                          <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
-                            {textValue(doc.filename) || "—"}
-                          </td>
-                        </tr>
-                      ))}
+                      {settlementDocumentsPreviewResult.plannedDocuments.map((doc: any) => {
+                        const endpoint = textValue(doc.generationEndpoint);
+                        const canDownloadRouteOnlyDocx =
+                          doc.availableNow === true &&
+                          doc.routeOnly === true &&
+                          endpoint &&
+                          tabMasterLawsuitId;
+
+                        return (
+                          <tr key={textValue(doc.key)}>
+                            <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                              {textValue(doc.label) || textValue(doc.key)}
+                            </td>
+                            <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                              {textValue(doc.status) || "—"}
+                            </td>
+                            <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                              {textValue(doc.filename) || "—"}
+                            </td>
+                            <td style={{ borderBottom: "1px solid #f1f5f9", padding: 5 }}>
+                              {canDownloadRouteOnlyDocx ? (
+                                <a
+                                  href={`${endpoint}?masterLawsuitId=${encodeURIComponent(tabMasterLawsuitId)}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  style={{
+                                    display: "inline-block",
+                                    padding: "5px 8px",
+                                    border: "1px solid #2563eb",
+                                    background: "#eff6ff",
+                                    color: "#1d4ed8",
+                                    borderRadius: 4,
+                                    fontWeight: 700,
+                                    textDecoration: "none",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  Download DOCX
+                                </a>
+                              ) : (
+                                <span style={{ color: "#64748b" }}>Preview-only</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}

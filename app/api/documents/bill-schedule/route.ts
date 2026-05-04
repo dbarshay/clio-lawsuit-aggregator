@@ -35,6 +35,16 @@ function formatMoney(value: unknown): string {
   });
 }
 
+function formatAmountMode(value: unknown): string {
+  const mode = clean(value);
+
+  if (mode === "balance_presuit") return "Balance Presuit";
+  if (mode === "claim_amount") return "Claim Amount";
+  if (mode === "custom") return "Custom Amount";
+
+  return mode || "Unspecified";
+}
+
 function formatDate(value: unknown): string {
   const raw = clean(value);
   if (!raw) return "";
@@ -148,17 +158,14 @@ function makeBillScheduleTable(childMatters: any[], totals: any) {
   const header = new TableRow({
     tableHeader: true,
     children: [
-      tableCell("Matter", { bold: true, width: 8, shade: "E5E7EB" }),
-      tableCell("Bill No.", { bold: true, width: 7, shade: "E5E7EB" }),
-      tableCell("Patient", { bold: true, width: 11, shade: "E5E7EB" }),
-      tableCell("Provider", { bold: true, width: 14, shade: "E5E7EB" }),
-      tableCell("DOS", { bold: true, width: 9, shade: "E5E7EB" }),
-      tableCell("Claim Amount", { bold: true, width: 9, shade: "E5E7EB" }),
-      tableCell("Payment Voluntary", { bold: true, width: 10, shade: "E5E7EB" }),
-      tableCell("Balance Presuit", { bold: true, width: 9, shade: "E5E7EB" }),
-      tableCell("Denial Reason", { bold: true, width: 14, shade: "E5E7EB" }),
-      tableCell("Index / AAA", { bold: true, width: 5, shade: "E5E7EB" }),
-      tableCell("Status", { bold: true, width: 4, shade: "E5E7EB" }),
+      tableCell("Matter", { bold: true, width: 10, shade: "E5E7EB", size: 17 }),
+      tableCell("Patient", { bold: true, width: 13, shade: "E5E7EB", size: 17 }),
+      tableCell("Provider", { bold: true, width: 18, shade: "E5E7EB", size: 17 }),
+      tableCell("DOS", { bold: true, width: 12, shade: "E5E7EB", size: 17 }),
+      tableCell("Claim Amount", { bold: true, width: 11, shade: "E5E7EB", size: 17 }),
+      tableCell("Payment Voluntary", { bold: true, width: 12, shade: "E5E7EB", size: 17 }),
+      tableCell("Balance Presuit", { bold: true, width: 11, shade: "E5E7EB", size: 17 }),
+      tableCell("Denial Reason", { bold: true, width: 13, shade: "E5E7EB", size: 17 }),
     ],
   });
 
@@ -167,7 +174,6 @@ function makeBillScheduleTable(childMatters: any[], totals: any) {
       new TableRow({
         children: [
           tableCell(matter.displayNumber || matter.matterId || ""),
-          tableCell(matter.billNumber || ""),
           tableCell(matter.patientName || ""),
           tableCell(matter.providerName || ""),
           tableCell(formatDos(matter.dosStart, matter.dosEnd)),
@@ -175,8 +181,6 @@ function makeBillScheduleTable(childMatters: any[], totals: any) {
           tableCell(formatMoney(matter.paymentVoluntary), { align: AlignmentType.RIGHT }),
           tableCell(formatMoney(matter.balancePresuit), { align: AlignmentType.RIGHT }),
           tableCell(matter.denialReason || ""),
-          tableCell(matter.indexAaaNumber || ""),
-          tableCell(matter.status || ""),
         ],
       })
   );
@@ -187,22 +191,25 @@ function makeBillScheduleTable(childMatters: any[], totals: any) {
       tableCell(""),
       tableCell(""),
       tableCell(""),
-      tableCell(""),
       tableCell(formatMoney(totals.claimAmountTotal), {
         bold: true,
         align: AlignmentType.RIGHT,
+        shade: "F3F4F6",
       }),
       tableCell(formatMoney(totals.paymentVoluntaryTotal), {
         bold: true,
         align: AlignmentType.RIGHT,
+        shade: "F3F4F6",
       }),
       tableCell(formatMoney(totals.balancePresuitTotal), {
         bold: true,
         align: AlignmentType.RIGHT,
+        shade: "F3F4F6",
       }),
-      tableCell(`Bill Count: ${totals.billCount ?? childMatters.length}`, { bold: true }),
-      tableCell(""),
-      tableCell(""),
+      tableCell(`Bill Count: ${totals.billCount ?? childMatters.length}`, {
+        bold: true,
+        shade: "F3F4F6",
+      }),
     ],
   });
 
@@ -277,14 +284,7 @@ export async function GET(req: NextRequest) {
     const infoRows: Array<[string, unknown]> = [
       ["Master Lawsuit ID", masterLawsuitId],
       ["Master Matter", masterDisplay],
-      ["Venue", venue],
-      ["Index / AAA Number", indexAaaNumber],
-      ["Provider", provider],
-      ["Patient", patient],
-      ["Insurer", insurer],
-      ["Claim Number", claimNumber],
-      ["Amount Sought", `${formatMoney(amountSought)} (${amountSoughtMode || "unspecified"})`],
-      ["Generated At", new Date().toLocaleString("en-US")],
+      ["Amount Sought", `${formatMoney(amountSought)} (${formatAmountMode(amountSoughtMode)})`],
     ];
 
     const doc = new Document({
@@ -334,7 +334,7 @@ export async function GET(req: NextRequest) {
               spacing: { after: 220 },
             }),
 
-            paragraph("Lawsuit Information", { bold: true, size: 24 }),
+            paragraph("Summary", { bold: true, size: 24 }),
             makeInfoTable(infoRows),
 
             new Paragraph({ text: "", spacing: { after: 180 } }),

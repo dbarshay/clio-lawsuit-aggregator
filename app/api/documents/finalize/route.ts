@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import {
   findExistingClioDocumentsByFilename,
   listClioMatterDocuments,
@@ -29,6 +30,63 @@ function clean(value: unknown): string {
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.map((item) => clean(item)).filter(Boolean);
+}
+
+function jsonSafe(value: unknown): any {
+  if (value == null) return null;
+
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {
+    return null;
+  }
+}
+
+async function recordDocumentFinalizationAttempt(params: {
+  masterLawsuitId: string;
+  matterId: number;
+  preview: any;
+  status: string;
+  requestedKeys: string[];
+  uploaded: any[];
+  skipped: any[];
+  allowDuplicateUploads: boolean;
+  noUploadPerformed: boolean;
+  error?: string;
+}) {
+  try {
+    const target = params.preview?.clioUploadTarget || {};
+    const displayNumber = clean(target?.displayNumber);
+
+    const record = await prisma.documentFinalization.create({
+      data: {
+        masterLawsuitId: params.masterLawsuitId,
+        masterMatterId: params.matterId,
+        masterDisplayNumber: displayNumber || null,
+        status: params.status,
+        requestedKeys: jsonSafe(params.requestedKeys),
+        uploaded: jsonSafe(params.uploaded),
+        skipped: jsonSafe(params.skipped),
+        clioUploadTarget: jsonSafe(params.preview?.clioUploadTarget),
+        validationSnapshot: jsonSafe(params.preview?.validation),
+        packetSummarySnapshot: jsonSafe(params.preview?.packetSummary),
+        allowDuplicateUploads: params.allowDuplicateUploads,
+        noUploadPerformed: params.noUploadPerformed,
+        error: params.error || null,
+        finalizedAt: new Date(),
+      },
+    });
+
+    return {
+      ok: true,
+      id: record.id,
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      error: err?.message || "Could not record document finalization metadata.",
+    };
+  }
 }
 
 async function loadFinalizePreview(req: NextRequest, masterLawsuitId: string) {
@@ -221,6 +279,18 @@ export async function POST(req: NextRequest) {
         );
 
       if (duplicateOnlySkip) {
+        const finalizationRecord = await recordDocumentFinalizationAttempt({
+          masterLawsuitId,
+          matterId,
+          preview,
+          status: "nothing-uploaded-existing-documents-skipped",
+          requestedKeys,
+          uploaded: [],
+          skipped,
+          allowDuplicateUploads,
+          noUploadPerformed: true,
+        });
+
         return NextResponse.json({
           ok: true,
           action: "finalize-upload",
@@ -230,10 +300,14 @@ export async function POST(req: NextRequest) {
           requestedKeys,
           uploaded: [],
           skipped,
+          finalizationRecord,
           safety: {
             noUploadPerformed: true,
             duplicatePreventionDefault: !allowDuplicateUploads,
-            noDatabaseRecordsChanged: true,
+            databaseAuditRecordAttempted: true,
+            databaseAuditRecordCreated: finalizationRecord.ok,
+            databaseAuditLayerOnly: true,
+            clioDocumentsTabRemainsSourceOfTruth: true,
             noOneDriveOrSharePointFoldersCreated: true,
           },
         });
@@ -281,20 +355,37 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const finalizedAt = new Date().toISOString();
+    const finalizationRecord = await recordDocumentFinalizationAttempt({
+      masterLawsuitId,
+      matterId,
+      preview,
+      status: "uploaded-to-clio",
+      requestedKeys,
+      uploaded,
+      skipped,
+      allowDuplicateUploads,
+      noUploadPerformed: false,
+    });
+
     return NextResponse.json({
       ok: true,
       action: "finalize-upload",
       masterLawsuitId,
-      finalizedAt: new Date().toISOString(),
+      finalizedAt,
       clioUploadTarget: preview.clioUploadTarget,
       uploaded,
       skipped,
+      finalizationRecord,
       safety: {
         explicitUploadAction: true,
         duplicatePreventionDefault: !allowDuplicateUploads,
         duplicateUploadsAllowed: allowDuplicateUploads,
         previewAndDownloadRemainNonPersistent: true,
-        noDatabaseRecordsChanged: true,
+        databaseAuditRecordAttempted: true,
+        databaseAuditRecordCreated: finalizationRecord.ok,
+        databaseAuditLayerOnly: true,
+        clioDocumentsTabRemainsSourceOfTruth: true,
         noOneDriveOrSharePointFoldersCreated: true,
         uploadedOnlyToMasterMatterDocumentsTab: true,
       },

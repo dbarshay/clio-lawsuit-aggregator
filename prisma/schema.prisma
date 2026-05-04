@@ -123,3 +123,29 @@ model WorkerLock {
 
   @@index([lockedUntil])
 }
+
+model DocumentFinalization {
+  id                    Int      @id @default(autoincrement())
+  masterLawsuitId       String
+  masterMatterId        Int
+  masterDisplayNumber   String?
+  status                String
+  requestedKeys         Json?
+  uploaded              Json?
+  skipped               Json?
+  clioUploadTarget      Json?
+  validationSnapshot    Json?
+  packetSummarySnapshot Json?
+  allowDuplicateUploads Boolean  @default(false)
+  noUploadPerformed     Boolean  @default(false)
+  error                 String?
+  finalizedAt           DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([masterLawsuitId])
+  @@index([masterMatterId])
+  @@index([status])
+  @@index([finalizedAt])
+}
+

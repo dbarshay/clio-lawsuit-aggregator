@@ -441,6 +441,21 @@ export default function Home() {
     };
   }, [query]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const patient = clean(params.get("patient"));
+    const provider = clean(params.get("provider"));
+    const claim = clean(params.get("claim"));
+
+    if (patient) {
+      void runTargetedSuggestionSearch(patient, "Patient");
+    } else if (provider) {
+      void runTargetedSuggestionSearch(provider, "Provider");
+    } else if (claim) {
+      void runTargetedSuggestionSearch(claim, "Claim number");
+    }
+  }, []);
+
   async function runSearch() {
     const q = clean(query);
 
@@ -475,6 +490,165 @@ export default function Home() {
     setError("");
     setResults([]);
     setCheckedLabel("");
+    setSuggestions([]);
+    setSuggestionLabel("");
+    setSuggestionsLoading(false);
+  }
+
+  function filteredSearchUrl(
+    nextQuery: string,
+    target: "Patient" | "Provider" | "Claim number"
+  ) {
+    const q = clean(nextQuery);
+    const params = new URLSearchParams();
+
+    if (target === "Patient") {
+      params.set("patient", q);
+    } else if (target === "Provider") {
+      params.set("provider", q);
+    } else {
+      params.set("claim", q);
+    }
+
+    return `/matters?${params.toString()}`;
+  }
+
+  async function runFilteredSearchPage(
+    nextQuery: string,
+    target: "Patient" | "Provider" | "Claim number"
+  ) {
+    const q = clean(nextQuery);
+
+    if (!q) return;
+
+    setQuery(q);
+    setLoading(true);
+    setSearched(true);
+    setError("");
+    setResults([]);
+    setCheckedLabel(target);
+    setSuggestions([]);
+    setSuggestionLabel("");
+    setSuggestionsLoading(false);
+
+    try {
+      const mapped: MatterResult[] = [];
+
+      if (target === "Patient") {
+        const rows = await fetchFastRows(`/api/claim-index/search?patient=${encodeURIComponent(q)}`);
+
+        for (const row of rows) {
+          if (!exactOrContains(patientName(row), q)) continue;
+          const mappedRow = toMatterResult(row, "Patient");
+          if (mappedRow) mapped.push(mappedRow);
+        }
+      } else if (target === "Provider") {
+        const rows = await fetchFastRows(`/api/claim-index/search?provider=${encodeURIComponent(q)}`);
+
+        for (const row of rows) {
+          if (!exactOrContains(providerName(row), q)) continue;
+          const mappedRow = toMatterResult(row, "Provider");
+          if (mappedRow) mapped.push(mappedRow);
+        }
+      } else {
+        const rows = await fetchFastRows(`/api/claim-index/search?claim=${encodeURIComponent(q)}`);
+
+        for (const row of rows) {
+          if (!exactOrContains(claimNumberFromMatter(row), q)) continue;
+          const mappedRow = toMatterResult(row, "Claim number", q);
+          if (mappedRow) mapped.push(mappedRow);
+        }
+      }
+
+      setResults(dedupeMatterResults(mapped));
+    } catch (e: any) {
+      setError(e?.message || "Search failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runTargetedSuggestionSearch(
+    nextQuery: string,
+    target: "Patient" | "Provider" | "Claim number"
+  ) {
+    const q = clean(nextQuery);
+
+    if (!q) return;
+
+    setQuery(q);
+    setLoading(true);
+    setSearched(true);
+    setError("");
+    setResults([]);
+    setCheckedLabel(target);
+    setSuggestions([]);
+    setSuggestionLabel("");
+    setSuggestionsLoading(false);
+
+    try {
+      const mapped: MatterResult[] = [];
+
+      if (target === "Patient") {
+        const rows = await fetchFastRows(`/api/claim-index/search?patient=${encodeURIComponent(q)}`);
+
+        for (const row of rows) {
+          if (!exactOrContains(patientName(row), q)) continue;
+          const mappedRow = toMatterResult(row, "Patient");
+          if (mappedRow) mapped.push(mappedRow);
+        }
+      } else if (target === "Provider") {
+        const rows = await fetchFastRows(`/api/claim-index/search?provider=${encodeURIComponent(q)}`);
+
+        for (const row of rows) {
+          if (!exactOrContains(providerName(row), q)) continue;
+          const mappedRow = toMatterResult(row, "Provider");
+          if (mappedRow) mapped.push(mappedRow);
+        }
+      } else {
+        const rows = await fetchFastRows(`/api/claim-index/search?claim=${encodeURIComponent(q)}`);
+
+        for (const row of rows) {
+          if (!exactOrContains(claimNumberFromMatter(row), q)) continue;
+          const mappedRow = toMatterResult(row, "Claim number", q);
+          if (mappedRow) mapped.push(mappedRow);
+        }
+      }
+
+      setResults(dedupeMatterResults(mapped));
+    } catch (e: any) {
+      setError(e?.message || "Search failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function targetedSearchUrl(
+    nextQuery: string,
+    target: "Patient" | "Provider" | "Claim number"
+  ) {
+    const q = clean(nextQuery);
+    const params = new URLSearchParams();
+
+    if (target === "Patient") {
+      params.set("patient", q);
+    } else if (target === "Provider") {
+      params.set("provider", q);
+    } else {
+      params.set("claim", q);
+    }
+
+    return `/matters?${params.toString()}`;
+  }
+
+  function launchTargetedSuggestionPage(
+    nextQuery: string,
+    target: "Patient" | "Provider" | "Claim number"
+  ) {
+    const q = clean(nextQuery);
+    if (!q) return;
+
+    window.location.href = targetedSearchUrl(q, target);
   }
 
   return (
@@ -541,18 +715,65 @@ export default function Home() {
                 {suggestions.length > 0 && (
                   <div style={typeaheadListStyle}>
                     {suggestions.map((row) => (
-                      <a key={`suggestion-${row.id}`} href={`/matter/${row.id}`} style={typeaheadRowStyle}>
+                      <div key={`suggestion-${row.id}`} style={typeaheadRowStyle}>
                         <div style={{ minWidth: 0 }}>
-                          <div style={typeaheadTitleStyle}>{row.displayNumber || row.id}</div>
+                          <a href={`/matter/${row.id}`} style={typeaheadTitleLinkStyle}>
+                            {row.displayNumber || row.id}
+                          </a>
+
                           <div style={typeaheadMetaStyle}>
-                            {row.patient || "No patient"} · {row.provider || "No provider"} · {row.insurer || "No insurer"}
+                            {row.patient ? (
+                              <a
+                                href={filteredSearchUrl(row.patient, "Patient")}
+                                style={typeaheadFieldLinkStyle}
+                                title={`Show all matters for patient ${row.patient}`}
+                              >
+                                {row.patient}
+                              </a>
+                            ) : (
+                              <span>No patient</span>
+                            )}
+
+                            <span> · </span>
+
+                            {row.provider ? (
+                              <a
+                                href={filteredSearchUrl(row.provider, "Provider")}
+                                style={typeaheadFieldLinkStyle}
+                                title={`Show all matters for provider ${row.provider}`}
+                              >
+                                {row.provider}
+                              </a>
+                            ) : (
+                              <span>No provider</span>
+                            )}
+
+                            <span> · </span>
+
+                            {row.insurer || "No insurer"}
+
+                            {row.claimNumber && (
+                              <>
+                                <span> · Claim: </span>
+                                <a
+                                  href={filteredSearchUrl(row.claimNumber, "Claim number")}
+                                  style={typeaheadFieldLinkStyle}
+                                  title={`Show all matters for claim ${row.claimNumber}`}
+                                >
+                                  {row.claimNumber}
+                                </a>
+                              </>
+                            )}
                           </div>
                         </div>
+
                         <div style={typeaheadRightStyle}>
                           <span>{money(row.claimAmount)}</span>
-                          <strong>Open</strong>
+                          <a href={`/matter/${row.id}`} style={typeaheadOpenLinkStyle}>
+                            Open
+                          </a>
                         </div>
-                      </a>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -896,15 +1117,47 @@ const typeaheadRowStyle: React.CSSProperties = {
   borderRadius: 14,
   background: "#ffffff",
   color: colors.ink,
-  textDecoration: "none",
 };
 
-const typeaheadTitleStyle: React.CSSProperties = {
+const typeaheadTitleLinkStyle: React.CSSProperties = {
+  display: "inline-flex",
   color: colors.blueDark,
   fontSize: 16,
   fontWeight: 950,
   marginBottom: 3,
+  textDecoration: "none",
 };
+
+const typeaheadFieldLinkStyle: React.CSSProperties = {
+  color: colors.ink,
+  fontWeight: 850,
+  textDecoration: "underline",
+  textDecorationThickness: 1,
+  textUnderlineOffset: 3,
+};
+
+const typeaheadOpenLinkStyle: React.CSSProperties = {
+  color: colors.muted,
+  fontSize: 12,
+  fontWeight: 900,
+  textDecoration: "none",
+};
+
+const typeaheadTextButtonStyle: React.CSSProperties = {
+  appearance: "none",
+  border: 0,
+  padding: 0,
+  margin: 0,
+  background: "transparent",
+  color: colors.ink,
+  font: "inherit",
+  fontWeight: 850,
+  cursor: "pointer",
+  textDecoration: "underline",
+  textDecorationThickness: 1,
+  textUnderlineOffset: 3,
+};
+
 
 const typeaheadMetaStyle: React.CSSProperties = {
   color: colors.ink,

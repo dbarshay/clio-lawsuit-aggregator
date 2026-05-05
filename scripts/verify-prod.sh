@@ -39,6 +39,10 @@ echo "=== RUN CURRENT SETTLEMENT VALUES SAFETY VERIFIER ==="
 npm run verify:current-settlement-values-safety
 
 echo
+echo "=== RUN SETTLEMENT WORKFLOW STATUS UI SAFETY VERIFIER ==="
+npm run verify:settlement-workflow-status-ui-safety
+
+echo
 echo "=== RUN SETTLEMENT CLOSE PREVIEW SAFETY VERIFIER ==="
 npm run verify:settlement-close-preview-safety
 

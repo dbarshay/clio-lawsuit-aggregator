@@ -2231,6 +2231,108 @@ const activeGroupKey =
     textValue(packetPreview?.packet?.masterLawsuitId) ||
     textValue(matter?.masterLawsuitId);
 
+  const settlementPreviewReady =
+    !!settlementPreviewResult?.ok &&
+    Array.isArray(settlementPreviewResult?.rows) &&
+    settlementPreviewResult.rows.length > 0;
+
+  const providerFeeDefaultsLoaded =
+    !!providerFeeDefaultsResult?.ok ||
+    !!providerFeeDefaultsResult?.defaults ||
+    !!providerFeeDefaultsResult?.providerContact;
+
+  const settlementWritebackPreviewReady =
+    !!settlementWritebackPreviewResult?.ok &&
+    Array.isArray(settlementWritebackPreviewResult?.rows) &&
+    settlementWritebackPreviewResult.rows.length > 0;
+
+  const settlementValuesWrittenToClio =
+    !!settlementWritebackResult?.ok &&
+    Number(settlementWritebackResult?.count || 0) > 0;
+
+  const currentClioValuesLoaded =
+    !!currentSettlementValuesResult?.ok &&
+    Array.isArray(currentSettlementValuesResult?.rows);
+
+  const currentClioValuesMatchExpected =
+    settlementValuesWrittenToClio &&
+    currentClioValuesLoaded &&
+    Array.isArray(currentSettlementValuesResult?.rows) &&
+    currentSettlementValuesResult.rows.length > 0;
+
+  const childBillMattersEligibleToClose =
+    !!settlementClosePreviewResult?.ok &&
+    Number(settlementClosePreviewResult?.summary?.eligibleCount || settlementClosePreviewResult?.eligibleCount || 0) > 0;
+
+  const closePaidSettlementsCompleted =
+    !!settlementCloseWritebackResult?.ok &&
+    Number(settlementCloseWritebackResult?.count || 0) > 0;
+
+  const paymentConfirmedForClose = closePaidSettlementsCompleted;
+
+  const settlementWorkflowChecklist = [
+    {
+      label: "Settlement preview ready",
+      done: settlementPreviewReady,
+      detail: settlementPreviewReady
+        ? `${num(settlementPreviewResult.rows.length)} child/bill matter(s) previewed.`
+        : "Run Preview Settlement after entering settlement terms.",
+    },
+    {
+      label: "Provider fee defaults loaded",
+      done: providerFeeDefaultsLoaded,
+      detail: providerFeeDefaultsLoaded
+        ? "Provider/client Clio defaults were loaded or checked.  Missing defaults remain non-blocking."
+        : "Open the Settlement tab and confirm provider fee defaults were checked.",
+    },
+    {
+      label: "Writeback preview ready",
+      done: settlementWritebackPreviewReady,
+      detail: settlementWritebackPreviewReady
+        ? "Settlement writeback readiness has been previewed."
+        : "Run the writeback readiness preview before saving to Clio.",
+    },
+    {
+      label: "Settlement values written to Clio",
+      done: settlementValuesWrittenToClio,
+      detail: settlementValuesWrittenToClio
+        ? `${num(settlementWritebackResult.count)} child/bill matter(s) updated.`
+        : "Not complete until Save Settlement to Clio succeeds.",
+    },
+    {
+      label: "Current Clio values match expected settlement values",
+      done: currentClioValuesMatchExpected,
+      detail: currentClioValuesMatchExpected
+        ? "Current Clio readback is loaded after settlement writeback."
+        : currentClioValuesLoaded
+          ? "Current Clio values are loaded.  Save settlement values first, then refresh/read back for final comparison."
+          : "Refresh Current Clio Settlement Values after saving.",
+    },
+    {
+      label: "Payment confirmed",
+      done: paymentConfirmedForClose,
+      detail: paymentConfirmedForClose
+        ? "Payment was confirmed through the Close Paid Settlements flow."
+        : "Payment is not treated as confirmed until Close Paid Settlements is explicitly confirmed.",
+    },
+    {
+      label: "Child/bill matters eligible to close",
+      done: childBillMattersEligibleToClose,
+      detail: childBillMattersEligibleToClose
+        ? "Preview found eligible child/bill matter(s)."
+        : "Run Preview Paid Settlement Close after payment is confirmed.",
+    },
+    {
+      label: "Close Paid Settlements completed",
+      done: closePaidSettlementsCompleted,
+      detail: closePaidSettlementsCompleted
+        ? `${num(settlementCloseWritebackResult.count)} child/bill matter(s) closed as PAID (SETTLEMENT).`
+        : "Not complete until Close Paid Settlements succeeds.",
+    },
+  ];
+
+  const settlementWorkflowCompletedCount = settlementWorkflowChecklist.filter((item) => item.done).length;
+
   useEffect(() => {
     if (activeWorkspaceTab !== "settlement") return;
     if (!tabMasterLawsuitId) return;
@@ -2842,6 +2944,110 @@ const activeGroupKey =
             >
               <div style={{ fontWeight: 800, marginBottom: 4 }}>Balance (Presuit)</div>
               <div style={{ color: "#475569", fontSize: 13 }}>{money(totals.balance)}</div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: 12,
+              border: "1px solid #cbd5e1",
+              borderRadius: 10,
+              background: "#ffffff",
+              marginBottom: 14,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 12,
+                flexWrap: "wrap",
+                marginBottom: 10,
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 900, marginBottom: 4 }}>
+                  Settlement Workflow Status
+                </div>
+                <div style={{ color: "#475569", fontSize: 12 }}>
+                  Operational checklist for settlement processing.  This panel is read-only and does not write to Clio,
+                  ClaimIndex, documents, finalization records, persistent files, or the print queue.
+                </div>
+              </div>
+
+              <div
+                style={{
+                  padding: "6px 10px",
+                  border: "1px solid #bfdbfe",
+                  background: "#eff6ff",
+                  color: "#1e3a8a",
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: 900,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {settlementWorkflowCompletedCount} / {settlementWorkflowChecklist.length} complete
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gap: 8,
+              }}
+            >
+              {settlementWorkflowChecklist.map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    padding: 10,
+                    border: item.done ? "1px solid #bbf7d0" : "1px solid #e5e7eb",
+                    borderRadius: 8,
+                    background: item.done ? "#f0fdf4" : "#f8fafc",
+                    minHeight: 92,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: 999,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: item.done ? "#16a34a" : "#cbd5e1",
+                        color: "#fff",
+                        fontSize: 12,
+                        fontWeight: 900,
+                        flex: "0 0 auto",
+                      }}
+                    >
+                      {item.done ? "✓" : "•"}
+                    </span>
+                    <span style={{ fontWeight: 800, fontSize: 13 }}>{item.label}</span>
+                  </div>
+                  <div style={{ color: "#475569", fontSize: 12, lineHeight: 1.4 }}>
+                    {item.detail}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop: 10, color: "#92400e", fontSize: 12, lineHeight: 1.45 }}>
+              Closure remains separate from settlement writeback: payment must be confirmed before Close Paid
+              Settlements is used, master matters remain excluded, and already closed/final-status matters remain blocked.
             </div>
           </div>
 

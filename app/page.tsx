@@ -61,15 +61,28 @@ function masterLawsuitId(m: any) {
 }
 
 function patientName(m: any) {
-  return clean(m?.patientName ?? m?.patient_name);
+  return clean(m?.patientName ?? m?.patient_name ?? m?.patient);
 }
 
 function providerName(m: any) {
-  return clean(m?.clientName ?? m?.client_name ?? m?.providerName ?? m?.provider_name);
+  return clean(
+    m?.clientName ??
+      m?.client_name ??
+      m?.providerName ??
+      m?.provider_name ??
+      m?.provider ??
+      m?.client?.name
+  );
 }
 
 function insurerName(m: any) {
-  return clean(m?.insurerName ?? m?.insurer_name ?? m?.insuranceCompany ?? m?.insurance_company);
+  return clean(
+    m?.insurerName ??
+      m?.insurer_name ??
+      m?.insuranceCompany ??
+      m?.insurance_company ??
+      m?.insurer
+  );
 }
 
 function claimNumberFromMatter(m: any, fallbackClaimNumber = "") {
@@ -183,6 +196,49 @@ async function fetchFastRows(url: string) {
   return Array.isArray(json.rows) ? json.rows : [];
 }
 
+async function hydrateMatterResultFromContext(
+  base: MatterResult,
+  matchedBy: string,
+  fallbackClaimNumber = ""
+): Promise<MatterResult> {
+  if (!base?.id) return base;
+
+  try {
+    const res = await fetch(`/api/clio/matter-context?matterId=${encodeURIComponent(base.id)}`, {
+      cache: "no-store",
+    });
+
+    const json = await res.json();
+
+    if (!res.ok || !json?.ok) return base;
+
+    const contextMatter = json?.matter ?? json;
+    const hydrated = toMatterResult(
+      {
+        ...contextMatter,
+        matterId: contextMatter?.id ?? base.id,
+        displayNumber: contextMatter?.displayNumber ?? contextMatter?.display_number ?? base.displayNumber,
+        patientName: contextMatter?.patient?.name ?? contextMatter?.patientName ?? contextMatter?.patient_name,
+        providerName:
+          contextMatter?.client?.name ??
+          contextMatter?.providerName ??
+          contextMatter?.provider_name ??
+          base.provider,
+        insurerName: contextMatter?.insurer?.name ?? contextMatter?.insurerName ?? contextMatter?.insurer_name,
+        claimNumber: contextMatter?.claimNumber ?? contextMatter?.claim_number ?? base.claimNumber,
+        masterLawsuitId:
+          contextMatter?.masterLawsuitId ?? contextMatter?.master_lawsuit_id ?? base.masterLawsuitId,
+        claimAmount: contextMatter?.claimAmount ?? contextMatter?.claim_amount ?? base.claimAmount,
+      },
+      matchedBy,
+      fallbackClaimNumber
+    );
+    return hydrated || base;
+  } catch {
+    return base;
+  }
+}
+
 export default function Home() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -222,7 +278,7 @@ export default function Home() {
         for (const row of matters) {
           if (compact(displayNumber(row)) !== compact(matterDisplay)) continue;
           const mappedRow = toMatterResult(row, "Matter number");
-          if (mappedRow) mapped.push(mappedRow);
+          if (mappedRow) mapped.push(await hydrateMatterResultFromContext(mappedRow, "Matter number"));
         }
 
         setResults(dedupeMatterResults(mapped));
@@ -238,7 +294,7 @@ export default function Home() {
         for (const row of matters) {
           if (compact(displayNumber(row)) !== compact(matterDisplay)) continue;
           const mappedRow = toMatterResult(row, "Matter number");
-          if (mappedRow) mapped.push(mappedRow);
+          if (mappedRow) mapped.push(await hydrateMatterResultFromContext(mappedRow, "Matter number"));
         }
 
         const claimRows = await fetchFastRows(`/api/claim-index/by-claim?claimNumber=${encodeURIComponent(q)}`);

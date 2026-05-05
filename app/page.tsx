@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 type SearchKind = "brl_matter" | "numeric_ambiguous" | "master" | "text";
 
@@ -60,23 +60,44 @@ function masterLawsuitId(m: any) {
   return clean(m?.masterLawsuitId ?? m?.master_lawsuit_id);
 }
 
+function nameLike(v: any) {
+  if (v == null) return "";
+  if (typeof v === "object") {
+    return clean(
+      v.name ??
+        v.displayName ??
+        v.display_name ??
+        v.fullName ??
+        v.full_name ??
+        v.value ??
+        ""
+    );
+  }
+
+  return clean(v);
+}
+
 function patientName(m: any) {
-  return clean(m?.patientName ?? m?.patient_name ?? m?.patient);
+  return nameLike(
+    m?.patientName ??
+      m?.patient_name ??
+      m?.patient
+  );
 }
 
 function providerName(m: any) {
-  return clean(
+  return nameLike(
     m?.clientName ??
       m?.client_name ??
       m?.providerName ??
       m?.provider_name ??
       m?.provider ??
-      m?.client?.name
+      m?.client
   );
 }
 
 function insurerName(m: any) {
-  return clean(
+  return nameLike(
     m?.insurerName ??
       m?.insurer_name ??
       m?.insuranceCompany ??
@@ -239,6 +260,130 @@ async function hydrateMatterResultFromContext(
   }
 }
 
+async function getEntrySearchResults(qInput: string): Promise<{
+  checkedLabel: string;
+  results: MatterResult[];
+}> {
+  const q = clean(qInput);
+
+  if (!q) {
+    return { checkedLabel: "", results: [] };
+  }
+
+  const kind = classifySearch(q);
+  const mapped: MatterResult[] = [];
+
+  if (kind === "brl_matter") {
+    const matterDisplay = normalizeBrlMatterInput(q);
+    const matters = await fetchMatterByDisplayNumber(matterDisplay);
+
+    for (const row of matters) {
+      if (compact(displayNumber(row)) !== compact(matterDisplay)) continue;
+      const mappedRow = toMatterResult(row, "Matter number");
+      if (mappedRow) mapped.push(await hydrateMatterResultFromContext(mappedRow, "Matter number"));
+    }
+
+    return { checkedLabel: "Matter number", results: dedupeMatterResults(mapped) };
+  }
+
+  if (kind === "numeric_ambiguous") {
+    const matterDisplay = numericToBrlMatter(q);
+    const matters = await fetchMatterByDisplayNumber(matterDisplay);
+
+    for (const row of matters) {
+      if (compact(displayNumber(row)) !== compact(matterDisplay)) continue;
+      const mappedRow = toMatterResult(row, "Matter number");
+      if (mappedRow) mapped.push(await hydrateMatterResultFromContext(mappedRow, "Matter number"));
+    }
+
+    const claimRows = await fetchFastRows(`/api/claim-index/by-claim?claimNumber=${encodeURIComponent(q)}`);
+    for (const row of claimRows) {
+      const mappedRow = toMatterResult(row, "Claim number", q);
+      if (mappedRow) mapped.push(mappedRow);
+    }
+
+    return { checkedLabel: "Matter number / Claim number", results: dedupeMatterResults(mapped) };
+  }
+
+  if (kind === "master") {
+    const rows = await fetchFastRows(`/api/claim-index/by-master?masterLawsuitId=${encodeURIComponent(q)}`);
+    for (const row of rows) {
+      const mappedRow = toMatterResult(row, "Master lawsuit number");
+      if (mappedRow) mapped.push(mappedRow);
+    }
+
+    return { checkedLabel: "Master lawsuit number", results: dedupeMatterResults(mapped) };
+  }
+
+  const [patientRows, providerRows] = await Promise.all([
+    fetchFastRows(`/api/claim-index/by-patient?name=${encodeURIComponent(q)}`),
+    fetchFastRows(`/api/claim-index/by-provider?name=${encodeURIComponent(q)}`),
+  ]);
+
+  for (const row of patientRows) {
+    if (!rowMatchesText(row, q, "Patient")) continue;
+    const mappedRow = toMatterResult(row, "Patient");
+    if (mappedRow) mapped.push(mappedRow);
+  }
+
+  for (const row of providerRows) {
+    if (!rowMatchesText(row, q, "Provider")) continue;
+    const mappedRow = toMatterResult(row, "Provider");
+    if (mappedRow) mapped.push(mappedRow);
+  }
+
+  return { checkedLabel: "Patient / Provider", results: dedupeMatterResults(mapped) };
+}
+
+
+async function getEntryTypeaheadResults(qInput: string): Promise<{
+  checkedLabel: string;
+  results: MatterResult[];
+}> {
+  const q = clean(qInput);
+
+  if (!q) {
+    return { checkedLabel: "", results: [] };
+  }
+
+  const kind = classifySearch(q);
+
+  if (kind === "brl_matter" || kind === "numeric_ambiguous") {
+    const matterDisplay = kind === "brl_matter" ? normalizeBrlMatterInput(q) : numericToBrlMatter(q);
+    const matterPrefix = compact(matterDisplay);
+    const matters = await fetchMatterByDisplayNumber(matterDisplay);
+    const mapped: MatterResult[] = [];
+
+    for (const row of matters) {
+      const rowDisplay = compact(displayNumber(row));
+      if (!rowDisplay.startsWith(matterPrefix)) continue;
+
+      const mappedRow = toMatterResult(row, "Matter number");
+      if (mappedRow) mapped.push(await hydrateMatterResultFromContext(mappedRow, "Matter number"));
+    }
+
+    if (kind === "numeric_ambiguous") {
+      try {
+        const claimRows = await fetchFastRows(`/api/claim-index/search?claim=${encodeURIComponent(q)}`);
+
+        for (const row of claimRows) {
+          const mappedRow = toMatterResult(row, "Claim number", q);
+          if (mappedRow) mapped.push(mappedRow);
+        }
+      } catch {
+        // Keep matter-number prefix suggestions even if claim lookup is unavailable.
+      }
+    }
+
+    return {
+      checkedLabel: kind === "brl_matter" ? "Matter number" : "Matter number / Claim number",
+      results: dedupeMatterResults(mapped),
+    };
+  }
+
+  return getEntrySearchResults(q);
+}
+
 export default function Home() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -246,12 +391,53 @@ export default function Home() {
   const [error, setError] = useState("");
   const [results, setResults] = useState<MatterResult[]>([]);
   const [checkedLabel, setCheckedLabel] = useState("");
+  const [suggestions, setSuggestions] = useState<MatterResult[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [suggestionLabel, setSuggestionLabel] = useState("");
 
   const resultLabel = useMemo(() => {
     if (!searched || loading || error) return "";
     if (results.length === 1) return "1 matching matter found.";
     return `${results.length} matching matters found.`;
   }, [searched, loading, error, results.length]);
+
+  useEffect(() => {
+    const q = clean(query);
+
+    if (q.length < 2) {
+      setSuggestions([]);
+      setSuggestionLabel("");
+      setSuggestionsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const timer = window.setTimeout(async () => {
+      setSuggestionsLoading(true);
+
+      try {
+        const quick = await getEntryTypeaheadResults(q);
+
+        if (cancelled) return;
+
+        setSuggestions(quick.results.slice(0, 6));
+        setSuggestionLabel(quick.checkedLabel);
+      } catch {
+        if (cancelled) return;
+
+        setSuggestions([]);
+        setSuggestionLabel("");
+      } finally {
+        if (!cancelled) setSuggestionsLoading(false);
+      }
+    }, 220);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [query]);
 
   async function runSearch() {
     const q = clean(query);
@@ -261,85 +447,18 @@ export default function Home() {
     setError("");
     setResults([]);
     setCheckedLabel("");
+    setSuggestions([]);
+    setSuggestionLabel("");
+    setSuggestionsLoading(false);
 
     try {
       if (!q) {
         throw new Error("Enter a matter number, master lawsuit number, claim number, patient, or provider.");
       }
 
-      const kind = classifySearch(q);
-      const mapped: MatterResult[] = [];
-
-      if (kind === "brl_matter") {
-        setCheckedLabel("Matter number");
-        const matterDisplay = normalizeBrlMatterInput(q);
-        const matters = await fetchMatterByDisplayNumber(matterDisplay);
-
-        for (const row of matters) {
-          if (compact(displayNumber(row)) !== compact(matterDisplay)) continue;
-          const mappedRow = toMatterResult(row, "Matter number");
-          if (mappedRow) mapped.push(await hydrateMatterResultFromContext(mappedRow, "Matter number"));
-        }
-
-        setResults(dedupeMatterResults(mapped));
-        return;
-      }
-
-      if (kind === "numeric_ambiguous") {
-        setCheckedLabel("Matter number / Claim number");
-
-        const matterDisplay = numericToBrlMatter(q);
-        const matters = await fetchMatterByDisplayNumber(matterDisplay);
-
-        for (const row of matters) {
-          if (compact(displayNumber(row)) !== compact(matterDisplay)) continue;
-          const mappedRow = toMatterResult(row, "Matter number");
-          if (mappedRow) mapped.push(await hydrateMatterResultFromContext(mappedRow, "Matter number"));
-        }
-
-        const claimRows = await fetchFastRows(`/api/claim-index/by-claim?claimNumber=${encodeURIComponent(q)}`);
-        for (const row of claimRows) {
-          const mappedRow = toMatterResult(row, "Claim number", q);
-          if (mappedRow) mapped.push(mappedRow);
-        }
-
-        setResults(dedupeMatterResults(mapped));
-        return;
-      }
-
-      if (kind === "master") {
-        setCheckedLabel("Master lawsuit number");
-
-        const rows = await fetchFastRows(`/api/claim-index/by-master?masterLawsuitId=${encodeURIComponent(q)}`);
-        for (const row of rows) {
-          const mappedRow = toMatterResult(row, "Master lawsuit number");
-          if (mappedRow) mapped.push(mappedRow);
-        }
-
-        setResults(dedupeMatterResults(mapped));
-        return;
-      }
-
-      setCheckedLabel("Patient / Provider");
-
-      const [patientRows, providerRows] = await Promise.all([
-        fetchFastRows(`/api/claim-index/by-patient?name=${encodeURIComponent(q)}`),
-        fetchFastRows(`/api/claim-index/by-provider?name=${encodeURIComponent(q)}`),
-      ]);
-
-      for (const row of patientRows) {
-        if (!rowMatchesText(row, q, "Patient")) continue;
-        const mappedRow = toMatterResult(row, "Patient");
-        if (mappedRow) mapped.push(mappedRow);
-      }
-
-      for (const row of providerRows) {
-        if (!rowMatchesText(row, q, "Provider")) continue;
-        const mappedRow = toMatterResult(row, "Provider");
-        if (mappedRow) mapped.push(mappedRow);
-      }
-
-      setResults(dedupeMatterResults(mapped));
+      const search = await getEntrySearchResults(q);
+      setCheckedLabel(search.checkedLabel);
+      setResults(search.results);
     } catch (e: any) {
       setError(e?.message || "Search failed.");
     } finally {
@@ -400,6 +519,44 @@ export default function Home() {
           </label>
 
           <div style={inlineResultAreaStyle}>
+            {clean(query).length >= 2 && !searched && (
+              <div style={typeaheadSuggestionBoxStyle}>
+                <div style={typeaheadHeaderStyle}>
+                  <span>Suggestions</span>
+                  <span>
+                    {suggestionsLoading
+                      ? "Searching..."
+                      : suggestionLabel
+                        ? `Checked: ${suggestionLabel}.`
+                        : "Type to search."}
+                  </span>
+                </div>
+
+                {!suggestionsLoading && suggestions.length === 0 && (
+                  <div style={typeaheadEmptyStyle}>No quick suggestions yet.</div>
+                )}
+
+                {suggestions.length > 0 && (
+                  <div style={typeaheadListStyle}>
+                    {suggestions.map((row) => (
+                      <a key={`suggestion-${row.id}`} href={`/matter/${row.id}`} style={typeaheadRowStyle}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={typeaheadTitleStyle}>{row.displayNumber || row.id}</div>
+                          <div style={typeaheadMetaStyle}>
+                            {row.patient || "No patient"} · {row.provider || "No provider"} · {row.insurer || "No insurer"}
+                          </div>
+                        </div>
+                        <div style={typeaheadRightStyle}>
+                          <span>{money(row.claimAmount)}</span>
+                          <strong>Open</strong>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {error && <div style={errorStyle}>{error}</div>}
 
             {searched && !loading && !error && (
@@ -694,4 +851,73 @@ const resultAmountStyle: React.CSSProperties = {
   textAlign: "right",
   color: colors.muted,
   fontSize: 13,
+};
+
+
+const typeaheadSuggestionBoxStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 10,
+  padding: 12,
+  border: "1px solid #dbe3ee",
+  borderRadius: 18,
+  background: "#f8fafc",
+};
+
+const typeaheadHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  color: colors.subtle,
+  fontSize: 12,
+  fontWeight: 800,
+};
+
+const typeaheadEmptyStyle: React.CSSProperties = {
+  padding: "8px 10px",
+  color: colors.muted,
+  fontSize: 13,
+};
+
+const typeaheadListStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 8,
+};
+
+const typeaheadRowStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: 12,
+  padding: "10px 12px",
+  border: "1px solid #e5e7eb",
+  borderRadius: 14,
+  background: "#ffffff",
+  color: colors.ink,
+  textDecoration: "none",
+};
+
+const typeaheadTitleStyle: React.CSSProperties = {
+  color: colors.blueDark,
+  fontSize: 16,
+  fontWeight: 950,
+  marginBottom: 3,
+};
+
+const typeaheadMetaStyle: React.CSSProperties = {
+  color: colors.ink,
+  fontSize: 13,
+  fontWeight: 750,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
+const typeaheadRightStyle: React.CSSProperties = {
+  display: "grid",
+  justifyItems: "end",
+  gap: 4,
+  color: colors.muted,
+  fontSize: 12,
+  fontWeight: 800,
 };

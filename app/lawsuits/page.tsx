@@ -206,41 +206,85 @@ export default function LawsuitsPage() {
     <main style={{ padding: 20, maxWidth: 1400, margin: "0 auto" }}>
       <div
         style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          alignItems: "center",
-          gap: 10,
-          marginBottom: 10,
+          display: "grid",
+          gridTemplateColumns: "306px minmax(0, 1fr) 430px",
+          alignItems: "start",
+          gap: 24,
+          marginBottom: 24,
         }}
       >
-        <a href="/" title="Return to Barsh Matters entry screen" style={{ display: "inline-flex", textDecoration: "none" }}>
+        <div style={{ gridColumn: "1", display: "flex", justifyContent: "flex-start", alignItems: "flex-start" }}>
           <img
-            src="/barsh-matters-header-logo.jpg"
-            alt="Barsh Matters Logo"
-            style={{ width: 190, height: "auto", display: "block", maxWidth: "100%" }}
+            src="/brl-logo.png"
+            alt="BRL Logo"
+            style={{ width: 306, height: 204, objectFit: "contain", display: "block" }}
           />
-        </a>
-        <a
-          href="/print-queue"
+        </div>
+
+        <div
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "8px 12px",
-            border: "1px solid #cbd5e1",
-            borderRadius: 999,
-            background: "#ffffff",
-            color: "#0f172a",
-            fontSize: 13,
-            fontWeight: 850,
-            whiteSpace: "nowrap",
-            textDecoration: "none",
+            gridColumn: "3",
+            justifySelf: "end",
+            position: "relative",
+            width: 430,
+            height: 224,
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "flex-start",
           }}
         >
-          Print Queue
-        </a>
-      </div>
+          <div
+            style={{
+              position: "absolute",
+              top: -10,
+              left: -95,
+              display: "flex",
+              justifyContent: "flex-start",
+              alignItems: "center",
+            }}
+          >
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              title="Print Queue access is locked unless the user has print-queue rights."
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                padding: "7px 11px",
+                border: "1px solid #cbd5e1",
+                borderRadius: 999,
+                background: "#f8fafc",
+                color: "#475569",
+                fontSize: 12,
+                fontWeight: 800,
+                whiteSpace: "nowrap",
+                cursor: "not-allowed",
+                opacity: 0.9,
+              }}
+            >
+              <span aria-hidden="true">🔒</span>
+              <span>Print Queue</span>
+            </button>
+          </div>
 
+          <a href="/" title="Return to Barsh Matters entry screen" style={{ display: "inline-flex", textDecoration: "none" }}>
+            <img
+              src="/barsh-matters-cropped-transparent.png"
+              alt="Barsh Matters Logo"
+              style={{
+                width: 485,
+                height: 224,
+                objectFit: "contain",
+                objectPosition: "right top",
+                display: "block",
+              }}
+            />
+          </a>
+        </div>
+      </div>
 
 
 <div

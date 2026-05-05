@@ -329,39 +329,77 @@ const bmStatCardStyle: React.CSSProperties = {
 };
 
 const bmGlobalTopBarStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "flex-end",
-  alignItems: "center",
-  gap: 10,
-  marginBottom: 10,
+  display: "grid",
+  gridTemplateColumns: "306px minmax(0, 1fr) 430px",
+  alignItems: "start",
+  gap: 24,
+  marginBottom: 24,
 };
 
-const bmGlobalLogoStyle: React.CSSProperties = {
-  width: 190,
-  height: "auto",
+const bmGlobalLeftLogoWrapStyle: React.CSSProperties = {
+  gridColumn: "1",
+  display: "flex",
+  justifyContent: "flex-start",
+  alignItems: "flex-start",
+};
+
+const bmGlobalRightWrapStyle: React.CSSProperties = {
+  gridColumn: "3",
+  justifySelf: "end",
+  position: "relative",
+  width: 430,
+  height: 224,
+  display: "flex",
+  justifyContent: "flex-end",
+  alignItems: "flex-start",
+};
+
+const bmGlobalBrlLogoStyle: React.CSSProperties = {
+  width: 306,
+  height: 204,
+  objectFit: "contain",
   display: "block",
-  maxWidth: "100%",
 };
 
 const bmGlobalLogoLinkStyle: React.CSSProperties = {
   display: "inline-flex",
-  alignItems: "center",
+  alignItems: "flex-start",
+  justifyContent: "flex-end",
   textDecoration: "none",
 };
 
-const bmGlobalPrintQueueStyle: React.CSSProperties = {
+const bmGlobalLogoStyle: React.CSSProperties = {
+  width: 485,
+  height: 224,
+  objectFit: "contain",
+  objectPosition: "right top",
+  display: "block",
+};
+
+const bmGlobalPrintButtonRowStyle: React.CSSProperties = {
+  position: "absolute",
+  top: -10,
+  left: -95,
+  display: "flex",
+  justifyContent: "flex-start",
+  alignItems: "center",
+};
+
+const bmGlobalLockedPrintQueueStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  padding: "8px 12px",
+  gap: 6,
+  padding: "7px 11px",
   border: "1px solid #cbd5e1",
   borderRadius: 999,
-  background: "#ffffff",
-  color: bmColors.ink,
-  fontSize: 13,
-  fontWeight: 850,
+  background: "#f8fafc",
+  color: bmColors.muted,
+  fontSize: 12,
+  fontWeight: 800,
   whiteSpace: "nowrap",
-  textDecoration: "none",
+  cursor: "not-allowed",
+  opacity: 0.9,
 };
 
 function parseMoneyInput(v: string): number | null {
@@ -2552,9 +2590,11 @@ const activeGroupKey =
 
     <main
       style={{
-        padding: "18px 24px 40px",
-        maxWidth: 1360,
-        margin: "0 auto",
+        padding: "18px max(24px, calc((100vw - 1360px) / 2)) 40px",
+        width: "100vw",
+        maxWidth: "none",
+        marginLeft: "calc(50% - 50vw)",
+        marginRight: "calc(50% - 50vw)",
         fontFamily:
           'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         color: bmColors.ink,
@@ -2564,14 +2604,29 @@ const activeGroupKey =
        }}
     >
       <div style={bmGlobalTopBarStyle}>
-        <a href="/" title="Return to Barsh Matters entry screen" style={bmGlobalLogoLinkStyle}>
-          <img src="/barsh-matters-header-logo.jpg" alt="Barsh Matters Logo" style={bmGlobalLogoStyle} />
-        </a>
-        <a href="/print-queue" style={bmGlobalPrintQueueStyle}>
-          Print Queue
-        </a>
-      </div>
+        <div style={bmGlobalLeftLogoWrapStyle}>
+          <img src="/brl-logo.png" alt="BRL Logo" style={bmGlobalBrlLogoStyle} />
+        </div>
 
+        <div style={bmGlobalRightWrapStyle}>
+          <div style={bmGlobalPrintButtonRowStyle}>
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              title="Print Queue access is locked unless the user has print-queue rights."
+              style={bmGlobalLockedPrintQueueStyle}
+            >
+              <span aria-hidden="true">🔒</span>
+              <span>Print Queue</span>
+            </button>
+          </div>
+
+          <a href="/" title="Return to Barsh Matters entry screen" style={bmGlobalLogoLinkStyle}>
+            <img src="/barsh-matters-cropped-transparent.png" alt="Barsh Matters Logo" style={bmGlobalLogoStyle} />
+          </a>
+        </div>
+      </div>
 
 
 {(matterHydrationLoading || matterHydrationError) && (
@@ -2614,26 +2669,6 @@ const activeGroupKey =
             gap: 10,
           }}
         >
-          <div
-            style={{
-              padding: 12,
-              border: "1px solid " + bmColors.line,
-              borderRadius: 18,
-              background: "#ffffff",
-            }}
-          >
-            <img
-              src="/brl-logo.png"
-              alt="BRL Logo"
-              style={{
-                width: 196,
-                height: "auto",
-                display: "block",
-                maxWidth: "100%",
-                margin: "0 auto",
-               }}
-            />
-          </div>
 
           <button
             onClick={openLawsuitOptionsModal}

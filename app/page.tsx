@@ -497,7 +497,7 @@ export default function Home() {
 
   function filteredSearchUrl(
     nextQuery: string,
-    target: "Patient" | "Provider" | "Claim number"
+    target: "Patient" | "Provider" | "Insurer" | "Claim number"
   ) {
     const q = clean(nextQuery);
     const params = new URLSearchParams();
@@ -506,6 +506,8 @@ export default function Home() {
       params.set("patient", q);
     } else if (target === "Provider") {
       params.set("provider", q);
+    } else if (target === "Insurer") {
+      params.set("insurer", q);
     } else {
       params.set("claim", q);
     }
@@ -515,7 +517,7 @@ export default function Home() {
 
   async function runFilteredSearchPage(
     nextQuery: string,
-    target: "Patient" | "Provider" | "Claim number"
+    target: "Patient" | "Provider" | "Insurer" | "Claim number"
   ) {
     const q = clean(nextQuery);
 
@@ -548,6 +550,14 @@ export default function Home() {
         for (const row of rows) {
           if (!exactOrContains(providerName(row), q)) continue;
           const mappedRow = toMatterResult(row, "Provider");
+          if (mappedRow) mapped.push(mappedRow);
+        }
+      } else if (target === "Insurer") {
+        const rows = await fetchFastRows(`/api/claim-index/search?insurer=${encodeURIComponent(q)}`);
+
+        for (const row of rows) {
+          if (!exactOrContains(insurerName(row), q)) continue;
+          const mappedRow = toMatterResult(row, "Insurer");
           if (mappedRow) mapped.push(mappedRow);
         }
       } else {
@@ -570,7 +580,7 @@ export default function Home() {
 
   async function runTargetedSuggestionSearch(
     nextQuery: string,
-    target: "Patient" | "Provider" | "Claim number"
+    target: "Patient" | "Provider" | "Insurer" | "Claim number"
   ) {
     const q = clean(nextQuery);
 
@@ -605,6 +615,14 @@ export default function Home() {
           const mappedRow = toMatterResult(row, "Provider");
           if (mappedRow) mapped.push(mappedRow);
         }
+      } else if (target === "Insurer") {
+        const rows = await fetchFastRows(`/api/claim-index/search?insurer=${encodeURIComponent(q)}`);
+
+        for (const row of rows) {
+          if (!exactOrContains(insurerName(row), q)) continue;
+          const mappedRow = toMatterResult(row, "Insurer");
+          if (mappedRow) mapped.push(mappedRow);
+        }
       } else {
         const rows = await fetchFastRows(`/api/claim-index/search?claim=${encodeURIComponent(q)}`);
 
@@ -625,7 +643,7 @@ export default function Home() {
 
   function targetedSearchUrl(
     nextQuery: string,
-    target: "Patient" | "Provider" | "Claim number"
+    target: "Patient" | "Provider" | "Insurer" | "Claim number"
   ) {
     const q = clean(nextQuery);
     const params = new URLSearchParams();
@@ -634,6 +652,8 @@ export default function Home() {
       params.set("patient", q);
     } else if (target === "Provider") {
       params.set("provider", q);
+    } else if (target === "Insurer") {
+      params.set("insurer", q);
     } else {
       params.set("claim", q);
     }
@@ -643,7 +663,7 @@ export default function Home() {
 
   function launchTargetedSuggestionPage(
     nextQuery: string,
-    target: "Patient" | "Provider" | "Claim number"
+    target: "Patient" | "Provider" | "Insurer" | "Claim number"
   ) {
     const q = clean(nextQuery);
     if (!q) return;
@@ -750,19 +770,30 @@ export default function Home() {
 
                             <span> · </span>
 
-                            {row.insurer || "No insurer"}
+                            {row.insurer ? (
+                              <a
+                                href={filteredSearchUrl(row.insurer, "Insurer")}
+                                style={typeaheadFieldLinkStyle}
+                                title={`Show all matters for insurer ${row.insurer}`}
+                              >
+                                {row.insurer}
+                              </a>
+                            ) : (
+                              <span>No insurer</span>
+                            )}
 
-                            {row.claimNumber && (
-                              <>
-                                <span> · Claim: </span>
-                                <a
-                                  href={filteredSearchUrl(row.claimNumber, "Claim number")}
-                                  style={typeaheadFieldLinkStyle}
-                                  title={`Show all matters for claim ${row.claimNumber}`}
-                                >
-                                  {row.claimNumber}
-                                </a>
-                              </>
+                            <span> · Claim: </span>
+
+                            {row.claimNumber ? (
+                              <a
+                                href={filteredSearchUrl(row.claimNumber, "Claim number")}
+                                style={typeaheadFieldLinkStyle}
+                                title={`Show all matters for claim ${row.claimNumber}`}
+                              >
+                                {row.claimNumber}
+                              </a>
+                            ) : (
+                              <span>—</span>
                             )}
                           </div>
                         </div>
@@ -799,14 +830,51 @@ export default function Home() {
             {results.length > 0 && (
               <div style={{ display: "grid", gap: 10 }}>
                 {results.map((row) => (
-                  <a key={row.id} href={`/matter/${row.id}`} style={resultRowStyle}>
+                  <div key={row.id} style={resultRowStyle}>
                     <div style={{ minWidth: 0 }}>
-                      <div style={matterTitleStyle}>{row.displayNumber || row.id}</div>
+                      <a href={`/matter/${row.id}`} style={matterTitleLinkStyle}>
+                        {row.displayNumber || row.id}
+                      </a>
+
                       <div style={matterMetaStyle}>
-                        {row.patient || "No patient"} · {row.provider || "No provider"} · {row.insurer || "No insurer"}
+                        {row.patient ? (
+                          <a href={filteredSearchUrl(row.patient, "Patient")} style={resultFieldLinkStyle}>
+                            {row.patient}
+                          </a>
+                        ) : (
+                          <span>No patient</span>
+                        )}
+
+                        <span> · </span>
+
+                        {row.provider ? (
+                          <a href={filteredSearchUrl(row.provider, "Provider")} style={resultFieldLinkStyle}>
+                            {row.provider}
+                          </a>
+                        ) : (
+                          <span>No provider</span>
+                        )}
+
+                        <span> · </span>
+
+                        {row.insurer ? (
+                          <a href={filteredSearchUrl(row.insurer, "Insurer")} style={resultFieldLinkStyle}>
+                            {row.insurer}
+                          </a>
+                        ) : (
+                          <span>No insurer</span>
+                        )}
                       </div>
+
                       <div style={matterSubMetaStyle}>
-                        Claim: {row.claimNumber || "—"}
+                        Claim:{" "}
+                        {row.claimNumber ? (
+                          <a href={filteredSearchUrl(row.claimNumber, "Claim number")} style={resultFieldLinkStyle}>
+                            {row.claimNumber}
+                          </a>
+                        ) : (
+                          "—"
+                        )}
                         {" · "}
                         Master Lawsuit: {row.masterLawsuitId || "—"}
                         {" · "}
@@ -816,9 +884,11 @@ export default function Home() {
 
                     <div style={resultAmountStyle}>
                       <span>{money(row.claimAmount)}</span>
-                      <strong>Open Matter</strong>
+                      <a href={`/matter/${row.id}`} style={typeaheadOpenLinkStyle}>
+                        Open Matter
+                      </a>
                     </div>
-                  </a>
+                  </div>
                 ))}
               </div>
             )}
@@ -1042,7 +1112,6 @@ const resultRowStyle: React.CSSProperties = {
   borderRadius: 16,
   background: "#ffffff",
   color: colors.ink,
-  textDecoration: "none",
 };
 
 const matterTitleStyle: React.CSSProperties = {
@@ -1050,6 +1119,23 @@ const matterTitleStyle: React.CSSProperties = {
   fontWeight: 950,
   color: colors.blueDark,
   marginBottom: 4,
+};
+
+const matterTitleLinkStyle: React.CSSProperties = {
+  display: "inline-flex",
+  fontSize: 17,
+  fontWeight: 950,
+  color: colors.blueDark,
+  marginBottom: 4,
+  textDecoration: "none",
+};
+
+const resultFieldLinkStyle: React.CSSProperties = {
+  color: "inherit",
+  fontWeight: 850,
+  textDecoration: "underline",
+  textDecorationThickness: 1,
+  textUnderlineOffset: 3,
 };
 
 const matterMetaStyle: React.CSSProperties = {

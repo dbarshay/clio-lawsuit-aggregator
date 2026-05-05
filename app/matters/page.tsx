@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
-type FilterKind = "patient" | "provider" | "claim";
+type FilterKind = "patient" | "provider" | "insurer" | "claim";
 
 type MatterRow = {
   id: string;
@@ -164,10 +164,12 @@ function getFilterFromUrl(): { kind: FilterKind | ""; value: string } {
 
   const patient = clean(params.get("patient"));
   const provider = clean(params.get("provider"));
+  const insurer = clean(params.get("insurer"));
   const claim = clean(params.get("claim"));
 
   if (patient) return { kind: "patient", value: patient };
   if (provider) return { kind: "provider", value: provider };
+  if (insurer) return { kind: "insurer", value: insurer };
   if (claim) return { kind: "claim", value: claim };
 
   return { kind: "", value: "" };
@@ -177,12 +179,14 @@ function filterTitle(kind: FilterKind | "", value: string) {
   if (!kind || !value) return "Filtered Matters";
   if (kind === "patient") return `Matters for Patient: ${value}`;
   if (kind === "provider") return `Matters for Provider: ${value}`;
+  if (kind === "insurer") return `Matters for Insurer: ${value}`;
   return `Matters for Claim: ${value}`;
 }
 
 function filterLabel(kind: FilterKind | "") {
   if (kind === "patient") return "Patient";
   if (kind === "provider") return "Provider";
+  if (kind === "insurer") return "Insurer";
   if (kind === "claim") return "Claim Number";
   return "Filter";
 }
@@ -224,7 +228,9 @@ export default function FilteredMattersPage() {
             ? `/api/claim-index/search?patient=${encodeURIComponent(filter.value)}`
             : filter.kind === "provider"
               ? `/api/claim-index/search?provider=${encodeURIComponent(filter.value)}`
-              : `/api/claim-index/search?claim=${encodeURIComponent(filter.value)}`;
+              : filter.kind === "insurer"
+                ? `/api/claim-index/search?insurer=${encodeURIComponent(filter.value)}`
+                : `/api/claim-index/search?claim=${encodeURIComponent(filter.value)}`;
 
         const rawRows = await fetchRows(url);
         const mapped: MatterRow[] = [];
@@ -232,6 +238,7 @@ export default function FilteredMattersPage() {
         for (const row of rawRows) {
           if (filter.kind === "patient" && !exactOrContains(patientName(row), filter.value)) continue;
           if (filter.kind === "provider" && !exactOrContains(providerName(row), filter.value)) continue;
+          if (filter.kind === "insurer" && !exactOrContains(insurerName(row), filter.value)) continue;
           if (filter.kind === "claim" && !exactOrContains(claimNumberFromMatter(row), filter.value)) continue;
 
           const mappedRow = toMatterRow(row, filterLabel(filter.kind));

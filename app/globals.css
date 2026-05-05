@@ -85,3 +85,113 @@ body {
   font-size: 13px;
   line-height: 1.45;
 }
+
+/* BARSH MATTERS MAIN MATTER TABLE POLISH */
+.barsh-matter-page {
+  --bm-table-border: #dbe3ee;
+  --bm-table-border-soft: #eef2f7;
+  --bm-table-header: #eef4fb;
+  --bm-table-hover: #f0f7ff;
+}
+
+/* 1. Let the matter list use the available workspace cleanly. */
+.barsh-main-matter-table {
+  width: 100% !important;
+  table-layout: auto !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border: 1px solid var(--bm-table-border) !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.045) !important;
+}
+
+/* 2. Softer header and cleaner rows. */
+.barsh-main-matter-table thead th,
+.barsh-main-matter-table th {
+  background: var(--bm-table-header) !important;
+  color: #0f172a !important;
+  font-size: 12px !important;
+  line-height: 1.22 !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.01em !important;
+  padding: 10px 9px !important;
+  border-right: 1px solid var(--bm-table-border) !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+  vertical-align: middle !important;
+}
+
+.barsh-main-matter-table tbody td,
+.barsh-main-matter-table td {
+  color: #1f2937 !important;
+  font-size: 12px !important;
+  line-height: 1.28 !important;
+  padding: 8px 9px !important;
+  border-right: 1px solid var(--bm-table-border-soft) !important;
+  border-bottom: 1px solid var(--bm-table-border-soft) !important;
+  vertical-align: middle !important;
+}
+
+.barsh-main-matter-table tbody tr:nth-child(even) td {
+  background: #fbfdff !important;
+}
+
+.barsh-main-matter-table tbody tr:hover td {
+  background: var(--bm-table-hover) !important;
+}
+
+.barsh-main-matter-table a {
+  color: #1e3a8a !important;
+  font-weight: 850 !important;
+  text-decoration-thickness: 1px !important;
+  text-underline-offset: 2px !important;
+}
+
+/* 3. Make lawsuit separator bands quieter and more polished. */
+.barsh-main-matter-table td[colspan="13"] {
+  background: linear-gradient(180deg, #f1f5f9 0%, #e8eef7 100%) !important;
+  border: 1px solid #d4dde9 !important;
+  color: #334155 !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  padding: 7px 10px !important;
+}
+
+.barsh-main-matter-table td[colspan="13"] button,
+.barsh-main-matter-table td[colspan="13"] a {
+  font-size: 11px !important;
+  border-radius: 8px !important;
+  padding: 4px 8px !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
+/* 4. Reduce repeated red Close-button dominance. */
+.barsh-main-matter-table button {
+  border-radius: 8px !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  padding: 5px 8px !important;
+  min-height: 28px !important;
+  box-shadow: none !important;
+}
+
+.barsh-main-matter-table button[style*="red"],
+.barsh-main-matter-table button[style*="rgb(220"],
+.barsh-main-matter-table button[style*="#dc"] {
+  background: #fff7f7 !important;
+  color: #b91c1c !important;
+  border-color: #fecaca !important;
+}
+
+.barsh-main-matter-table button:hover {
+  filter: brightness(0.98);
+}
+
+.barsh-main-matter-table input[type="checkbox"] {
+  width: 14px !important;
+  height: 14px !important;
+}

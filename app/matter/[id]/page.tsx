@@ -251,32 +251,81 @@ const matterWorkspaceTabs: Array<{ key: MatterWorkspaceTab; label: string; note:
   { key: "audit_history", label: "Audit / History", note: "Local workflow history" },
 ];
 
+const bmColors = {
+  ink: "#0f172a",
+  muted: "#475569",
+  subtle: "#64748b",
+  line: "#e2e8f0",
+  softLine: "#e5e7eb",
+  panel: "#ffffff",
+  page: "#f8fafc",
+  blue: "#2563eb",
+  blueSoft: "#eff6ff",
+  green: "#16a34a",
+  red: "#dc2626",
+  redSoft: "#fef2f2",
+  amber: "#92400e",
+  amberSoft: "#fffbeb",
+};
+
+const bmShadow = "0 18px 45px rgba(15, 23, 42, 0.08)";
+
 function matterWorkspaceTabStyle(active: boolean) {
   return {
-    border: "1px solid " + (active ? "#0f172a" : "#cbd5e1"),
-    background: active ? "#0f172a" : "#ffffff",
-    color: active ? "#ffffff" : "#0f172a",
+    border: "1px solid " + (active ? bmColors.ink : bmColors.line),
+    background: active ? bmColors.ink : bmColors.panel,
+    color: active ? "#ffffff" : bmColors.ink,
     borderRadius: 999,
-    padding: "8px 12px",
+    padding: "9px 14px",
     fontSize: 13,
-    fontWeight: 800,
+    fontWeight: 850,
     cursor: "pointer",
     whiteSpace: "nowrap" as const,
+    boxShadow: active ? "0 8px 18px rgba(15, 23, 42, 0.16)" : "0 1px 2px rgba(15, 23, 42, 0.04)",
+    transition: "background 120ms ease, border-color 120ms ease, box-shadow 120ms ease",
   };
 }
 
 const tabPlaceholderPanelStyle: React.CSSProperties = {
-  border: "1px solid #e5e7eb",
-  borderRadius: 14,
+  border: "1px solid " + bmColors.line,
+  borderRadius: 18,
   padding: 18,
-  background: "#ffffff",
+  background: bmColors.panel,
   margin: "0 0 18px",
+  boxShadow: "0 10px 28px rgba(15, 23, 42, 0.05)",
 };
 
 const tabPlaceholderTextStyle: React.CSSProperties = {
-  color: "#475569",
+  color: bmColors.muted,
   lineHeight: 1.5,
   marginBottom: 0,
+};
+
+const bmPrimaryButtonStyle: React.CSSProperties = {
+  textAlign: "center",
+  padding: "12px 14px",
+  color: "#fff",
+  border: "none",
+  borderRadius: 10,
+  cursor: "pointer",
+  fontWeight: 850,
+  fontSize: 14,
+  boxShadow: "0 10px 18px rgba(37, 99, 235, 0.20)",
+};
+
+const bmDisabledButtonStyle: React.CSSProperties = {
+  background: "#cbd5e1",
+  color: "#475569",
+  cursor: "not-allowed",
+  boxShadow: "none",
+};
+
+const bmStatCardStyle: React.CSSProperties = {
+  padding: 14,
+  border: "1px solid " + bmColors.line,
+  borderRadius: 16,
+  background: bmColors.panel,
+  boxShadow: "0 6px 18px rgba(15, 23, 42, 0.05)",
 };
 
 function parseMoneyInput(v: string): number | null {
@@ -2450,52 +2499,74 @@ const activeGroupKey =
 
     <main
       style={{
-        padding: 24,
-        maxWidth: 1325,
+        padding: "28px 24px 40px",
+        maxWidth: 1360,
         margin: "0 auto",
-        fontFamily: "Arial, sans-serif",
+        fontFamily:
+          'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        color: bmColors.ink,
+        background:
+          "radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 30%), #f8fafc",
+        minHeight: "100vh",
        }}
     >
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "220px minmax(0, 1fr) 360px",
+          gridTemplateColumns: "220px minmax(0, 1fr) 370px",
           columnGap: 24,
-          alignItems: "start",
+          alignItems: "stretch",
           width: "100%",
-          marginBottom: 12,
+          marginBottom: 16,
+          padding: 18,
+          border: "1px solid " + bmColors.line,
+          borderRadius: 24,
+          background: "rgba(255, 255, 255, 0.92)",
+          boxShadow: bmShadow,
          }}
       >
-        <div style={{ alignSelf: "start"  }}>
-          <img
-            src="/brl-logo.png"
-            alt="BRL Logo"
+        <div
+          style={{
+            alignSelf: "stretch",
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
+          <div
             style={{
-              width: 220,
-              height: "auto",
-              display: "block",
-              maxWidth: "100%",
-              marginBottom: 12,
-             }}
-          />
+              padding: 12,
+              border: "1px solid " + bmColors.line,
+              borderRadius: 18,
+              background: "#ffffff",
+            }}
+          >
+            <img
+              src="/brl-logo.png"
+              alt="BRL Logo"
+              style={{
+                width: 196,
+                height: "auto",
+                display: "block",
+                maxWidth: "100%",
+                margin: "0 auto",
+               }}
+            />
+          </div>
 
           <button
             onClick={openLawsuitOptionsModal}
             disabled={submitting || selected.length === 0}
             style={{
+              ...bmPrimaryButtonStyle,
               width: 220,
-              textAlign: "center",
-              padding: "12px 14px",
-              background: submitting || selected.length === 0 ? "#999" : "#0070f3",
-              color: "#fff",
-              border: "none",
-              borderRadius: 4,
+              background: submitting || selected.length === 0 ? bmDisabledButtonStyle.background : bmColors.blue,
+              color: submitting || selected.length === 0 ? bmDisabledButtonStyle.color : "#fff",
               cursor:
                 submitting || selected.length === 0
                   ? "not-allowed"
                   : "pointer",
-              fontWeight: 700,
-              fontSize: 15,
+              boxShadow: submitting || selected.length === 0 ? "none" : bmPrimaryButtonStyle.boxShadow,
             }}
           >
             {submitting
@@ -2513,17 +2584,11 @@ const activeGroupKey =
             <button
               onClick={deaggregateCluster}
               style={{
+                ...bmPrimaryButtonStyle,
                 width: 220,
-                textAlign: "center",
                 padding: "10px 14px",
-                marginTop: 10,
-                background: "#dc3545",
-                color: "#fff",
-                border: "none",
-                borderRadius: 4,
-                cursor: "pointer",
-                fontWeight: 700,
-                fontSize: 14,
+                background: bmColors.red,
+                boxShadow: "0 10px 18px rgba(220, 38, 38, 0.18)",
               }}
             >
               De-aggregate Lawsuit
@@ -2534,17 +2599,13 @@ const activeGroupKey =
             onClick={expandClaim}
             disabled={expanding || !matterId}
             style={{
+              ...bmPrimaryButtonStyle,
               width: 220,
-              textAlign: "center",
               padding: "10px 14px",
-              marginTop: 10,
-              background: expanding || !matterId ? "#999" : "#28a745",
-              color: "#fff",
-              border: "none",
-              borderRadius: 4,
+              background: expanding || !matterId ? bmDisabledButtonStyle.background : bmColors.green,
+              color: expanding || !matterId ? bmDisabledButtonStyle.color : "#fff",
               cursor: expanding || !matterId ? "not-allowed" : "pointer",
-              fontWeight: 700,
-              fontSize: 14,
+              boxShadow: expanding || !matterId ? "none" : "0 10px 18px rgba(22, 163, 74, 0.18)",
             }}
           >
             {expanding ? "Refreshing..." : "Refresh Claim Cluster"}
@@ -2554,55 +2615,114 @@ const activeGroupKey =
         <div
           style={{
             minWidth: 0,
-            fontSize: 18,
             lineHeight: 1.45,
+            padding: "8px 4px",
+            alignSelf: "center",
            }}
         >
+          <div
+            style={{
+              color: bmColors.subtle,
+              fontSize: 12,
+              fontWeight: 850,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              marginBottom: 8,
+            }}
+          >
+            Barsh Matters Workspace
+          </div>
+
           <h1
             style={{
-              margin: "0 0 12px 0",
-              fontSize: 18,
-              fontWeight: 700,
+              margin: "0 0 14px 0",
+              fontSize: 28,
+              lineHeight: 1.15,
+              fontWeight: 900,
+              letterSpacing: "-0.03em",
               whiteSpace: "nowrap",
              }}
           >
-            Main Matter- {textValue(matter?.displayNumber)}
+            Main Matter · {textValue(matter?.displayNumber)}
           </h1>
 
-          <div style={{ whiteSpace: "nowrap", marginBottom: 8  }}>
-            <strong>Provider:</strong> {providerValue(matter)}
-          </div>
-          <div style={{ whiteSpace: "nowrap", marginBottom: 8  }}>
-            <strong>Insurer:</strong> {insurerValue(matter)}
-          </div>
-          <div style={{ whiteSpace: "nowrap", marginBottom: 8  }}>
-            <strong>Claim Number:</strong> {textValue(matter?.claimNumber)}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: 10,
+              marginTop: 12,
+            }}
+          >
+            <div style={bmStatCardStyle}>
+              <div style={{ color: bmColors.subtle, fontSize: 11, fontWeight: 850, textTransform: "uppercase" }}>
+                Provider
+              </div>
+              <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800 }}>
+                {providerValue(matter) || "—"}
+              </div>
+            </div>
+            <div style={bmStatCardStyle}>
+              <div style={{ color: bmColors.subtle, fontSize: 11, fontWeight: 850, textTransform: "uppercase" }}>
+                Insurer
+              </div>
+              <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800 }}>
+                {insurerValue(matter) || "—"}
+              </div>
+            </div>
+            <div style={bmStatCardStyle}>
+              <div style={{ color: bmColors.subtle, fontSize: 11, fontWeight: 850, textTransform: "uppercase" }}>
+                Claim Number
+              </div>
+              <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800 }}>
+                {textValue(matter?.claimNumber) || "—"}
+              </div>
+            </div>
           </div>
 
           {alreadyAggregated && (
-            <div style={{ whiteSpace: "nowrap", color: "red", fontWeight: 700  }}>
-              <strong>MASTER LAWSUIT ID:</strong> {textValue(matter?.masterLawsuitId)}
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                marginTop: 14,
+                padding: "7px 11px",
+                border: "1px solid #fecaca",
+                borderRadius: 999,
+                background: bmColors.redSoft,
+                color: "#991b1b",
+                fontWeight: 900,
+                fontSize: 12,
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span>MASTER LAWSUIT ID:</span>
+              <span>{textValue(matter?.masterLawsuitId)}</span>
             </div>
           )}
         </div>
 
         <div
           style={{
-            width: 360,
-            border: "1px solid #bfbfbf",
-            borderRadius: 4,
+            width: 370,
+            border: "1px solid " + bmColors.line,
+            borderRadius: 20,
             padding: 18,
-            background: "#fafafa",
+            background: "#ffffff",
             justifySelf: "end",
-            alignSelf: "start",
+            alignSelf: "stretch",
+            boxShadow: "0 10px 28px rgba(15, 23, 42, 0.06)",
            }}
         >
           <div
             style={{
-              fontSize: 16,
-              fontWeight: 700,
+              fontSize: 12,
+              fontWeight: 900,
               marginBottom: 14,
-              textAlign: "center",
+              color: bmColors.subtle,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
              }}
           >
             Selected Matters
@@ -2614,37 +2734,40 @@ const activeGroupKey =
               gridTemplateColumns: "1fr auto",
               rowGap: 12,
               columnGap: 18,
-              fontSize: 15,
+              fontSize: 14,
               alignItems: "center",
              }}
           >
-            <div><strong>Claim Amount:</strong></div>
-            <div style={{ textAlign: "right", minWidth: 110  }}>{money(totals.claim)}</div>
+            <div style={{ color: bmColors.muted, fontWeight: 800 }}>Claim Amount</div>
+            <div style={{ textAlign: "right", minWidth: 110, fontWeight: 850 }}>{money(totals.claim)}</div>
 
-            <div><strong>Payment (Voluntary):</strong></div>
-            <div style={{ textAlign: "right", minWidth: 110  }}>{money(totals.payment)}</div>
+            <div style={{ color: bmColors.muted, fontWeight: 800 }}>Payment (Voluntary)</div>
+            <div style={{ textAlign: "right", minWidth: 110, fontWeight: 850 }}>{money(totals.payment)}</div>
 
             <div
               style={{
                 gridColumn: "1 / 3",
-                borderTop: "1px solid #bfbfbf",
+                borderTop: "1px solid " + bmColors.line,
                 margin: "2px 0 0 0",
                }}
             />
 
-            <div><strong>Balance (Presuit):</strong></div>
-            <div style={{ textAlign: "right", minWidth: 110  }}>{money(totals.balance)}</div>
+            <div style={{ color: bmColors.ink, fontWeight: 900 }}>Balance (Presuit)</div>
+            <div style={{ textAlign: "right", minWidth: 110, fontWeight: 950, fontSize: 18 }}>
+              {money(totals.balance)}
+            </div>
           </div>
         </div>
       </div>
 
       <section
         style={{
-          margin: "4px 0 18px",
+          margin: "0 0 18px",
           padding: 14,
-          border: "1px solid #e2e8f0",
-          borderRadius: 14,
-          background: "#f8fafc",
+          border: "1px solid " + bmColors.line,
+          borderRadius: 20,
+          background: "rgba(255, 255, 255, 0.92)",
+          boxShadow: "0 8px 24px rgba(15, 23, 42, 0.05)",
         }}
       >
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -2660,7 +2783,7 @@ const activeGroupKey =
             </button>
           ))}
         </div>
-        <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 13 }}>
+        <p style={{ margin: "11px 0 0", color: bmColors.subtle, fontSize: 13, lineHeight: 1.45 }}>
           Barsh Matters workspace shell.  Existing matter workflows remain unchanged while the page is organized into workflow tabs.
         </p>
       </section>

@@ -274,15 +274,16 @@ function matterWorkspaceTabStyle(active: boolean) {
   return {
     border: "1px solid " + (active ? bmColors.ink : bmColors.line),
     background: active ? bmColors.ink : bmColors.panel,
+    boxShadow: active ? "0 10px 22px rgba(15, 23, 42, 0.18)" : "0 1px 2px rgba(15, 23, 42, 0.06)",
+    transform: active ? "translateY(-1px)" : "none",
     color: active ? "#ffffff" : bmColors.ink,
-    borderRadius: 999,
+    borderRadius: 12,
     padding: "9px 14px",
     fontSize: 13,
     fontWeight: 850,
     cursor: "pointer",
     whiteSpace: "nowrap" as const,
-    boxShadow: active ? "0 8px 18px rgba(15, 23, 42, 0.16)" : "0 1px 2px rgba(15, 23, 42, 0.04)",
-    transition: "background 120ms ease, border-color 120ms ease, box-shadow 120ms ease",
+    transition: "background 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease",
   };
 }
 
@@ -292,7 +293,6 @@ const tabPlaceholderPanelStyle: React.CSSProperties = {
   padding: 18,
   background: bmColors.panel,
   margin: "0 0 18px",
-  boxShadow: "0 10px 28px rgba(15, 23, 42, 0.05)",
 };
 
 const tabPlaceholderTextStyle: React.CSSProperties = {
@@ -310,7 +310,6 @@ const bmPrimaryButtonStyle: React.CSSProperties = {
   cursor: "pointer",
   fontWeight: 850,
   fontSize: 14,
-  boxShadow: "0 10px 18px rgba(37, 99, 235, 0.20)",
 };
 
 const bmDisabledButtonStyle: React.CSSProperties = {
@@ -396,7 +395,7 @@ const bmGlobalLockedPrintQueueStyle: React.CSSProperties = {
   background: "#f8fafc",
   color: bmColors.muted,
   fontSize: 12,
-  fontWeight: 800,
+  fontWeight: 750,
   whiteSpace: "nowrap",
   cursor: "not-allowed",
   opacity: 0.9,
@@ -2633,7 +2632,7 @@ const activeGroupKey =
         <div
           style={{
             margin: "0 0 14px",
-            padding: "10px 12px",
+            padding: "7px 12px",
             border: "1px solid " + (matterHydrationError ? "#fecaca" : "#bfdbfe"),
             borderRadius: 14,
             background: matterHydrationError ? "#fef2f2" : "#eff6ff",
@@ -2666,7 +2665,7 @@ const activeGroupKey =
             alignSelf: "stretch",
             display: "flex",
             flexDirection: "column",
-            gap: 10,
+            gap: 7,
           }}
         >
 
@@ -3007,7 +3006,7 @@ const activeGroupKey =
           <div
             style={{
               display: "flex",
-              gap: 8,
+              gap: 6,
               flexWrap: "wrap",
               marginBottom: 12,
             }}
@@ -3799,7 +3798,7 @@ const activeGroupKey =
                     whiteSpace: "pre-wrap",
                     overflowX: "auto",
                     margin: "6px 0 0 0",
-                    padding: 8,
+                    padding: 6,
                     background: "#fff",
                     border: "1px solid #e5e7eb",
                     borderRadius: 4,

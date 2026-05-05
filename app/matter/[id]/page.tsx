@@ -312,11 +312,9 @@ type MatterWorkspaceTab =
   | "audit_history";
 
 const matterWorkspaceTabs: Array<{ key: MatterWorkspaceTab; label: string; note: string }> = [
-  { key: "overview", label: "Overview", note: "Matter and sibling context" },
   { key: "lawsuit", label: "Lawsuit", note: "Aggregation and lawsuit metadata" },
   { key: "documents", label: "Documents", note: "Preview, finalize, and Clio upload" },
   { key: "settlement", label: "Settlement", note: "Settlement workflow placeholder" },
-  { key: "print_queue", label: "Print Queue", note: "Matter-level print workflow" },
   { key: "audit_history", label: "Audit / History", note: "Local workflow history" },
 ];
 
@@ -3232,6 +3230,24 @@ const activeGroupKey =
         </div>
 
         <div className="barsh-summary-workflow-divider" />
+
+        <div className="barsh-direct-launch-row">
+          <a
+            className="barsh-direct-launch-button"
+            href={`/matters?patient=${encodeURIComponent(textValue(matter?.patient?.name || matter?.patient))}`}
+            title="Open all matters matching this patient."
+          >
+            Launch Patient
+          </a>
+
+          <a
+            className="barsh-direct-launch-button"
+            href={`/matters?claim=${encodeURIComponent(textValue(matter?.claimNumber))}`}
+            title="Open all matters matching this claim number."
+          >
+            Launch Claim
+          </a>
+        </div>
 
         <div className="barsh-summary-workflow-buttons">
           {matterWorkspaceTabs.map((tab) => {

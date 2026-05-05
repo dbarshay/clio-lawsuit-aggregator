@@ -25,7 +25,7 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* BARSH MATTERS COMPLETE TOP WORKSPACE */
+/* BARSH MATTERS CLEAN DIRECT MATTER WORKSPACE */
 .barsh-matter-top-workspace {
   position: sticky !important;
   top: 10px !important;
@@ -39,9 +39,89 @@ body {
   backdrop-filter: blur(10px);
 }
 
- .barsh-summary-workflow-divider {
+.barsh-direct-matter-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+}
+
+.barsh-direct-matter-main {
+  min-width: 0;
+}
+
+.barsh-direct-matter-detail-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr 1.45fr;
+  gap: 14px;
+  margin-top: 12px;
+  align-items: start;
+}
+
+.barsh-direct-summary-column {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.barsh-direct-summary-card {
+  min-height: 0;
+  padding: 14px 18px;
+  border: 1px solid #dbe3ee;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+  text-decoration: none;
+  color: inherit;
+}
+
+.barsh-direct-summary-link-card {
+  cursor: pointer;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease, background 140ms ease;
+}
+
+.barsh-direct-summary-link-card:hover {
+  border-color: #93b4e8;
+  background: #f8fbff;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.barsh-direct-summary-link-card .barsh-direct-summary-value {
+  color: #1d4ed8;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+
+.barsh-direct-summary-link-card:hover .barsh-direct-summary-value {
+  color: #0f172a;
+}
+
+.barsh-direct-summary-label {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.barsh-direct-summary-value {
+  margin-top: 6px;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.barsh-direct-summary-value-strong {
+  font-weight: 950;
+}
+
+.barsh-summary-workflow-divider {
   height: 1px;
-  margin: 4px 0 12px;
+  margin: 16px 0 12px;
   background: #dbe3ee;
 }
 
@@ -79,130 +159,283 @@ body {
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
 }
 
-.barsh-summary-workflow-help {
-  margin: 9px 0 0;
+.barsh-direct-matter-list-hidden {
+  display: none !important;
+}
+
+/* BARSH MATTERS DIRECT MATTER GLOBAL HEADER TITLE */
+.barsh-global-direct-matter-title {
+  grid-column: 2;
+  justify-self: center;
+  align-self: center;
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  text-align: center;
+  min-width: 280px;
+  padding-top: 4px;
+}
+
+.barsh-global-direct-matter-number {
+  color: #0f172a;
+  font-size: 36px;
+  line-height: 1.05;
+  font-weight: 950;
+  letter-spacing: -0.045em;
+  white-space: nowrap;
+}
+
+.barsh-global-master-lawsuit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border: 1px solid #fecaca;
+  border-radius: 999px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+/* BARSH MATTERS DIRECT MATTER FINANCIAL BUBBLE */
+.barsh-direct-financial-bubble {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 22px 20px 18px;
+  border: 1px solid #dbe3ee;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+.barsh-direct-financial-title {
   color: #64748b;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+}
+
+.barsh-direct-financial-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.barsh-direct-financial-row strong {
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+}
+
+.barsh-direct-financial-row.total {
+  margin-top: 4px;
+  padding-top: 9px;
+  border-top: 1px solid #dbe3ee;
+  color: #0f172a;
+}
+
+.barsh-direct-financial-row.total strong {
+  font-size: 18px;
+}
+
+/* BARSH MATTERS DIRECT MATTER PAYMENT WRITEBACK */
+.barsh-direct-apply-payment-button {
+  appearance: none;
+  width: 100%;
+  margin-top: 8px;
+  padding: 11px 14px;
+  border: 1px solid #0f172a;
+  border-radius: 14px;
+  background: #0f172a;
+  color: #ffffff;
   font-size: 13px;
-  line-height: 1.45;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.16);
+  transition: background 140ms ease, transform 140ms ease, box-shadow 140ms ease;
 }
 
-/* BARSH MATTERS MAIN MATTER TABLE POLISH */
-.barsh-matter-page {
-  --bm-table-border: #dbe3ee;
-  --bm-table-border-soft: #eef2f7;
-  --bm-table-header: #eef4fb;
-  --bm-table-hover: #f0f7ff;
+.barsh-direct-apply-payment-button:hover:not(:disabled) {
+  background: #1e293b;
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.20);
 }
 
-/* 1. Let the matter list use the available workspace cleanly. */
-.barsh-main-matter-table {
-  width: 100% !important;
-  table-layout: auto !important;
-  border-collapse: separate !important;
-  border-spacing: 0 !important;
-  border: 1px solid var(--bm-table-border) !important;
-  border-radius: 16px !important;
-  overflow: hidden !important;
-  background: #ffffff !important;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.045) !important;
+.barsh-direct-apply-payment-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+  box-shadow: none;
 }
 
-/* 2. Softer header and cleaner rows. */
-.barsh-main-matter-table thead th,
-.barsh-main-matter-table th {
-  background: var(--bm-table-header) !important;
-  color: #0f172a !important;
-  font-size: 12px !important;
-  line-height: 1.22 !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.01em !important;
-  padding: 10px 9px !important;
-  border-right: 1px solid var(--bm-table-border) !important;
-  border-bottom: 1px solid #cbd5e1 !important;
-  vertical-align: middle !important;
+.barsh-direct-payment-confirmation {
+  margin-top: 6px;
+  margin-bottom: 4px;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.25;
 }
 
-.barsh-main-matter-table tbody td,
-.barsh-main-matter-table td {
-  color: #1f2937 !important;
-  font-size: 12px !important;
-  line-height: 1.28 !important;
-  padding: 8px 9px !important;
-  border-right: 1px solid var(--bm-table-border-soft) !important;
-  border-bottom: 1px solid var(--bm-table-border-soft) !important;
-  vertical-align: middle !important;
+/* BARSH MATTERS DIRECT MATTER PAYMENT RECEIPTS */
+.barsh-direct-payment-receipts {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #dbe3ee;
+  display: grid;
+  gap: 7px;
 }
 
-.barsh-main-matter-table tbody tr:nth-child(even) td {
-  background: #fbfdff !important;
+.barsh-direct-payment-receipts-title {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.barsh-main-matter-table tbody tr:hover td {
-  background: var(--bm-table-hover) !important;
+.barsh-direct-payment-receipt-empty {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 750;
 }
 
-.barsh-main-matter-table a {
-  color: #1e3a8a !important;
-  font-weight: 850 !important;
-  text-decoration-thickness: 1px !important;
-  text-underline-offset: 2px !important;
+.barsh-direct-payment-receipt-row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 8px 0;
+  border-top: 1px dashed #e2e8f0;
 }
 
-/* 3. Make lawsuit separator bands quieter and more polished. */
-.barsh-main-matter-table td[colspan="13"] {
-  background: linear-gradient(180deg, #f1f5f9 0%, #e8eef7 100%) !important;
-  border: 1px solid #d4dde9 !important;
-  color: #334155 !important;
-  font-size: 11px !important;
-  font-weight: 950 !important;
-  letter-spacing: 0.08em !important;
-  text-transform: uppercase !important;
-  padding: 7px 10px !important;
+.barsh-direct-payment-receipt-row:first-of-type {
+  border-top: none;
 }
 
-.barsh-main-matter-table td[colspan="13"] button,
-.barsh-main-matter-table td[colspan="13"] a {
-  font-size: 11px !important;
-  border-radius: 8px !important;
-  padding: 4px 8px !important;
-  text-transform: none !important;
-  letter-spacing: 0 !important;
+.barsh-direct-payment-receipt-date {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
 }
 
-/* 4. Reduce repeated red Close-button dominance. */
-.barsh-main-matter-table button {
-  border-radius: 8px !important;
-  font-size: 11px !important;
-  font-weight: 850 !important;
-  padding: 5px 8px !important;
-  min-height: 28px !important;
-  box-shadow: none !important;
+.barsh-direct-payment-receipt-main {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
 }
 
-.barsh-main-matter-table button[style*="red"],
-.barsh-main-matter-table button[style*="rgb(220"],
-.barsh-main-matter-table button[style*="#dc"] {
-  background: #fff7f7 !important;
-  color: #b91c1c !important;
-  border-color: #fecaca !important;
+.barsh-direct-payment-receipt-amount {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
 }
 
-.barsh-main-matter-table button:hover {
-  filter: brightness(0.98);
+.barsh-direct-payment-receipt-meta {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
 }
 
-.barsh-main-matter-table input[type="checkbox"] {
-  width: 14px !important;
-  height: 14px !important;
+
+/* BARSH MATTERS DIRECT MATTER INLINE PAYMENT FORM */
+.barsh-direct-payment-inline-form {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid #dbe3ee;
+  border-radius: 14px;
+  background: #ffffff;
+  display: grid;
+  gap: 8px;
 }
 
-/* BARSH MATTERS SORTABLE TABLE HEADERS */
-.barsh-main-matter-table th button:hover {
-  color: #1e3a8a !important;
+.barsh-direct-payment-field {
+  display: grid;
+  gap: 4px;
 }
 
-.barsh-main-matter-table th button:focus-visible {
-  outline: 2px solid #93c5fd !important;
-  outline-offset: 2px !important;
-  border-radius: 6px !important;
+.barsh-direct-payment-field span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.barsh-direct-payment-field input {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 850;
+  outline: none;
+}
+
+.barsh-direct-payment-field input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.barsh-direct-payment-preview {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.barsh-direct-payment-form-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.barsh-direct-payment-submit-button,
+.barsh-direct-payment-cancel-button {
+  appearance: none;
+  border-radius: 10px;
+  padding: 9px 10px;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.barsh-direct-payment-submit-button {
+  border: 1px solid #0f172a;
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.barsh-direct-payment-cancel-button {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.barsh-direct-payment-submit-button:disabled,
+.barsh-direct-payment-cancel-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.barsh-direct-payment-error {
+  margin-top: 6px;
+  color: #991b1b;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.3;
 }

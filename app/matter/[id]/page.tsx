@@ -28,6 +28,55 @@ function formatDOS(start?: string, end?: string) {
   return s || e || "";
 }
 
+function formatPaymentDateMMDDYYYY(value?: any): string {
+  const raw = String(value || "").trim();
+
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(raw)) {
+    return raw;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [yyyy, mm, dd] = raw.split("-");
+    return `${mm}.${dd}.${yyyy}`;
+  }
+
+  const d = value instanceof Date ? value : new Date(value || Date.now());
+
+  if (!Number.isFinite(d.getTime())) {
+    return raw || "—";
+  }
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${mm}.${dd}.${yyyy}`;
+}
+
+function paymentDateInputIsValid(value: string): boolean {
+  return /^\d{2}\.\d{2}\.\d{4}$/.test(String(value || "").trim());
+}
+
+function currentDirectMatterBalancePresuit(matter: any): number {
+  const claimAmount = num(matter?.claimAmount);
+  const paymentVoluntary = num(matter?.paymentVoluntary);
+  const calculated = Math.max(claimAmount - paymentVoluntary, 0);
+
+  const raw = matter?.balancePresuit;
+  const hasRaw =
+    raw !== null &&
+    raw !== undefined &&
+    String(raw).trim() !== "";
+
+  const clioBalance = num(raw);
+
+  if (hasRaw) {
+    if (clioBalance > 0) return clioBalance;
+    if (calculated === 0) return 0;
+  }
+
+  return calculated;
+}
+
 function stageColor(stage?: string) {
   if (!stage) return {};
   if (stage.includes("READY FOR ARBITRATION/LITIGATION")) {
@@ -535,7 +584,126 @@ const activeGroupKey =
   const [currentSettlementValuesLoadedMasterId, setCurrentSettlementValuesLoadedMasterId] = useState<string>("");
   const [settlementDocumentsPreviewLoading, setSettlementDocumentsPreviewLoading] = useState(false);
   const [settlementDocumentsPreviewResult, setSettlementDocumentsPreviewResult] = useState<any>(null);
+  const [paymentApplyLoading, setPaymentApplyLoading] = useState(false);
+  const [paymentApplyResult, setPaymentApplyResult] = useState<any>(null);
+  const [paymentReceiptsLoading, setPaymentReceiptsLoading] = useState(false);
+  const [paymentReceipts, setPaymentReceipts] = useState<any[]>([]);
+  const [paymentFormOpen, setPaymentFormOpen] = useState(false);
+  const [paymentAmountInput, setPaymentAmountInput] = useState("");
+  const [paymentDateInput, setPaymentDateInput] = useState(() => formatPaymentDateMMDDYYYY(new Date()));
 
+  async function loadPaymentReceipts(matterIdInput?: string) {
+    const targetMatterId = String(matterIdInput || matterId || "").trim();
+
+    if (!targetMatterId) return;
+
+    setPaymentReceiptsLoading(true);
+
+    try {
+      const json = await fetch(
+        `/api/matters/apply-payment?matterId=${encodeURIComponent(targetMatterId)}`,
+        { cache: "no-store" }
+      ).then((r) => r.json());
+
+      if (json?.ok && Array.isArray(json.rows)) {
+        setPaymentReceipts(json.rows);
+      }
+    } catch {
+      setPaymentReceipts([]);
+    } finally {
+      setPaymentReceiptsLoading(false);
+    }
+  }
+
+  async function applyVoluntaryPaymentFromSummary() {
+    setPaymentApplyResult(null);
+
+    const paymentAmount = Number(String(paymentAmountInput).replace(/[$,\s]/g, ""));
+    const paymentDate = String(paymentDateInput || "").trim();
+
+    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+      setPaymentApplyResult({
+        ok: false,
+        error: "Enter a valid payment amount greater than $0.00.",
+      });
+      return;
+    }
+
+    if (!paymentDateInputIsValid(paymentDate)) {
+      setPaymentApplyResult({
+        ok: false,
+        error: "Enter the payment date in MM.DD.YYYY format.",
+      });
+      return;
+    }
+
+    const claimAmount = num(matter?.claimAmount);
+    const currentPaymentVoluntary = num(matter?.paymentVoluntary);
+    const currentBalancePresuit = currentDirectMatterBalancePresuit(matter);
+    const newPaymentVoluntary = currentPaymentVoluntary + paymentAmount;
+    const newBalancePresuit = Math.max(currentBalancePresuit - paymentAmount, 0);
+
+    if (paymentAmount > currentBalancePresuit) {
+      setPaymentApplyResult({
+        ok: false,
+        error:
+          `Payment exceeds the current Balance Presuit.  Current Balance Presuit: ${money(currentBalancePresuit)}.  Payment Entered: ${money(paymentAmount)}.`,
+      });
+      return;
+    }
+
+    setPaymentApplyLoading(true);
+
+    try {
+      const response = await fetch("/api/matters/apply-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          matterId,
+          expectedDisplayNumber: textValue(matter?.displayNumber),
+          paymentAmount,
+          paymentDate,
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json?.ok) {
+        throw new Error(json?.error || "Payment writeback failed.");
+      }
+
+      setPaymentApplyResult(json);
+
+      const refreshed = await fetch(
+        `/api/clio/matter-context?matterId=${encodeURIComponent(matterId)}`,
+        { cache: "no-store" }
+      ).then((r) => r.json());
+
+      if (refreshed?.ok && refreshed?.matter) {
+        setMatter(refreshed.matter);
+      }
+
+      await loadPaymentReceipts(matterId);
+      setPaymentAmountInput("");
+      setPaymentDateInput(formatPaymentDateMMDDYYYY(new Date()));
+      setPaymentFormOpen(false);
+    } catch (error: any) {
+      setPaymentApplyResult({
+        ok: false,
+        error: error?.message || String(error),
+      });
+    } finally {
+      setPaymentApplyLoading(false);
+    }
+  }
+
+
+  useEffect(() => {
+    if (!matterId) return;
+    loadPaymentReceipts(matterId);
+  }, [matterId]);
 
   useEffect(() => {
     if (!matterId) return;
@@ -2370,8 +2538,25 @@ const activeGroupKey =
     return matterSort.direction === "asc" ? "↑" : "↓";
   }
 
+  const directMatterRows = useMemo(() => {
+    const currentMatterId = Number(matter?.id || matterId || 0);
+    const sourceRows = Array.isArray(rows) ? rows : [];
+
+    if (!Number.isFinite(currentMatterId) || currentMatterId <= 0) {
+      return [];
+    }
+
+    const directRows = sourceRows.filter((row: any) => Number(row?.id) === currentMatterId);
+
+    if (directRows.length > 0) {
+      return directRows;
+    }
+
+    return matter?.id ? [matter] : [];
+  }, [rows, matter, matterId]);
+
   const displayRows = useMemo(() => {
-    const sourceRows = (rows || []).filter((r: any) => {
+    const sourceRows = directMatterRows.filter((r: any) => {
       if (showClosed) return true;
       return !String(r.closeReason || "").trim();
     });
@@ -2434,7 +2619,7 @@ const activeGroupKey =
         showGroupLabel,
       };
     });
-  }, [rows, showClosed, matterSort]);
+  }, [directMatterRows, showClosed, matterSort]);
 
   const thStyle: React.CSSProperties = {
     border: "1px solid #bfbfbf",
@@ -2478,7 +2663,7 @@ const activeGroupKey =
           style={{
             color: active ? "#1e3a8a" : "#94a3b8",
             fontSize: 12,
-            fontWeight: 950,
+            fontWeight: 650,
           }}
         >
           {matterSortIndicator(key)}
@@ -2736,8 +2921,58 @@ const activeGroupKey =
         <div style={bmGlobalLeftLogoWrapStyle}>
           <img src="/brl-logo.png" alt="BRL Logo" style={bmGlobalBrlLogoStyle} />
         </div>
+        <div
+          style={{
+            gridColumn: 2,
+            justifySelf: "center",
+            alignSelf: "center",
+            display: "grid",
+            justifyItems: "center",
+            gap: 9,
+            textAlign: "center",
+            minWidth: 320,
+            paddingTop: 92,
+          }}
+        >
+          <div
+            style={{
+              color: "#0f172a",
+              fontSize: 34,
+              lineHeight: 1.05,
+              fontWeight: 950,
+              letterSpacing: "-0.01em",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {textValue(matter?.displayNumber)}
+          </div>
 
-        <div style={bmGlobalRightWrapStyle}>
+          {alreadyAggregated && (
+            <a
+              href={`/matters?master=${encodeURIComponent(textValue(matter?.masterLawsuitId))}`}
+              title={`Open all matters for master lawsuit ${textValue(matter?.masterLawsuitId)}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "7px 11px",
+                border: "1px solid #fecaca",
+                borderRadius: 999,
+                background: "#fef2f2",
+                color: "#991b1b",
+                fontSize: 12,
+                fontWeight: 900,
+                whiteSpace: "nowrap",
+                textDecoration: "none",
+                cursor: "pointer"
+              }}
+            >
+              <span>MASTER LAWSUIT ID:</span>
+              <span>{textValue(matter?.masterLawsuitId)}</span>
+            </a>
+          )}
+        </div>
+<div style={bmGlobalRightWrapStyle}>
           <div style={bmGlobalPrintButtonRowStyle}>
             <button
               type="button"
@@ -2768,219 +3003,229 @@ const activeGroupKey =
             background: matterHydrationError ? "#fef2f2" : "#eff6ff",
             color: matterHydrationError ? "#991b1b" : "#1e3a8a",
             fontSize: 13,
-            fontWeight: 800,
+            fontWeight: 650,
           }}
         >
           {matterHydrationError || "Refreshing matter workspace from Clio..."}
         </div>
       )}
 
-      <section className="barsh-matter-top-workspace">
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "220px minmax(0, 1fr) 370px",
-            columnGap: 24,
-            alignItems: "stretch",
-            width: "100%",
-            padding: 18,
-          }}
-        >
-          <div
-            style={{
-              alignSelf: "stretch",
-              display: "flex",
-              flexDirection: "column",
-              gap: 7,
-            }}
-          >
-            <button
-              onClick={openLawsuitOptionsModal}
-              disabled={submitting || selected.length === 0}
-              style={{
-                ...bmPrimaryButtonStyle,
-                width: 220,
-                background: submitting || selected.length === 0 ? bmDisabledButtonStyle.background : bmColors.blue,
-                color: submitting || selected.length === 0 ? bmDisabledButtonStyle.color : "#fff",
-                cursor: submitting || selected.length === 0 ? "not-allowed" : "pointer",
-                boxShadow: submitting || selected.length === 0 ? "none" : bmPrimaryButtonStyle.boxShadow,
-              }}
-            >
-              {submitting
-                ? "Generating..."
-                : selected.length === 1
-                ? "Generate Lawsuit"
-                : selected.length > 1
-                ? "Aggregate / Generate Lawsuit"
-                : alreadyAggregated
-                ? "Main Matter Already Aggregated"
-                : "Select Matters to Generate"}
-            </button>
+            <section className="barsh-matter-top-workspace barsh-direct-matter-top-workspace">
+        <div className="barsh-direct-matter-summary-grid">
+          <div className="barsh-direct-matter-main">
+<div className="barsh-direct-matter-detail-grid">
+              <div className="barsh-direct-summary-column">
+                <a
+                  className="barsh-direct-summary-card barsh-direct-summary-link-card"
+                  href={`/matters?patient=${encodeURIComponent(textValue(matter?.patient?.name || matter?.patient))}`}
+                  title="Open all matters for this patient"
+                >
+                  <div className="barsh-direct-summary-label">Patient</div>
+                  <div className="barsh-direct-summary-value">
+                    {textValue(matter?.patient?.name || matter?.patient) || "—"}
+                  </div>
+                </a>
 
-            {alreadyAggregated && (
-              <button
-                onClick={deaggregateCluster}
-                style={{
-                  ...bmPrimaryButtonStyle,
-                  width: 220,
-                  padding: "10px 14px",
-                  background: bmColors.red,
-                  boxShadow: "0 10px 18px rgba(220, 38, 38, 0.18)",
-                }}
-              >
-                De-aggregate Lawsuit
-              </button>
-            )}
+                <a
+                  className="barsh-direct-summary-card barsh-direct-summary-link-card"
+                  href={`/matters?provider=${encodeURIComponent(providerValue(matter))}`}
+                  title="Open all matters for this provider"
+                >
+                  <div className="barsh-direct-summary-label">Provider</div>
+                  <div className="barsh-direct-summary-value">
+                    {providerValue(matter) || "—"}
+                  </div>
+                </a>
 
-            <button
-              onClick={expandClaim}
-              disabled={expanding || !matterId}
-              style={{
-                ...bmPrimaryButtonStyle,
-                width: 220,
-                padding: "10px 14px",
-                background: expanding || !matterId ? bmDisabledButtonStyle.background : bmColors.green,
-                color: expanding || !matterId ? bmDisabledButtonStyle.color : "#fff",
-                cursor: expanding || !matterId ? "not-allowed" : "pointer",
-                boxShadow: expanding || !matterId ? "none" : "0 10px 18px rgba(22, 163, 74, 0.18)",
-              }}
-            >
-              {expanding ? "Refreshing..." : "Refresh Claim Cluster"}
-            </button>
-          </div>
+                <a
+                  className="barsh-direct-summary-card barsh-direct-summary-link-card"
+                  href={`/matters?insurer=${encodeURIComponent(insurerValue(matter))}`}
+                  title="Open all matters for this insurer"
+                >
+                  <div className="barsh-direct-summary-label">Insurer</div>
+                  <div className="barsh-direct-summary-value">
+                    {insurerValue(matter) || "—"}
+                  </div>
+                </a>
 
-          <div
-            style={{
-              minWidth: 0,
-              lineHeight: 1.45,
-              padding: "8px 4px",
-              alignSelf: "center",
-            }}
-          >
-            <h1
-              style={{
-                margin: "0 0 14px 0",
-                fontSize: 28,
-                lineHeight: 1.15,
-                fontWeight: 900,
-                letterSpacing: "-0.03em",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {textValue(matter?.displayNumber)}
-            </h1>
+                <a
+                  className="barsh-direct-summary-card barsh-direct-summary-link-card"
+                  href={`/matters?claim=${encodeURIComponent(textValue(matter?.claimNumber))}`}
+                  title="Open all matters for this claim number"
+                >
+                  <div className="barsh-direct-summary-label">Claim Number</div>
+                  <div className="barsh-direct-summary-value barsh-direct-summary-value-strong">
+                    {textValue(matter?.claimNumber) || "—"}
+                  </div>
+                </a>
+              </div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                gap: 10,
-                marginTop: 12,
-              }}
-            >
-              <div style={bmStatCardStyle}>
-                <div style={{ color: bmColors.subtle, fontSize: 11, fontWeight: 850, textTransform: "uppercase" }}>
-                  Provider
+              <div className="barsh-direct-summary-column">
+                <div className="barsh-direct-summary-card">
+                  <div className="barsh-direct-summary-label">Date of Service</div>
+                  <div className="barsh-direct-summary-value">
+                    {formatDOS(matter?.dosStart, matter?.dosEnd) || "—"}
+                  </div>
                 </div>
-                <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800 }}>
-                  {providerValue(matter) || "—"}
+
+                <div className="barsh-direct-summary-card">
+                  <div className="barsh-direct-summary-label">Denial Reason</div>
+                  <div className="barsh-direct-summary-value">
+                    {denialReasonValue(matter) || "—"}
+                  </div>
                 </div>
               </div>
 
-              <div style={bmStatCardStyle}>
-                <div style={{ color: bmColors.subtle, fontSize: 11, fontWeight: 850, textTransform: "uppercase" }}>
-                  Insurer
+              <div className="barsh-direct-summary-column">
+                <div className="barsh-direct-summary-card">
+                  <div className="barsh-direct-summary-label">Status</div>
+                  <div className="barsh-direct-summary-value">
+                    {textValue(matter?.matterStage?.name) || "—"}
+                  </div>
                 </div>
-                <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800 }}>
-                  {insurerValue(matter) || "—"}
-                </div>
-              </div>
 
-              <div style={bmStatCardStyle}>
-                <div style={{ color: bmColors.subtle, fontSize: 11, fontWeight: 850, textTransform: "uppercase" }}>
-                  Claim Number
-                </div>
-                <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800 }}>
-                  {textValue(matter?.claimNumber) || "—"}
+                <div className="barsh-direct-summary-card">
+                  <div className="barsh-direct-summary-label">Final Status</div>
+                  <div className="barsh-direct-summary-value">
+                    {textValue(matter?.closeReason || "") || "—"}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {alreadyAggregated && (
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  marginTop: 14,
-                  padding: "7px 11px",
-                  border: "1px solid #fecaca",
-                  borderRadius: 999,
-                  background: bmColors.redSoft,
-                  color: "#991b1b",
-                  fontWeight: 900,
-                  fontSize: 12,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <span>MASTER LAWSUIT ID:</span>
-                <span>{textValue(matter?.masterLawsuitId)}</span>
-              </div>
-            )}
-          </div>
+              <div className="barsh-direct-financial-bubble">
+                <div className="barsh-direct-financial-row">
+                  <span>Claim Amount</span>
+                  <strong>{money(num(matter?.claimAmount))}</strong>
+                </div>
 
-          <div
-            style={{
-              width: 370,
-              border: "1px solid " + bmColors.line,
-              borderRadius: 20,
-              padding: 18,
-              background: "#ffffff",
-              justifySelf: "end",
-              alignSelf: "stretch",
-              boxShadow: "0 10px 28px rgba(15, 23, 42, 0.06)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 900,
-                marginBottom: 14,
-                color: bmColors.subtle,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-              }}
-            >
-              Selected Matters
-            </div>
+                <div className="barsh-direct-financial-row">
+                  <span>Payment Voluntary</span>
+                  <strong>{money(num(matter?.paymentVoluntary))}</strong>
+                </div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr auto",
-                rowGap: 12,
-                columnGap: 18,
-                fontSize: 14,
-                alignItems: "center",
-              }}
-            >
-              <div style={{ color: bmColors.muted, fontWeight: 800 }}>Claim Amount</div>
-              <div style={{ textAlign: "right", minWidth: 110, fontWeight: 850 }}>{money(totals.claim)}</div>
+                <div className="barsh-direct-financial-row total">
+                  <span>Balance Presuit</span>
+                  <strong>{money(currentDirectMatterBalancePresuit(matter))}</strong>
+                </div>
 
-              <div style={{ color: bmColors.muted, fontWeight: 800 }}>Payment (Voluntary)</div>
-              <div style={{ textAlign: "right", minWidth: 110, fontWeight: 850 }}>{money(totals.payment)}</div>
+                <button
+                  type="button"
+                  className="barsh-direct-apply-payment-button"
+                  onClick={() => {
+                    setPaymentApplyResult(null);
+                    setPaymentFormOpen((open) => !open);
+                    setPaymentDateInput((current) => current || formatPaymentDateMMDDYYYY(new Date()));
+                  }}
+                  disabled={paymentApplyLoading}
+                  title="Open payment entry form."
+                >
+                  {paymentApplyLoading ? "Applying Payment..." : paymentFormOpen ? "Close Payment Form" : "Apply Payment"}
+                </button>
 
-              <div
-                style={{
-                  gridColumn: "1 / 3",
-                  borderTop: "1px solid " + bmColors.line,
-                  margin: "2px 0 0 0",
-                }}
-              />
+                {paymentFormOpen && (
+                  <div className="barsh-direct-payment-inline-form">
+                    <label className="barsh-direct-payment-field">
+                      <span>Payment Amount</span>
+                      <input
+                        value={paymentAmountInput}
+                        onChange={(event) => setPaymentAmountInput(event.target.value)}
+                        placeholder="$0.00"
+                        inputMode="decimal"
+                      />
+                    </label>
 
-              <div style={{ color: bmColors.ink, fontWeight: 900 }}>Balance (Presuit)</div>
-              <div style={{ textAlign: "right", minWidth: 110, fontWeight: 950, fontSize: 18 }}>
-                {money(totals.balance)}
+                    <label className="barsh-direct-payment-field">
+                      <span>Payment Date</span>
+                      <input
+                        value={paymentDateInput}
+                        onChange={(event) => setPaymentDateInput(event.target.value)}
+                        placeholder="MM.DD.YYYY"
+                      />
+                    </label>
+
+                    {paymentAmountInput && (
+                      <div className="barsh-direct-payment-preview">
+                        <div>Current Balance Presuit: {money(currentDirectMatterBalancePresuit(matter))}</div>
+                        <div>
+                          New Balance Preview: {money(Math.max(currentDirectMatterBalancePresuit(matter) - num(paymentAmountInput), 0))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="barsh-direct-payment-form-actions">
+                      <button
+                        type="button"
+                        className="barsh-direct-payment-submit-button"
+                        onClick={applyVoluntaryPaymentFromSummary}
+                        disabled={paymentApplyLoading}
+                      >
+                        Confirm Payment
+                      </button>
+
+                      <button
+                        type="button"
+                        className="barsh-direct-payment-cancel-button"
+                        onClick={() => {
+                          setPaymentFormOpen(false);
+                          setPaymentApplyResult(null);
+                        }}
+                        disabled={paymentApplyLoading}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {paymentApplyResult?.ok && (
+                  <div className="barsh-direct-payment-confirmation">
+                    <div>Clio updated.</div>
+                    <div>
+                      Payment: {money(paymentApplyResult.paymentApplied)} · New balance: {money(paymentApplyResult.after?.balancePresuit)}
+                    </div>
+                  </div>
+                )}
+
+                {paymentApplyResult && !paymentApplyResult.ok && (
+                  <div className="barsh-direct-payment-error">
+                    {textValue(paymentApplyResult.error) || "Payment could not be applied."}
+                  </div>
+                )}
+
+                <div className="barsh-direct-payment-receipts">
+                  <div className="barsh-direct-payment-receipts-title">
+                    Payment Receipts
+                  </div>
+
+                  {paymentReceiptsLoading && (
+                    <div className="barsh-direct-payment-receipt-empty">
+                      Loading receipts...
+                    </div>
+                  )}
+
+                  {!paymentReceiptsLoading && paymentReceipts.length === 0 && (
+                    <div className="barsh-direct-payment-receipt-empty">
+                      No payment receipts recorded yet.
+                    </div>
+                  )}
+
+                  {!paymentReceiptsLoading &&
+                    paymentReceipts.slice(0, 5).map((receipt) => (
+                      <div className="barsh-direct-payment-receipt-row" key={receipt.id}>
+                        <div className="barsh-direct-payment-receipt-date">
+                          {formatPaymentDateMMDDYYYY(receipt.paymentDate)}
+                        </div>
+                        <div className="barsh-direct-payment-receipt-main">
+                          <div className="barsh-direct-payment-receipt-amount">
+                            {money(receipt.paymentAmount)}
+                          </div>
+                          <div className="barsh-direct-payment-receipt-meta">
+                            Balance after: {money(receipt.balancePresuitAfter)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
               </div>
             </div>
           </div>
@@ -3004,10 +3249,6 @@ const activeGroupKey =
             );
           })}
         </div>
-
-        <p className="barsh-summary-workflow-help">
-          Existing matter workflows remain unchanged while the page is organized into workflow controls.
-        </p>
       </section>
 
       {activeWorkspaceTab === "lawsuit" && (
@@ -7599,7 +7840,7 @@ const activeGroupKey =
       )}
 
       
-<section className="barsh-matter-list-card">
+<section className="barsh-matter-list-card barsh-direct-matter-list-hidden">
 <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
   <label className="barsh-include-closed-row" style={{ cursor: "pointer", fontSize: 14 }}>
     <input

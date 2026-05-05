@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
-type FilterKind = "patient" | "provider" | "insurer" | "claim";
+type FilterKind = "patient" | "provider" | "insurer" | "claim" | "master";
 
 type MatterRow = {
   id: string;
@@ -166,11 +166,13 @@ function getFilterFromUrl(): { kind: FilterKind | ""; value: string } {
   const provider = clean(params.get("provider"));
   const insurer = clean(params.get("insurer"));
   const claim = clean(params.get("claim"));
+  const master = clean(params.get("master"));
 
   if (patient) return { kind: "patient", value: patient };
   if (provider) return { kind: "provider", value: provider };
   if (insurer) return { kind: "insurer", value: insurer };
   if (claim) return { kind: "claim", value: claim };
+  if (master) return { kind: "master", value: master };
 
   return { kind: "", value: "" };
 }
@@ -180,6 +182,7 @@ function filterTitle(kind: FilterKind | "", value: string) {
   if (kind === "patient") return `Matters for Patient: ${value}`;
   if (kind === "provider") return `Matters for Provider: ${value}`;
   if (kind === "insurer") return `Matters for Insurer: ${value}`;
+  if (kind === "master") return `Matters for Master Lawsuit: ${value}`;
   return `Matters for Claim: ${value}`;
 }
 
@@ -188,6 +191,7 @@ function filterLabel(kind: FilterKind | "") {
   if (kind === "provider") return "Provider";
   if (kind === "insurer") return "Insurer";
   if (kind === "claim") return "Claim Number";
+  if (kind === "master") return "Master Lawsuit";
   return "Filter";
 }
 
@@ -236,7 +240,9 @@ export default function FilteredMattersPage() {
               ? `/api/claim-index/search?provider=${encodeURIComponent(filter.value)}`
               : filter.kind === "insurer"
                 ? `/api/claim-index/search?insurer=${encodeURIComponent(filter.value)}`
-                : `/api/claim-index/search?claim=${encodeURIComponent(filter.value)}`;
+                : filter.kind === "master"
+                  ? `/api/claim-index/by-master?masterLawsuitId=${encodeURIComponent(filter.value)}`
+                  : `/api/claim-index/search?claim=${encodeURIComponent(filter.value)}`;
 
         const rawRows = await fetchRows(url);
         const mapped: MatterRow[] = [];

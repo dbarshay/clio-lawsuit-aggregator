@@ -2645,261 +2645,238 @@ const activeGroupKey =
         </div>
       )}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "220px minmax(0, 1fr) 370px",
-          columnGap: 24,
-          alignItems: "stretch",
-          width: "100%",
-          marginBottom: 16,
-          padding: 18,
-          border: "1px solid " + bmColors.line,
-          borderRadius: 24,
-          background: "rgba(255, 255, 255, 0.92)",
-          boxShadow: bmShadow,
-         }}
-      >
+      <section className="barsh-matter-top-workspace">
         <div
           style={{
-            alignSelf: "stretch",
-            display: "flex",
-            flexDirection: "column",
-            gap: 7,
+            display: "grid",
+            gridTemplateColumns: "220px minmax(0, 1fr) 370px",
+            columnGap: 24,
+            alignItems: "stretch",
+            width: "100%",
+            padding: 18,
           }}
         >
-
-          <button
-            onClick={openLawsuitOptionsModal}
-            disabled={submitting || selected.length === 0}
+          <div
             style={{
-              ...bmPrimaryButtonStyle,
-              width: 220,
-              background: submitting || selected.length === 0 ? bmDisabledButtonStyle.background : bmColors.blue,
-              color: submitting || selected.length === 0 ? bmDisabledButtonStyle.color : "#fff",
-              cursor:
-                submitting || selected.length === 0
-                  ? "not-allowed"
-                  : "pointer",
-              boxShadow: submitting || selected.length === 0 ? "none" : bmPrimaryButtonStyle.boxShadow,
+              alignSelf: "stretch",
+              display: "flex",
+              flexDirection: "column",
+              gap: 7,
             }}
           >
-            {submitting
-              ? "Generating..."
-              : selected.length === 1
-              ? "Generate Lawsuit"
-              : selected.length > 1
-              ? "Aggregate / Generate Lawsuit"
-              : alreadyAggregated
-              ? "Main Matter Already Aggregated"
-              : "Select Matters to Generate"}
-          </button>
-
-          {alreadyAggregated && (
             <button
-              onClick={deaggregateCluster}
+              onClick={openLawsuitOptionsModal}
+              disabled={submitting || selected.length === 0}
+              style={{
+                ...bmPrimaryButtonStyle,
+                width: 220,
+                background: submitting || selected.length === 0 ? bmDisabledButtonStyle.background : bmColors.blue,
+                color: submitting || selected.length === 0 ? bmDisabledButtonStyle.color : "#fff",
+                cursor: submitting || selected.length === 0 ? "not-allowed" : "pointer",
+                boxShadow: submitting || selected.length === 0 ? "none" : bmPrimaryButtonStyle.boxShadow,
+              }}
+            >
+              {submitting
+                ? "Generating..."
+                : selected.length === 1
+                ? "Generate Lawsuit"
+                : selected.length > 1
+                ? "Aggregate / Generate Lawsuit"
+                : alreadyAggregated
+                ? "Main Matter Already Aggregated"
+                : "Select Matters to Generate"}
+            </button>
+
+            {alreadyAggregated && (
+              <button
+                onClick={deaggregateCluster}
+                style={{
+                  ...bmPrimaryButtonStyle,
+                  width: 220,
+                  padding: "10px 14px",
+                  background: bmColors.red,
+                  boxShadow: "0 10px 18px rgba(220, 38, 38, 0.18)",
+                }}
+              >
+                De-aggregate Lawsuit
+              </button>
+            )}
+
+            <button
+              onClick={expandClaim}
+              disabled={expanding || !matterId}
               style={{
                 ...bmPrimaryButtonStyle,
                 width: 220,
                 padding: "10px 14px",
-                background: bmColors.red,
-                boxShadow: "0 10px 18px rgba(220, 38, 38, 0.18)",
+                background: expanding || !matterId ? bmDisabledButtonStyle.background : bmColors.green,
+                color: expanding || !matterId ? bmDisabledButtonStyle.color : "#fff",
+                cursor: expanding || !matterId ? "not-allowed" : "pointer",
+                boxShadow: expanding || !matterId ? "none" : "0 10px 18px rgba(22, 163, 74, 0.18)",
               }}
             >
-              De-aggregate Lawsuit
+              {expanding ? "Refreshing..." : "Refresh Claim Cluster"}
             </button>
-          )}
-
-          <button
-            onClick={expandClaim}
-            disabled={expanding || !matterId}
-            style={{
-              ...bmPrimaryButtonStyle,
-              width: 220,
-              padding: "10px 14px",
-              background: expanding || !matterId ? bmDisabledButtonStyle.background : bmColors.green,
-              color: expanding || !matterId ? bmDisabledButtonStyle.color : "#fff",
-              cursor: expanding || !matterId ? "not-allowed" : "pointer",
-              boxShadow: expanding || !matterId ? "none" : "0 10px 18px rgba(22, 163, 74, 0.18)",
-            }}
-          >
-            {expanding ? "Refreshing..." : "Refresh Claim Cluster"}
-          </button>
-        </div>
-
-        <div
-          style={{
-            minWidth: 0,
-            lineHeight: 1.45,
-            padding: "8px 4px",
-            alignSelf: "center",
-           }}
-        >
-          <div
-            style={{
-              color: bmColors.subtle,
-              fontSize: 12,
-              fontWeight: 850,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              marginBottom: 8,
-            }}
-          >
-            Barsh Matters Workspace
           </div>
-
-          <h1
-            style={{
-              margin: "0 0 14px 0",
-              fontSize: 28,
-              lineHeight: 1.15,
-              fontWeight: 900,
-              letterSpacing: "-0.03em",
-              whiteSpace: "nowrap",
-             }}
-          >
-            Main Matter · {textValue(matter?.displayNumber)}
-          </h1>
 
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-              gap: 10,
-              marginTop: 12,
+              minWidth: 0,
+              lineHeight: 1.45,
+              padding: "8px 4px",
+              alignSelf: "center",
             }}
           >
-            <div style={bmStatCardStyle}>
-              <div style={{ color: bmColors.subtle, fontSize: 11, fontWeight: 850, textTransform: "uppercase" }}>
-                Provider
-              </div>
-              <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800 }}>
-                {providerValue(matter) || "—"}
-              </div>
-            </div>
-            <div style={bmStatCardStyle}>
-              <div style={{ color: bmColors.subtle, fontSize: 11, fontWeight: 850, textTransform: "uppercase" }}>
-                Insurer
-              </div>
-              <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800 }}>
-                {insurerValue(matter) || "—"}
-              </div>
-            </div>
-            <div style={bmStatCardStyle}>
-              <div style={{ color: bmColors.subtle, fontSize: 11, fontWeight: 850, textTransform: "uppercase" }}>
-                Claim Number
-              </div>
-              <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800 }}>
-                {textValue(matter?.claimNumber) || "—"}
-              </div>
-            </div>
-          </div>
-
-          {alreadyAggregated && (
-            <div
+            <h1
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                marginTop: 14,
-                padding: "7px 11px",
-                border: "1px solid #fecaca",
-                borderRadius: 999,
-                background: bmColors.redSoft,
-                color: "#991b1b",
+                margin: "0 0 14px 0",
+                fontSize: 28,
+                lineHeight: 1.15,
                 fontWeight: 900,
-                fontSize: 12,
+                letterSpacing: "-0.03em",
                 whiteSpace: "nowrap",
               }}
             >
-              <span>MASTER LAWSUIT ID:</span>
-              <span>{textValue(matter?.masterLawsuitId)}</span>
-            </div>
-          )}
-        </div>
-
-        <div
-          style={{
-            width: 370,
-            border: "1px solid " + bmColors.line,
-            borderRadius: 20,
-            padding: 18,
-            background: "#ffffff",
-            justifySelf: "end",
-            alignSelf: "stretch",
-            boxShadow: "0 10px 28px rgba(15, 23, 42, 0.06)",
-           }}
-        >
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 900,
-              marginBottom: 14,
-              color: bmColors.subtle,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-             }}
-          >
-            Selected Matters
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr auto",
-              rowGap: 12,
-              columnGap: 18,
-              fontSize: 14,
-              alignItems: "center",
-             }}
-          >
-            <div style={{ color: bmColors.muted, fontWeight: 800 }}>Claim Amount</div>
-            <div style={{ textAlign: "right", minWidth: 110, fontWeight: 850 }}>{money(totals.claim)}</div>
-
-            <div style={{ color: bmColors.muted, fontWeight: 800 }}>Payment (Voluntary)</div>
-            <div style={{ textAlign: "right", minWidth: 110, fontWeight: 850 }}>{money(totals.payment)}</div>
+              {textValue(matter?.displayNumber)}
+            </h1>
 
             <div
               style={{
-                gridColumn: "1 / 3",
-                borderTop: "1px solid " + bmColors.line,
-                margin: "2px 0 0 0",
-               }}
-            />
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: 10,
+                marginTop: 12,
+              }}
+            >
+              <div style={bmStatCardStyle}>
+                <div style={{ color: bmColors.subtle, fontSize: 11, fontWeight: 850, textTransform: "uppercase" }}>
+                  Provider
+                </div>
+                <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800 }}>
+                  {providerValue(matter) || "—"}
+                </div>
+              </div>
 
-            <div style={{ color: bmColors.ink, fontWeight: 900 }}>Balance (Presuit)</div>
-            <div style={{ textAlign: "right", minWidth: 110, fontWeight: 950, fontSize: 18 }}>
-              {money(totals.balance)}
+              <div style={bmStatCardStyle}>
+                <div style={{ color: bmColors.subtle, fontSize: 11, fontWeight: 850, textTransform: "uppercase" }}>
+                  Insurer
+                </div>
+                <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800 }}>
+                  {insurerValue(matter) || "—"}
+                </div>
+              </div>
+
+              <div style={bmStatCardStyle}>
+                <div style={{ color: bmColors.subtle, fontSize: 11, fontWeight: 850, textTransform: "uppercase" }}>
+                  Claim Number
+                </div>
+                <div style={{ marginTop: 4, fontSize: 14, fontWeight: 800 }}>
+                  {textValue(matter?.claimNumber) || "—"}
+                </div>
+              </div>
+            </div>
+
+            {alreadyAggregated && (
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  marginTop: 14,
+                  padding: "7px 11px",
+                  border: "1px solid #fecaca",
+                  borderRadius: 999,
+                  background: bmColors.redSoft,
+                  color: "#991b1b",
+                  fontWeight: 900,
+                  fontSize: 12,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <span>MASTER LAWSUIT ID:</span>
+                <span>{textValue(matter?.masterLawsuitId)}</span>
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              width: 370,
+              border: "1px solid " + bmColors.line,
+              borderRadius: 20,
+              padding: 18,
+              background: "#ffffff",
+              justifySelf: "end",
+              alignSelf: "stretch",
+              boxShadow: "0 10px 28px rgba(15, 23, 42, 0.06)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 900,
+                marginBottom: 14,
+                color: bmColors.subtle,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
+            >
+              Selected Matters
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr auto",
+                rowGap: 12,
+                columnGap: 18,
+                fontSize: 14,
+                alignItems: "center",
+              }}
+            >
+              <div style={{ color: bmColors.muted, fontWeight: 800 }}>Claim Amount</div>
+              <div style={{ textAlign: "right", minWidth: 110, fontWeight: 850 }}>{money(totals.claim)}</div>
+
+              <div style={{ color: bmColors.muted, fontWeight: 800 }}>Payment (Voluntary)</div>
+              <div style={{ textAlign: "right", minWidth: 110, fontWeight: 850 }}>{money(totals.payment)}</div>
+
+              <div
+                style={{
+                  gridColumn: "1 / 3",
+                  borderTop: "1px solid " + bmColors.line,
+                  margin: "2px 0 0 0",
+                }}
+              />
+
+              <div style={{ color: bmColors.ink, fontWeight: 900 }}>Balance (Presuit)</div>
+              <div style={{ textAlign: "right", minWidth: 110, fontWeight: 950, fontSize: 18 }}>
+                {money(totals.balance)}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <section
-        style={{
-          margin: "0 0 18px",
-          padding: 14,
-          border: "1px solid " + bmColors.line,
-          borderRadius: 20,
-          background: "rgba(255, 255, 255, 0.92)",
-          boxShadow: "0 8px 24px rgba(15, 23, 42, 0.05)",
-        }}
-      >
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {matterWorkspaceTabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveWorkspaceTab(tab.key)}
-              style={matterWorkspaceTabStyle(activeWorkspaceTab === tab.key)}
-              title={tab.note}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="barsh-summary-workflow-divider" />
+
+        <div className="barsh-summary-workflow-buttons">
+          {matterWorkspaceTabs.map((tab) => {
+            const active = activeWorkspaceTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveWorkspaceTab(tab.key)}
+                title={tab.note}
+                className={active ? "barsh-summary-workflow-button active" : "barsh-summary-workflow-button"}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
-        <p style={{ margin: "11px 0 0", color: bmColors.subtle, fontSize: 13, lineHeight: 1.45 }}>
-          Barsh Matters workspace shell.  Existing matter workflows remain unchanged while the page is organized into workflow tabs.
+
+        <p className="barsh-summary-workflow-help">
+          Existing matter workflows remain unchanged while the page is organized into workflow controls.
         </p>
       </section>
 
@@ -7492,8 +7469,9 @@ const activeGroupKey =
       )}
 
       
+<section className="barsh-matter-list-card">
 <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-  <label style={{ cursor: "pointer", fontSize: 14 }}>
+  <label className="barsh-include-closed-row" style={{ cursor: "pointer", fontSize: 14 }}>
     <input
       type="checkbox"
       checked={showClosed}
@@ -7504,7 +7482,7 @@ const activeGroupKey =
   </label>
 </div>
 
-<table style={{ width: "100%", borderCollapse: "collapse"  }}>
+<table className="barsh-main-matter-table" style={{ width: "100%", borderCollapse: "collapse"  }}>
         <thead>
           <tr>
             <th style={thStyle}>Select</th>
@@ -7748,6 +7726,7 @@ const activeGroupKey =
           })}
         </tbody>
       </table>
+</section>
         </>
       )}
 

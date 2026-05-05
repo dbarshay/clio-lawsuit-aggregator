@@ -24,3 +24,64 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* BARSH MATTERS COMPLETE TOP WORKSPACE */
+.barsh-matter-top-workspace {
+  position: sticky !important;
+  top: 10px !important;
+  z-index: 160 !important;
+  margin: -18px 0 18px;
+  padding: 18px 18px 16px;
+  border: 1px solid #dbe3ee;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+ .barsh-summary-workflow-divider {
+  height: 1px;
+  margin: 4px 0 12px;
+  background: #dbe3ee;
+}
+
+.barsh-summary-workflow-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.barsh-summary-workflow-button {
+  appearance: none;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #111827;
+  border-radius: 14px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1.1;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+.barsh-summary-workflow-button:hover {
+  background: #f8fbff;
+  border-color: #93b4e8;
+  transform: translateY(-1px);
+}
+
+.barsh-summary-workflow-button.active {
+  border-color: #0f172a;
+  background: #0f172a;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
+}
+
+.barsh-summary-workflow-help {
+  margin: 9px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.45;
+}

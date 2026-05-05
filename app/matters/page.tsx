@@ -191,6 +191,12 @@ function filterLabel(kind: FilterKind | "") {
   return "Filter";
 }
 
+function filteredUrl(kind: FilterKind, value: string) {
+  const params = new URLSearchParams();
+  params.set(kind, value);
+  return `/matters?${params.toString()}`;
+}
+
 export default function FilteredMattersPage() {
   const [kind, setKind] = useState<FilterKind | "">("");
   const [value, setValue] = useState("");
@@ -286,9 +292,28 @@ export default function FilteredMattersPage() {
           </div>
         </section>
 
+        <style jsx global>{`
+          .barsh-filter-row:hover td {
+            background: #f8fbff !important;
+          }
+
+          .barsh-filter-field-link:hover {
+            color: #1e3a8a !important;
+            text-decoration-thickness: 2px !important;
+          }
+
+          .barsh-filter-open-link:hover,
+          .barsh-filter-new-search:hover {
+            background: #eff6ff !important;
+            border-color: #93b4e8 !important;
+            transform: translateY(-1px);
+          }
+        `}</style>
+
         <section style={summaryPanelStyle}>
           <div>
             <div style={eyebrowStyle}>BARSH MATTERS FILTERED RESULTS</div>
+            {kind && value && <div style={filterBadgeStyle}>{filterLabel(kind)} Filter</div>}
             <h1 style={titleStyle}>{filterTitle(kind, value)}</h1>
             <div style={subTitleStyle}>
               {loading ? "Loading matching matters..." : `${rows.length} matching matter${rows.length === 1 ? "" : "s"} found.`}
@@ -304,7 +329,7 @@ export default function FilteredMattersPage() {
               <span style={statLabelStyle}>Balance (Presuit)</span>
               <strong>{money(totalBalancePresuit)}</strong>
             </div>
-            <a href="/" style={backButtonStyle}>New Search</a>
+            <a href="/" className="barsh-filter-new-search" style={backButtonStyle}>New Search</a>
           </div>
         </section>
 
@@ -332,21 +357,71 @@ export default function FilteredMattersPage() {
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.id}>
+                  <tr key={row.id} className="barsh-filter-row">
                     <td style={tdStyle}>
                       <a href={`/matter/${row.id}`} style={matterLinkStyle}>
                         {row.displayNumber || row.id}
                       </a>
                     </td>
-                    <td style={tdStyle}>{row.patient || "—"}</td>
-                    <td style={tdStyle}>{row.provider || "—"}</td>
-                    <td style={tdStyle}>{row.insurer || "—"}</td>
-                    <td style={tdStyle}>{row.claimNumber || "—"}</td>
+                    <td style={tdStyle}>
+                      {row.patient ? (
+                        <a
+                          href={filteredUrl("patient", row.patient)}
+                          className="barsh-filter-field-link"
+                          style={fieldLinkStyle}
+                        >
+                          {row.patient}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td style={tdStyle}>
+                      {row.provider ? (
+                        <a
+                          href={filteredUrl("provider", row.provider)}
+                          className="barsh-filter-field-link"
+                          style={fieldLinkStyle}
+                        >
+                          {row.provider}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td style={tdStyle}>
+                      {row.insurer ? (
+                        <a
+                          href={filteredUrl("insurer", row.insurer)}
+                          className="barsh-filter-field-link"
+                          style={fieldLinkStyle}
+                        >
+                          {row.insurer}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td style={tdStyle}>
+                      {row.claimNumber ? (
+                        <a
+                          href={filteredUrl("claim", row.claimNumber)}
+                          className="barsh-filter-field-link"
+                          style={fieldLinkStyle}
+                        >
+                          {row.claimNumber}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td style={tdStyle}>{row.masterLawsuitId || "—"}</td>
                     <td style={rightTdStyle}>{money(row.claimAmount)}</td>
                     <td style={rightTdStyle}>{money(row.balancePresuit)}</td>
                     <td style={tdStyle}>
-                      <a href={`/matter/${row.id}`} style={openLinkStyle}>Open Matter</a>
+                      <a href={`/matter/${row.id}`} className="barsh-filter-open-link" style={openLinkStyle}>
+                        Open Matter
+                      </a>
                     </td>
                   </tr>
                 ))}
@@ -469,6 +544,22 @@ const eyebrowStyle: React.CSSProperties = {
   marginBottom: 8,
 };
 
+const filterBadgeStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  width: "fit-content",
+  padding: "4px 9px",
+  border: "1px solid #dbe3ee",
+  borderRadius: 999,
+  background: "#f8fafc",
+  color: colors.subtle,
+  fontSize: 10,
+  fontWeight: 950,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  marginBottom: 8,
+};
+
 const titleStyle: React.CSSProperties = {
   margin: 0,
   fontSize: 30,
@@ -511,13 +602,14 @@ const backButtonStyle: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   padding: "12px 18px",
-  border: "1px solid #cbd5e1",
+  border: "1px solid #b6c7e3",
   borderRadius: 16,
-  background: "#ffffff",
-  color: colors.ink,
+  background: "#f8fbff",
+  color: colors.blueDark,
   textDecoration: "none",
   fontWeight: 900,
   fontSize: 14,
+  transition: "background 140ms ease, border-color 140ms ease, transform 140ms ease",
 };
 
 const tablePanelStyle: React.CSSProperties = {
@@ -570,14 +662,15 @@ const matterLinkStyle: React.CSSProperties = {
 
 const openLinkStyle: React.CSSProperties = {
   display: "inline-flex",
-  padding: "7px 10px",
-  border: "1px solid #cbd5e1",
+  padding: "8px 11px",
+  border: "1px solid #b6c7e3",
   borderRadius: 10,
   color: colors.blueDark,
   textDecoration: "none",
   fontWeight: 900,
-  background: "#ffffff",
+  background: "#f8fbff",
   whiteSpace: "nowrap",
+  transition: "background 140ms ease, border-color 140ms ease, transform 140ms ease",
 };
 
 const errorStyle: React.CSSProperties = {
@@ -597,4 +690,12 @@ const emptyStyle: React.CSSProperties = {
   background: "#f8fafc",
   color: colors.muted,
   fontSize: 14,
+};
+
+const fieldLinkStyle: React.CSSProperties = {
+  color: colors.ink,
+  fontWeight: 800,
+  textDecoration: "underline",
+  textDecorationThickness: 1,
+  textUnderlineOffset: 3,
 };

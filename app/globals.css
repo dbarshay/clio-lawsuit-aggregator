@@ -195,3 +195,14 @@ body {
   width: 14px !important;
   height: 14px !important;
 }
+
+/* BARSH MATTERS SORTABLE TABLE HEADERS */
+.barsh-main-matter-table th button:hover {
+  color: #1e3a8a !important;
+}
+
+.barsh-main-matter-table th button:focus-visible {
+  outline: 2px solid #93c5fd !important;
+  outline-offset: 2px !important;
+  border-radius: 6px !important;
+}

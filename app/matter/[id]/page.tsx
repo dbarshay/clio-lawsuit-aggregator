@@ -194,6 +194,26 @@ const VENUE_OPTIONS = [
 
 type AmountSoughtMode = "balance_presuit" | "claim_amount" | "custom";
 
+type MatterSortKey =
+  | "matter"
+  | "patient"
+  | "provider"
+  | "insurer"
+  | "dos"
+  | "claim"
+  | "payment"
+  | "balance"
+  | "denial"
+  | "status"
+  | "finalStatus";
+
+type MatterSortDirection = "asc" | "desc";
+
+type MatterSortConfig = {
+  key: MatterSortKey;
+  direction: MatterSortDirection;
+};
+
 type LawsuitOptions = {
   venue: string;
   venueOther: string;
@@ -445,6 +465,7 @@ const activeGroupKey =
   const [closing, setClosing] = useState(false);
   const [closeMatterTarget, setCloseMatterTarget] = useState<any>(null);
   const [showClosed, setShowClosed] = useState(true);
+  const [matterSort, setMatterSort] = useState<MatterSortConfig | null>(null);
   const [showLawsuitOptionsModal, setShowLawsuitOptionsModal] = useState(false);
   const [lawsuitOptions, setLawsuitOptions] = useState<LawsuitOptions>(() =>
     defaultLawsuitOptions()
@@ -2292,36 +2313,101 @@ const activeGroupKey =
     );
   }, [rows, selected]);
 
+  function matterSortValue(row: any, key: MatterSortKey) {
+    if (key === "matter") return textValue(row?.displayNumber);
+    if (key === "patient") return textValue(row?.patient);
+    if (key === "provider") return providerValue(row);
+    if (key === "insurer") return insurerValue(row);
+    if (key === "dos") return textValue(row?.dosStart) || textValue(row?.dosEnd);
+    if (key === "claim") return num(row?.claimAmount);
+    if (key === "payment") return num(row?.paymentVoluntary);
+    if (key === "balance") return num(row?.claimAmount) - num(row?.paymentVoluntary);
+    if (key === "denial") return denialReasonValue(row);
+    if (key === "status") return textValue(row?.matterStage?.name);
+    if (key === "finalStatus") return textValue(row?.closeReason || "");
+    return "";
+  }
+
+  function compareMatterSortValues(a: any, b: any, key: MatterSortKey) {
+    const av = matterSortValue(a, key);
+    const bv = matterSortValue(b, key);
+
+    if (typeof av === "number" || typeof bv === "number") {
+      const an = Number(av || 0);
+      const bn = Number(bv || 0);
+      return an === bn ? 0 : an > bn ? 1 : -1;
+    }
+
+    const as = textValue(av).toLowerCase();
+    const bs = textValue(bv).toLowerCase();
+
+    if (as === bs) return 0;
+    if (!as) return 1;
+    if (!bs) return -1;
+
+    return as.localeCompare(bs, undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+  }
+
+  function requestMatterSort(key: MatterSortKey) {
+    setMatterSort((current) => {
+      if (!current || current.key !== key) {
+        return { key, direction: "asc" };
+      }
+
+      if (current.direction === "asc") {
+        return { key, direction: "desc" };
+      }
+
+      return null;
+    });
+  }
+
+  function matterSortIndicator(key: MatterSortKey) {
+    if (!matterSort || matterSort.key !== key) return "↕";
+    return matterSort.direction === "asc" ? "↑" : "↓";
+  }
+
   const displayRows = useMemo(() => {
     const sourceRows = (rows || []).filter((r: any) => {
       if (showClosed) return true;
       return !String(r.closeReason || "").trim();
     });
 
-    const reordered: any[] = [];
-    const grouped = new Map<string, any[]>();
+    let reordered: any[] = [];
 
-    for (const row of sourceRows) {
-      const key = String(row?.masterLawsuitId || "").trim();
+    if (matterSort) {
+      reordered = [...sourceRows].sort((a, b) => {
+        const result = compareMatterSortValues(a, b, matterSort.key);
+        return matterSort.direction === "asc" ? result : -result;
+      });
+    } else {
+      const grouped = new Map<string, any[]>();
 
-      if (!key) {
-        reordered.push(row);
-        continue;
+      for (const row of sourceRows) {
+        const key = String(row?.masterLawsuitId || "").trim();
+
+        if (!key) {
+          reordered.push(row);
+          continue;
+        }
+
+        const group = grouped.get(key) || [];
+        group.push(row);
+        grouped.set(key, group);
       }
 
-      const group = grouped.get(key) || [];
-      group.push(row);
-      grouped.set(key, group);
-    }
+      for (const group of grouped.values()) {
+        const master = group.find((row) => !!(row.isMaster || row.is_master));
 
-    for (const group of grouped.values()) {
-      const master = group.find((row) => !!(row.isMaster || row.is_master));
-
-      if (master) {
-        reordered.push(master);
-        reordered.push(...group.filter((row) => row !== master));
-      } else {
-        reordered.push(...group);
+        if (master) {
+          reordered.push(master);
+          reordered.push(...group.filter((row) => row !== master));
+        } else {
+          reordered.push(...group);
+        }
       }
     }
 
@@ -2331,11 +2417,13 @@ const activeGroupKey =
         index > 0 ? String(reordered[index - 1]?.masterLawsuitId || "").trim() : "";
 
       const startsNewGroup =
+        !matterSort &&
         index > 0 &&
         currentMaster !== prevMaster &&
         (currentMaster !== "" || prevMaster !== "");
 
       const showGroupLabel =
+        !matterSort &&
         currentMaster !== "" &&
         (index === 0 || currentMaster !== prevMaster);
 
@@ -2346,7 +2434,7 @@ const activeGroupKey =
         showGroupLabel,
       };
     });
-  }, [rows, showClosed]);
+  }, [rows, showClosed, matterSort]);
 
   const thStyle: React.CSSProperties = {
     border: "1px solid #bfbfbf",
@@ -2357,6 +2445,48 @@ const activeGroupKey =
     fontWeight: 700,
     background: "#f3f3f3",
   };
+
+  function matterSortHeader(label: string, key: MatterSortKey) {
+    const active = matterSort?.key === key;
+
+    return (
+      <button
+        type="button"
+        onClick={() => requestMatterSort(key)}
+        title={`Sort by ${label}`}
+        style={{
+          appearance: "none",
+          border: 0,
+          padding: 0,
+          margin: 0,
+          background: "transparent",
+          color: "inherit",
+          font: "inherit",
+          fontWeight: 900,
+          cursor: "pointer",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 5,
+          width: "100%",
+          lineHeight: 1.2,
+        }}
+      >
+        <span>{label}</span>
+        <span
+          aria-hidden="true"
+          style={{
+            color: active ? "#1e3a8a" : "#94a3b8",
+            fontSize: 12,
+            fontWeight: 950,
+          }}
+        >
+          {matterSortIndicator(key)}
+        </span>
+      </button>
+    );
+  }
+
 
   const tdStyle: React.CSSProperties = {
     border: "1px solid #bfbfbf",
@@ -7420,11 +7550,11 @@ const activeGroupKey =
                 >
                   <thead>
                     <tr>
-                      <th style={thStyle}>Matter</th>
-                      <th style={thStyle}>Patient</th>
-                      <th style={thStyle}>Provider</th>
+                      <th style={thStyle}>{matterSortHeader("Matter", "matter")}</th>
+                      <th style={thStyle}>{matterSortHeader("Patient", "patient")}</th>
+                      <th style={thStyle}>{matterSortHeader("Provider", "provider")}</th>
                       <th style={thStyle}>DOS</th>
-                      <th style={thStyle}>Claim Amount</th>
+                      <th style={thStyle}>{matterSortHeader("Claim Amount", "claim")}</th>
                       <th style={thStyle}>Balance Presuit</th>
                     </tr>
                   </thead>
@@ -7486,17 +7616,17 @@ const activeGroupKey =
         <thead>
           <tr>
             <th style={thStyle}>Select</th>
-            <th style={thStyle}>Matter</th>
-            <th style={thStyle}>Patient</th>
-            <th style={thStyle}>Provider</th>
-            <th style={thStyle}>Insurer</th>
-            <th style={thStyle}>Date of Service</th>
+            <th style={thStyle}>{matterSortHeader("Matter", "matter")}</th>
+            <th style={thStyle}>{matterSortHeader("Patient", "patient")}</th>
+            <th style={thStyle}>{matterSortHeader("Provider", "provider")}</th>
+            <th style={thStyle}>{matterSortHeader("Insurer", "insurer")}</th>
+            <th style={thStyle}>{matterSortHeader("Date of Service", "dos")}</th>
             <th style={thStyle}>Claim Amount</th>
-            <th style={thStyle}>Payment (Voluntary)</th>
-            <th style={thStyle}>Balance (Presuit)</th>
-            <th style={thStyle}>Denial Reason</th>
-            <th style={thStyle}>Status</th>
-            <th style={thStyle}>Final Status</th>
+            <th style={thStyle}>{matterSortHeader("Payment (Voluntary)", "payment")}</th>
+            <th style={thStyle}>{matterSortHeader("Balance (Presuit)", "balance")}</th>
+            <th style={thStyle}>{matterSortHeader("Denial Reason", "denial")}</th>
+            <th style={thStyle}>{matterSortHeader("Status", "status")}</th>
+            <th style={thStyle}>{matterSortHeader("Final Status", "finalStatus")}</th>
             <th style={thStyle}>Actions</th>
           </tr>
         </thead>

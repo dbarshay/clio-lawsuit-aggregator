@@ -349,17 +349,19 @@ async function getEntryTypeaheadResults(qInput: string): Promise<{
   const kind = classifySearch(q);
 
   if (kind === "brl_matter" || kind === "numeric_ambiguous") {
-    const matterDisplay = kind === "brl_matter" ? normalizeBrlMatterInput(q) : numericToBrlMatter(q);
-    const matterPrefix = compact(matterDisplay);
-    const matters = await fetchMatterByDisplayNumber(matterDisplay);
     const mapped: MatterResult[] = [];
 
-    for (const row of matters) {
-      const rowDisplay = compact(displayNumber(row));
-      if (!rowDisplay.startsWith(matterPrefix)) continue;
+    try {
+      const prefixRows = await fetchFastRows(
+        `/api/claim-index/by-display-prefix?prefix=${encodeURIComponent(q)}&limit=8`
+      );
 
-      const mappedRow = toMatterResult(row, "Matter number");
-      if (mappedRow) mapped.push(await hydrateMatterResultFromContext(mappedRow, "Matter number"));
+      for (const row of prefixRows) {
+        const mappedRow = toMatterResult(row, "Matter number");
+        if (mappedRow) mapped.push(mappedRow);
+      }
+    } catch {
+      // Continue to claim lookup for numeric inputs.
     }
 
     if (kind === "numeric_ambiguous") {

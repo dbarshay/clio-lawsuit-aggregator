@@ -2254,11 +2254,111 @@ const activeGroupKey =
     !!currentSettlementValuesResult?.ok &&
     Array.isArray(currentSettlementValuesResult?.rows);
 
+  const cents = (value: any) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.round(n * 100) : null;
+  };
+
+  const expectedSettlementRows = Array.isArray(settlementPreviewResult?.rows)
+    ? settlementPreviewResult.rows
+    : [];
+
+  const currentSettlementRows = Array.isArray(currentSettlementValuesResult?.rows)
+    ? currentSettlementValuesResult.rows
+    : [];
+
+  const settlementValueComparisonFields = [
+    {
+      label: "Settled Amount",
+      expected: (row: any) => row?.clioWritebackPreview?.fields?.SETTLED_AMOUNT,
+      actual: (row: any) => row?.settledAmount,
+    },
+    {
+      label: "Allocated Settlement",
+      expected: (row: any) => row?.allocatedSettlement,
+      actual: (row: any) => row?.allocatedSettlement,
+    },
+    {
+      label: "Interest Amount",
+      expected: (row: any) => row?.interestAmount,
+      actual: (row: any) => row?.interestAmount,
+    },
+    {
+      label: "Principal Fee",
+      expected: (row: any) => row?.principalFee,
+      actual: (row: any) => row?.principalFee,
+    },
+    {
+      label: "Interest Fee",
+      expected: (row: any) => row?.interestFee,
+      actual: (row: any) => row?.interestFee,
+    },
+    {
+      label: "Total Fee",
+      expected: (row: any) => row?.totalFee,
+      actual: (row: any) => row?.totalFee,
+    },
+    {
+      label: "Provider Net",
+      expected: (row: any) => row?.providerNet,
+      actual: (row: any) => row?.providerNet,
+    },
+    {
+      label: "Provider Principal Net",
+      expected: (row: any) => row?.providerPrincipalNet,
+      actual: (row: any) => row?.providerPrincipalNet,
+    },
+    {
+      label: "Provider Interest Net",
+      expected: (row: any) => row?.providerInterestNet,
+      actual: (row: any) => row?.providerInterestNet,
+    },
+  ];
+
+  const expectedRowsByMatterId = new Map(
+    expectedSettlementRows
+      .map((row: any) => [String(row?.matterId || ""), row])
+      .filter(([matterId]: any) => matterId)
+  );
+
+  const currentRowsByMatterId = new Map(
+    currentSettlementRows
+      .map((row: any) => [String(row?.matterId || ""), row])
+      .filter(([matterId]: any) => matterId)
+  );
+
+  const settlementValueComparisonMismatches: string[] = [];
+
+  if (settlementValuesWrittenToClio && currentClioValuesLoaded) {
+    for (const [matterId, expectedRow] of expectedRowsByMatterId.entries()) {
+      const currentRow = currentRowsByMatterId.get(matterId);
+
+      if (!currentRow) {
+        settlementValueComparisonMismatches.push(
+          `Matter ${textValue((expectedRow as any)?.displayNumber) || matterId} is missing from current Clio readback.`
+        );
+        continue;
+      }
+
+      for (const field of settlementValueComparisonFields) {
+        const expectedValue = cents(field.expected(expectedRow));
+        const actualValue = cents(field.actual(currentRow));
+
+        if (expectedValue !== actualValue) {
+          settlementValueComparisonMismatches.push(
+            `${textValue((expectedRow as any)?.displayNumber) || matterId}: ${field.label} expected ${money(Number(expectedValue ?? 0) / 100)} but Clio shows ${money(Number(actualValue ?? 0) / 100)}.`
+          );
+        }
+      }
+    }
+  }
+
   const currentClioValuesMatchExpected =
     settlementValuesWrittenToClio &&
     currentClioValuesLoaded &&
-    Array.isArray(currentSettlementValuesResult?.rows) &&
-    currentSettlementValuesResult.rows.length > 0;
+    expectedRowsByMatterId.size > 0 &&
+    currentRowsByMatterId.size > 0 &&
+    settlementValueComparisonMismatches.length === 0;
 
   const childBillMattersEligibleToClose =
     !!settlementClosePreviewResult?.ok &&
@@ -2303,10 +2403,12 @@ const activeGroupKey =
       label: "Current Clio values match expected settlement values",
       done: currentClioValuesMatchExpected,
       detail: currentClioValuesMatchExpected
-        ? "Current Clio readback is loaded after settlement writeback."
-        : currentClioValuesLoaded
-          ? "Current Clio values are loaded.  Save settlement values first, then refresh/read back for final comparison."
-          : "Refresh Current Clio Settlement Values after saving.",
+        ? `Current Clio readback matches expected settlement values for ${num(expectedRowsByMatterId.size)} child/bill matter(s).`
+        : settlementValueComparisonMismatches.length > 0
+          ? `${num(settlementValueComparisonMismatches.length)} mismatch(es) found.  Review Current Clio Settlement Values and refresh after any correction.`
+          : currentClioValuesLoaded
+            ? "Current Clio values are loaded.  Save settlement values first, then refresh/read back for exact value comparison."
+            : "Refresh Current Clio Settlement Values after saving.",
     },
     {
       label: "Payment confirmed",
@@ -3044,6 +3146,33 @@ const activeGroupKey =
                 </div>
               ))}
             </div>
+
+            {settlementValueComparisonMismatches.length > 0 && (
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: 10,
+                  border: "1px solid #fecaca",
+                  background: "#fef2f2",
+                  color: "#991b1b",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  lineHeight: 1.45,
+                }}
+              >
+                <div style={{ fontWeight: 900, marginBottom: 4 }}>Current Clio Value Mismatch Details</div>
+                <ul style={{ margin: "0 0 0 18px", padding: 0 }}>
+                  {settlementValueComparisonMismatches.slice(0, 8).map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
+                {settlementValueComparisonMismatches.length > 8 && (
+                  <div style={{ marginTop: 4 }}>
+                    Plus {num(settlementValueComparisonMismatches.length - 8)} additional mismatch(es).
+                  </div>
+                )}
+              </div>
+            )}
 
             <div style={{ marginTop: 10, color: "#92400e", fontSize: 12, lineHeight: 1.45 }}>
               Closure remains separate from settlement writeback: payment must be confirmed before Close Paid

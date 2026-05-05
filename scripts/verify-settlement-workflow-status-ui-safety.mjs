@@ -23,6 +23,29 @@ const requiredMarkers = [
   "master matters remain excluded",
   "already closed/final-status matters remain blocked",
   'gridTemplateColumns: "repeat(2, minmax(0, 1fr))"',
+
+  "const cents = (value: any)",
+  "settlementValueComparisonFields",
+  "settlementValueComparisonMismatches",
+  "expectedRowsByMatterId",
+  "currentRowsByMatterId",
+  "field.expected(expectedRow)",
+  "field.actual(currentRow)",
+  "expectedValue !== actualValue",
+  "Current Clio Value Mismatch Details",
+  "exact value comparison",
+  "Current Clio readback matches expected settlement values",
+  "mismatch(es) found",
+
+  "SETTLED_AMOUNT",
+  "allocatedSettlement",
+  "interestAmount",
+  "principalFee",
+  "interestFee",
+  "totalFee",
+  "providerNet",
+  "providerPrincipalNet",
+  "providerInterestNet",
 ];
 
 const missing = requiredMarkers.filter((marker) => !page.includes(marker));
@@ -76,4 +99,6 @@ console.log("Settlement Workflow Status UI safety verifier passed.");
 console.log("- Checklist markers present.");
 console.log("- Current Clio Settlement Values appears after the status panel.");
 console.log("- 2-column layout marker present.");
+console.log("- Real expected-vs-current settlement value comparison markers present.");
+console.log("- Mismatch-details UI marker present.");
 console.log("- No direct API/writeback/document/print-queue action markers found in the status panel region.");

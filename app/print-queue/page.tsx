@@ -177,7 +177,46 @@ export default function PrintQueuePage() {
 
   return (
     <main style={{ padding: 20, maxWidth: 1600, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", marginBottom: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          gap: 10,
+          marginBottom: 10,
+        }}
+      >
+        <a href="/" title="Return to Barsh Matters entry screen" style={{ display: "inline-flex", textDecoration: "none" }}>
+          <img
+            src="/barsh-matters-header-logo.jpg"
+            alt="Barsh Matters Logo"
+            style={{ width: 190, height: "auto", display: "block", maxWidth: "100%" }}
+          />
+        </a>
+        <a
+          href="/print-queue"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "8px 12px",
+            border: "1px solid #cbd5e1",
+            borderRadius: 999,
+            background: "#ffffff",
+            color: "#0f172a",
+            fontSize: 13,
+            fontWeight: 850,
+            whiteSpace: "nowrap",
+            textDecoration: "none",
+          }}
+        >
+          Print Queue
+        </a>
+      </div>
+
+
+
+<div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", marginBottom: 12 }}>
         <div>
           <h1 style={{ fontSize: 24, margin: "0 0 6px 0" }}>Daily Print Queue</h1>
           <div style={{ color: "#475569", fontSize: 13 }}>

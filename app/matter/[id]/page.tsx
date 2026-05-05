@@ -328,6 +328,42 @@ const bmStatCardStyle: React.CSSProperties = {
   boxShadow: "0 6px 18px rgba(15, 23, 42, 0.05)",
 };
 
+const bmGlobalTopBarStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "flex-end",
+  alignItems: "center",
+  gap: 10,
+  marginBottom: 10,
+};
+
+const bmGlobalLogoStyle: React.CSSProperties = {
+  width: 190,
+  height: "auto",
+  display: "block",
+  maxWidth: "100%",
+};
+
+const bmGlobalLogoLinkStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  textDecoration: "none",
+};
+
+const bmGlobalPrintQueueStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "8px 12px",
+  border: "1px solid #cbd5e1",
+  borderRadius: 999,
+  background: "#ffffff",
+  color: bmColors.ink,
+  fontSize: 13,
+  fontWeight: 850,
+  whiteSpace: "nowrap",
+  textDecoration: "none",
+};
+
 function parseMoneyInput(v: string): number | null {
   const cleaned = String(v || "").replace(/[$,\s]/g, "");
   if (!cleaned) return null;
@@ -344,6 +380,8 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
 
   const [matter, setMatter] = useState<any>(null);
   const [rows, setRows] = useState<any[]>([]);
+  const [matterHydrationLoading, setMatterHydrationLoading] = useState(false);
+  const [matterHydrationError, setMatterHydrationError] = useState("");
   const [selected, setSelected] = useState<number[]>([]);
 
 const selectedRows = useMemo(() => {
@@ -445,18 +483,28 @@ const activeGroupKey =
     if (!matterId) return;
 
     async function load() {
-      const baseResponse = await fetch(
-        `/api/clio/matter-context?matterId=${matterId}`
-      ).then((r) => r.json());
+      setMatterHydrationLoading(true);
+      setMatterHydrationError("");
 
-      const siblingsResponse = await fetch(
-        `/api/aggregation/find-siblings?matterId=${matterId}`
-      ).then((r) => r.json());
+      try {
+        const baseResponse = await fetch(
+          `/api/clio/matter-context?matterId=${matterId}`,
+          { cache: "no-store" }
+        ).then((r) => r.json());
 
-      const base = baseResponse?.matter || null;
-      const siblings = Array.isArray(siblingsResponse?.siblings)
-        ? siblingsResponse.siblings
-        : [];
+        const siblingsResponse = await fetch(
+          `/api/aggregation/find-siblings?matterId=${matterId}`,
+          { cache: "no-store" }
+        ).then((r) => r.json());
+
+        if (!baseResponse?.ok) {
+          throw new Error(baseResponse?.error || "Matter context refresh from Clio failed.");
+        }
+
+        const base = baseResponse?.matter || null;
+        const siblings = Array.isArray(siblingsResponse?.siblings)
+          ? siblingsResponse.siblings
+          : [];
 
       const all: any[] = [];
       const seen = new Set<number>();
@@ -526,6 +574,11 @@ const activeGroupKey =
           return row && !isAggregated(row) && isSelectable(row);
         })
       );
+      } catch (err: any) {
+        setMatterHydrationError(err?.message || "Matter workspace refresh from Clio failed.");
+      } finally {
+        setMatterHydrationLoading(false);
+      }
     }
 
     load();
@@ -2499,7 +2552,7 @@ const activeGroupKey =
 
     <main
       style={{
-        padding: "28px 24px 40px",
+        padding: "18px 24px 40px",
         maxWidth: 1360,
         margin: "0 auto",
         fontFamily:
@@ -2510,6 +2563,34 @@ const activeGroupKey =
         minHeight: "100vh",
        }}
     >
+      <div style={bmGlobalTopBarStyle}>
+        <a href="/" title="Return to Barsh Matters entry screen" style={bmGlobalLogoLinkStyle}>
+          <img src="/barsh-matters-header-logo.jpg" alt="Barsh Matters Logo" style={bmGlobalLogoStyle} />
+        </a>
+        <a href="/print-queue" style={bmGlobalPrintQueueStyle}>
+          Print Queue
+        </a>
+      </div>
+
+
+
+{(matterHydrationLoading || matterHydrationError) && (
+        <div
+          style={{
+            margin: "0 0 14px",
+            padding: "10px 12px",
+            border: "1px solid " + (matterHydrationError ? "#fecaca" : "#bfdbfe"),
+            borderRadius: 14,
+            background: matterHydrationError ? "#fef2f2" : "#eff6ff",
+            color: matterHydrationError ? "#991b1b" : "#1e3a8a",
+            fontSize: 13,
+            fontWeight: 800,
+          }}
+        >
+          {matterHydrationError || "Refreshing matter workspace from Clio..."}
+        </div>
+      )}
+
       <div
         style={{
           display: "grid",

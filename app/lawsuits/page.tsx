@@ -207,9 +207,48 @@ export default function LawsuitsPage() {
       <div
         style={{
           display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          gap: 10,
+          marginBottom: 10,
+        }}
+      >
+        <a href="/" title="Return to Barsh Matters entry screen" style={{ display: "inline-flex", textDecoration: "none" }}>
+          <img
+            src="/barsh-matters-header-logo.jpg"
+            alt="Barsh Matters Logo"
+            style={{ width: 190, height: "auto", display: "block", maxWidth: "100%" }}
+          />
+        </a>
+        <a
+          href="/print-queue"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "8px 12px",
+            border: "1px solid #cbd5e1",
+            borderRadius: 999,
+            background: "#ffffff",
+            color: "#0f172a",
+            fontSize: 13,
+            fontWeight: 850,
+            whiteSpace: "nowrap",
+            textDecoration: "none",
+          }}
+        >
+          Print Queue
+        </a>
+      </div>
+
+
+
+<div
+        style={{
+          display: "flex",
           justifyContent: "space-between",
           alignItems: "flex-start",
-          gap: 12,
+          gap: 10,
           marginBottom: 12,
         }}
       >

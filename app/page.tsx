@@ -708,6 +708,27 @@ export default function Home() {
           </div>
         </section>
 
+          <style jsx global>{`
+            .barsh-suggestion-row:hover,
+            .barsh-result-row:hover {
+              background: #f8fbff !important;
+              border-color: #c7d7ef !important;
+              box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06) !important;
+              transform: translateY(-1px);
+            }
+
+            .barsh-field-link:hover {
+              color: #1e3a8a !important;
+              text-decoration-thickness: 2px !important;
+            }
+
+            .barsh-open-link:hover {
+              background: #eff6ff !important;
+              border-color: #93b4e8 !important;
+              transform: translateY(-1px);
+            }
+          `}</style>
+
         <section style={lookupPanelStyle}>
           <label style={fieldStyle}>
             <span style={labelStyle}>Enter Matter Number or Search</span>
@@ -730,7 +751,7 @@ export default function Home() {
                   <div>
                     <div style={typeaheadHeadingStyle}>Quick Suggestions</div>
                     <div style={typeaheadHelpTextStyle}>
-                      Choose a field below to narrow results, or open the matter directly.
+                      Open a matter, or click a field to view matching matters.
                     </div>
                   </div>
 
@@ -746,7 +767,7 @@ export default function Home() {
                 {suggestions.length > 0 && (
                   <div style={typeaheadListStyle}>
                     {suggestions.map((row) => (
-                      <div key={`suggestion-${row.id}`} style={typeaheadRowStyle}>
+                      <div key={`suggestion-${row.id}`} className="barsh-suggestion-row" style={typeaheadRowStyle}>
                         <div style={{ minWidth: 0 }}>
                           <div style={typeaheadTopLineStyle}>
                             <a href={`/matter/${row.id}`} style={typeaheadTitleLinkStyle}>
@@ -761,7 +782,7 @@ export default function Home() {
                               {row.patient ? (
                                 <a
                                   href={filteredSearchUrl(row.patient, "Patient")}
-                                  style={typeaheadFieldLinkStyle}
+                                  className="barsh-field-link" style={typeaheadFieldLinkStyle}
                                   title={`Show all matters for patient ${row.patient}`}
                                 >
                                   {row.patient}
@@ -776,7 +797,7 @@ export default function Home() {
                               {row.provider ? (
                                 <a
                                   href={filteredSearchUrl(row.provider, "Provider")}
-                                  style={typeaheadFieldLinkStyle}
+                                  className="barsh-field-link" style={typeaheadFieldLinkStyle}
                                   title={`Show all matters for provider ${row.provider}`}
                                 >
                                   {row.provider}
@@ -791,7 +812,7 @@ export default function Home() {
                               {row.insurer ? (
                                 <a
                                   href={filteredSearchUrl(row.insurer, "Insurer")}
-                                  style={typeaheadFieldLinkStyle}
+                                  className="barsh-field-link" style={typeaheadFieldLinkStyle}
                                   title={`Show all matters for insurer ${row.insurer}`}
                                 >
                                   {row.insurer}
@@ -806,7 +827,7 @@ export default function Home() {
                               {row.claimNumber ? (
                                 <a
                                   href={filteredSearchUrl(row.claimNumber, "Claim number")}
-                                  style={typeaheadFieldLinkStyle}
+                                  className="barsh-field-link" style={typeaheadFieldLinkStyle}
                                   title={`Show all matters for claim ${row.claimNumber}`}
                                 >
                                   {row.claimNumber}
@@ -820,7 +841,7 @@ export default function Home() {
 
                         <div style={typeaheadRightStyle}>
                           <span style={typeaheadAmountStyle}>{money(row.claimAmount)}</span>
-                          <a href={`/matter/${row.id}`} style={typeaheadOpenLinkStyle}>
+                          <a href={`/matter/${row.id}`} className="barsh-open-link" style={typeaheadOpenLinkStyle}>
                             Open Matter
                           </a>
                         </div>
@@ -850,7 +871,7 @@ export default function Home() {
             {results.length > 0 && (
               <div style={{ display: "grid", gap: 10 }}>
                 {results.map((row) => (
-                  <div key={row.id} style={resultRowStyle}>
+                  <div key={row.id} className="barsh-result-row" style={resultRowStyle}>
                     <div style={{ minWidth: 0 }}>
                       <div style={resultTopLineStyle}>
                         <a href={`/matter/${row.id}`} style={matterTitleLinkStyle}>
@@ -863,7 +884,7 @@ export default function Home() {
                         <div style={typeaheadFieldStyle}>
                           <span style={typeaheadFieldLabelStyle}>Patient</span>
                           {row.patient ? (
-                            <a href={filteredSearchUrl(row.patient, "Patient")} style={resultFieldLinkStyle}>
+                            <a href={filteredSearchUrl(row.patient, "Patient")} className="barsh-field-link" style={resultFieldLinkStyle}>
                               {row.patient}
                             </a>
                           ) : (
@@ -874,7 +895,7 @@ export default function Home() {
                         <div style={typeaheadFieldStyle}>
                           <span style={typeaheadFieldLabelStyle}>Provider</span>
                           {row.provider ? (
-                            <a href={filteredSearchUrl(row.provider, "Provider")} style={resultFieldLinkStyle}>
+                            <a href={filteredSearchUrl(row.provider, "Provider")} className="barsh-field-link" style={resultFieldLinkStyle}>
                               {row.provider}
                             </a>
                           ) : (
@@ -885,7 +906,7 @@ export default function Home() {
                         <div style={typeaheadFieldStyle}>
                           <span style={typeaheadFieldLabelStyle}>Insurer</span>
                           {row.insurer ? (
-                            <a href={filteredSearchUrl(row.insurer, "Insurer")} style={resultFieldLinkStyle}>
+                            <a href={filteredSearchUrl(row.insurer, "Insurer")} className="barsh-field-link" style={resultFieldLinkStyle}>
                               {row.insurer}
                             </a>
                           ) : (
@@ -896,7 +917,7 @@ export default function Home() {
                         <div style={typeaheadFieldStyle}>
                           <span style={typeaheadFieldLabelStyle}>Claim</span>
                           {row.claimNumber ? (
-                            <a href={filteredSearchUrl(row.claimNumber, "Claim number")} style={resultFieldLinkStyle}>
+                            <a href={filteredSearchUrl(row.claimNumber, "Claim number")} className="barsh-field-link" style={resultFieldLinkStyle}>
                               {row.claimNumber}
                             </a>
                           ) : (
@@ -913,7 +934,7 @@ export default function Home() {
 
                     <div style={resultAmountStyle}>
                       <span style={typeaheadAmountStyle}>{money(row.claimAmount)}</span>
-                      <a href={`/matter/${row.id}`} style={typeaheadOpenLinkStyle}>
+                      <a href={`/matter/${row.id}`} className="barsh-open-link" style={typeaheadOpenLinkStyle}>
                         Open Matter
                       </a>
                     </div>
@@ -959,7 +980,7 @@ const topBarStyle: React.CSSProperties = {
   gridTemplateColumns: "306px minmax(0, 1fr) 430px",
   alignItems: "start",
   gap: 24,
-  marginBottom: 24,
+  marginBottom: 14,
 };
 
 const leftLogoWrapStyle: React.CSSProperties = {
@@ -975,13 +996,13 @@ const centerCaricatureWrapStyle: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   alignSelf: "center",
-  minHeight: 204,
+  minHeight: 218,
   padding: "0 8px",
 };
 
 const headerCaricatureStyle: React.CSSProperties = {
-  width: 306,
-  height: 204,
+  width: 326,
+  height: 218,
   objectFit: "contain",
   objectPosition: "center center",
   borderRadius: 18,
@@ -1159,6 +1180,7 @@ const resultRowStyle: React.CSSProperties = {
   borderRadius: 16,
   background: "#ffffff",
   color: colors.ink,
+  transition: "background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease",
 };
 
 const matterTitleStyle: React.CSSProperties = {
@@ -1264,6 +1286,7 @@ const typeaheadRowStyle: React.CSSProperties = {
   background: "#ffffff",
   color: colors.ink,
   boxShadow: "0 1px 2px rgba(15, 23, 42, 0.03)",
+  transition: "background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease",
 };
 
 
@@ -1409,13 +1432,15 @@ const typeaheadOpenLinkStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  padding: "7px 10px",
-  border: "1px solid #cbd5e1",
-  borderRadius: 10,
-  background: "#ffffff",
+  padding: "8px 12px",
+  border: "1px solid #b6c7e3",
+  borderRadius: 11,
+  background: "#f8fbff",
   color: colors.blueDark,
   fontSize: 12,
   fontWeight: 950,
   textDecoration: "none",
   whiteSpace: "nowrap",
+  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+  transition: "background 140ms ease, border-color 140ms ease, transform 140ms ease",
 };

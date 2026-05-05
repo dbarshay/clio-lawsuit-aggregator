@@ -679,6 +679,15 @@ export default function Home() {
             <img src="/brl-logo.png" alt="BRL Logo" style={brlLogoStyle} />
           </div>
 
+          
+          <div style={centerCaricatureWrapStyle}>
+            <img
+              src="/header-caricature.png"
+              alt="Header caricature"
+              style={headerCaricatureStyle}
+            />
+          </div>
+
           <div style={rightTopWrapStyle}>
             <div style={printButtonRowStyle}>
               <button
@@ -718,18 +727,20 @@ export default function Home() {
             {clean(query).length >= 2 && !searched && (
               <div style={typeaheadSuggestionBoxStyle}>
                 <div style={typeaheadHeaderStyle}>
-                  <span>Suggestions</span>
-                  <span>
-                    {suggestionsLoading
-                      ? "Searching..."
-                      : suggestionLabel
-                        ? `Checked: ${suggestionLabel}.`
-                        : "Type to search."}
+                  <div>
+                    <div style={typeaheadHeadingStyle}>Quick Suggestions</div>
+                    <div style={typeaheadHelpTextStyle}>
+                      Choose a field below to narrow results, or open the matter directly.
+                    </div>
+                  </div>
+
+                  <span style={typeaheadStatusStyle}>
+                    {suggestionsLoading ? "Searching..." : ""}
                   </span>
                 </div>
 
                 {!suggestionsLoading && suggestions.length === 0 && (
-                  <div style={typeaheadEmptyStyle}>No quick suggestions yet.</div>
+                  <div style={typeaheadEmptyStyle}>No quick suggestions yet.  Keep typing, or press Search for a full lookup.</div>
                 )}
 
                 {suggestions.length > 0 && (
@@ -737,71 +748,80 @@ export default function Home() {
                     {suggestions.map((row) => (
                       <div key={`suggestion-${row.id}`} style={typeaheadRowStyle}>
                         <div style={{ minWidth: 0 }}>
-                          <a href={`/matter/${row.id}`} style={typeaheadTitleLinkStyle}>
-                            {row.displayNumber || row.id}
-                          </a>
+                          <div style={typeaheadTopLineStyle}>
+                            <a href={`/matter/${row.id}`} style={typeaheadTitleLinkStyle}>
+                              {row.displayNumber || row.id}
+                            </a>
+                            {row.matchedBy && <span style={typeaheadMatchedBadgeStyle}>{row.matchedBy}</span>}
+                          </div>
 
-                          <div style={typeaheadMetaStyle}>
-                            {row.patient ? (
-                              <a
-                                href={filteredSearchUrl(row.patient, "Patient")}
-                                style={typeaheadFieldLinkStyle}
-                                title={`Show all matters for patient ${row.patient}`}
-                              >
-                                {row.patient}
-                              </a>
-                            ) : (
-                              <span>No patient</span>
-                            )}
+                          <div style={typeaheadMetaGridStyle}>
+                            <div style={typeaheadFieldStyle}>
+                              <span style={typeaheadFieldLabelStyle}>Patient</span>
+                              {row.patient ? (
+                                <a
+                                  href={filteredSearchUrl(row.patient, "Patient")}
+                                  style={typeaheadFieldLinkStyle}
+                                  title={`Show all matters for patient ${row.patient}`}
+                                >
+                                  {row.patient}
+                                </a>
+                              ) : (
+                                <span style={typeaheadMissingStyle}>No patient</span>
+                              )}
+                            </div>
 
-                            <span> · </span>
+                            <div style={typeaheadFieldStyle}>
+                              <span style={typeaheadFieldLabelStyle}>Provider</span>
+                              {row.provider ? (
+                                <a
+                                  href={filteredSearchUrl(row.provider, "Provider")}
+                                  style={typeaheadFieldLinkStyle}
+                                  title={`Show all matters for provider ${row.provider}`}
+                                >
+                                  {row.provider}
+                                </a>
+                              ) : (
+                                <span style={typeaheadMissingStyle}>No provider</span>
+                              )}
+                            </div>
 
-                            {row.provider ? (
-                              <a
-                                href={filteredSearchUrl(row.provider, "Provider")}
-                                style={typeaheadFieldLinkStyle}
-                                title={`Show all matters for provider ${row.provider}`}
-                              >
-                                {row.provider}
-                              </a>
-                            ) : (
-                              <span>No provider</span>
-                            )}
+                            <div style={typeaheadFieldStyle}>
+                              <span style={typeaheadFieldLabelStyle}>Insurer</span>
+                              {row.insurer ? (
+                                <a
+                                  href={filteredSearchUrl(row.insurer, "Insurer")}
+                                  style={typeaheadFieldLinkStyle}
+                                  title={`Show all matters for insurer ${row.insurer}`}
+                                >
+                                  {row.insurer}
+                                </a>
+                              ) : (
+                                <span style={typeaheadMissingStyle}>No insurer</span>
+                              )}
+                            </div>
 
-                            <span> · </span>
-
-                            {row.insurer ? (
-                              <a
-                                href={filteredSearchUrl(row.insurer, "Insurer")}
-                                style={typeaheadFieldLinkStyle}
-                                title={`Show all matters for insurer ${row.insurer}`}
-                              >
-                                {row.insurer}
-                              </a>
-                            ) : (
-                              <span>No insurer</span>
-                            )}
-
-                            <span> · Claim: </span>
-
-                            {row.claimNumber ? (
-                              <a
-                                href={filteredSearchUrl(row.claimNumber, "Claim number")}
-                                style={typeaheadFieldLinkStyle}
-                                title={`Show all matters for claim ${row.claimNumber}`}
-                              >
-                                {row.claimNumber}
-                              </a>
-                            ) : (
-                              <span>—</span>
-                            )}
+                            <div style={typeaheadFieldStyle}>
+                              <span style={typeaheadFieldLabelStyle}>Claim</span>
+                              {row.claimNumber ? (
+                                <a
+                                  href={filteredSearchUrl(row.claimNumber, "Claim number")}
+                                  style={typeaheadFieldLinkStyle}
+                                  title={`Show all matters for claim ${row.claimNumber}`}
+                                >
+                                  {row.claimNumber}
+                                </a>
+                              ) : (
+                                <span style={typeaheadMissingStyle}>—</span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
                         <div style={typeaheadRightStyle}>
-                          <span>{money(row.claimAmount)}</span>
+                          <span style={typeaheadAmountStyle}>{money(row.claimAmount)}</span>
                           <a href={`/matter/${row.id}`} style={typeaheadOpenLinkStyle}>
-                            Open
+                            Open Matter
                           </a>
                         </div>
                       </div>
@@ -832,58 +852,67 @@ export default function Home() {
                 {results.map((row) => (
                   <div key={row.id} style={resultRowStyle}>
                     <div style={{ minWidth: 0 }}>
-                      <a href={`/matter/${row.id}`} style={matterTitleLinkStyle}>
-                        {row.displayNumber || row.id}
-                      </a>
-
-                      <div style={matterMetaStyle}>
-                        {row.patient ? (
-                          <a href={filteredSearchUrl(row.patient, "Patient")} style={resultFieldLinkStyle}>
-                            {row.patient}
-                          </a>
-                        ) : (
-                          <span>No patient</span>
-                        )}
-
-                        <span> · </span>
-
-                        {row.provider ? (
-                          <a href={filteredSearchUrl(row.provider, "Provider")} style={resultFieldLinkStyle}>
-                            {row.provider}
-                          </a>
-                        ) : (
-                          <span>No provider</span>
-                        )}
-
-                        <span> · </span>
-
-                        {row.insurer ? (
-                          <a href={filteredSearchUrl(row.insurer, "Insurer")} style={resultFieldLinkStyle}>
-                            {row.insurer}
-                          </a>
-                        ) : (
-                          <span>No insurer</span>
-                        )}
+                      <div style={resultTopLineStyle}>
+                        <a href={`/matter/${row.id}`} style={matterTitleLinkStyle}>
+                          {row.displayNumber || row.id}
+                        </a>
+                        {row.matchedBy && <span style={typeaheadMatchedBadgeStyle}>{row.matchedBy}</span>}
                       </div>
 
-                      <div style={matterSubMetaStyle}>
-                        Claim:{" "}
-                        {row.claimNumber ? (
-                          <a href={filteredSearchUrl(row.claimNumber, "Claim number")} style={resultFieldLinkStyle}>
-                            {row.claimNumber}
-                          </a>
-                        ) : (
-                          "—"
-                        )}
-                        {" · "}
-                        Master Lawsuit: {row.masterLawsuitId || "—"}
-                        {" · "}
-                        Matched by: {row.matchedBy}
+                      <div style={resultMetaGridStyle}>
+                        <div style={typeaheadFieldStyle}>
+                          <span style={typeaheadFieldLabelStyle}>Patient</span>
+                          {row.patient ? (
+                            <a href={filteredSearchUrl(row.patient, "Patient")} style={resultFieldLinkStyle}>
+                              {row.patient}
+                            </a>
+                          ) : (
+                            <span style={typeaheadMissingStyle}>No patient</span>
+                          )}
+                        </div>
+
+                        <div style={typeaheadFieldStyle}>
+                          <span style={typeaheadFieldLabelStyle}>Provider</span>
+                          {row.provider ? (
+                            <a href={filteredSearchUrl(row.provider, "Provider")} style={resultFieldLinkStyle}>
+                              {row.provider}
+                            </a>
+                          ) : (
+                            <span style={typeaheadMissingStyle}>No provider</span>
+                          )}
+                        </div>
+
+                        <div style={typeaheadFieldStyle}>
+                          <span style={typeaheadFieldLabelStyle}>Insurer</span>
+                          {row.insurer ? (
+                            <a href={filteredSearchUrl(row.insurer, "Insurer")} style={resultFieldLinkStyle}>
+                              {row.insurer}
+                            </a>
+                          ) : (
+                            <span style={typeaheadMissingStyle}>No insurer</span>
+                          )}
+                        </div>
+
+                        <div style={typeaheadFieldStyle}>
+                          <span style={typeaheadFieldLabelStyle}>Claim</span>
+                          {row.claimNumber ? (
+                            <a href={filteredSearchUrl(row.claimNumber, "Claim number")} style={resultFieldLinkStyle}>
+                              {row.claimNumber}
+                            </a>
+                          ) : (
+                            <span style={typeaheadMissingStyle}>—</span>
+                          )}
+                        </div>
+
+                        <div style={typeaheadFieldStyle}>
+                          <span style={typeaheadFieldLabelStyle}>Master Lawsuit</span>
+                          <span>{row.masterLawsuitId || "—"}</span>
+                        </div>
                       </div>
                     </div>
 
                     <div style={resultAmountStyle}>
-                      <span>{money(row.claimAmount)}</span>
+                      <span style={typeaheadAmountStyle}>{money(row.claimAmount)}</span>
                       <a href={`/matter/${row.id}`} style={typeaheadOpenLinkStyle}>
                         Open Matter
                       </a>
@@ -938,6 +967,24 @@ const leftLogoWrapStyle: React.CSSProperties = {
   display: "flex",
   justifyContent: "flex-start",
   alignItems: "flex-start",
+};
+
+const centerCaricatureWrapStyle: React.CSSProperties = {
+  gridColumn: "2",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  alignSelf: "center",
+  minHeight: 204,
+  padding: "0 8px",
+};
+
+const headerCaricatureStyle: React.CSSProperties = {
+  width: 306,
+  height: 204,
+  objectFit: "contain",
+  objectPosition: "center center",
+  borderRadius: 18,
 };
 
 const rightTopWrapStyle: React.CSSProperties = {
@@ -1130,13 +1177,6 @@ const matterTitleLinkStyle: React.CSSProperties = {
   textDecoration: "none",
 };
 
-const resultFieldLinkStyle: React.CSSProperties = {
-  color: "inherit",
-  fontWeight: 850,
-  textDecoration: "underline",
-  textDecorationThickness: 1,
-  textUnderlineOffset: 3,
-};
 
 const matterMetaStyle: React.CSSProperties = {
   color: colors.ink,
@@ -1169,7 +1209,27 @@ const typeaheadSuggestionBoxStyle: React.CSSProperties = {
   padding: 12,
   border: "1px solid #dbe3ee",
   borderRadius: 18,
-  background: "#f8fafc",
+  background: "linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)",
+};
+
+const typeaheadHeadingStyle: React.CSSProperties = {
+  color: colors.ink,
+  fontSize: 13,
+  fontWeight: 950,
+  letterSpacing: "0.02em",
+};
+
+const typeaheadHelpTextStyle: React.CSSProperties = {
+  marginTop: 3,
+  color: colors.subtle,
+  fontSize: 12,
+  fontWeight: 650,
+};
+
+const typeaheadStatusStyle: React.CSSProperties = {
+  color: colors.subtle,
+  fontSize: 12,
+  fontWeight: 850,
 };
 
 const typeaheadHeaderStyle: React.CSSProperties = {
@@ -1197,37 +1257,17 @@ const typeaheadRowStyle: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) auto",
   alignItems: "center",
-  gap: 12,
-  padding: "10px 12px",
+  gap: 16,
+  padding: "12px 14px",
   border: "1px solid #e5e7eb",
-  borderRadius: 14,
+  borderRadius: 16,
   background: "#ffffff",
   color: colors.ink,
+  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.03)",
 };
 
-const typeaheadTitleLinkStyle: React.CSSProperties = {
-  display: "inline-flex",
-  color: colors.blueDark,
-  fontSize: 16,
-  fontWeight: 950,
-  marginBottom: 3,
-  textDecoration: "none",
-};
 
-const typeaheadFieldLinkStyle: React.CSSProperties = {
-  color: colors.ink,
-  fontWeight: 850,
-  textDecoration: "underline",
-  textDecorationThickness: 1,
-  textUnderlineOffset: 3,
-};
 
-const typeaheadOpenLinkStyle: React.CSSProperties = {
-  color: colors.muted,
-  fontSize: 12,
-  fontWeight: 900,
-  textDecoration: "none",
-};
 
 const typeaheadTextButtonStyle: React.CSSProperties = {
   appearance: "none",
@@ -1261,4 +1301,121 @@ const typeaheadRightStyle: React.CSSProperties = {
   color: colors.muted,
   fontSize: 12,
   fontWeight: 800,
+};
+
+
+const typeaheadTopLineStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  marginBottom: 8,
+};
+
+const resultTopLineStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  marginBottom: 8,
+};
+
+const typeaheadTitleLinkStyle: React.CSSProperties = {
+  display: "inline-flex",
+  color: colors.blueDark,
+  fontSize: 17,
+  fontWeight: 950,
+  textDecoration: "none",
+};
+
+const typeaheadMatchedBadgeStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "3px 7px",
+  border: "1px solid #dbe3ee",
+  borderRadius: 999,
+  background: "#f8fafc",
+  color: colors.subtle,
+  fontSize: 10,
+  fontWeight: 900,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+};
+
+const typeaheadMetaGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(120px, 0.85fr) minmax(190px, 1.2fr) minmax(160px, 1fr) minmax(95px, 0.5fr)",
+  gap: 10,
+  alignItems: "start",
+};
+
+const resultMetaGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(120px, 0.85fr) minmax(190px, 1.2fr) minmax(160px, 1fr) minmax(95px, 0.5fr) minmax(120px, 0.65fr)",
+  gap: 10,
+  alignItems: "start",
+};
+
+const typeaheadFieldStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 3,
+  minWidth: 0,
+};
+
+const typeaheadFieldLabelStyle: React.CSSProperties = {
+  color: colors.subtle,
+  fontSize: 10,
+  fontWeight: 950,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+
+const typeaheadFieldLinkStyle: React.CSSProperties = {
+  color: colors.ink,
+  fontSize: 13,
+  fontWeight: 850,
+  textDecoration: "underline",
+  textDecorationThickness: 1,
+  textUnderlineOffset: 3,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
+const resultFieldLinkStyle: React.CSSProperties = {
+  color: colors.ink,
+  fontSize: 13,
+  fontWeight: 850,
+  textDecoration: "underline",
+  textDecorationThickness: 1,
+  textUnderlineOffset: 3,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
+const typeaheadMissingStyle: React.CSSProperties = {
+  color: colors.subtle,
+  fontSize: 13,
+  fontWeight: 700,
+};
+
+const typeaheadAmountStyle: React.CSSProperties = {
+  color: colors.muted,
+  fontSize: 13,
+  fontWeight: 900,
+  fontVariantNumeric: "tabular-nums",
+};
+
+const typeaheadOpenLinkStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "7px 10px",
+  border: "1px solid #cbd5e1",
+  borderRadius: 10,
+  background: "#ffffff",
+  color: colors.blueDark,
+  fontSize: 12,
+  fontWeight: 950,
+  textDecoration: "none",
+  whiteSpace: "nowrap",
 };

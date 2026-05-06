@@ -201,8 +201,41 @@ function filteredUrl(kind: FilterKind, value: string) {
   return `/matters?${params.toString()}`;
 }
 
+type WorkflowKind = "patient" | "claim" | "";
+
+function getWorkflowFromUrl(): WorkflowKind {
+  if (typeof window === "undefined") return "";
+
+  const params = new URLSearchParams(window.location.search);
+  const workflow = String(params.get("workflow") || "").trim().toLowerCase();
+
+  if (workflow === "patient") return "patient";
+  if (workflow === "claim") return "claim";
+
+  return "";
+}
+
+function workflowTitle(workflowKind: WorkflowKind, kind: FilterKind | "", value: string) {
+  if (workflowKind === "patient") return `Patient Workflow: ${value}`;
+  if (workflowKind === "claim") return `Claim Workflow: ${value}`;
+  return filterTitle(kind, value);
+}
+
+function workflowNote(workflowKind: WorkflowKind) {
+  if (workflowKind === "patient") {
+    return "Patient-level working view.  Use this screen to review all matching patient matters without cluttering the direct matter workspace.";
+  }
+
+  if (workflowKind === "claim") {
+    return "Claim-level working view.  Use this screen to review all matching claim matters and open the appropriate direct matter, patient view, claim view, or lawsuit group.";
+  }
+
+  return "";
+}
+
 export default function FilteredMattersPage() {
   const [kind, setKind] = useState<FilterKind | "">("");
+  const [workflowKind, setWorkflowKind] = useState<WorkflowKind>("");
   const [value, setValue] = useState("");
   const [rows, setRows] = useState<MatterRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -221,8 +254,10 @@ export default function FilteredMattersPage() {
   useEffect(() => {
     async function load() {
       const filter = getFilterFromUrl();
+      const workflow = getWorkflowFromUrl();
 
       setKind(filter.kind);
+      setWorkflowKind(workflow);
       setValue(filter.value);
       setLoading(true);
       setError("");
@@ -320,10 +355,24 @@ export default function FilteredMattersPage() {
           <div>
             <div style={eyebrowStyle}>BARSH MATTERS FILTERED RESULTS</div>
             {kind && value && <div style={filterBadgeStyle}>{filterLabel(kind)} Filter</div>}
-            <h1 style={titleStyle}>{filterTitle(kind, value)}</h1>
+            <h1 style={titleStyle}>{workflowTitle(workflowKind, kind, value)}</h1>
             <div style={subTitleStyle}>
               {loading ? "Loading matching matters..." : `${rows.length} matching matter${rows.length === 1 ? "" : "s"} found.`}
             </div>
+
+            {workflowKind && (
+              <div style={workflowBannerStyle}>
+                <div>
+                  <div style={workflowBannerEyebrowStyle}>
+                    {workflowKind === "patient" ? "Launched Patient Workflow" : "Launched Claim Workflow"}
+                  </div>
+                  <div style={workflowBannerTextStyle}>{workflowNote(workflowKind)}</div>
+                </div>
+                <div style={workflowBannerPillStyle}>
+                  Review · Open · Route
+                </div>
+              </div>
+            )}
           </div>
 
           <div style={summaryStatsStyle}>
@@ -425,9 +474,29 @@ export default function FilteredMattersPage() {
                     <td style={rightTdStyle}>{money(row.claimAmount)}</td>
                     <td style={rightTdStyle}>{money(row.balancePresuit)}</td>
                     <td style={tdStyle}>
-                      <a href={`/matter/${row.id}`} className="barsh-filter-open-link" style={openLinkStyle}>
-                        Open Matter
-                      </a>
+                      <div style={actionStackStyle}>
+                        <a href={`/matter/${row.id}`} className="barsh-filter-open-link" style={openLinkStyle}>
+                          Open Matter
+                        </a>
+
+                        {row.patient && (
+                          <a href={`/matters?workflow=patient&patient=${encodeURIComponent(row.patient)}&fromMatter=${encodeURIComponent(String(row.id))}`} style={secondaryActionLinkStyle}>
+                            Launch Patient
+                          </a>
+                        )}
+
+                        {row.claimNumber && (
+                          <a href={`/matters?workflow=claim&claim=${encodeURIComponent(row.claimNumber)}&fromMatter=${encodeURIComponent(String(row.id))}`} style={secondaryActionLinkStyle}>
+                            Launch Claim
+                          </a>
+                        )}
+
+                        {row.masterLawsuitId && (
+                          <a href={filteredUrl("master", row.masterLawsuitId)} style={secondaryActionLinkStyle}>
+                            Open Lawsuit
+                          </a>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -704,4 +773,60 @@ const fieldLinkStyle: React.CSSProperties = {
   textDecoration: "underline",
   textDecorationThickness: 1,
   textUnderlineOffset: 3,
+};
+
+
+const workflowBannerStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 16,
+  marginTop: 14,
+  padding: "14px 16px",
+  border: "1px solid #bfdbfe",
+  borderRadius: 18,
+  background: "#eff6ff",
+  color: "#0f172a",
+};
+
+const workflowBannerEyebrowStyle: React.CSSProperties = {
+  marginBottom: 4,
+  color: "#1d4ed8",
+  fontSize: 12,
+  fontWeight: 950,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+
+const workflowBannerTextStyle: React.CSSProperties = {
+  color: "#334155",
+  fontSize: 13,
+  fontWeight: 650,
+  lineHeight: 1.45,
+};
+
+const workflowBannerPillStyle: React.CSSProperties = {
+  flex: "0 0 auto",
+  padding: "7px 11px",
+  borderRadius: 999,
+  background: "#ffffff",
+  border: "1px solid #bfdbfe",
+  color: "#1d4ed8",
+  fontSize: 12,
+  fontWeight: 900,
+  whiteSpace: "nowrap",
+};
+
+const actionStackStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  gap: 6,
+};
+
+const secondaryActionLinkStyle: React.CSSProperties = {
+  color: "#1d4ed8",
+  textDecoration: "none",
+  fontWeight: 850,
+  fontSize: 12,
 };

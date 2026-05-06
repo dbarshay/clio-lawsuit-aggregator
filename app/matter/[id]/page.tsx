@@ -3234,16 +3234,16 @@ const activeGroupKey =
         <div className="barsh-direct-launch-row">
           <a
             className="barsh-direct-launch-button"
-            href={`/matters?patient=${encodeURIComponent(textValue(matter?.patient?.name || matter?.patient))}`}
-            title="Open all matters matching this patient."
+            href={`/matters?workflow=patient&patient=${encodeURIComponent(textValue(matter?.patient?.name || matter?.patient))}&fromMatter=${encodeURIComponent(textValue(matter?.id))}`}
+            title="Open patient-level workflow view."
           >
             Launch Patient
           </a>
 
           <a
             className="barsh-direct-launch-button"
-            href={`/matters?claim=${encodeURIComponent(textValue(matter?.claimNumber))}`}
-            title="Open all matters matching this claim number."
+            href={`/matters?workflow=claim&claim=${encodeURIComponent(textValue(matter?.claimNumber))}&fromMatter=${encodeURIComponent(textValue(matter?.id))}`}
+            title="Open claim-level workflow view."
           >
             Launch Claim
           </a>

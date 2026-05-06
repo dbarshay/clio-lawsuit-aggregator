@@ -37,6 +37,7 @@ type AdvancedSearchFields = {
   dosEnd: string;
   denialReason: string;
   status: string;
+  closeReason: string;
   finalStatus: string;
 };
 
@@ -77,6 +78,7 @@ function emptyAdvancedSearchFields(): AdvancedSearchFields {
     dosEnd: "",
     denialReason: "",
     status: "",
+    closeReason: "",
     finalStatus: "",
   };
 }
@@ -195,6 +197,7 @@ const ADVANCED_SEARCH_FIELD_IDS = {
   denialReason: 22146035,
   indexAaaNumber: 22146050,
   finalStatus: 22145660,
+  closeReason: 22145660,
   dateOfLoss: 22405400,
   serviceType: 22146005,
   policyNumber: 22403975,
@@ -503,6 +506,7 @@ function advancedActualValuesFromMatter(row: any) {
     dosEnd: supportedDateValueFromMatter(row, ["dosEnd", "dos_end"]),
     denialReason: supportedFieldValueFromMatter(row, ["denialReason", "denial_reason"]),
     status: supportedFieldValueFromMatter(row, ["status", "matterStage", "matter_stage", "stage"]),
+    closeReason: supportedFieldValueFromMatter(row, ["closeReason", "close_reason", "finalStatus", "final_status"]),
     finalStatus: supportedFieldValueFromMatter(row, ["finalStatus", "final_status", "closeReason", "close_reason"]),
   };
 }
@@ -536,6 +540,10 @@ function advancedDisplayValue(label: string, value: any) {
     return picklistSearchTextForValue(ADVANCED_SEARCH_FIELD_IDS.denialReason, raw);
   }
 
+  if (label === "Close Reason") {
+    return picklistSearchTextForValue(ADVANCED_SEARCH_FIELD_IDS.closeReason, raw);
+  }
+
   if (label === "Final Status") {
     return picklistSearchTextForValue(ADVANCED_SEARCH_FIELD_IDS.finalStatus, raw);
   }
@@ -561,6 +569,7 @@ function advancedFieldReadbackRows(row: any) {
     ["DOS End", values.dosEnd],
     ["Denial Reason", values.denialReason],
     ["Status", values.status],
+    ["Close Reason", values.closeReason],
     ["Final Status", values.finalStatus],
   ];
 }
@@ -1481,6 +1490,13 @@ export default function Home() {
       ["finalStatus", "final_status", "closeReason", "close_reason"]
     )) return false;
 
+    if (!picklistFieldMatchesAnySource(
+      row,
+      ADVANCED_SEARCH_FIELD_IDS.closeReason,
+      fields.closeReason,
+      ["closeReason", "close_reason", "finalStatus", "final_status"]
+    )) return false;
+
     if (!supportedFieldMatches(row, fields.finalStatus, ["status"])) return false;
 
     return true;
@@ -1834,7 +1850,31 @@ export default function Home() {
               font-weight: 500 !important;
               opacity: 1 !important;
             }
-          `}</style>
+          
+
+            .barsh-prominent-select {
+              appearance: none !important;
+              -webkit-appearance: none !important;
+              -moz-appearance: none !important;
+              background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%231b2850' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
+              background-repeat: no-repeat !important;
+              background-position: right 16px center !important;
+              background-size: 18px 18px !important;
+              padding-right: 52px !important;
+              cursor: pointer !important;
+            }
+
+            .barsh-prominent-select:hover {
+              border-color: #93b4e8 !important;
+            }
+
+            .barsh-prominent-select:focus {
+              outline: none !important;
+              border-color: #93b4e8 !important;
+              box-shadow: 0 0 0 3px rgba(147, 180, 232, 0.18) !important;
+            }
+`}
+</style>
 
         <section style={lookupPanelStyle}>
           <div
@@ -2255,7 +2295,7 @@ export default function Home() {
 
                   <label style={structuredFieldStyle}>
                     <span style={labelStyle}>Service Type</span>
-                    <select
+                    <select className="barsh-prominent-select"
                       value={advancedFields.serviceType}
                       onChange={(e) => updateAdvancedField("serviceType", e.target.value)}
                       style={inputStyle}
@@ -2301,7 +2341,7 @@ export default function Home() {
 
                   <label style={structuredFieldStyle}>
                     <span style={labelStyle}>Denial Reason</span>
-                    <select
+                    <select className="barsh-prominent-select"
                       value={advancedFields.denialReason}
                       onChange={(e) => updateAdvancedField("denialReason", e.target.value)}
                       style={inputStyle}
@@ -2317,7 +2357,7 @@ export default function Home() {
 
                   <label style={structuredFieldStyle}>
                     <span style={labelStyle}>Status</span>
-                    <select
+                    <select className="barsh-prominent-select"
                       value={advancedFields.status}
                       onChange={(e) => updateAdvancedField("status", e.target.value)}
                       style={inputStyle}
@@ -2332,8 +2372,24 @@ export default function Home() {
                   </label>
 
                   <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>Close Reason</span>
+                    <select className="barsh-prominent-select"
+                      value={advancedFields.closeReason}
+                      onChange={(e) => updateAdvancedField("closeReason", e.target.value)}
+                      style={inputStyle}
+                    >
+                      <option value="">Any Close Reason</option>
+                      {finalStatusPicklistOptions.map((option) => (
+                        <option key={`close-reason-${option.value}`} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label style={structuredFieldStyle}>
                     <span style={labelStyle}>Final Status</span>
-                    <select
+                    <select className="barsh-prominent-select"
                       value={advancedFields.finalStatus}
                       onChange={(e) => updateAdvancedField("finalStatus", e.target.value)}
                       style={inputStyle}

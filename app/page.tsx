@@ -181,7 +181,7 @@ function statusFromMatter(m: any) {
 }
 
 function finalStatusFromMatter(m: any) {
-  return clean(m?.closeReason ?? m?.close_reason ?? m?.finalStatus ?? m?.final_status ?? "");
+  return clean(m?.status ?? m?.finalStatus ?? m?.final_status ?? "");
 }
 
 function denialReasonFromMatter(m: any) {
@@ -196,8 +196,7 @@ const ADVANCED_SEARCH_FIELD_IDS = {
   dosEnd: 22145975,
   denialReason: 22146035,
   indexAaaNumber: 22146050,
-  finalStatus: 22145660,
-  closeReason: 22145660,
+closeReason: 22145660,
   dateOfLoss: 22405400,
   serviceType: 22146005,
   policyNumber: 22403975,
@@ -338,10 +337,7 @@ const ADVANCED_SEARCH_PICKLIST_LABELS: Record<number, Record<string, string[]>> 
     "12498065": ["Fee Schedule / Coding", "Fee Schedule", "Coding"],
     "12498155": ["Fee Schedule / Coding", "Fee Schedule", "Coding"],
   },
-  [ADVANCED_SEARCH_FIELD_IDS.finalStatus]: {
-    "12497555": ["PAID (SETTLEMENT)", "Paid Settlement", "Settlement Paid"],
-    "12497450": ["Closed", "Closed / Final", "Final"],
-  },
+
 };
 
 function picklistSearchTextForValue(fieldId: number, rawValue: string) {
@@ -507,7 +503,7 @@ function advancedActualValuesFromMatter(row: any) {
     denialReason: supportedFieldValueFromMatter(row, ["denialReason", "denial_reason"]),
     status: supportedFieldValueFromMatter(row, ["status", "matterStage", "matter_stage", "stage"]),
     closeReason: supportedFieldValueFromMatter(row, ["closeReason", "close_reason", "finalStatus", "final_status"]),
-    finalStatus: supportedFieldValueFromMatter(row, ["finalStatus", "final_status", "closeReason", "close_reason"]),
+    finalStatus: supportedFieldValueFromMatter(row, ["status", "finalStatus", "final_status"]),
   };
 }
 
@@ -545,7 +541,7 @@ function advancedDisplayValue(label: string, value: any) {
   }
 
   if (label === "Final Status") {
-    return picklistSearchTextForValue(ADVANCED_SEARCH_FIELD_IDS.finalStatus, raw);
+    return picklistSearchTextForValue(ADVANCED_SEARCH_FIELD_IDS.closeReason, raw);
   }
 
   return raw;
@@ -963,6 +959,10 @@ export default function Home() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [denialReasonPicklistOptions, setDenialReasonPicklistOptions] =
     useState<AdvancedPicklistOption[]>(DENIAL_REASON_PICKLIST_OPTIONS);
+  const [statusPicklistOptions, setStatusPicklistOptions] =
+    useState<Array<{ value: string; label: string }>>([]);
+  const [closeReasonPicklistOptions, setCloseReasonPicklistOptions] =
+    useState<Array<{ value: string; label: string }>>([]);
   const [finalStatusPicklistOptions, setFinalStatusPicklistOptions] =
     useState<AdvancedPicklistOption[]>(FINAL_STATUS_PICKLIST_OPTIONS);
   const [serviceTypePicklistOptions, setServiceTypePicklistOptions] =
@@ -1160,6 +1160,14 @@ export default function Home() {
 
         if (Array.isArray(json?.denialReason?.options) && json.denialReason.options.length > 0) {
           setDenialReasonPicklistOptions(json.denialReason.options);
+        }
+
+        if (Array.isArray(json?.status?.options) && json.status.options.length > 0) {
+          setStatusPicklistOptions(json.status.options);
+        }
+
+        if (Array.isArray(json?.closeReason?.options) && json.closeReason.options.length > 0) {
+          setCloseReasonPicklistOptions(json.closeReason.options);
         }
 
         if (Array.isArray(json?.finalStatus?.options) && json.finalStatus.options.length > 0) {
@@ -1485,7 +1493,7 @@ export default function Home() {
 
     if (!picklistFieldMatchesAnySource(
       row,
-      ADVANCED_SEARCH_FIELD_IDS.finalStatus,
+      ADVANCED_SEARCH_FIELD_IDS.closeReason,
       fields.status,
       ["finalStatus", "final_status", "closeReason", "close_reason"]
     )) return false;
@@ -1497,7 +1505,7 @@ export default function Home() {
       ["closeReason", "close_reason", "finalStatus", "final_status"]
     )) return false;
 
-    if (!supportedFieldMatches(row, fields.finalStatus, ["status"])) return false;
+    if (!supportedFieldMatches(row, fields.finalStatus, ["status", "finalStatus", "final_status"])) return false;
 
     return true;
   }
@@ -2363,7 +2371,7 @@ export default function Home() {
                       style={inputStyle}
                     >
                       <option value="">Any Status</option>
-                      {finalStatusPicklistOptions.map((option) => (
+                      {statusPicklistOptions.map((option) => (
                         <option key={`status-${option.value}`} value={option.value}>
                           {option.label}
                         </option>
@@ -2379,7 +2387,7 @@ export default function Home() {
                       style={inputStyle}
                     >
                       <option value="">Any Close Reason</option>
-                      {finalStatusPicklistOptions.map((option) => (
+                      {closeReasonPicklistOptions.map((option) => (
                         <option key={`close-reason-${option.value}`} value={option.value}>
                           {option.label}
                         </option>

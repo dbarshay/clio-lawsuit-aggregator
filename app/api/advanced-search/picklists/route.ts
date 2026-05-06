@@ -5,9 +5,15 @@ export const dynamic = "force-dynamic";
 
 const FIELD_IDS = {
   denialReason: 22146035,
-  finalStatus: 22145660,
+  closeReason: 22145660,
   serviceType: 22146005,
 };
+
+const FINAL_STATUS_OPTIONS = [
+  { value: "Open", label: "Open" },
+  { value: "Pending", label: "Pending" },
+  { value: "Closed", label: "Closed" },
+];
 
 const FALLBACK_DENIAL_REASON_OPTIONS = [
   { value: "12497975", label: "Medical Necessity (IME)" },
@@ -28,7 +34,7 @@ const FALLBACK_DENIAL_REASON_OPTIONS = [
   { value: "12498230", label: "No Coverage (Not Eligible IP)" },
 ];
 
-const FALLBACK_FINAL_STATUS_OPTIONS = [
+const FALLBACK_CLOSE_REASON_OPTIONS = [
   { value: "12497450", label: "AAA- DECISION- DISMISSED WITH PREJUDICE" },
   { value: "12497465", label: "AAA- VOLUNTARILY WITHDRAWN WITH PREJUDICE" },
   { value: "12497480", label: "DISCONTINUED WITH PREJUDICE" },
@@ -154,8 +160,12 @@ async function fetchCustomFieldOptions(fieldId: number) {
 
 export async function GET() {
   const denial = await fetchCustomFieldOptions(FIELD_IDS.denialReason);
-  const finalStatus = await fetchCustomFieldOptions(FIELD_IDS.finalStatus);
+  const closeReason = await fetchCustomFieldOptions(FIELD_IDS.closeReason);
   const serviceType = await fetchCustomFieldOptions(FIELD_IDS.serviceType);
+
+  const closeReasonOptions = closeReason.options.length
+    ? closeReason.options
+    : FALLBACK_CLOSE_REASON_OPTIONS;
 
   return NextResponse.json({
     ok: true,
@@ -165,10 +175,28 @@ export async function GET() {
       options: denial.options.length ? denial.options : FALLBACK_DENIAL_REASON_OPTIONS,
       usedFallback: denial.options.length === 0,
     },
+    status: {
+      ...closeReason,
+      options: closeReasonOptions,
+      usedFallback: closeReason.options.length === 0,
+      sourceFieldId: FIELD_IDS.closeReason,
+      sourceFieldName: "CLOSE REASON (Litigation/Arbitration)",
+    },
+    closeReason: {
+      ...closeReason,
+      options: closeReasonOptions,
+      usedFallback: closeReason.options.length === 0,
+      sourceFieldId: FIELD_IDS.closeReason,
+      sourceFieldName: "CLOSE REASON (Litigation/Arbitration)",
+    },
     finalStatus: {
-      ...finalStatus,
-      options: finalStatus.options.length ? finalStatus.options : FALLBACK_FINAL_STATUS_OPTIONS,
-      usedFallback: finalStatus.options.length === 0,
+      ok: true,
+      fieldId: null,
+      fieldName: "Matter Status",
+      options: FINAL_STATUS_OPTIONS,
+      rawOptionCount: FINAL_STATUS_OPTIONS.length,
+      usedFallback: false,
+      error: null,
     },
     serviceType: {
       ...serviceType,

@@ -16,6 +16,18 @@ type MatterResult = {
   matchedBy: string;
 };
 
+type AdvancedSearchFields = {
+  patient: string;
+  provider: string;
+  insurer: string;
+  claim: string;
+  master: string;
+  indexAaa: string;
+  status: string;
+  finalStatus: string;
+  denialReason: string;
+};
+
 const colors = {
   ink: "#0f172a",
   muted: "#475569",
@@ -32,6 +44,20 @@ const colors = {
 
 function clean(v: any) {
   return String(v || "").trim();
+}
+
+function emptyAdvancedSearchFields(): AdvancedSearchFields {
+  return {
+    patient: "",
+    provider: "",
+    insurer: "",
+    claim: "",
+    master: "",
+    indexAaa: "",
+    status: "",
+    finalStatus: "",
+    denialReason: "",
+  };
 }
 
 function lower(v: any) {
@@ -116,6 +142,29 @@ function claimNumberFromMatter(m: any, fallbackClaimNumber = "") {
   );
 }
 
+function indexAaaNumberFromMatter(m: any) {
+  return clean(
+    m?.indexAaaNumber ??
+      m?.index_aaa_number ??
+      m?.indexAAANumber ??
+      m?.indexNumber ??
+      m?.index_number ??
+      ""
+  );
+}
+
+function statusFromMatter(m: any) {
+  return clean(m?.status ?? m?.matterStage ?? m?.matter_stage ?? m?.stage ?? "");
+}
+
+function finalStatusFromMatter(m: any) {
+  return clean(m?.closeReason ?? m?.close_reason ?? m?.finalStatus ?? m?.final_status ?? "");
+}
+
+function denialReasonFromMatter(m: any) {
+  return clean(m?.denialReason ?? m?.denial_reason ?? "");
+}
+
 function money(v: any) {
   const n = Number(v ?? 0);
   return Number.isFinite(n)
@@ -188,6 +237,25 @@ function dedupeMatterResults(rows: MatterResult[]) {
     if (!row.id || seen.has(row.id)) continue;
     seen.add(row.id);
     out.push(row);
+  }
+
+  return out;
+}
+
+function uniqueSuggestionValues(values: string[], limit = 12) {
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  for (const value of values) {
+    const cleanValue = clean(value);
+    const key = lower(cleanValue);
+
+    if (!cleanValue || seen.has(key)) continue;
+
+    seen.add(key);
+    out.push(cleanValue);
+
+    if (out.length >= limit) break;
   }
 
   return out;
@@ -388,6 +456,21 @@ async function getEntryTypeaheadResults(qInput: string): Promise<{
 
 export default function Home() {
   const [query, setQuery] = useState("");
+  const [brlNumberInput, setBrlNumberInput] = useState("");
+  const [lawsuitNumberInput, setLawsuitNumberInput] = useState("");
+  const [directPatientInput, setDirectPatientInput] = useState("");
+  const [directClaimInput, setDirectClaimInput] = useState("");
+  const [patientSearchInput, setPatientSearchInput] = useState("");
+  const [claimSearchInput, setClaimSearchInput] = useState("");
+  const [providerSearchInput, setProviderSearchInput] = useState("");
+  const [directPatientSuggestions, setDirectPatientSuggestions] = useState<string[]>([]);
+  const [patientSearchSuggestions, setPatientSearchSuggestions] = useState<string[]>([]);
+  const [claimSearchSuggestions, setClaimSearchSuggestions] = useState<string[]>([]);
+  const [providerSearchSuggestions, setProviderSearchSuggestions] = useState<string[]>([]);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [advancedFields, setAdvancedFields] = useState<AdvancedSearchFields>(() =>
+    emptyAdvancedSearchFields()
+  );
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
@@ -456,6 +539,114 @@ export default function Home() {
     }
   }, []);
 
+  async function loadPatientSuggestions(value: string, setter: React.Dispatch<React.SetStateAction<string[]>>) {
+    const q = clean(value);
+
+    if (q.length < 2) {
+      setter([]);
+      return;
+    }
+
+    try {
+      const rows = await fetchFastRows(`/api/claim-index/by-patient?name=${encodeURIComponent(q)}`);
+      setter(uniqueSuggestionValues(rows.map((row: any) => patientName(row))));
+    } catch {
+      setter([]);
+    }
+  }
+
+  async function loadClaimSuggestions(value: string) {
+    const q = clean(value);
+
+    if (q.length < 2) {
+      setClaimSearchSuggestions([]);
+      return;
+    }
+
+    try {
+      const rows = await fetchFastRows(`/api/claim-index/search?claim=${encodeURIComponent(q)}`);
+      setterClaimSuggestionsFromRows(rows);
+    } catch {
+      setClaimSearchSuggestions([]);
+    }
+  }
+
+  function setterClaimSuggestionsFromRows(rows: any[]) {
+    setClaimSearchSuggestions(uniqueSuggestionValues(rows.map((row: any) => claimNumberFromMatter(row))));
+  }
+
+  async function loadProviderSuggestions(value: string) {
+    const q = clean(value);
+
+    if (q.length < 2) {
+      setProviderSearchSuggestions([]);
+      return;
+    }
+
+    try {
+      const rows = await fetchFastRows(`/api/claim-index/by-provider?name=${encodeURIComponent(q)}`);
+      setProviderSearchSuggestions(uniqueSuggestionValues(rows.map((row: any) => providerName(row))));
+    } catch {
+      setProviderSearchSuggestions([]);
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    const value = directPatientInput;
+
+    const timer = window.setTimeout(() => {
+      if (!cancelled) void loadPatientSuggestions(value, setDirectPatientSuggestions);
+    }, 180);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [directPatientInput]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const value = patientSearchInput;
+
+    const timer = window.setTimeout(() => {
+      if (!cancelled) void loadPatientSuggestions(value, setPatientSearchSuggestions);
+    }, 180);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [patientSearchInput]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const value = claimSearchInput;
+
+    const timer = window.setTimeout(() => {
+      if (!cancelled) void loadClaimSuggestions(value);
+    }, 180);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [claimSearchInput]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const value = providerSearchInput;
+
+    const timer = window.setTimeout(() => {
+      if (!cancelled) void loadProviderSuggestions(value);
+    }, 180);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [providerSearchInput]);
+
   async function runSearch() {
     const q = clean(query);
 
@@ -485,12 +676,24 @@ export default function Home() {
 
   function resetSearch() {
     setQuery("");
+    setBrlNumberInput("");
+    setLawsuitNumberInput("");
+    setDirectPatientInput("");
+    setDirectClaimInput("");
+    setPatientSearchInput("");
+    setClaimSearchInput("");
+    setProviderSearchInput("");
+    setAdvancedFields(emptyAdvancedSearchFields());
     setLoading(false);
     setSearched(false);
     setError("");
     setResults([]);
     setCheckedLabel("");
     setSuggestions([]);
+    setDirectPatientSuggestions([]);
+    setPatientSearchSuggestions([]);
+    setClaimSearchSuggestions([]);
+    setProviderSearchSuggestions([]);
     setSuggestionLabel("");
     setSuggestionsLoading(false);
   }
@@ -671,6 +874,331 @@ export default function Home() {
     window.location.href = targetedSearchUrl(q, target);
   }
 
+  function normalizeBrlEntryInput(v: string) {
+    const digits = clean(v).replace(/^BRL/i, "").replace(/[^0-9]/g, "");
+    return digits;
+  }
+
+  function normalizeLawsuitNumberEntryInput(v: string) {
+    const digits = clean(v).replace(/[^0-9]/g, "").slice(0, 11);
+
+    if (digits.length <= 4) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 4)}.${digits.slice(4)}`;
+    return `${digits.slice(0, 4)}.${digits.slice(4, 6)}.${digits.slice(6)}`;
+  }
+
+  function updateAdvancedField<K extends keyof AdvancedSearchFields>(
+    key: K,
+    value: AdvancedSearchFields[K]
+  ) {
+    setAdvancedFields((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function advancedFieldCount(fields: AdvancedSearchFields) {
+    return Object.values(fields).filter((v) => clean(v)).length;
+  }
+
+  function rawMatterMatchesAdvanced(row: any, fields: AdvancedSearchFields) {
+    const patient = clean(fields.patient);
+    const provider = clean(fields.provider);
+    const insurer = clean(fields.insurer);
+    const claim = clean(fields.claim);
+    const master = clean(fields.master);
+    const indexAaa = clean(fields.indexAaa);
+    const status = clean(fields.status);
+    const finalStatus = clean(fields.finalStatus);
+    const denialReason = clean(fields.denialReason);
+
+    if (patient && !exactOrContains(patientName(row), patient)) return false;
+    if (provider && !exactOrContains(providerName(row), provider)) return false;
+    if (insurer && !exactOrContains(insurerName(row), insurer)) return false;
+    if (claim && !exactOrContains(claimNumberFromMatter(row), claim)) return false;
+    if (master && !exactOrContains(masterLawsuitId(row), master)) return false;
+    if (indexAaa && !exactOrContains(indexAaaNumberFromMatter(row), indexAaa)) return false;
+    if (status && !exactOrContains(statusFromMatter(row), status)) return false;
+    if (finalStatus && !exactOrContains(finalStatusFromMatter(row), finalStatus)) return false;
+    if (denialReason && !exactOrContains(denialReasonFromMatter(row), denialReason)) return false;
+
+    return true;
+  }
+
+  async function runBrlNumberSearch() {
+    const digits = normalizeBrlEntryInput(brlNumberInput);
+    const display = digits ? `BRL${digits}` : "";
+
+    setLoading(true);
+    setSearched(false);
+    setError("");
+    setResults([]);
+    setCheckedLabel("");
+    setSuggestions([]);
+    setSuggestionLabel("");
+    setSuggestionsLoading(false);
+
+    try {
+      if (!display) {
+        throw new Error("Enter the BRL number digits.");
+      }
+
+      const rows = await fetchMatterByDisplayNumber(display);
+      const exact = rows.find((row: any) => compact(displayNumber(row)) === compact(display));
+
+      if (!exact) {
+        throw new Error(`No exact matter found for ${display}.`);
+      }
+
+      const id = matterId(exact);
+
+      if (!id) {
+        throw new Error(`Matter ${display} was found, but no matter id was returned.`);
+      }
+
+      window.location.href = `/matter/${encodeURIComponent(id)}`;
+    } catch (e: any) {
+      setSearched(true);
+      setError(e?.message || "BRL lookup failed.");
+      setLoading(false);
+    }
+  }
+
+  async function runLawsuitNumberSearch() {
+    const q = clean(lawsuitNumberInput);
+
+    setLoading(true);
+    setSearched(false);
+    setError("");
+    setResults([]);
+    setCheckedLabel("");
+    setSuggestions([]);
+    setSuggestionLabel("");
+    setSuggestionsLoading(false);
+
+    try {
+      if (!q) {
+        throw new Error("Enter a lawsuit number.");
+      }
+
+      if (!isMasterLawsuitInput(q)) {
+        throw new Error("Enter the lawsuit number in YYYY.MM.NNNNN format.");
+      }
+
+      window.location.href = `/matters?master=${encodeURIComponent(q)}`;
+    } catch (e: any) {
+      setSearched(true);
+      setError(e?.message || "Lawsuit lookup failed.");
+      setLoading(false);
+    }
+  }
+
+  async function runPatientSearch() {
+    const q = clean(patientSearchInput);
+
+    setLoading(true);
+    setSearched(true);
+    setError("");
+    setResults([]);
+    setCheckedLabel("Patient");
+    setSuggestions([]);
+    setSuggestionLabel("");
+    setSuggestionsLoading(false);
+
+    try {
+      if (!q) {
+        throw new Error("Enter a patient name.");
+      }
+
+      const rows = await fetchFastRows(`/api/claim-index/by-patient?name=${encodeURIComponent(q)}`);
+      const mapped: MatterResult[] = [];
+
+      for (const row of rows) {
+        if (!exactOrContains(patientName(row), q)) continue;
+        const mappedRow = toMatterResult(row, "Patient");
+        if (mappedRow) mapped.push(mappedRow);
+      }
+
+      setResults(dedupeMatterResults(mapped));
+    } catch (e: any) {
+      setError(e?.message || "Patient search failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runClaimNumberSearch() {
+    const q = clean(claimSearchInput);
+
+    setLoading(true);
+    setSearched(true);
+    setError("");
+    setResults([]);
+    setCheckedLabel("Claim number");
+    setSuggestions([]);
+    setSuggestionLabel("");
+    setSuggestionsLoading(false);
+
+    try {
+      if (!q) {
+        throw new Error("Enter a claim number.");
+      }
+
+      const rows = await fetchFastRows(`/api/claim-index/by-claim?claimNumber=${encodeURIComponent(q)}`);
+      const mapped = rows
+        .map((row: any) => toMatterResult(row, "Claim number", q))
+        .filter(Boolean) as MatterResult[];
+
+      setResults(dedupeMatterResults(mapped));
+    } catch (e: any) {
+      setError(e?.message || "Claim search failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runProviderSearch() {
+    const q = clean(providerSearchInput);
+
+    setLoading(true);
+    setSearched(true);
+    setError("");
+    setResults([]);
+    setCheckedLabel("Provider");
+    setSuggestions([]);
+    setSuggestionLabel("");
+    setSuggestionsLoading(false);
+
+    try {
+      if (!q) {
+        throw new Error("Enter a provider name.");
+      }
+
+      const rows = await fetchFastRows(`/api/claim-index/by-provider?name=${encodeURIComponent(q)}`);
+      const mapped: MatterResult[] = [];
+
+      for (const row of rows) {
+        if (!exactOrContains(providerName(row), q)) continue;
+        const mappedRow = toMatterResult(row, "Provider");
+        if (mappedRow) mapped.push(mappedRow);
+      }
+
+      setResults(dedupeMatterResults(mapped));
+    } catch (e: any) {
+      setError(e?.message || "Provider search failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function launchDirectPatient() {
+    const q = clean(directPatientInput);
+    if (!q) return;
+    window.location.href = `/matters?workflow=patient&patient=${encodeURIComponent(q)}`;
+  }
+
+  function launchDirectClaim() {
+    const q = clean(directClaimInput);
+    if (!q) return;
+    window.location.href = `/matters?workflow=claim&claim=${encodeURIComponent(q)}`;
+  }
+
+  async function runMainCombinedSearch() {
+    const patient = clean(patientSearchInput);
+    const claim = clean(claimSearchInput);
+    const provider = clean(providerSearchInput);
+
+    setLoading(true);
+    setSearched(true);
+    setError("");
+    setResults([]);
+    setCheckedLabel("Combined search");
+    setSuggestions([]);
+    setSuggestionLabel("");
+    setSuggestionsLoading(false);
+
+    try {
+      if (!patient && !claim && !provider) {
+        throw new Error("Enter a patient, claim number, provider, or a combination of those fields.");
+      }
+
+      let rows: any[] = [];
+
+      if (claim) {
+        rows = await fetchFastRows(`/api/claim-index/by-claim?claimNumber=${encodeURIComponent(claim)}`);
+      } else if (patient) {
+        rows = await fetchFastRows(`/api/claim-index/by-patient?name=${encodeURIComponent(patient)}`);
+      } else {
+        rows = await fetchFastRows(`/api/claim-index/by-provider?name=${encodeURIComponent(provider)}`);
+      }
+
+      const mapped: MatterResult[] = [];
+
+      for (const row of rows) {
+        if (patient && !exactOrContains(patientName(row), patient)) continue;
+        if (claim && !exactOrContains(claimNumberFromMatter(row), claim)) continue;
+        if (provider && !exactOrContains(providerName(row), provider)) continue;
+
+        const mappedRow = toMatterResult(row, "Combined search", claim);
+        if (mappedRow) mapped.push(mappedRow);
+      }
+
+      setResults(dedupeMatterResults(mapped));
+    } catch (e: any) {
+      setError(e?.message || "Combined search failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runAdvancedSearch() {
+    const fields = advancedFields;
+    const count = advancedFieldCount(fields);
+
+    setLoading(true);
+    setSearched(true);
+    setError("");
+    setResults([]);
+    setCheckedLabel("Advanced search");
+    setSuggestions([]);
+    setSuggestionLabel("");
+    setSuggestionsLoading(false);
+
+    try {
+      if (count === 0) {
+        throw new Error("Enter at least one advanced search field.");
+      }
+
+      let rows: any[] = [];
+
+      if (clean(fields.master)) {
+        rows = await fetchFastRows(`/api/claim-index/by-master?masterLawsuitId=${encodeURIComponent(clean(fields.master))}`);
+      } else if (clean(fields.claim)) {
+        rows = await fetchFastRows(`/api/claim-index/by-claim?claimNumber=${encodeURIComponent(clean(fields.claim))}`);
+      } else if (clean(fields.patient)) {
+        rows = await fetchFastRows(`/api/claim-index/by-patient?name=${encodeURIComponent(clean(fields.patient))}`);
+      } else if (clean(fields.provider)) {
+        rows = await fetchFastRows(`/api/claim-index/by-provider?name=${encodeURIComponent(clean(fields.provider))}`);
+      } else if (clean(fields.insurer)) {
+        rows = await fetchFastRows(`/api/claim-index/search?insurer=${encodeURIComponent(clean(fields.insurer))}`);
+      } else {
+        throw new Error("Advanced search needs at least one primary field: Patient, Provider, Insurance Company, Claim Number, or Lawsuit Number.");
+      }
+
+      const mapped: MatterResult[] = [];
+
+      for (const row of rows) {
+        if (!rawMatterMatchesAdvanced(row, fields)) continue;
+        const mappedRow = toMatterResult(row, "Advanced search", clean(fields.claim));
+        if (mappedRow) mapped.push(mappedRow);
+      }
+
+      setResults(dedupeMatterResults(mapped));
+      setAdvancedOpen(false);
+    } catch (e: any) {
+      setError(e?.message || "Advanced search failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main style={pageStyle}>
       <div style={shellStyle}>
@@ -730,128 +1258,178 @@ export default function Home() {
           `}</style>
 
         <section style={lookupPanelStyle}>
-          <label style={fieldStyle}>
-            <span style={labelStyle}>Enter Matter Number or Search</span>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void runSearch();
+          <div
+            style={{
+              padding: 24,
+              border: "2px solid #cbd5e1",
+              borderRadius: 24,
+              background: "#ffffff",
+              boxShadow: "0 14px 34px rgba(15, 23, 42, 0.08)",
+            }}
+          >
+            <div
+              style={{
+                marginBottom: 16,
+                color: "#475569",
+                fontSize: 13,
+                fontWeight: 950,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
               }}
-              placeholder="BRL30095, 30095, 2026.05.00010, claim number, patient, or provider"
-              style={inputStyle}
-              autoFocus
-            />
-          </label>
+            >
+              Direct Entry
+            </div>
+
+            <div style={knownInformationGridStyle}>
+              <label style={structuredFieldStyle}>
+                <span style={labelStyle}>BRL Number</span>
+                <div style={brlInputWrapStyle}>
+                  <span style={brlPrefixStyle}>BRL</span>
+                  <input
+                    value={brlNumberInput}
+                    onChange={(e) => setBrlNumberInput(normalizeBrlEntryInput(e.target.value))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void runBrlNumberSearch();
+                    }}
+                    placeholder="30095"
+                    style={prefixedInputStyle}
+                    inputMode="numeric"
+                    autoFocus
+                  />
+                </div>
+              </label>
+
+              <label style={structuredFieldStyle}>
+                <span style={labelStyle}>Lawsuit Number</span>
+                <input
+                  value={lawsuitNumberInput}
+                  onChange={(e) => setLawsuitNumberInput(normalizeLawsuitNumberEntryInput(e.target.value))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void runLawsuitNumberSearch();
+                  }}
+                  placeholder="2026.05.00010"
+                  style={inputStyle}
+                  inputMode="numeric"
+                  maxLength={13}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginTop: 28,
+              padding: 24,
+              border: "2px solid #cbd5e1",
+              borderRadius: 24,
+              background: "#ffffff",
+              boxShadow: "0 14px 34px rgba(15, 23, 42, 0.08)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 16,
+                marginBottom: 16,
+              }}
+            >
+              <div
+                style={{
+                  color: "#475569",
+                  fontSize: 13,
+                  fontWeight: 950,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Search
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setAdvancedOpen(true)}
+                style={advancedSearchButtonStyle}
+              >
+                Advanced Search
+              </button>
+            </div>
+
+            <div style={mainPageSearchGridStyle}>
+              <label style={structuredFieldStyle}>
+                <span style={labelStyle}>Patient</span>
+                <input
+                  value={patientSearchInput}
+                  onChange={(e) => setPatientSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void runMainCombinedSearch();
+                  }}
+                  placeholder="Search patient"
+                  style={inputStyle}
+                  list="barsh-search-patient-suggestions"
+                />
+              </label>
+
+              <label style={structuredFieldStyle}>
+                <span style={labelStyle}>Claim Number</span>
+                <input
+                  value={claimSearchInput}
+                  onChange={(e) => setClaimSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void runMainCombinedSearch();
+                  }}
+                  placeholder="Search claim number"
+                  style={inputStyle}
+                  list="barsh-search-claim-suggestions"
+                />
+              </label>
+
+              <label style={structuredFieldStyle}>
+                <span style={labelStyle}>Provider</span>
+                <input
+                  value={providerSearchInput}
+                  onChange={(e) => setProviderSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void runMainCombinedSearch();
+                  }}
+                  placeholder="Search provider"
+                  style={inputStyle}
+                  list="barsh-search-provider-suggestions"
+                />
+              </label>
+            </div>
+
+            <datalist id="barsh-search-patient-suggestions">
+              {patientSearchSuggestions.map((value) => (
+                <option key={`search-patient-${value}`} value={value} />
+              ))}
+            </datalist>
+
+            <datalist id="barsh-search-claim-suggestions">
+              {claimSearchSuggestions.map((value) => (
+                <option key={`search-claim-${value}`} value={value} />
+              ))}
+            </datalist>
+
+            <datalist id="barsh-search-provider-suggestions">
+              {providerSearchSuggestions.map((value) => (
+                <option key={`search-provider-${value}`} value={value} />
+              ))}
+            </datalist>
+
+            <div style={structuredButtonGridStyle}>
+              <button type="button" onClick={runMainCombinedSearch} disabled={loading} style={primaryButtonStyle(loading)}>
+                Search
+              </button>
+
+              <button type="button" onClick={resetSearch} style={secondaryButtonStyle}>
+                Clear Results
+              </button>
+            </div>
+          </div>
 
           <div style={inlineResultAreaStyle}>
-            {clean(query).length >= 2 && !searched && (
-              <div style={typeaheadSuggestionBoxStyle}>
-                <div style={typeaheadHeaderStyle}>
-                  <div>
-                    <div style={typeaheadHeadingStyle}>Quick Suggestions</div>
-                    <div style={typeaheadHelpTextStyle}>
-                      Open a matter, or click a field to view matching matters.
-                    </div>
-                  </div>
-
-                  <span style={typeaheadStatusStyle}>
-                    {suggestionsLoading ? "Searching..." : ""}
-                  </span>
-                </div>
-
-                {!suggestionsLoading && suggestions.length === 0 && (
-                  <div style={typeaheadEmptyStyle}>No quick suggestions yet.  Keep typing, or press Search for a full lookup.</div>
-                )}
-
-                {suggestions.length > 0 && (
-                  <div style={typeaheadListStyle}>
-                    {suggestions.map((row) => (
-                      <div key={`suggestion-${row.id}`} className="barsh-suggestion-row" style={typeaheadRowStyle}>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={typeaheadTopLineStyle}>
-                            <a href={`/matter/${row.id}`} style={typeaheadTitleLinkStyle}>
-                              {row.displayNumber || row.id}
-                            </a>
-                            {row.matchedBy && <span style={typeaheadMatchedBadgeStyle}>{row.matchedBy}</span>}
-                          </div>
-
-                          <div style={typeaheadMetaGridStyle}>
-                            <div style={typeaheadFieldStyle}>
-                              <span style={typeaheadFieldLabelStyle}>Patient</span>
-                              {row.patient ? (
-                                <a
-                                  href={filteredSearchUrl(row.patient, "Patient")}
-                                  className="barsh-field-link" style={typeaheadFieldLinkStyle}
-                                  title={`Show all matters for patient ${row.patient}`}
-                                >
-                                  {row.patient}
-                                </a>
-                              ) : (
-                                <span style={typeaheadMissingStyle}>No patient</span>
-                              )}
-                            </div>
-
-                            <div style={typeaheadFieldStyle}>
-                              <span style={typeaheadFieldLabelStyle}>Provider</span>
-                              {row.provider ? (
-                                <a
-                                  href={filteredSearchUrl(row.provider, "Provider")}
-                                  className="barsh-field-link" style={typeaheadFieldLinkStyle}
-                                  title={`Show all matters for provider ${row.provider}`}
-                                >
-                                  {row.provider}
-                                </a>
-                              ) : (
-                                <span style={typeaheadMissingStyle}>No provider</span>
-                              )}
-                            </div>
-
-                            <div style={typeaheadFieldStyle}>
-                              <span style={typeaheadFieldLabelStyle}>Insurer</span>
-                              {row.insurer ? (
-                                <a
-                                  href={filteredSearchUrl(row.insurer, "Insurer")}
-                                  className="barsh-field-link" style={typeaheadFieldLinkStyle}
-                                  title={`Show all matters for insurer ${row.insurer}`}
-                                >
-                                  {row.insurer}
-                                </a>
-                              ) : (
-                                <span style={typeaheadMissingStyle}>No insurer</span>
-                              )}
-                            </div>
-
-                            <div style={typeaheadFieldStyle}>
-                              <span style={typeaheadFieldLabelStyle}>Claim</span>
-                              {row.claimNumber ? (
-                                <a
-                                  href={filteredSearchUrl(row.claimNumber, "Claim number")}
-                                  className="barsh-field-link" style={typeaheadFieldLinkStyle}
-                                  title={`Show all matters for claim ${row.claimNumber}`}
-                                >
-                                  {row.claimNumber}
-                                </a>
-                              ) : (
-                                <span style={typeaheadMissingStyle}>—</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div style={typeaheadRightStyle}>
-                          <span style={typeaheadAmountStyle}>{money(row.claimAmount)}</span>
-                          <a href={`/matter/${row.id}`} className="barsh-open-link" style={typeaheadOpenLinkStyle}>
-                            Open Matter
-                          </a>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
             {error && <div style={errorStyle}>{error}</div>}
 
             {searched && !loading && !error && (
@@ -863,8 +1441,7 @@ export default function Home() {
 
             {searched && !loading && !error && results.length === 0 && (
               <div style={emptyStyle}>
-                No matching matter was returned.  Try a BRL matter number, master lawsuit number, claim number,
-                patient name, or provider name.
+                No matching matter was returned.
               </div>
             )}
 
@@ -946,15 +1523,86 @@ export default function Home() {
             {loading && <div style={searchMetaStyle}>Searching...</div>}
           </div>
 
-          <div style={actionRowStyle}>
-            <button type="button" onClick={runSearch} disabled={loading} style={primaryButtonStyle(loading)}>
-              {loading ? "Searching..." : "Search"}
-            </button>
+          {advancedOpen && (
+            <div style={advancedOverlayStyle} role="dialog" aria-modal="true">
+              <div style={advancedModalStyle}>
+                <div style={advancedModalHeaderStyle}>
+                  <div>
+                    <div style={structuredSearchKickerStyle}>Advanced Search</div>
+                    <h2 style={advancedModalTitleStyle}>Combine Search Fields</h2>
+                    <div style={advancedModalHelpStyle}>
+                      Enter one or more fields.  Patient, Provider, Insurance Company, Claim Number, or Lawsuit Number should be used as the primary lookup field.
+                    </div>
+                  </div>
 
-            <button type="button" onClick={resetSearch} style={secondaryButtonStyle}>
-              Clear
-            </button>
-          </div>
+                  <button type="button" onClick={() => setAdvancedOpen(false)} style={advancedCloseButtonStyle}>
+                    ×
+                  </button>
+                </div>
+
+                <div style={advancedGridStyle}>
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>Patient</span>
+                    <input value={advancedFields.patient} onChange={(e) => updateAdvancedField("patient", e.target.value)} style={inputStyle} />
+                  </label>
+
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>Provider</span>
+                    <input value={advancedFields.provider} onChange={(e) => updateAdvancedField("provider", e.target.value)} style={inputStyle} />
+                  </label>
+
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>Insurance Company</span>
+                    <input value={advancedFields.insurer} onChange={(e) => updateAdvancedField("insurer", e.target.value)} style={inputStyle} />
+                  </label>
+
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>Claim Number</span>
+                    <input value={advancedFields.claim} onChange={(e) => updateAdvancedField("claim", e.target.value)} style={inputStyle} />
+                  </label>
+
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>Lawsuit Number</span>
+                    <input value={advancedFields.master} onChange={(e) => updateAdvancedField("master", e.target.value)} placeholder="2026.05.00010" style={inputStyle} />
+                  </label>
+
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>Index / AAA Number</span>
+                    <input value={advancedFields.indexAaa} onChange={(e) => updateAdvancedField("indexAaa", e.target.value)} style={inputStyle} />
+                  </label>
+
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>Status</span>
+                    <input value={advancedFields.status} onChange={(e) => updateAdvancedField("status", e.target.value)} style={inputStyle} />
+                  </label>
+
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>Final Status</span>
+                    <input value={advancedFields.finalStatus} onChange={(e) => updateAdvancedField("finalStatus", e.target.value)} style={inputStyle} />
+                  </label>
+
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>Denial Reason</span>
+                    <input value={advancedFields.denialReason} onChange={(e) => updateAdvancedField("denialReason", e.target.value)} style={inputStyle} />
+                  </label>
+                </div>
+
+                <div style={advancedModalActionsStyle}>
+                  <button type="button" onClick={runAdvancedSearch} disabled={loading} style={primaryButtonStyle(loading)}>
+                    Run Advanced Search
+                  </button>
+
+                  <button type="button" onClick={() => setAdvancedFields(emptyAdvancedSearchFields())} style={secondaryButtonStyle}>
+                    Clear Fields
+                  </button>
+
+                  <button type="button" onClick={() => setAdvancedOpen(false)} style={secondaryButtonStyle}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       </div>
     </main>
@@ -1069,13 +1717,12 @@ const lockedPrintQueueButtonStyle: React.CSSProperties = {
 };
 
 const lookupPanelStyle: React.CSSProperties = {
-  maxWidth: "none",
-  margin: "0",
-  padding: 22,
-  border: "1px solid " + colors.line,
-  borderRadius: 28,
-  background: colors.panel,
-  boxShadow: "0 10px 26px rgba(15, 23, 42, 0.05)",
+  marginTop: 18,
+  padding: 0,
+  border: "none",
+  borderRadius: 0,
+  background: "transparent",
+  boxShadow: "none",
 };
 
 const fieldStyle: React.CSSProperties = {
@@ -1443,4 +2090,217 @@ const typeaheadOpenLinkStyle: React.CSSProperties = {
   whiteSpace: "nowrap",
   boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
   transition: "background 140ms ease, border-color 140ms ease, transform 140ms ease",
+};
+
+
+const structuredSearchHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 18,
+  marginBottom: 18,
+};
+
+const structuredSearchKickerStyle: React.CSSProperties = {
+  color: colors.subtle,
+  fontSize: 12,
+  fontWeight: 950,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+};
+
+const structuredSearchTitleStyle: React.CSSProperties = {
+  margin: "5px 0 0",
+  color: colors.ink,
+  fontSize: 24,
+  fontWeight: 950,
+  letterSpacing: "-0.035em",
+};
+
+const advancedSearchButtonStyle: React.CSSProperties = {
+  appearance: "none",
+  border: "1px solid #bfdbfe",
+  borderRadius: 16,
+  background: "#eff6ff",
+  color: "#1e3a8a",
+  padding: "12px 16px",
+  fontSize: 14,
+  fontWeight: 900,
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
+
+const structuredSearchGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gap: 14,
+  alignItems: "end",
+};
+
+const knownInformationGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 14,
+  alignItems: "end",
+};
+
+const structuredFieldStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 7,
+  minWidth: 0,
+};
+
+const brlInputWrapStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "auto minmax(0, 1fr)",
+  alignItems: "center",
+  border: "1px solid " + colors.line,
+  borderRadius: 16,
+  background: "#ffffff",
+  overflow: "hidden",
+};
+
+const brlPrefixStyle: React.CSSProperties = {
+  height: "100%",
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "0 14px",
+  borderRight: "1px solid " + colors.line,
+  background: "#f8fafc",
+  color: colors.blueDark,
+  fontSize: 16,
+  fontWeight: 950,
+  letterSpacing: "0.02em",
+};
+
+const prefixedInputStyle: React.CSSProperties = {
+  border: "none",
+  outline: "none",
+  padding: "16px 18px",
+  color: colors.ink,
+  fontSize: 18,
+  fontWeight: 850,
+  background: "#ffffff",
+  minWidth: 0,
+};
+
+const structuredButtonGridStyle: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 10,
+  marginTop: 18,
+};
+
+const advancedOverlayStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 500,
+  display: "grid",
+  placeItems: "center",
+  padding: 24,
+  background: "rgba(15, 23, 42, 0.42)",
+};
+
+const advancedModalStyle: React.CSSProperties = {
+  width: "min(1120px, calc(100vw - 48px))",
+  maxHeight: "calc(100vh - 70px)",
+  overflow: "auto",
+  border: "1px solid " + colors.line,
+  borderRadius: 24,
+  background: "#ffffff",
+  boxShadow: "0 28px 80px rgba(15, 23, 42, 0.32)",
+  padding: 22,
+};
+
+const advancedModalHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 18,
+  marginBottom: 18,
+};
+
+const advancedModalTitleStyle: React.CSSProperties = {
+  margin: "4px 0 0",
+  color: colors.ink,
+  fontSize: 24,
+  fontWeight: 950,
+  letterSpacing: "-0.03em",
+};
+
+const advancedModalHelpStyle: React.CSSProperties = {
+  marginTop: 6,
+  color: colors.muted,
+  fontSize: 13,
+  fontWeight: 700,
+  lineHeight: 1.45,
+};
+
+const advancedCloseButtonStyle: React.CSSProperties = {
+  appearance: "none",
+  width: 40,
+  height: 40,
+  border: "1px solid " + colors.line,
+  borderRadius: 14,
+  background: "#ffffff",
+  color: colors.ink,
+  fontSize: 26,
+  fontWeight: 900,
+  lineHeight: 1,
+  cursor: "pointer",
+};
+
+const advancedGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: 14,
+};
+
+const advancedModalActionsStyle: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 10,
+  justifyContent: "flex-end",
+  marginTop: 20,
+  paddingTop: 16,
+  borderTop: "1px solid " + colors.lineSoft,
+};
+
+
+const mainPageSectionLabelStyle: React.CSSProperties = {
+  margin: "4px 0 10px",
+  color: colors.subtle,
+  fontSize: 12,
+  fontWeight: 950,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+};
+
+const mainPageDirectHelpStyle: React.CSSProperties = {
+  marginTop: 10,
+  color: colors.muted,
+  fontSize: 12,
+  fontWeight: 750,
+  lineHeight: 1.4,
+};
+
+const mainPageSearchDividerStyle: React.CSSProperties = {
+  height: 1,
+  margin: "20px 0 16px",
+  background: colors.lineSoft,
+};
+
+const mainPageSearchHeaderRowStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 14,
+  margin: "0 0 10px",
+};
+
+const mainPageSearchGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: 14,
+  alignItems: "end",
 };

@@ -15,6 +15,11 @@ const FINAL_STATUS_OPTIONS = [
   { value: "Closed", label: "Closed" },
 ];
 
+const FALLBACK_STATUS_STAGE_OPTIONS = [
+  { value: "READY FOR ARBITRATION/LITIGATION", label: "READY FOR ARBITRATION/LITIGATION" },
+  { value: "READY FOR ARBITRATION LITIGATION", label: "READY FOR ARBITRATION LITIGATION" },
+];
+
 const FALLBACK_DENIAL_REASON_OPTIONS = [
   { value: "12497975", label: "Medical Necessity (IME)" },
   { value: "12497990", label: "Medical Necessity (Peer Review)" },
@@ -113,7 +118,7 @@ function normalizeOptionRows(rows: any[]) {
   const out: Array<{ value: string; label: string }> = [];
 
   for (const row of rows) {
-    const value = text(row?.id || row?.value || row?.option_id || row?.key);
+    const value = text(row?.id || row?.value || row?.option_id || row?.key || row?.name);
     const label = text(row?.option || row?.name || row?.label || row?.value);
 
     if (!value || !label) continue;
@@ -158,10 +163,50 @@ async function fetchCustomFieldOptions(fieldId: number) {
   }
 }
 
+async function fetchMatterStageOptions() {
+  const attempts = [
+    "/api/v4/matter_stages.json?fields=id,name",
+    "/api/v4/matter_stages.json?fields=id,name,practice_area",
+  ];
+
+  for (const path of attempts) {
+    try {
+      const json: any = await clioJson(path);
+      const rows = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
+      const options = normalizeOptionRows(rows);
+
+      if (options.length > 0) {
+        return {
+          ok: true,
+          fieldId: null,
+          fieldName: "Matter Stage",
+          options,
+          rawOptionCount: rows.length,
+          usedFallback: false,
+          error: null,
+        };
+      }
+    } catch {
+      // Try next shape, then fallback.
+    }
+  }
+
+  return {
+    ok: true,
+    fieldId: null,
+    fieldName: "Matter Stage",
+    options: FALLBACK_STATUS_STAGE_OPTIONS,
+    rawOptionCount: FALLBACK_STATUS_STAGE_OPTIONS.length,
+    usedFallback: true,
+    error: "Matter stages could not be loaded from Clio; local fallback used.",
+  };
+}
+
 export async function GET() {
   const denial = await fetchCustomFieldOptions(FIELD_IDS.denialReason);
   const closeReason = await fetchCustomFieldOptions(FIELD_IDS.closeReason);
   const serviceType = await fetchCustomFieldOptions(FIELD_IDS.serviceType);
+  const matterStages = await fetchMatterStageOptions();
 
   const closeReasonOptions = closeReason.options.length
     ? closeReason.options
@@ -175,13 +220,7 @@ export async function GET() {
       options: denial.options.length ? denial.options : FALLBACK_DENIAL_REASON_OPTIONS,
       usedFallback: denial.options.length === 0,
     },
-    status: {
-      ...closeReason,
-      options: closeReasonOptions,
-      usedFallback: closeReason.options.length === 0,
-      sourceFieldId: FIELD_IDS.closeReason,
-      sourceFieldName: "CLOSE REASON (Litigation/Arbitration)",
-    },
+    status: matterStages,
     closeReason: {
       ...closeReason,
       options: closeReasonOptions,

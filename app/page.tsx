@@ -1255,6 +1255,12 @@ export default function Home() {
               border-color: #93b4e8 !important;
               transform: translateY(-1px);
             }
+
+            .barsh-brl-direct-input::placeholder {
+              color: #8b95a1 !important;
+              font-weight: 500 !important;
+              opacity: 1 !important;
+            }
           `}</style>
 
         <section style={lookupPanelStyle}>
@@ -1292,6 +1298,7 @@ export default function Home() {
                       if (e.key === "Enter") void runBrlNumberSearch();
                     }}
                     placeholder="30095"
+                    className="barsh-brl-direct-input"
                     style={prefixedInputStyle}
                     inputMode="numeric"
                     autoFocus

@@ -1,0 +1,184 @@
+import { NextResponse } from "next/server";
+import { clioFetch } from "@/lib/clio";
+
+export const dynamic = "force-dynamic";
+
+const FIELD_IDS = {
+  denialReason: 22146035,
+  finalStatus: 22145660,
+  serviceType: 22146005,
+};
+
+const FALLBACK_DENIAL_REASON_OPTIONS = [
+  { value: "12497975", label: "Medical Necessity (IME)" },
+  { value: "12497990", label: "Medical Necessity (Peer Review)" },
+  { value: "12498035", label: "Medical Necessity (Causality)" },
+  { value: "12498050", label: "Fee Schedule" },
+  { value: "12498065", label: "No-Show (EUO)" },
+  { value: "12498080", label: "No-Show (IME)" },
+  { value: "12498095", label: "30 Day Rule (Late Notice of Claim)" },
+  { value: "12498110", label: "45 Day Rule (Late Submission of Bill)" },
+  { value: "12498125", label: "120 Day Rule- Failure to Provide Verification (OVR)" },
+  { value: "12498140", label: "Alleged Fraud" },
+  { value: "12498155", label: "No-Coverage (Wrong Carrier)" },
+  { value: "12498170", label: "No Coverage (Policy Exhausted)" },
+  { value: "12498185", label: "No Coverage (Policy Expired)" },
+  { value: "12498200", label: "No Coverage (Motorcycle)" },
+  { value: "12498215", label: "No Coverage (Out of State Carrier)" },
+  { value: "12498230", label: "No Coverage (Not Eligible IP)" },
+];
+
+const FALLBACK_FINAL_STATUS_OPTIONS = [
+  { value: "12497450", label: "AAA- DECISION- DISMISSED WITH PREJUDICE" },
+  { value: "12497465", label: "AAA- VOLUNTARILY WITHDRAWN WITH PREJUDICE" },
+  { value: "12497480", label: "DISCONTINUED WITH PREJUDICE" },
+  { value: "12497495", label: "MOTION LOSS" },
+  { value: "12497510", label: "OUT OF STATE CARRIER" },
+  { value: "12497525", label: "PAID (DECISION)" },
+  { value: "12497540", label: "PAID (JUDGMENT)" },
+  { value: "12497555", label: "PAID (SETTLEMENT)" },
+  { value: "12497570", label: "PAID (FEE SCHEDULE)" },
+  { value: "12497585", label: "PAID (VOLUNTARY)" },
+  { value: "12497600", label: "PER CLIENT" },
+  { value: "12497615", label: "POLICY CANCELLED" },
+  { value: "12497630", label: "POLICY EXHAUSTED/NO COVERAGE" },
+  { value: "12497645", label: "PPO" },
+  { value: "12497660", label: "SOL" },
+  { value: "12497675", label: "TRIAL LOSS" },
+  { value: "12497690", label: "WORKERS COMPENSATION" },
+  { value: "12497825", label: "TRANSFERRED TO LB" },
+];
+
+const FALLBACK_SERVICE_TYPE_OPTIONS = [
+  { value: "12497915", label: "ANESTHESIA" },
+  { value: "12497930", label: "CHIROPRACTIC" },
+  { value: "12509225", label: "DENTAL" },
+  { value: "12509240", label: "DISABILITY EXAM" },
+  { value: "12509255", label: "DME" },
+  { value: "12509270", label: "EEG" },
+  { value: "12509285", label: "EM VISIT-FOLLOW UP" },
+  { value: "12509300", label: "EM VISIT-INITIAL" },
+  { value: "12509315", label: "EMG/NCV" },
+  { value: "12509330", label: "EPIDURAL INJECTION" },
+  { value: "12509345", label: "FACILITY FEE" },
+  { value: "12509360", label: "FLUOROSCOPY" },
+  { value: "12509375", label: "MUA" },
+  { value: "12509390", label: "NERVE BLOCK" },
+  { value: "12509405", label: "OT" },
+  { value: "12509420", label: "OUTCOME ASSESSMENT" },
+  { value: "12509435", label: "PHARMACY" },
+  { value: "12509450", label: "PHYSICAL CAPACITY TESTING" },
+  { value: "12509465", label: "PSYCH" },
+  { value: "12509480", label: "PT" },
+  { value: "12509495", label: "RADIOLOGY-CT" },
+  { value: "12509510", label: "RADIOLOGY-MRI" },
+  { value: "12509525", label: "RADIOLOGY-XRAY" },
+  { value: "12509540", label: "ROM/MMT" },
+  { value: "12509555", label: "SONOGRAM" },
+  { value: "12509570", label: "SPINAL DECOMPRESSION" },
+  { value: "12509585", label: "SURGERY" },
+  { value: "12509600", label: "ULTRASOUND" },
+  { value: "12509615", label: "UNKNOWN" },
+];
+
+function text(v: any) {
+  return String(v ?? "").trim();
+}
+
+async function clioJson(path: string) {
+  const resOrJson: any = await clioFetch(path);
+
+  if (resOrJson && typeof resOrJson.json === "function") {
+    const json = await resOrJson.json();
+
+    if (!resOrJson.ok) {
+      throw new Error(
+        `Clio request failed ${resOrJson.status || ""}: ${JSON.stringify(json).slice(0, 500)}`
+      );
+    }
+
+    return json;
+  }
+
+  return resOrJson;
+}
+
+function normalizeOptionRows(rows: any[]) {
+  const out: Array<{ value: string; label: string }> = [];
+
+  for (const row of rows) {
+    const value = text(row?.id || row?.value || row?.option_id || row?.key);
+    const label = text(row?.option || row?.name || row?.label || row?.value);
+
+    if (!value || !label) continue;
+
+    out.push({ value, label });
+  }
+
+  return out;
+}
+
+async function fetchCustomFieldOptions(fieldId: number) {
+  try {
+    const fields = "id,name,parent_type,field_type,displayed,picklist_options";
+    const json: any = await clioJson(
+      `/api/v4/custom_fields/${fieldId}.json?fields=${encodeURIComponent(fields)}`
+    );
+
+    const field = json?.data || json || {};
+    const rawOptions = Array.isArray(field?.picklist_options)
+      ? field.picklist_options
+      : [];
+
+    const normalized = normalizeOptionRows(rawOptions);
+
+    return {
+      ok: normalized.length > 0,
+      fieldId,
+      fieldName: text(field?.name),
+      options: normalized,
+      rawOptionCount: rawOptions.length,
+      error: null,
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      fieldId,
+      fieldName: "",
+      options: [],
+      rawOptionCount: 0,
+      error: err?.message || String(err),
+    };
+  }
+}
+
+export async function GET() {
+  const denial = await fetchCustomFieldOptions(FIELD_IDS.denialReason);
+  const finalStatus = await fetchCustomFieldOptions(FIELD_IDS.finalStatus);
+  const serviceType = await fetchCustomFieldOptions(FIELD_IDS.serviceType);
+
+  return NextResponse.json({
+    ok: true,
+    action: "advanced-search-picklists",
+    denialReason: {
+      ...denial,
+      options: denial.options.length ? denial.options : FALLBACK_DENIAL_REASON_OPTIONS,
+      usedFallback: denial.options.length === 0,
+    },
+    finalStatus: {
+      ...finalStatus,
+      options: finalStatus.options.length ? finalStatus.options : FALLBACK_FINAL_STATUS_OPTIONS,
+      usedFallback: finalStatus.options.length === 0,
+    },
+    serviceType: {
+      ...serviceType,
+      options: serviceType.options.length ? serviceType.options : FALLBACK_SERVICE_TYPE_OPTIONS,
+      usedFallback: serviceType.options.length === 0,
+    },
+    safety: {
+      readOnly: true,
+      noClioRecordsChanged: true,
+      noDatabaseRecordsChanged: true,
+    },
+  });
+}

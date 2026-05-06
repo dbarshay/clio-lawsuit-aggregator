@@ -16,17 +16,31 @@ type MatterResult = {
   matchedBy: string;
 };
 
+type AdvancedPicklistOption = {
+  value: string;
+  label: string;
+};
+
 type AdvancedSearchFields = {
   patient: string;
   provider: string;
-  insurer: string;
+  insuranceCompany: string;
   claim: string;
-  master: string;
-  indexAaa: string;
+  indexAaaNumber: string;
+  dateOpenedFrom: string;
+  dateOpenedTo: string;
+  policyNumber: string;
+  accidentDate: string;
+  serviceType: string;
+  court: string;
+  dosStart: string;
+  dosEnd: string;
+  denialReason: string;
   status: string;
   finalStatus: string;
-  denialReason: string;
 };
+
+
 
 const colors = {
   ink: "#0f172a",
@@ -50,13 +64,20 @@ function emptyAdvancedSearchFields(): AdvancedSearchFields {
   return {
     patient: "",
     provider: "",
-    insurer: "",
+    insuranceCompany: "",
     claim: "",
-    master: "",
-    indexAaa: "",
+    indexAaaNumber: "",
+    dateOpenedFrom: "",
+    dateOpenedTo: "",
+    policyNumber: "",
+    accidentDate: "",
+    serviceType: "",
+    court: "",
+    dosStart: "",
+    dosEnd: "",
+    denialReason: "",
     status: "",
     finalStatus: "",
-    denialReason: "",
   };
 }
 
@@ -163,6 +184,438 @@ function finalStatusFromMatter(m: any) {
 
 function denialReasonFromMatter(m: any) {
   return clean(m?.denialReason ?? m?.denial_reason ?? "");
+}
+
+const ADVANCED_SEARCH_FIELD_IDS = {
+  patient: 22145885,
+  insuranceCompany: 22145900,
+  claimNumber: 22145915,
+  dosStart: 22145960,
+  dosEnd: 22145975,
+  denialReason: 22146035,
+  indexAaaNumber: 22146050,
+  finalStatus: 22145660,
+  dateOfLoss: 22405400,
+  serviceType: 22146005,
+  policyNumber: 22403975,
+  paymentVoluntary: 22296515,
+  balancePresuit: 22296530,
+} as const;
+
+function customFieldIdValue(row: any, fieldId: number) {
+  const values = Array.isArray(row?.custom_field_values)
+    ? row.custom_field_values
+    : Array.isArray(row?.customFieldValues)
+      ? row.customFieldValues
+      : [];
+
+  const match = values.find((cfv: any) => {
+    const raw =
+      cfv?.custom_field?.id ??
+      cfv?.custom_field_id ??
+      cfv?.customFieldId ??
+      cfv?.id;
+
+    return Number(raw) === Number(fieldId);
+  });
+
+  return clean(match?.value);
+}
+
+function normalizeSearchDateInput(value: any) {
+  const raw = clean(value);
+
+  if (!raw) return "";
+
+  const mmddyyyy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mmddyyyy) {
+    const mm = mmddyyyy[1].padStart(2, "0");
+    const dd = mmddyyyy[2].padStart(2, "0");
+    return `${mmddyyyy[3]}-${mm}-${dd}`;
+  }
+
+  const yyyymmdd = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (yyyymmdd) return raw;
+
+  return raw;
+}
+
+function normalizeClioDateValue(value: any) {
+  const raw = clean(value);
+
+  if (!raw) return "";
+
+  const yyyymmdd = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (yyyymmdd) return `${yyyymmdd[1]}-${yyyymmdd[2]}-${yyyymmdd[3]}`;
+
+  const mmddyyyy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mmddyyyy) {
+    const mm = mmddyyyy[1].padStart(2, "0");
+    const dd = mmddyyyy[2].padStart(2, "0");
+    return `${mmddyyyy[3]}-${mm}-${dd}`;
+  }
+
+  return raw;
+}
+
+function dateFieldMatches(rowValue: any, expected: any) {
+  const q = normalizeSearchDateInput(expected);
+  if (!q) return true;
+
+  const actual = normalizeClioDateValue(rowValue);
+  if (!actual) return false;
+
+  return actual === q || actual.includes(q) || q.includes(actual);
+}
+
+function customFieldIdMatches(row: any, fieldId: number, expected: string) {
+  const q = clean(expected);
+  if (!q) return true;
+
+  const actual = customFieldIdValue(row, fieldId);
+
+  if (!actual) return false;
+
+  return exactOrContains(actual, q);
+}
+
+const DENIAL_REASON_PICKLIST_OPTIONS = [
+  { value: "12497975|12498110", label: "Medical Necessity (IME)" },
+  { value: "12498065|12498155", label: "Fee Schedule / Coding" },
+];
+
+const FINAL_STATUS_THREE_OPTIONS = [
+  { value: "Open", label: "Open" },
+  { value: "Pending", label: "Pending" },
+  { value: "Closed", label: "Closed" },
+];
+
+const FINAL_STATUS_PICKLIST_OPTIONS = [
+  { value: "12497450", label: "Closed" },
+  { value: "12497555", label: "PAID (SETTLEMENT)" },
+];
+
+const SERVICE_TYPE_PICKLIST_OPTIONS = [
+  { value: "12497915", label: "ANESTHESIA" },
+  { value: "12497930", label: "CHIROPRACTIC" },
+  { value: "12509225", label: "DENTAL" },
+  { value: "12509240", label: "DISABILITY EXAM" },
+  { value: "12509255", label: "DME" },
+  { value: "12509270", label: "EEG" },
+  { value: "12509285", label: "EM VISIT-FOLLOW UP" },
+  { value: "12509300", label: "EM VISIT-INITIAL" },
+  { value: "12509315", label: "EMG/NCV" },
+  { value: "12509330", label: "EPIDURAL INJECTION" },
+  { value: "12509345", label: "FACILITY FEE" },
+  { value: "12509360", label: "FLUOROSCOPY" },
+  { value: "12509375", label: "MUA" },
+  { value: "12509390", label: "NERVE BLOCK" },
+  { value: "12509405", label: "OT" },
+  { value: "12509420", label: "OUTCOME ASSESSMENT" },
+  { value: "12509435", label: "PHARMACY" },
+  { value: "12509450", label: "PHYSICAL CAPACITY TESTING" },
+  { value: "12509465", label: "PSYCH" },
+  { value: "12509480", label: "PT" },
+  { value: "12509495", label: "RADIOLOGY-CT" },
+  { value: "12509510", label: "RADIOLOGY-MRI" },
+  { value: "12509525", label: "RADIOLOGY-XRAY" },
+  { value: "12509540", label: "ROM/MMT" },
+  { value: "12509555", label: "SONOGRAM" },
+  { value: "12509570", label: "SPINAL DECOMPRESSION" },
+  { value: "12509585", label: "SURGERY" },
+  { value: "12509600", label: "ULTRASOUND" },
+  { value: "12509615", label: "UNKNOWN" },
+];
+
+
+const ADVANCED_SEARCH_PICKLIST_LABELS: Record<number, Record<string, string[]>> = {
+  [ADVANCED_SEARCH_FIELD_IDS.denialReason]: {
+    "12497975": ["Medical Necessity (IME)", "Medical Necessity", "IME"],
+    "12498110": ["Medical Necessity (IME)", "Medical Necessity", "IME"],
+    "12498065": ["Fee Schedule / Coding", "Fee Schedule", "Coding"],
+    "12498155": ["Fee Schedule / Coding", "Fee Schedule", "Coding"],
+  },
+  [ADVANCED_SEARCH_FIELD_IDS.finalStatus]: {
+    "12497555": ["PAID (SETTLEMENT)", "Paid Settlement", "Settlement Paid"],
+    "12497450": ["Closed", "Closed / Final", "Final"],
+  },
+};
+
+function picklistSearchTextForValue(fieldId: number, rawValue: string) {
+  const raw = clean(rawValue);
+  const labels = ADVANCED_SEARCH_PICKLIST_LABELS[fieldId]?.[raw] || [];
+
+  return [raw, ...labels].filter(Boolean).join(" | ");
+}
+
+function customPicklistFieldIdMatches(row: any, fieldId: number, expected: string) {
+  const q = clean(expected);
+  if (!q) return true;
+
+  const raw = customFieldIdValue(row, fieldId);
+  if (!raw) return false;
+
+  const expectedValues = q.split("|").map((part) => clean(part)).filter(Boolean);
+
+  for (const expectedValue of expectedValues.length ? expectedValues : [q]) {
+    const searchable = picklistSearchTextForValue(fieldId, raw);
+    const expectedSearchable = picklistSearchTextForValue(fieldId, expectedValue);
+
+    if (exactOrContains(raw, expectedValue)) return true;
+    if (exactOrContains(searchable, expectedValue)) return true;
+    if (exactOrContains(searchable, expectedSearchable)) return true;
+    if (exactOrContains(expectedSearchable, searchable)) return true;
+  }
+
+  return false;
+}
+
+function picklistFieldMatchesAnySource(
+  row: any,
+  fieldId: number,
+  expected: string,
+  rowKeys: string[]
+) {
+  const q = clean(expected);
+  if (!q) return true;
+
+  const expectedValues = q.split("|").map((part) => clean(part)).filter(Boolean);
+  const valuesToCheck = expectedValues.length ? expectedValues : [q];
+
+  const candidateValues = [
+    customFieldIdValue(row, fieldId),
+    ...rowKeys.map((key) => clean(row?.[key])),
+  ].filter(Boolean);
+
+  for (const expectedValue of valuesToCheck) {
+    const qSearchable = picklistSearchTextForValue(fieldId, expectedValue);
+
+    for (const value of candidateValues) {
+      const valueSearchable = picklistSearchTextForValue(fieldId, value);
+
+      if (exactOrContains(value, expectedValue)) return true;
+      if (exactOrContains(valueSearchable, expectedValue)) return true;
+      if (exactOrContains(valueSearchable, qSearchable)) return true;
+      if (exactOrContains(qSearchable, valueSearchable)) return true;
+    }
+  }
+
+  return false;
+}
+
+function customFieldDateIdMatches(row: any, fieldId: number, expected: string) {
+  const q = clean(expected);
+  if (!q) return true;
+
+  return dateFieldMatches(customFieldIdValue(row, fieldId), q);
+}
+
+function supportedFieldValueFromMatter(m: any, keys: string[]) {
+  for (const key of keys) {
+    const value = m?.[key];
+
+    if (value == null) continue;
+
+    if (typeof value === "object") {
+      const named = nameLike(value);
+      if (named) return named;
+    }
+
+    const cleanValue = clean(value);
+    if (cleanValue) return cleanValue;
+  }
+
+  return "";
+}
+
+function supportedFieldMatches(row: any, expected: string, keys: string[]) {
+  const q = clean(expected);
+  if (!q) return true;
+
+  return exactOrContains(supportedFieldValueFromMatter(row, keys), q);
+}
+
+function supportedMoneyMatches(row: any, expected: string, keys: string[]) {
+  const qRaw = clean(expected);
+  if (!qRaw) return true;
+
+  const q = Number(qRaw.replace(/[$,]/g, ""));
+  if (!Number.isFinite(q)) return false;
+
+  for (const key of keys) {
+    const raw = row?.[key];
+    const n = Number(String(raw ?? "").replace(/[$,]/g, ""));
+
+    if (Number.isFinite(n) && Math.abs(n - q) < 0.01) return true;
+  }
+
+  return false;
+}
+
+function supportedDateValueFromMatter(row: any, keys: string[]) {
+  for (const key of keys) {
+    const raw = clean(row?.[key]);
+
+    if (raw) return raw.slice(0, 10);
+  }
+
+  return "";
+}
+
+function supportedDateMatches(row: any, expected: string, keys: string[]) {
+  const q = clean(expected);
+  if (!q) return true;
+
+  const raw = supportedDateValueFromMatter(row, keys);
+  if (!raw) return false;
+
+  return exactOrContains(raw, q);
+}
+
+function supportedDateRangeMatches(row: any, from: string, to: string, keys: string[]) {
+  const start = clean(from);
+  const end = clean(to);
+
+  if (!start && !end) return true;
+
+  const raw = supportedDateValueFromMatter(row, keys);
+  if (!raw) return false;
+
+  if (start && raw < start) return false;
+  if (end && raw > end) return false;
+
+  return true;
+}
+
+function advancedActualValuesFromMatter(row: any) {
+  return {
+    patient: supportedFieldValueFromMatter(row, ["patientName", "patient_name", "patient"]),
+    provider: supportedFieldValueFromMatter(row, ["providerName", "provider_name", "provider", "clientName", "client_name", "client"]),
+    insuranceCompany: supportedFieldValueFromMatter(row, ["insuranceCompany", "insurance_company", "insurerName", "insurer_name", "insurer"]),
+    claim: supportedFieldValueFromMatter(row, ["claimNumber", "claim_number", "claimNumberNormalized", "claim_number_normalized"]),
+    indexAaaNumber: supportedFieldValueFromMatter(row, ["indexAaaNumber", "index_aaa_number", "indexAAANumber", "indexNumber", "index_number"]),
+    dateOpened: supportedDateValueFromMatter(row, ["dateOpened", "date_opened", "openedAt", "opened_at", "createdAt", "created_at"]),
+    policyNumber: supportedFieldValueFromMatter(row, ["policyNumber", "policy_number", "policy"]),
+    dateOfLoss: supportedDateValueFromMatter(row, ["dateOfLoss", "date_of_loss", "accidentDate", "accident_date", "lossDate", "loss_date"]),
+    serviceType: supportedFieldValueFromMatter(row, ["serviceType", "service_type"]),
+    court: supportedFieldValueFromMatter(row, ["court", "courtName", "court_name", "venue", "venueSelection", "venue_selection"]),
+    dosStart: supportedDateValueFromMatter(row, ["dosStart", "dos_start"]),
+    dosEnd: supportedDateValueFromMatter(row, ["dosEnd", "dos_end"]),
+    denialReason: supportedFieldValueFromMatter(row, ["denialReason", "denial_reason"]),
+    status: supportedFieldValueFromMatter(row, ["status", "matterStage", "matter_stage", "stage"]),
+    finalStatus: supportedFieldValueFromMatter(row, ["finalStatus", "final_status", "closeReason", "close_reason"]),
+  };
+}
+
+function compactAdvancedActualValueSummary(row: any) {
+  const values = advancedActualValuesFromMatter(row);
+
+  const pairs = [
+    ["Court", values.court],
+    ["Date Opened", values.dateOpened],
+    ["Policy", values.policyNumber],
+    ["Date of Loss", values.dateOfLoss],
+    ["Service Type", values.serviceType],
+    ["DOS", values.dosStart || values.dosEnd ? `${values.dosStart || "—"} – ${values.dosEnd || "—"}` : ""],
+    ["Denial", values.denialReason],
+    ["Status", values.status],
+    ["Final", values.finalStatus],
+  ].filter(([, value]) => clean(value));
+
+  if (pairs.length === 0) return "";
+
+  return pairs.map(([label, value]) => `${label}: ${value}`).join("  •  ");
+}
+
+function advancedDisplayValue(label: string, value: any) {
+  const raw = clean(value);
+
+  if (!raw) return "";
+
+  if (label === "Denial Reason") {
+    return picklistSearchTextForValue(ADVANCED_SEARCH_FIELD_IDS.denialReason, raw);
+  }
+
+  if (label === "Final Status") {
+    return picklistSearchTextForValue(ADVANCED_SEARCH_FIELD_IDS.finalStatus, raw);
+  }
+
+  return raw;
+}
+
+function advancedFieldReadbackRows(row: any) {
+  const values = advancedActualValuesFromMatter(row);
+
+  return [
+    ["Patient", values.patient],
+    ["Provider", values.provider],
+    ["Insurance Company", values.insuranceCompany],
+    ["Claim Number", values.claim],
+    ["Index / AAA Number", values.indexAaaNumber],
+    ["Date Opened", values.dateOpened],
+    ["Policy Number", values.policyNumber],
+    ["Date of Loss", values.dateOfLoss],
+    ["Service Type", values.serviceType],
+    ["Court", values.court],
+    ["DOS Start", values.dosStart],
+    ["DOS End", values.dosEnd],
+    ["Denial Reason", values.denialReason],
+    ["Status", values.status],
+    ["Final Status", values.finalStatus],
+  ];
+}
+
+function fieldValueFromMatter(m: any, keys: string[]) {
+  for (const key of keys) {
+    const value = m?.[key];
+
+    if (value == null) continue;
+
+    if (typeof value === "object") {
+      const named = nameLike(value);
+      if (named) return named;
+    }
+
+    const cleanValue = clean(value);
+    if (cleanValue) return cleanValue;
+  }
+
+  return "";
+}
+
+function dateLikeFromMatter(m: any, keys: string[]) {
+  const raw = fieldValueFromMatter(m, keys);
+  if (!raw) return "";
+
+  return raw.slice(0, 10);
+}
+
+function fieldMatches(row: any, expected: string, keys: string[]) {
+  const q = clean(expected);
+  if (!q) return true;
+
+  return exactOrContains(fieldValueFromMatter(row, keys), q);
+}
+
+function fieldDateMatches(row: any, expected: string, keys: string[]) {
+  const q = clean(expected);
+  if (!q) return true;
+
+  return exactOrContains(dateLikeFromMatter(row, keys), q);
+}
+
+function fieldDateRangeMatches(row: any, from: string, to: string, keys: string[]) {
+  const raw = dateLikeFromMatter(row, keys);
+  const start = clean(from);
+  const end = clean(to);
+
+  if (!start && !end) return true;
+  if (!raw) return false;
+
+  if (start && raw < start) return false;
+  if (end && raw > end) return false;
+
+  return true;
 }
 
 function money(v: any) {
@@ -283,6 +736,37 @@ async function fetchFastRows(url: string) {
   }
 
   return Array.isArray(json.rows) ? json.rows : [];
+}
+
+async function hydrateAdvancedRows(rows: any[]) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+
+  const res = await fetch("/api/advanced-search/hydrate", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify({
+      rows,
+    }),
+  });
+
+  const json = await res.json();
+
+  if (!res.ok || !json?.ok) {
+    throw new Error(json?.error || "Advanced search hydration failed.");
+  }
+
+  return Array.isArray(json.rows) ? json.rows : rows;
+}
+
+async function fetchAdvancedFallbackCandidateRows(limit = 750) {
+  let rows = await fetchFastRows(
+    `/api/advanced-search/hydrate?limit=${encodeURIComponent(String(limit))}`
+  );
+
+  return Array.isArray(rows) ? rows : [];
 }
 
 async function hydrateMatterResultFromContext(
@@ -468,6 +952,12 @@ export default function Home() {
   const [claimSearchSuggestions, setClaimSearchSuggestions] = useState<string[]>([]);
   const [providerSearchSuggestions, setProviderSearchSuggestions] = useState<string[]>([]);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [denialReasonPicklistOptions, setDenialReasonPicklistOptions] =
+    useState<AdvancedPicklistOption[]>(DENIAL_REASON_PICKLIST_OPTIONS);
+  const [finalStatusPicklistOptions, setFinalStatusPicklistOptions] =
+    useState<AdvancedPicklistOption[]>(FINAL_STATUS_PICKLIST_OPTIONS);
+  const [serviceTypePicklistOptions, setServiceTypePicklistOptions] =
+    useState<AdvancedPicklistOption[]>(SERVICE_TYPE_PICKLIST_OPTIONS);
   const [advancedFields, setAdvancedFields] = useState<AdvancedSearchFields>(() =>
     emptyAdvancedSearchFields()
   );
@@ -647,6 +1137,40 @@ export default function Home() {
       window.clearTimeout(timer);
     };
   }, [providerSearchInput]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAdvancedPicklists() {
+      try {
+        const json = await fetch("/api/advanced-search/picklists", {
+          cache: "no-store",
+        }).then((r) => r.json());
+
+        if (cancelled || !json?.ok) return;
+
+        if (Array.isArray(json?.denialReason?.options) && json.denialReason.options.length > 0) {
+          setDenialReasonPicklistOptions(json.denialReason.options);
+        }
+
+        if (Array.isArray(json?.finalStatus?.options) && json.finalStatus.options.length > 0) {
+          setFinalStatusPicklistOptions(json.finalStatus.options);
+        }
+
+        if (Array.isArray(json?.serviceType?.options) && json.serviceType.options.length > 0) {
+          setServiceTypePicklistOptions(json.serviceType.options);
+        }
+      } catch {
+        // Keep safe local fallback options.
+      }
+    }
+
+    void loadAdvancedPicklists();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function runSearch() {
     const q = clean(query);
@@ -901,25 +1425,63 @@ export default function Home() {
   }
 
   function rawMatterMatchesAdvanced(row: any, fields: AdvancedSearchFields) {
-    const patient = clean(fields.patient);
-    const provider = clean(fields.provider);
-    const insurer = clean(fields.insurer);
-    const claim = clean(fields.claim);
-    const master = clean(fields.master);
-    const indexAaa = clean(fields.indexAaa);
-    const status = clean(fields.status);
-    const finalStatus = clean(fields.finalStatus);
-    const denialReason = clean(fields.denialReason);
+    if (!supportedFieldMatches(row, fields.patient, ["patientName", "patient_name", "patient"])) {
+      if (!customFieldIdMatches(row, ADVANCED_SEARCH_FIELD_IDS.patient, fields.patient)) return false;
+    }
 
-    if (patient && !exactOrContains(patientName(row), patient)) return false;
-    if (provider && !exactOrContains(providerName(row), provider)) return false;
-    if (insurer && !exactOrContains(insurerName(row), insurer)) return false;
-    if (claim && !exactOrContains(claimNumberFromMatter(row), claim)) return false;
-    if (master && !exactOrContains(masterLawsuitId(row), master)) return false;
-    if (indexAaa && !exactOrContains(indexAaaNumberFromMatter(row), indexAaa)) return false;
-    if (status && !exactOrContains(statusFromMatter(row), status)) return false;
-    if (finalStatus && !exactOrContains(finalStatusFromMatter(row), finalStatus)) return false;
-    if (denialReason && !exactOrContains(denialReasonFromMatter(row), denialReason)) return false;
+    if (!supportedFieldMatches(row, fields.provider, ["providerName", "provider_name", "provider", "clientName", "client_name", "client"])) return false;
+
+    if (!supportedFieldMatches(row, fields.insuranceCompany, ["insuranceCompany", "insurance_company", "insurerName", "insurer_name", "insurer"])) {
+      if (!customFieldIdMatches(row, ADVANCED_SEARCH_FIELD_IDS.insuranceCompany, fields.insuranceCompany)) return false;
+    }
+
+    if (!supportedFieldMatches(row, fields.claim, ["claimNumber", "claim_number", "claimNumberNormalized", "claim_number_normalized"])) {
+      if (!customFieldIdMatches(row, ADVANCED_SEARCH_FIELD_IDS.claimNumber, fields.claim)) return false;
+    }
+
+    if (!supportedFieldMatches(row, fields.indexAaaNumber, ["indexAaaNumber", "index_aaa_number", "indexAAANumber", "indexNumber", "index_number"])) {
+      if (!customFieldIdMatches(row, ADVANCED_SEARCH_FIELD_IDS.indexAaaNumber, fields.indexAaaNumber)) return false;
+    }
+
+    if (!supportedDateRangeMatches(row, fields.dateOpenedFrom, fields.dateOpenedTo, [
+      "dateOpened",
+      "date_opened",
+      "openDate",
+      "open_date",
+      "createdAt",
+      "created_at",
+      "created_at",
+    ])) return false;
+
+    if (!customFieldIdMatches(row, ADVANCED_SEARCH_FIELD_IDS.policyNumber, fields.policyNumber)) return false;
+    if (!customFieldDateIdMatches(row, ADVANCED_SEARCH_FIELD_IDS.dateOfLoss, fields.accidentDate)) return false;
+
+    if (!picklistFieldMatchesAnySource(
+      row,
+      ADVANCED_SEARCH_FIELD_IDS.serviceType,
+      fields.serviceType,
+      ["serviceType", "service_type"]
+    )) return false;
+    if (!supportedFieldMatches(row, fields.court, ["court", "courtName", "court_name", "venue", "venueSelection", "venue_selection"])) return false;
+
+    if (!customFieldDateIdMatches(row, ADVANCED_SEARCH_FIELD_IDS.dosStart, fields.dosStart)) return false;
+    if (!customFieldDateIdMatches(row, ADVANCED_SEARCH_FIELD_IDS.dosEnd, fields.dosEnd)) return false;
+
+    if (!picklistFieldMatchesAnySource(
+      row,
+      ADVANCED_SEARCH_FIELD_IDS.denialReason,
+      fields.denialReason,
+      ["denialReason", "denial_reason"]
+    )) return false;
+
+    if (!picklistFieldMatchesAnySource(
+      row,
+      ADVANCED_SEARCH_FIELD_IDS.finalStatus,
+      fields.status,
+      ["finalStatus", "final_status", "closeReason", "close_reason"]
+    )) return false;
+
+    if (!supportedFieldMatches(row, fields.finalStatus, ["status"])) return false;
 
     return true;
   }
@@ -1009,7 +1571,9 @@ export default function Home() {
         throw new Error("Enter a patient name.");
       }
 
-      const rows = await fetchFastRows(`/api/claim-index/by-patient?name=${encodeURIComponent(q)}`);
+      let rows = await fetchFastRows(`/api/claim-index/by-patient?name=${encodeURIComponent(q)}`);
+      rows = await hydrateAdvancedRows(rows);
+
       const mapped: MatterResult[] = [];
 
       for (const row of rows) {
@@ -1171,19 +1735,22 @@ export default function Home() {
       }
 
       let rows: any[] = [];
-
-      if (clean(fields.master)) {
-        rows = await fetchFastRows(`/api/claim-index/by-master?masterLawsuitId=${encodeURIComponent(clean(fields.master))}`);
-      } else if (clean(fields.claim)) {
-        rows = await fetchFastRows(`/api/claim-index/by-claim?claimNumber=${encodeURIComponent(clean(fields.claim))}`);
-      } else if (clean(fields.patient)) {
-        rows = await fetchFastRows(`/api/claim-index/by-patient?name=${encodeURIComponent(clean(fields.patient))}`);
-      } else if (clean(fields.provider)) {
-        rows = await fetchFastRows(`/api/claim-index/by-provider?name=${encodeURIComponent(clean(fields.provider))}`);
-      } else if (clean(fields.insurer)) {
-        rows = await fetchFastRows(`/api/claim-index/search?insurer=${encodeURIComponent(clean(fields.insurer))}`);
+      const primaryPatient = clean(fields.patient);
+      const primaryClaim = clean(fields.claim);
+      const primaryProvider = clean(fields.provider);
+      const primaryInsurer = clean(fields.insuranceCompany);
+      const primaryCourt = clean(fields.court);
+      if (primaryClaim) {
+        rows = await fetchFastRows(`/api/claim-index/by-claim?claimNumber=${encodeURIComponent(primaryClaim)}`);
+      } else if (primaryPatient) {
+        rows = await fetchFastRows(`/api/claim-index/by-patient?name=${encodeURIComponent(primaryPatient)}`);
+      } else if (primaryProvider) {
+        rows = await fetchFastRows(`/api/claim-index/by-provider?name=${encodeURIComponent(primaryProvider)}`);
+      } else if (primaryInsurer) {
+        rows = await fetchFastRows(`/api/claim-index/search?insurer=${encodeURIComponent(primaryInsurer)}`);} else if (primaryCourt) {
+        rows = await fetchAdvancedFallbackCandidateRows();
       } else {
-        throw new Error("Advanced search needs at least one primary field: Patient, Provider, Insurance Company, Claim Number, or Lawsuit Number.");
+        rows = await fetchAdvancedFallbackCandidateRows();
       }
 
       const mapped: MatterResult[] = [];
@@ -1488,6 +2055,29 @@ export default function Home() {
                             {row.matchedBy && <span style={typeaheadMatchedBadgeStyle}>{row.matchedBy}</span>}
                           </div>
 
+                          {compactAdvancedActualValueSummary(row) && (
+                            <div style={advancedActualValuesStyle}>
+                              {compactAdvancedActualValueSummary(row)}
+                            </div>
+                          )}
+
+                          <details style={advancedFieldDetailsStyle}>
+                            <summary style={advancedFieldSummaryStyle}>
+                              Advanced field values returned for this result
+                            </summary>
+
+                            <div style={advancedFieldGridStyle}>
+                              {advancedFieldReadbackRows(row).map(([label, value]) => (
+                                <div key={`${row.id}-${label}`} style={advancedFieldGridItemStyle}>
+                                  <span style={advancedFieldGridLabelStyle}>{label}</span>
+                                  <strong style={value ? advancedFieldGridValueStyle : advancedFieldGridMissingStyle}>
+                                    {advancedDisplayValue(String(label), value) || "Not returned"}
+                                  </strong>
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+
                           <div style={resultMetaGridStyle}>
                             <div style={typeaheadFieldStyle}>
                               <span style={typeaheadFieldLabelStyle}>Patient</span>
@@ -1562,7 +2152,7 @@ export default function Home() {
                     <div style={structuredSearchKickerStyle}>Advanced Search</div>
                     <h2 style={advancedModalTitleStyle}>Combine Search Fields</h2>
                     <div style={advancedModalHelpStyle}>
-                      Enter one or more fields.  Patient, Provider, Insurance Company, Claim Number, or Lawsuit Number should be used as the primary lookup field.
+                      Enter one or more fields.  Search results are read-only and are filtered against returned matter values.
                     </div>
                   </div>
 
@@ -1572,50 +2162,191 @@ export default function Home() {
                 </div>
 
                 <div style={advancedGridStyle}>
+
                   <label style={structuredFieldStyle}>
                     <span style={labelStyle}>Patient</span>
-                    <input value={advancedFields.patient} onChange={(e) => updateAdvancedField("patient", e.target.value)} style={inputStyle} />
+                    <input
+                      value={advancedFields.patient}
+                      onChange={(e) => updateAdvancedField("patient", e.target.value)}
+                      placeholder="Patient name"
+                      style={inputStyle}
+                    />
                   </label>
 
                   <label style={structuredFieldStyle}>
                     <span style={labelStyle}>Provider</span>
-                    <input value={advancedFields.provider} onChange={(e) => updateAdvancedField("provider", e.target.value)} style={inputStyle} />
+                    <input
+                      value={advancedFields.provider}
+                      onChange={(e) => updateAdvancedField("provider", e.target.value)}
+                      placeholder="Provider"
+                      style={inputStyle}
+                    />
                   </label>
 
                   <label style={structuredFieldStyle}>
                     <span style={labelStyle}>Insurance Company</span>
-                    <input value={advancedFields.insurer} onChange={(e) => updateAdvancedField("insurer", e.target.value)} style={inputStyle} />
+                    <input
+                      value={advancedFields.insuranceCompany}
+                      onChange={(e) => updateAdvancedField("insuranceCompany", e.target.value)}
+                      placeholder="Insurance company"
+                      style={inputStyle}
+                    />
                   </label>
 
                   <label style={structuredFieldStyle}>
                     <span style={labelStyle}>Claim Number</span>
-                    <input value={advancedFields.claim} onChange={(e) => updateAdvancedField("claim", e.target.value)} style={inputStyle} />
-                  </label>
-
-                  <label style={structuredFieldStyle}>
-                    <span style={labelStyle}>Lawsuit Number</span>
-                    <input value={advancedFields.master} onChange={(e) => updateAdvancedField("master", e.target.value)} placeholder="2026.05.00010" style={inputStyle} />
+                    <input
+                      value={advancedFields.claim}
+                      onChange={(e) => updateAdvancedField("claim", e.target.value)}
+                      placeholder="Claim number"
+                      style={inputStyle}
+                    />
                   </label>
 
                   <label style={structuredFieldStyle}>
                     <span style={labelStyle}>Index / AAA Number</span>
-                    <input value={advancedFields.indexAaa} onChange={(e) => updateAdvancedField("indexAaa", e.target.value)} style={inputStyle} />
+                    <input
+                      value={advancedFields.indexAaaNumber}
+                      onChange={(e) => updateAdvancedField("indexAaaNumber", e.target.value)}
+                      placeholder="Index or AAA number"
+                      style={inputStyle}
+                    />
                   </label>
 
                   <label style={structuredFieldStyle}>
-                    <span style={labelStyle}>Status</span>
-                    <input value={advancedFields.status} onChange={(e) => updateAdvancedField("status", e.target.value)} style={inputStyle} />
+                    <span style={labelStyle}>Date Opened From</span>
+                    <input
+                      type="date"
+                      value={advancedFields.dateOpenedFrom}
+                      onChange={(e) => updateAdvancedField("dateOpenedFrom", e.target.value)}
+                      style={inputStyle}
+                    />
                   </label>
 
                   <label style={structuredFieldStyle}>
-                    <span style={labelStyle}>Final Status</span>
-                    <input value={advancedFields.finalStatus} onChange={(e) => updateAdvancedField("finalStatus", e.target.value)} style={inputStyle} />
+                    <span style={labelStyle}>Date Opened To</span>
+                    <input
+                      type="date"
+                      value={advancedFields.dateOpenedTo}
+                      onChange={(e) => updateAdvancedField("dateOpenedTo", e.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>Policy Number</span>
+                    <input
+                      value={advancedFields.policyNumber}
+                      onChange={(e) => updateAdvancedField("policyNumber", e.target.value)}
+                      placeholder="Policy number"
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>Accident Date / Date of Loss</span>
+                    <input
+                      type="date"
+                      value={advancedFields.accidentDate}
+                      onChange={(e) => updateAdvancedField("accidentDate", e.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>Service Type</span>
+                    <select
+                      value={advancedFields.serviceType}
+                      onChange={(e) => updateAdvancedField("serviceType", e.target.value)}
+                      style={inputStyle}
+                    >
+                      <option value="">Any Service Type</option>
+                      {serviceTypePicklistOptions.map((option) => (
+                        <option key={`service-type-${option.value}`} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>Court</span>
+                    <input
+                      value={advancedFields.court}
+                      onChange={(e) => updateAdvancedField("court", e.target.value)}
+                      placeholder="Court"
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>DOS Start</span>
+                    <input
+                      type="date"
+                      value={advancedFields.dosStart}
+                      onChange={(e) => updateAdvancedField("dosStart", e.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>DOS End</span>
+                    <input
+                      type="date"
+                      value={advancedFields.dosEnd}
+                      onChange={(e) => updateAdvancedField("dosEnd", e.target.value)}
+                      style={inputStyle}
+                    />
                   </label>
 
                   <label style={structuredFieldStyle}>
                     <span style={labelStyle}>Denial Reason</span>
-                    <input value={advancedFields.denialReason} onChange={(e) => updateAdvancedField("denialReason", e.target.value)} style={inputStyle} />
+                    <select
+                      value={advancedFields.denialReason}
+                      onChange={(e) => updateAdvancedField("denialReason", e.target.value)}
+                      style={inputStyle}
+                    >
+                      <option value="">Any Denial Reason</option>
+                      {denialReasonPicklistOptions.map((option) => (
+                        <option key={`denial-${option.value}`} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </label>
+
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>Status</span>
+                    <select
+                      value={advancedFields.status}
+                      onChange={(e) => updateAdvancedField("status", e.target.value)}
+                      style={inputStyle}
+                    >
+                      <option value="">Any Status</option>
+                      {finalStatusPicklistOptions.map((option) => (
+                        <option key={`status-${option.value}`} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label style={structuredFieldStyle}>
+                    <span style={labelStyle}>Final Status</span>
+                    <select
+                      value={advancedFields.finalStatus}
+                      onChange={(e) => updateAdvancedField("finalStatus", e.target.value)}
+                      style={inputStyle}
+                    >
+                      <option value="">Any Final Status</option>
+                      {FINAL_STATUS_THREE_OPTIONS.map((option) => (
+                        <option key={`final-status-${option.value}`} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
                 </div>
 
                 <div style={advancedModalActionsStyle}>
@@ -2233,7 +2964,7 @@ const advancedOverlayStyle: React.CSSProperties = {
 };
 
 const advancedModalStyle: React.CSSProperties = {
-  width: "min(1120px, calc(100vw - 48px))",
+  width: "min(1680px, calc(100vw - 48px))",
   maxHeight: "calc(100vh - 70px)",
   overflow: "auto",
   border: "1px solid " + colors.line,
@@ -2283,8 +3014,8 @@ const advancedCloseButtonStyle: React.CSSProperties = {
 
 const advancedGridStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-  gap: 14,
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gap: 12,
 };
 
 const advancedModalActionsStyle: React.CSSProperties = {
@@ -2408,4 +3139,75 @@ const searchResultsCloseButtonStyle: React.CSSProperties = {
 const searchResultsListStyle: React.CSSProperties = {
   display: "grid",
   gap: 10,
+};
+
+
+const advancedActualValuesStyle: React.CSSProperties = {
+  margin: "6px 0 8px",
+  padding: "8px 10px",
+  border: "1px solid #e2e8f0",
+  borderRadius: 12,
+  background: "#f8fafc",
+  color: "#334155",
+  fontSize: 12,
+  fontWeight: 750,
+  lineHeight: 1.45,
+};
+
+
+const advancedFieldDetailsStyle: React.CSSProperties = {
+  margin: "8px 0 10px",
+  padding: "10px 12px",
+  border: "1px solid #e2e8f0",
+  borderRadius: 14,
+  background: "#ffffff",
+};
+
+const advancedFieldSummaryStyle: React.CSSProperties = {
+  color: "#1e3a8a",
+  fontSize: 12,
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const advancedFieldGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gap: 8,
+  marginTop: 10,
+};
+
+const advancedFieldGridItemStyle: React.CSSProperties = {
+  minWidth: 0,
+  padding: "8px 9px",
+  border: "1px solid #e5e7eb",
+  borderRadius: 10,
+  background: "#f8fafc",
+};
+
+const advancedFieldGridLabelStyle: React.CSSProperties = {
+  display: "block",
+  color: "#64748b",
+  fontSize: 10,
+  fontWeight: 950,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+
+const advancedFieldGridValueStyle: React.CSSProperties = {
+  display: "block",
+  marginTop: 3,
+  color: "#0f172a",
+  fontSize: 12,
+  fontWeight: 850,
+  overflowWrap: "anywhere",
+};
+
+const advancedFieldGridMissingStyle: React.CSSProperties = {
+  display: "block",
+  marginTop: 3,
+  color: "#991b1b",
+  fontSize: 12,
+  fontWeight: 850,
+  overflowWrap: "anywhere",
 };

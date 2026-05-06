@@ -475,6 +475,7 @@ export default function Home() {
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
   const [results, setResults] = useState<MatterResult[]>([]);
+  const [resultsModalOpen, setResultsModalOpen] = useState(false);
   const [checkedLabel, setCheckedLabel] = useState("");
   const [suggestions, setSuggestions] = useState<MatterResult[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
@@ -654,6 +655,7 @@ export default function Home() {
     setSearched(true);
     setError("");
     setResults([]);
+    setResultsModalOpen(false);
     setCheckedLabel("");
     setSuggestions([]);
     setSuggestionLabel("");
@@ -1140,8 +1142,10 @@ export default function Home() {
         if (mappedRow) mapped.push(mappedRow);
       }
 
+      setResultsModalOpen(true);
       setResults(dedupeMatterResults(mapped));
     } catch (e: any) {
+      setResultsModalOpen(true);
       setError(e?.message || "Combined search failed.");
     } finally {
       setLoading(false);
@@ -1190,9 +1194,11 @@ export default function Home() {
         if (mappedRow) mapped.push(mappedRow);
       }
 
+      setResultsModalOpen(true);
       setResults(dedupeMatterResults(mapped));
       setAdvancedOpen(false);
     } catch (e: any) {
+      setResultsModalOpen(true);
       setError(e?.message || "Advanced search failed.");
     } finally {
       setLoading(false);
@@ -1436,99 +1442,117 @@ export default function Home() {
             </div>
           </div>
 
-          <div style={inlineResultAreaStyle}>
-            {error && <div style={errorStyle}>{error}</div>}
-
-            {searched && !loading && !error && (
-              <div style={searchMetaStyle}>
-                {resultLabel}
-                {checkedLabel ? `  Checked: ${checkedLabel}.` : ""}
-              </div>
-            )}
-
-            {searched && !loading && !error && results.length === 0 && (
-              <div style={emptyStyle}>
-                No matching matter was returned.
-              </div>
-            )}
-
-            {results.length > 0 && (
-              <div style={{ display: "grid", gap: 10 }}>
-                {results.map((row) => (
-                  <div key={row.id} className="barsh-result-row" style={resultRowStyle}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={resultTopLineStyle}>
-                        <a href={`/matter/${row.id}`} style={matterTitleLinkStyle}>
-                          {row.displayNumber || row.id}
-                        </a>
-                        {row.matchedBy && <span style={typeaheadMatchedBadgeStyle}>{row.matchedBy}</span>}
-                      </div>
-
-                      <div style={resultMetaGridStyle}>
-                        <div style={typeaheadFieldStyle}>
-                          <span style={typeaheadFieldLabelStyle}>Patient</span>
-                          {row.patient ? (
-                            <a href={filteredSearchUrl(row.patient, "Patient")} className="barsh-field-link" style={resultFieldLinkStyle}>
-                              {row.patient}
-                            </a>
-                          ) : (
-                            <span style={typeaheadMissingStyle}>No patient</span>
-                          )}
-                        </div>
-
-                        <div style={typeaheadFieldStyle}>
-                          <span style={typeaheadFieldLabelStyle}>Provider</span>
-                          {row.provider ? (
-                            <a href={filteredSearchUrl(row.provider, "Provider")} className="barsh-field-link" style={resultFieldLinkStyle}>
-                              {row.provider}
-                            </a>
-                          ) : (
-                            <span style={typeaheadMissingStyle}>No provider</span>
-                          )}
-                        </div>
-
-                        <div style={typeaheadFieldStyle}>
-                          <span style={typeaheadFieldLabelStyle}>Insurer</span>
-                          {row.insurer ? (
-                            <a href={filteredSearchUrl(row.insurer, "Insurer")} className="barsh-field-link" style={resultFieldLinkStyle}>
-                              {row.insurer}
-                            </a>
-                          ) : (
-                            <span style={typeaheadMissingStyle}>No insurer</span>
-                          )}
-                        </div>
-
-                        <div style={typeaheadFieldStyle}>
-                          <span style={typeaheadFieldLabelStyle}>Claim</span>
-                          {row.claimNumber ? (
-                            <a href={filteredSearchUrl(row.claimNumber, "Claim number")} className="barsh-field-link" style={resultFieldLinkStyle}>
-                              {row.claimNumber}
-                            </a>
-                          ) : (
-                            <span style={typeaheadMissingStyle}>—</span>
-                          )}
-                        </div>
-
-                        <div style={typeaheadFieldStyle}>
-                          <span style={typeaheadFieldLabelStyle}>Master Lawsuit</span>
-                          <span>{row.masterLawsuitId || "—"}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={resultAmountStyle}>
-                      <span style={typeaheadAmountStyle}>{money(row.claimAmount)}</span>
-                      <a href={`/matter/${row.id}`} className="barsh-open-link" style={typeaheadOpenLinkStyle}>
-                        Open Matter
-                      </a>
-                    </div>
+          {resultsModalOpen && (
+            <div style={searchResultsOverlayStyle} role="dialog" aria-modal="true">
+              <div style={searchResultsModalStyle}>
+                <div style={searchResultsHeaderStyle}>
+                  <div>
+                    <div style={searchResultsKickerStyle}>Search Results</div>
+                    <h2 style={searchResultsTitleStyle}>
+                      {loading ? "Searching..." : resultLabel || "Search Results"}
+                    </h2>
+                    {checkedLabel && !loading && !error && (
+                      <div style={searchResultsSubTitleStyle}>Checked: {checkedLabel}</div>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
 
-            {loading && <div style={searchMetaStyle}>Searching...</div>}
-          </div>
+                  <button
+                    type="button"
+                    onClick={() => setResultsModalOpen(false)}
+                    style={searchResultsCloseButtonStyle}
+                    aria-label="Close search results"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {loading && <div style={searchMetaStyle}>Searching...</div>}
+
+                {!loading && error && <div style={errorStyle}>{error}</div>}
+
+                {!loading && !error && searched && results.length === 0 && (
+                  <div style={emptyStyle}>
+                    No matching matter was returned.
+                  </div>
+                )}
+
+                {!loading && !error && results.length > 0 && (
+                  <div style={searchResultsListStyle}>
+                    {results.map((row) => (
+                      <div key={row.id} className="barsh-result-row" style={resultRowStyle}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={resultTopLineStyle}>
+                            <a href={`/matter/${row.id}`} style={matterTitleLinkStyle}>
+                              {row.displayNumber || row.id}
+                            </a>
+                            {row.matchedBy && <span style={typeaheadMatchedBadgeStyle}>{row.matchedBy}</span>}
+                          </div>
+
+                          <div style={resultMetaGridStyle}>
+                            <div style={typeaheadFieldStyle}>
+                              <span style={typeaheadFieldLabelStyle}>Patient</span>
+                              {row.patient ? (
+                                <a href={filteredSearchUrl(row.patient, "Patient")} className="barsh-field-link" style={resultFieldLinkStyle}>
+                                  {row.patient}
+                                </a>
+                              ) : (
+                                <span style={typeaheadMissingStyle}>No patient</span>
+                              )}
+                            </div>
+
+                            <div style={typeaheadFieldStyle}>
+                              <span style={typeaheadFieldLabelStyle}>Provider</span>
+                              {row.provider ? (
+                                <a href={filteredSearchUrl(row.provider, "Provider")} className="barsh-field-link" style={resultFieldLinkStyle}>
+                                  {row.provider}
+                                </a>
+                              ) : (
+                                <span style={typeaheadMissingStyle}>No provider</span>
+                              )}
+                            </div>
+
+                            <div style={typeaheadFieldStyle}>
+                              <span style={typeaheadFieldLabelStyle}>Insurer</span>
+                              {row.insurer ? (
+                                <a href={filteredSearchUrl(row.insurer, "Insurer")} className="barsh-field-link" style={resultFieldLinkStyle}>
+                                  {row.insurer}
+                                </a>
+                              ) : (
+                                <span style={typeaheadMissingStyle}>No insurer</span>
+                              )}
+                            </div>
+
+                            <div style={typeaheadFieldStyle}>
+                              <span style={typeaheadFieldLabelStyle}>Claim</span>
+                              {row.claimNumber ? (
+                                <a href={filteredSearchUrl(row.claimNumber, "Claim number")} className="barsh-field-link" style={resultFieldLinkStyle}>
+                                  {row.claimNumber}
+                                </a>
+                              ) : (
+                                <span style={typeaheadMissingStyle}>—</span>
+                              )}
+                            </div>
+
+                            <div style={typeaheadFieldStyle}>
+                              <span style={typeaheadFieldLabelStyle}>Master Lawsuit</span>
+                              <span>{row.masterLawsuitId || "—"}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={resultAmountStyle}>
+                          <span style={typeaheadAmountStyle}>{money(row.claimAmount)}</span>
+                          <a href={`/matter/${row.id}`} className="barsh-open-link" style={typeaheadOpenLinkStyle}>
+                            Open Matter
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {advancedOpen && (
             <div style={advancedOverlayStyle} role="dialog" aria-modal="true">
@@ -2310,4 +2334,78 @@ const mainPageSearchGridStyle: React.CSSProperties = {
   gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
   gap: 14,
   alignItems: "end",
+};
+
+
+const searchResultsOverlayStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 520,
+  display: "grid",
+  placeItems: "center",
+  padding: 24,
+  background: "rgba(15, 23, 42, 0.42)",
+};
+
+const searchResultsModalStyle: React.CSSProperties = {
+  width: "min(1180px, calc(100vw - 48px))",
+  maxHeight: "calc(100vh - 70px)",
+  overflow: "auto",
+  padding: 22,
+  border: "1px solid #cbd5e1",
+  borderRadius: 24,
+  background: "#ffffff",
+  boxShadow: "0 28px 80px rgba(15, 23, 42, 0.32)",
+};
+
+const searchResultsHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 18,
+  marginBottom: 16,
+  paddingBottom: 14,
+  borderBottom: "1px solid #e2e8f0",
+};
+
+const searchResultsKickerStyle: React.CSSProperties = {
+  color: "#475569",
+  fontSize: 12,
+  fontWeight: 950,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const searchResultsTitleStyle: React.CSSProperties = {
+  margin: "5px 0 0",
+  color: colors.ink,
+  fontSize: 24,
+  fontWeight: 950,
+  letterSpacing: "-0.03em",
+};
+
+const searchResultsSubTitleStyle: React.CSSProperties = {
+  marginTop: 5,
+  color: colors.muted,
+  fontSize: 13,
+  fontWeight: 750,
+};
+
+const searchResultsCloseButtonStyle: React.CSSProperties = {
+  appearance: "none",
+  width: 42,
+  height: 42,
+  border: "1px solid #cbd5e1",
+  borderRadius: 14,
+  background: "#ffffff",
+  color: colors.ink,
+  fontSize: 28,
+  fontWeight: 900,
+  lineHeight: 1,
+  cursor: "pointer",
+};
+
+const searchResultsListStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 10,
 };

@@ -67,6 +67,10 @@ echo "=== RUN ATTORNEY FEE DOCX SAFETY VERIFIER ==="
 npm run verify:attorney-fee-docx-safety
 
 echo
+echo "=== RUN CLAIMINDEX INGEST FIELD COVERAGE SAFETY VERIFIER ==="
+npm run verify:claimindex-ingest-field-coverage-safety
+
+echo
 echo "=== RUN CLAIMINDEX REBUILD STATUS SAFETY VERIFIER ==="
 npm run verify:claimindex-rebuild-status-safety
 

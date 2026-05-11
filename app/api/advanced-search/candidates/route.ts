@@ -139,6 +139,7 @@ export async function GET(req: NextRequest) {
   const dosStart = clean(params.get("dosStart"));
   const dosEnd = clean(params.get("dosEnd"));
   const denialReason = clean(params.get("denialReason"));
+  const serviceType = clean(params.get("serviceType"));
   const status = clean(params.get("status"));
   const closeReason = clean(params.get("closeReason"));
   const finalStatus = clean(params.get("finalStatus"));
@@ -186,6 +187,14 @@ export async function GET(req: NextRequest) {
       OR: [
         equalsOrContains("denial_reason", value),
         equalsOrContains("denial_reason", label),
+      ],
+    });
+  }
+
+  if (serviceType) {
+    and.push({
+      OR: [
+        equalsOrContains("service_type", serviceType),
       ],
     });
   }

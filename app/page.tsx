@@ -2510,7 +2510,7 @@ export default function Home() {
                     >
                       <option value="">Any Status</option>
                       {statusPicklistOptions.map((option) => (
-                        <option key={`status-${option.value}`} value={option.value}>
+                        <option key={`status-${option.value}`} value={option.label}>
                           {option.label}
                         </option>
                       ))}

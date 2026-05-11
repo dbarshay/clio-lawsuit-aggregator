@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clioFetch } from "@/lib/clio";
 import { ingestMatterFromClio } from "@/lib/ingestMatterFromClio";
+import { parseRetryAfterMs } from "@/lib/clioRateLimit";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
     const min = Number(req.nextUrl.searchParams.get("start") || "30000");
     const max = Number(req.nextUrl.searchParams.get("end") || "39999");
     const limit = Math.min(200, Number(req.nextUrl.searchParams.get("limit") || "200"));
-    const delayMs = Number(req.nextUrl.searchParams.get("delayMs") || "100");
+    const delayMs = Number(req.nextUrl.searchParams.get("delayMs") || "1500");
 
     let nextUrl: string | null = `/api/v4/matters.json?fields=id,display_number&limit=${limit}`;
 
@@ -41,12 +42,40 @@ export async function GET(req: NextRequest) {
           await ingestMatterFromClio(Number(m.id));
           indexed++;
         } catch (err: any) {
-          failed++;
-          errors.push({
-            id: m.id,
-            displayNumber: m.display_number,
-            error: err?.message || String(err),
-          });
+          const message = err?.message || String(err);
+
+          if (/Rate limit|RateLimited|429/i.test(message)) {
+            const retryAfterMs = parseRetryAfterMs(message) || 60000;
+
+            errors.push({
+              id: m.id,
+              displayNumber: m.display_number,
+              error: `RATE LIMITED - retrying after ${retryAfterMs}ms`,
+            });
+
+            await sleep(retryAfterMs + 2000);
+
+            try {
+              await ingestMatterFromClio(Number(m.id));
+              indexed++;
+            } catch (retryErr: any) {
+              failed++;
+
+              errors.push({
+                id: m.id,
+                displayNumber: m.display_number,
+                error: retryErr?.message || String(retryErr),
+              });
+            }
+          } else {
+            failed++;
+
+            errors.push({
+              id: m.id,
+              displayNumber: m.display_number,
+              error: message,
+            });
+          }
         }
 
         if (delayMs > 0) {

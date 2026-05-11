@@ -75,6 +75,9 @@ payment_amount          Float?
   dos_start               String?
   dos_end                 String?
   denial_reason           String?
+  service_type            String?
+  policy_number           String?
+  date_of_loss            String?
   payment_voluntary       Float?
   balance_presuit         Float?
   master_lawsuit_id       String?
@@ -96,6 +99,11 @@ payment_amount          Float?
   @@index([patient_insurer])
   @@index([master_lawsuit_id])
   @@index([index_aaa_number])
+  @@index([close_reason])
+  @@index([matter_stage_name])
+  @@index([status])
+  @@index([denial_reason])
+  @@index([service_type])
 }
 
 model ClaimClusterCache {

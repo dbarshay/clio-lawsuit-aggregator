@@ -5,6 +5,9 @@ import { MATTER_CF } from "@/lib/clioFields";
 import { getDenialReasonLabel } from "@/lib/matterHelpers";
 
 const CLOSE_REASON_LITIGATION_ARBITRATION = 22145660;
+const SERVICE_TYPE = 22146005;
+const POLICY_NUMBER = 22403975;
+const DATE_OF_LOSS = 22405400;
 
 function num(val: any): number | null {
   const n = Number(val);

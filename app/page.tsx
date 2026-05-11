@@ -1903,9 +1903,9 @@ export default function Home() {
 
       if (rows.length === 0) {
         rows = await fetchAdvancedFallbackCandidateRows();
-      } else {
-        rows = await hydrateAdvancedRows(rows);
       }
+
+      rows = await hydrateAdvancedRows(rows);
 
       const mapped: MatterResult[] = [];
 

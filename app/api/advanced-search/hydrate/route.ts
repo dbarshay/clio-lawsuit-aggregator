@@ -221,14 +221,36 @@ async function hydrateRows(rows: any[]) {
 export async function GET(req: NextRequest) {
   const limit = Math.min(Number(req.nextUrl.searchParams.get("limit") || 250), 750);
 
+  const requestedMatterIds = req.nextUrl.searchParams
+    .getAll("matterIds")
+    .flatMap((v) => String(v).split(","))
+    .map((v) => text(v))
+    .filter(Boolean);
+
+  const requestedMatterIdNumbers = requestedMatterIds
+    .map((v) => Number(v.replace(/^BRL/i, "")))
+    .filter((v) => Number.isFinite(v));
+
+  const requestedDisplayNumbers = requestedMatterIds.map((v) =>
+    /^BRL/i.test(v) ? v.toUpperCase() : `BRL${v}`
+  );
+
   const rows = await prisma.claimIndex.findMany({
-    where: {
-      OR: [
-        { display_number: { startsWith: "BRL3" } },
-        { display_number: { startsWith: "BRL4" } },
-        { display_number: { startsWith: "BRL5" } },
-      ],
-    },
+    where:
+      requestedMatterIds.length > 0
+        ? {
+            OR: [
+              { matter_id: { in: requestedMatterIdNumbers } },
+              { display_number: { in: requestedDisplayNumbers } },
+            ],
+          }
+        : {
+            OR: [
+              { display_number: { startsWith: "BRL3" } },
+              { display_number: { startsWith: "BRL4" } },
+              { display_number: { startsWith: "BRL5" } },
+            ],
+          },
     select: CLAIM_INDEX_SELECT,
     take: limit,
     orderBy: {

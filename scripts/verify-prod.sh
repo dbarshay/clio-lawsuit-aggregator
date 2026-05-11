@@ -67,5 +67,9 @@ echo "=== RUN ATTORNEY FEE DOCX SAFETY VERIFIER ==="
 npm run verify:attorney-fee-docx-safety
 
 echo
+echo "=== RUN CLAIMINDEX REBUILD STATUS SAFETY VERIFIER ==="
+npm run verify:claimindex-rebuild-status-safety
+
+echo
 echo "=== RUN PRODUCTION WORKFLOW SMOKE TEST ==="
 npm run smoke:workflow:prod

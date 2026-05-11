@@ -581,3 +581,59 @@ body {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* === Barsh Matters global full-width workspace layout === */
+/* Keep small gutters, but allow all major app pages to use the full browser width. */
+.barsh-direct-page,
+.barsh-direct-shell,
+.barsh-matter-page,
+.barsh-matter-shell,
+.barsh-lawsuits-page,
+.barsh-lawsuits-shell,
+.barsh-print-queue-page,
+.barsh-print-queue-shell,
+.barsh-entry-page,
+.barsh-entry-shell,
+[class*="barsh-"][class*="page"],
+[class*="barsh-"][class*="shell"],
+[class*="barsh-"][class*="workspace"] {
+  width: min(100%, calc(100vw - 32px)) !important;
+  max-width: none !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* Direct matter summary and payment areas should span the widened workspace. */
+.barsh-direct-summary-shell,
+.barsh-direct-summary-panel,
+.barsh-direct-summary-grid,
+.barsh-direct-payment-receipts,
+.barsh-summary-workflow-buttons,
+.barsh-direct-launch-row {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* Prevent wide tables from forcing page-level overflow when possible. */
+.barsh-direct-payment-receipts table {
+  width: 100% !important;
+}
+
+/* Preserve readable gutters on smaller screens. */
+@media (max-width: 900px) {
+  .barsh-direct-page,
+  .barsh-direct-shell,
+  .barsh-matter-page,
+  .barsh-matter-shell,
+  .barsh-lawsuits-page,
+  .barsh-lawsuits-shell,
+  .barsh-print-queue-page,
+  .barsh-print-queue-shell,
+  .barsh-entry-page,
+  .barsh-entry-shell,
+  [class*="barsh-"][class*="page"],
+  [class*="barsh-"][class*="shell"],
+  [class*="barsh-"][class*="workspace"] {
+    width: min(100%, calc(100vw - 16px)) !important;
+  }
+}

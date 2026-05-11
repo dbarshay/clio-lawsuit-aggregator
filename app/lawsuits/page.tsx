@@ -203,7 +203,7 @@ export default function LawsuitsPage() {
   }
 
   return (
-    <main style={{ padding: 20, maxWidth: 1400, margin: "0 auto" }}>
+    <main style={{ padding: 16, width: "100vw", maxWidth: "none", marginLeft: "calc(50% - 50vw)", marginRight: "calc(50% - 50vw)" }}>
       <div
         style={{
           display: "grid",

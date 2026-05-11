@@ -29,31 +29,52 @@ function formatDOS(start?: string, end?: string) {
 }
 
 function formatPaymentDateMMDDYYYY(value?: any): string {
-  const raw = String(value || "").trim();
+  const raw = String(value ?? "").trim();
 
-  if (/^\d{2}\.\d{2}\.\d{4}$/.test(raw)) {
-    return raw;
-  }
+  const ymd = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (ymd) return `${ymd[2]}/${ymd[3]}/${ymd[1]}`;
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    const [yyyy, mm, dd] = raw.split("-");
-    return `${mm}.${dd}.${yyyy}`;
-  }
+  const mdy = raw.match(/^(\d{2})[\/.](\d{2})[\/.](\d{4})$/);
+  if (mdy) return `${mdy[1]}/${mdy[2]}/${mdy[3]}`;
 
   const d = value instanceof Date ? value : new Date(value || Date.now());
 
-  if (!Number.isFinite(d.getTime())) {
-    return raw || "—";
-  }
+  if (Number.isNaN(d.getTime())) return "";
 
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
-  return `${mm}.${dd}.${yyyy}`;
+
+  return `${mm}/${dd}/${yyyy}`;
+}
+
+function formatPaymentDateYYYYMMDD(value?: any): string {
+  const d = value instanceof Date ? value : new Date(value || Date.now());
+
+  if (Number.isNaN(d.getTime())) return "";
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 function paymentDateInputIsValid(value: string): boolean {
-  return /^\d{2}\.\d{2}\.\d{4}$/.test(String(value || "").trim());
+  const raw = String(value || "").trim();
+  return (
+    /^\d{2}\.\d{2}\.\d{4}$/.test(raw) ||
+    /^\d{2}\/\d{2}\/\d{4}$/.test(raw) ||
+    /^\d{4}-\d{2}-\d{2}$/.test(raw)
+  );
+}
+
+function formatPaymentAmountInput(value: string): string {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const cleaned = raw.replace(/[$,\s]/g, "");
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n.toFixed(2) : raw;
 }
 
 function currentDirectMatterBalancePresuit(matter: any): number {
@@ -588,7 +609,11 @@ const activeGroupKey =
   const [paymentReceipts, setPaymentReceipts] = useState<any[]>([]);
   const [paymentFormOpen, setPaymentFormOpen] = useState(false);
   const [paymentAmountInput, setPaymentAmountInput] = useState("");
-  const [paymentDateInput, setPaymentDateInput] = useState(() => formatPaymentDateMMDDYYYY(new Date()));
+  const [paymentDateInput, setPaymentDateInput] = useState(() => formatPaymentDateYYYYMMDD(new Date()));
+  const [paymentTransactionTypeInput, setPaymentTransactionTypeInput] = useState("Collection Payment");
+  const [paymentTransactionStatusInput, setPaymentTransactionStatusInput] = useState("Show on Remittance");
+  const [paymentCheckDateInput, setPaymentCheckDateInput] = useState("");
+  const [paymentCheckNumberInput, setPaymentCheckNumberInput] = useState("");
 
   async function loadPaymentReceipts(matterIdInput?: string) {
     const targetMatterId = String(matterIdInput || matterId || "").trim();
@@ -663,6 +688,10 @@ const activeGroupKey =
           expectedDisplayNumber: textValue(matter?.displayNumber),
           paymentAmount,
           paymentDate,
+          transactionType: paymentTransactionTypeInput,
+          transactionStatus: paymentTransactionStatusInput,
+          checkDate: paymentCheckDateInput,
+          checkNumber: paymentCheckNumberInput,
         }),
       });
 
@@ -685,7 +714,11 @@ const activeGroupKey =
 
       await loadPaymentReceipts(matterId);
       setPaymentAmountInput("");
-      setPaymentDateInput(formatPaymentDateMMDDYYYY(new Date()));
+      setPaymentDateInput(formatPaymentDateYYYYMMDD(new Date()));
+      setPaymentTransactionTypeInput("Collection Payment");
+      setPaymentTransactionStatusInput("Show on Remittance");
+      setPaymentCheckDateInput("");
+      setPaymentCheckNumberInput("");
       setPaymentFormOpen(false);
     } catch (error: any) {
       setPaymentApplyResult({
@@ -2902,7 +2935,7 @@ const activeGroupKey =
 
     <main
       style={{
-        padding: "18px max(24px, calc((100vw - 1360px) / 2)) 40px",
+        padding: "18px 16px 40px",
         width: "100vw",
         maxWidth: "none",
         marginLeft: "calc(50% - 50vw)",
@@ -3091,6 +3124,15 @@ const activeGroupKey =
               </div>
 
               <div className="barsh-direct-financial-bubble">
+                <div style={{ textAlign: "center", marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", color: "#1d4ed8" }}>
+                    Individual Bill Payment
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginTop: 3 }}>
+                    Posts payment to this bill/matter only.
+                  </div>
+                </div>
+
                 <div className="barsh-direct-financial-row">
                   <span>Claim Amount</span>
                   <strong>{money(num(matter?.claimAmount))}</strong>
@@ -3112,7 +3154,7 @@ const activeGroupKey =
                   onClick={() => {
                     setPaymentApplyResult(null);
                     setPaymentFormOpen((open) => !open);
-                    setPaymentDateInput((current) => current || formatPaymentDateMMDDYYYY(new Date()));
+                    setPaymentDateInput((current) => current || formatPaymentDateYYYYMMDD(new Date()));
                   }}
                   disabled={paymentApplyLoading}
                   title="Open payment entry form."
@@ -3121,56 +3163,319 @@ const activeGroupKey =
                 </button>
 
                 {paymentFormOpen && (
-                  <div className="barsh-direct-payment-inline-form">
-                    <label className="barsh-direct-payment-field">
-                      <span>Payment Amount</span>
-                      <input
-                        value={paymentAmountInput}
-                        onChange={(event) => setPaymentAmountInput(event.target.value)}
-                        placeholder="$0.00"
-                        inputMode="decimal"
-                      />
-                    </label>
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Post Payment"
+                    style={{
+                      position: "fixed",
+                      inset: 0,
+                      zIndex: 10000,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: 24,
+                      background: "rgba(15, 23, 42, 0.52)",
+                      backdropFilter: "blur(2px)",
+                    }}
+                  >
+                    <div
+                      className="barsh-direct-payment-inline-form"
+                      style={{
+                        width: "min(1040px, calc(100vw - 48px))",
+                        maxHeight: "calc(100vh - 48px)",
+                        padding: 0,
+                        border: "1px solid #dbeafe",
+                        borderRadius: 18,
+                        background: "#fff",
+                        overflow: "auto",
+                        boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
+                      }}
+                    >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 16,
+                        padding: "16px 18px",
+                        borderBottom: "1px solid #e5e7eb",
+                        background: "#f8fafc",
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: 20, fontWeight: 900, color: "#0f172a" }}>
+                          Post Payment
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", marginTop: 3 }}>
+                          This posts only to {textValue(matter?.displayNumber) || "this bill/matter"}.
+                        </div>
+                      </div>
 
-                    <label className="barsh-direct-payment-field">
-                      <span>Payment Date</span>
-                      <input
-                        value={paymentDateInput}
-                        onChange={(event) => setPaymentDateInput(event.target.value)}
-                        placeholder="MM.DD.YYYY"
-                      />
-                    </label>
+                      <div style={{ textAlign: "right", fontWeight: 900, color: "#334155" }}>
+                        Total Voluntary Payment:{" "}
+                        <span style={{ color: "#dc2626", fontSize: 20 }}>
+                          {money(num(paymentAmountInput))}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentFormOpen(false);
+                          setPaymentApplyResult(null);
+                        }}
+                        disabled={paymentApplyLoading}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          color: "#64748b",
+                          fontSize: 26,
+                          fontWeight: 900,
+                          cursor: paymentApplyLoading ? "not-allowed" : "pointer",
+                          lineHeight: 1,
+                        }}
+                        aria-label="Close payment form"
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1.25fr 1fr 1fr",
+                        gap: 18,
+                        padding: 18,
+                      }}
+                    >
+                      <label className="barsh-direct-payment-field">
+                        <span>Transaction Type *</span>
+                        <select
+                          value={paymentTransactionTypeInput}
+                          onChange={(event) => setPaymentTransactionTypeInput(event.target.value)}
+                          style={{
+                            width: "100%",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 10,
+                            padding: "10px 12px",
+                            background: "#fff",
+                            color: "#0f172a",
+                            fontWeight: 700,
+                            outline: "none",
+                          }}
+                        >
+                          <option value="Collection Payment">Collection Payment</option>
+                          <option value="Voluntary Payment">Voluntary Payment</option>
+                          <option value="Attorney Fee">Attorney Fee</option>
+                          <option value="Filing Fee Collected">Filing Fee Collected</option>
+                          <option value="Filing Fee Billed">Filing Fee Billed</option>
+                          <option value="Interest">Interest</option>
+                          <option value="PreC to Provider">PreC to Provider</option>
+                          <option value="Service Fee Collected">Service Fee Collected</option>
+                          <option value="Service Fee Billed">Service Fee Billed</option>
+                          <option value="Other Court Fees Collected">Other Court Fees Collected</option>
+                          <option value="Other Court Fees Billed">Other Court Fees Billed</option>
+                        </select>
+                      </label>
+
+                      <label className="barsh-direct-payment-field">
+                        <span>Transaction Status *</span>
+                        <select
+                          value={paymentTransactionStatusInput}
+                          onChange={(event) => setPaymentTransactionStatusInput(event.target.value)}
+                          style={{
+                            width: "100%",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 10,
+                            padding: "10px 12px",
+                            background: "#fff",
+                            color: "#0f172a",
+                            fontWeight: 700,
+                            outline: "none",
+                          }}
+                        >
+                          <option value="Show on Remittance">Show on Remittance</option>
+                          <option value="Do Not Show on Remittance">Do Not Show on Remittance</option>
+                        </select>
+                      </label>
+
+                      <label className="barsh-direct-payment-field">
+                        <span>Transaction Date *</span>
+                        <input
+                          type="date"
+                          value={paymentDateInput}
+                          onChange={(event) => setPaymentDateInput(event.target.value)}
+                          style={{
+                            width: "100%",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 10,
+                            padding: "10px 12px",
+                            background: "#fff",
+                            color: "#0f172a",
+                            fontWeight: 800,
+                            outline: "none",
+                          }}
+                        />
+                      </label>
+
+                      <label className="barsh-direct-payment-field">
+                        <span>Amount *</span>
+                        <div style={{ position: "relative", width: "100%" }}>
+                          <span
+                            style={{
+                              position: "absolute",
+                              left: 12,
+                              top: "50%",
+                              transform: "translateY(-50%)",
+                              color: "#475569",
+                              fontWeight: 900,
+                              pointerEvents: "none",
+                            }}
+                          >
+                            $
+                          </span>
+                          <input
+                            value={paymentAmountInput}
+                            onChange={(event) => setPaymentAmountInput(event.target.value)}
+                            onBlur={() => setPaymentAmountInput((current) => formatPaymentAmountInput(current))}
+                            placeholder="0.00"
+                            inputMode="decimal"
+                            style={{
+                              width: "100%",
+                              border: "1px solid #cbd5e1",
+                              borderRadius: 10,
+                              padding: "10px 12px 10px 28px",
+                              background: "#fff",
+                              color: "#0f172a",
+                              fontWeight: 800,
+                              outline: "none",
+                            }}
+                          />
+                        </div>
+                      </label>
+
+                      <label className="barsh-direct-payment-field">
+                        <span>Check Date</span>
+                        <input
+                          type="date"
+                          value={paymentCheckDateInput}
+                          onChange={(event) => setPaymentCheckDateInput(event.target.value)}
+                          style={{
+                            width: "100%",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 10,
+                            padding: "10px 12px",
+                            background: "#fff",
+                            color: "#0f172a",
+                            fontWeight: 800,
+                            outline: "none",
+                          }}
+                        />
+                      </label>
+
+                      <label className="barsh-direct-payment-field">
+                        <span>Check Number</span>
+                        <input
+                          value={paymentCheckNumberInput}
+                          onChange={(event) => setPaymentCheckNumberInput(event.target.value)}
+                          placeholder="Check number"
+                          style={{
+                            width: "100%",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 10,
+                            padding: "10px 12px",
+                            background: "#fff",
+                            color: "#0f172a",
+                            fontWeight: 800,
+                            outline: "none",
+                          }}
+                        />
+                      </label>
+                    </div>
 
                     {paymentAmountInput && (
-                      <div className="barsh-direct-payment-preview">
+                      <div
+                        className="barsh-direct-payment-preview"
+                        style={{
+                          margin: "0 18px 18px",
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr 1fr",
+                          gap: 10,
+                        }}
+                      >
                         <div>Current Balance Presuit: {money(currentDirectMatterBalancePresuit(matter))}</div>
+                        <div>Payment Amount: {money(num(paymentAmountInput))}</div>
                         <div>
                           New Balance Preview: {money(Math.max(currentDirectMatterBalancePresuit(matter) - num(paymentAmountInput), 0))}
                         </div>
                       </div>
                     )}
 
-                    <div className="barsh-direct-payment-form-actions">
+                    <div
+                      className="barsh-direct-payment-form-actions"
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 14,
+                        padding: "14px 18px",
+                        borderTop: "1px solid #e5e7eb",
+                        background: "#f8fafc",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        className="barsh-direct-payment-cancel-button"
+                        onClick={() => {
+                          setPaymentAmountInput("");
+                          setPaymentDateInput(formatPaymentDateYYYYMMDD(new Date()));
+                          setPaymentTransactionTypeInput("Collection Payment");
+                          setPaymentTransactionStatusInput("Show on Remittance");
+                          setPaymentCheckDateInput("");
+                          setPaymentCheckNumberInput("");
+                          setPaymentApplyResult(null);
+                        }}
+                        disabled={paymentApplyLoading}
+                        style={{
+                          minWidth: 132,
+                          height: 44,
+                          border: "1px solid #dc2626",
+                          borderRadius: 12,
+                          background: paymentApplyLoading ? "#fecaca" : "#dc2626",
+                          color: "#fff",
+                          fontWeight: 900,
+                          fontSize: 15,
+                          cursor: paymentApplyLoading ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        Reset
+                      </button>
+
                       <button
                         type="button"
                         className="barsh-direct-payment-submit-button"
                         onClick={applyVoluntaryPaymentFromSummary}
                         disabled={paymentApplyLoading}
-                      >
-                        Confirm Payment
-                      </button>
-
-                      <button
-                        type="button"
-                        className="barsh-direct-payment-cancel-button"
-                        onClick={() => {
-                          setPaymentFormOpen(false);
-                          setPaymentApplyResult(null);
+                        style={{
+                          minWidth: 132,
+                          height: 44,
+                          border: "1px solid #16a34a",
+                          borderRadius: 12,
+                          background: paymentApplyLoading ? "#bbf7d0" : "#16a34a",
+                          color: "#fff",
+                          fontWeight: 900,
+                          fontSize: 15,
+                          cursor: paymentApplyLoading ? "not-allowed" : "pointer",
                         }}
-                        disabled={paymentApplyLoading}
                       >
-                        Cancel
+                        {paymentApplyLoading ? "Saving..." : "Save"}
                       </button>
+                    </div>
+
+                    <div style={{ padding: "0 18px 16px", fontSize: 12, color: "#64748b", fontWeight: 700 }}>
+                      Current writeback remains limited to Payment Voluntary and Balance Presuit.  Transaction type, status, check date, and check number are UI fields only until the receipt/writeback model is expanded.
+                    </div>
                     </div>
                   </div>
                 )}
@@ -3190,43 +3495,207 @@ const activeGroupKey =
                   </div>
                 )}
 
-                <div className="barsh-direct-payment-receipts">
-                  <div className="barsh-direct-payment-receipts-title">
-                    Payment Receipts
-                  </div>
 
-                  {paymentReceiptsLoading && (
-                    <div className="barsh-direct-payment-receipt-empty">
-                      Loading receipts...
-                    </div>
-                  )}
-
-                  {!paymentReceiptsLoading && paymentReceipts.length === 0 && (
-                    <div className="barsh-direct-payment-receipt-empty">
-                      No payment receipts recorded yet.
-                    </div>
-                  )}
-
-                  {!paymentReceiptsLoading &&
-                    paymentReceipts.slice(0, 5).map((receipt) => (
-                      <div className="barsh-direct-payment-receipt-row" key={receipt.id}>
-                        <div className="barsh-direct-payment-receipt-date">
-                          {formatPaymentDateMMDDYYYY(receipt.paymentDate)}
-                        </div>
-                        <div className="barsh-direct-payment-receipt-main">
-                          <div className="barsh-direct-payment-receipt-amount">
-                            {money(receipt.paymentAmount)}
-                          </div>
-                          <div className="barsh-direct-payment-receipt-meta">
-                            Balance after: {money(receipt.balancePresuitAfter)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                </div>
               </div>
             </div>
           </div>
+        </div>
+
+        <div
+          className="barsh-direct-payment-receipts"
+          style={{
+            marginTop: 18,
+            width: "100%",
+            padding: 16,
+            border: "1px solid #dbeafe",
+            borderRadius: 18,
+            background: "#f8fafc",
+            boxShadow: "0 12px 30px rgba(15, 23, 42, 0.08)",
+          }}
+        >
+          <div
+            className="barsh-direct-payment-receipts-title"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              marginBottom: 10,
+            }}
+          >
+            <span>Payments</span>
+            <span style={{ fontSize: 12, color: "#64748b", fontWeight: 800 }}>
+              {paymentReceiptsLoading
+        ? "Loading..."
+        : `${paymentReceipts.length.toLocaleString("en-US")} payment${paymentReceipts.length === 1 ? "" : "s"}`}
+            </span>
+          </div>
+
+          {paymentReceiptsLoading && (
+            <div className="barsh-direct-payment-receipt-empty">
+              Loading payments...
+            </div>
+          )}
+
+          {!paymentReceiptsLoading && paymentReceipts.length === 0 && (
+            <div className="barsh-direct-payment-receipt-empty">
+              No payments posted yet.
+            </div>
+          )}
+
+          {!paymentReceiptsLoading && paymentReceipts.length > 0 && (
+            <div
+              style={{
+        overflowX: "auto",
+        border: "1px solid #d7dee8",
+        borderRadius: 10,
+        background: "#fff",
+        boxShadow: "0 8px 24px rgba(15, 23, 42, 0.08)",
+              }}
+            >
+              <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          fontSize: 12,
+          color: "#0f172a",
+          minWidth: 1420,
+        }}
+              >
+        <thead>
+          <tr style={{ background: "#94a3b8", color: "#1f2937" }}>
+            <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Action</th>
+            <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>BRL Number</th>
+            <th style={{ textAlign: "right", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Transaction Amount</th>
+            <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Master Lawsuit</th>
+            <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Provider</th>
+            <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Invoice ID</th>
+            <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Transaction Type</th>
+            <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Transaction Date</th>
+            <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Transaction Status</th>
+            <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Check No</th>
+            <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Check Date</th>
+            <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Description</th>
+            <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Posted By</th>
+            <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Posted</th>
+          </tr>
+        </thead>
+        <tbody>
+          {paymentReceipts.slice(0, 25).map((receipt, index) => {
+            const zebra = index % 2 === 0 ? "#f8fafc" : "#ffffff";
+            const provider =
+              textValue(receipt.provider) ||
+              textValue(receipt.clientName) ||
+              providerValue(matter) ||
+              "—";
+
+            return (
+              <tr key={receipt.id} style={{ background: zebra }}>
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb", whiteSpace: "nowrap" }}>
+                  <button
+                    type="button"
+                    disabled
+                    title="Edit payment will be enabled after payment receipt persistence is expanded."
+                    style={{
+                      marginRight: 6,
+                      width: 30,
+                      height: 28,
+                      border: "1px solid #0891b2",
+                      borderRadius: 6,
+                      background: "#06b6d4",
+                      color: "#fff",
+                      fontSize: 13,
+                      fontWeight: 900,
+                      cursor: "not-allowed",
+                    }}
+                  >
+                    ✎
+                  </button>
+                  <button
+                    type="button"
+                    disabled
+                    title="Delete payment will be enabled after payment receipt persistence is expanded."
+                    style={{
+                      width: 30,
+                      height: 28,
+                      border: "1px solid #ef4444",
+                      borderRadius: 6,
+                      background: "#ef4444",
+                      color: "#fff",
+                      fontSize: 13,
+                      fontWeight: 900,
+                      cursor: "not-allowed",
+                    }}
+                  >
+                    🗑
+                  </button>
+                </td>
+
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb", fontWeight: 800 }}>
+                  {textValue(receipt.displayNumber) || textValue(matter?.displayNumber) || "—"}
+                </td>
+
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 900 }}>
+                  {money(receipt.paymentAmount)}
+                </td>
+
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb" }}>
+                  {textValue(matter?.masterLawsuitId) || "—"}
+                </td>
+
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb", minWidth: 240 }}>
+                  {provider}
+                </td>
+
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb" }}>
+                  {textValue(receipt.invoiceId) || "—"}
+                </td>
+
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb" }}>
+                  {textValue(receipt.transactionType) || "—"}
+                </td>
+
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb" }}>
+                  {receipt.paymentDate ? formatPaymentDateMMDDYYYY(receipt.paymentDate) : "—"}
+                </td>
+
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb" }}>
+                  {textValue(receipt.transactionStatus) || "—"}
+                </td>
+
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb" }}>
+                  {textValue(receipt.checkNumber) || "—"}
+                </td>
+
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb" }}>
+                  {receipt.checkDate ? formatPaymentDateMMDDYYYY(receipt.checkDate) : "—"}
+                </td>
+
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb", minWidth: 180 }}>
+                  {textValue(receipt.description) || "—"}
+                </td>
+
+
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb" }}>
+                  {textValue(receipt.postedBy) || "—"}
+                </td>
+
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb" }}>
+                  {receipt.createdAt ? "Yes" : "—"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+              </table>
+            </div>
+          )}
+
+          {!paymentReceiptsLoading && paymentReceipts.length > 0 && (
+            <div style={{ marginTop: 8, fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+              Edit/Delete and additional posting fields are UI placeholders until the payment receipt model is expanded.
+            </div>
+          )}
         </div>
 
         <div className="barsh-summary-workflow-divider" />

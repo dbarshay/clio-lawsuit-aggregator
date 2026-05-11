@@ -2591,7 +2591,7 @@ const pageStyle: React.CSSProperties = {
 };
 
 const shellStyle: React.CSSProperties = {
-  maxWidth: 1560,
+  maxWidth: "none",
   margin: "0 auto",
 };
 
@@ -3174,7 +3174,7 @@ const advancedOverlayStyle: React.CSSProperties = {
 };
 
 const advancedModalStyle: React.CSSProperties = {
-  width: "min(1680px, calc(100vw - 48px))",
+  width: "calc(100vw - 32px)",
   maxHeight: "calc(100vh - 70px)",
   overflow: "auto",
   border: "1px solid " + colors.line,
@@ -3289,7 +3289,7 @@ const searchResultsOverlayStyle: React.CSSProperties = {
 };
 
 const searchResultsModalStyle: React.CSSProperties = {
-  width: "min(1180px, calc(100vw - 48px))",
+  width: "calc(100vw - 32px)",
   maxHeight: "calc(100vh - 70px)",
   overflow: "auto",
   padding: 22,

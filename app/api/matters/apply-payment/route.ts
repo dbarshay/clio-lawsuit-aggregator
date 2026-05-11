@@ -12,11 +12,20 @@ function num(value: any): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function cleanText(value: any): string {
+  return String(value ?? "").trim();
+}
+
 function cleanDate(value: any): string {
   const raw = String(value || "").trim();
 
   if (/^\d{2}\.\d{2}\.\d{4}$/.test(raw)) {
     return raw;
+  }
+
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) {
+    const [mm, dd, yyyy] = raw.split("/");
+    return `${mm}.${dd}.${yyyy}`;
   }
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
@@ -29,6 +38,31 @@ function cleanDate(value: any): string {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${mm}.${dd}.${yyyy}`;
+}
+
+function cleanOptionalDate(value: any): string {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  return cleanDate(raw);
+}
+
+function paymentReceiptView(row: any) {
+  const safetySnapshot = row?.safetySnapshot || {};
+  const posting = safetySnapshot?.posting || {};
+
+  return {
+    ...row,
+    transactionType: cleanText(posting.transactionType),
+    transactionStatus: cleanText(posting.transactionStatus),
+    transactionDate: cleanText(posting.transactionDate || row?.paymentDate),
+    checkNumber: cleanText(posting.checkNumber),
+    checkDate: cleanText(posting.checkDate),
+    invoiceId: cleanText(posting.invoiceId),
+    description: cleanText(posting.description || posting.transactionType),
+    transactionFee: posting.transactionFee ?? null,
+    postedBy: cleanText(posting.postedBy || safetySnapshot.sourceOfPaymentIntent || "Barsh Matters UI"),
+    posted: !!row?.createdAt,
+  };
 }
 
 function cfId(cfv: any): number {
@@ -123,7 +157,7 @@ export async function GET(request: Request) {
       ok: true,
       matterId,
       count: rows.length,
-      rows,
+      rows: rows.map(paymentReceiptView),
     });
   } catch (error: any) {
     return NextResponse.json(
@@ -143,6 +177,10 @@ export async function POST(request: Request) {
     const matterId = String(body?.matterId || "").trim();
     const paymentAmount = num(body?.paymentAmount);
     const paymentDate = cleanDate(body?.paymentDate);
+    const transactionType = cleanText(body?.transactionType);
+    const transactionStatus = cleanText(body?.transactionStatus);
+    const checkDate = cleanOptionalDate(body?.checkDate);
+    const checkNumber = cleanText(body?.checkNumber);
     const expectedDisplayNumber = String(body?.expectedDisplayNumber || "").trim();
 
     if (!matterId) {
@@ -284,6 +322,18 @@ export async function POST(request: Request) {
           systemOfRecordAfterWriteback: "Clio readback",
           customFieldValueCreation: "blocked",
           clioWriteConfirmed: !!writeResultJson?.data?.id,
+          posting: {
+            transactionType,
+            transactionStatus,
+            transactionDate: paymentDate,
+            checkDate,
+            checkNumber,
+            invoiceId: "",
+            description: transactionType,
+            transactionFee: null,
+            postedBy: "Barsh Matters UI",
+            posted: true,
+          },
         },
       },
     });
@@ -305,7 +355,7 @@ export async function POST(request: Request) {
         paymentVoluntary: readbackPaymentVoluntary,
         balancePresuit: readbackBalancePresuit,
       },
-      receipt,
+      receipt: paymentReceiptView(receipt),
       clioWriteConfirmed: !!writeResultJson?.data?.id,
       clioReadback: {
         paymentVoluntary: readbackPaymentVoluntary,

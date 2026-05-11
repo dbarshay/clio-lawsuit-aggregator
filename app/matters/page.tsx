@@ -1383,7 +1383,7 @@ const pageStyle: React.CSSProperties = {
 };
 
 const shellStyle: React.CSSProperties = {
-  maxWidth: 1560,
+  maxWidth: "none",
   margin: "0 auto",
 };
 
@@ -1671,7 +1671,7 @@ const masterSummaryGridStyle: React.CSSProperties = {
   gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
   gap: 10,
   marginTop: 10,
-  maxWidth: 1420,
+  maxWidth: "none",
 };
 
 const masterSummaryItemStyle: React.CSSProperties = {
@@ -1770,7 +1770,7 @@ const masterWorkspacePanelTextStyle: React.CSSProperties = {
   color: "#475569",
   fontSize: 13,
   lineHeight: 1.5,
-  maxWidth: 900,
+  maxWidth: "none",
 };
 
 const masterWorkspaceCardsStyle: React.CSSProperties = {

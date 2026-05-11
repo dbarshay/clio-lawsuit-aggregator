@@ -314,7 +314,7 @@ type MatterWorkspaceTab =
 const matterWorkspaceTabs: Array<{ key: MatterWorkspaceTab; label: string; note: string }> = [
   { key: "lawsuit", label: "Lawsuit", note: "Aggregation and lawsuit metadata" },
   { key: "documents", label: "Documents", note: "Preview, finalize, and Clio upload" },
-  { key: "settlement", label: "Settlement", note: "Settlement workflow placeholder" },
+  { key: "settlement", label: "Settlement", note: "Preview, write, document, and close paid settlements" },
   { key: "audit_history", label: "Audit / History", note: "Local workflow history" },
 ];
 
@@ -3252,22 +3252,62 @@ const activeGroupKey =
         <div className="barsh-summary-workflow-buttons">
           {matterWorkspaceTabs.map((tab) => {
             const active = activeWorkspaceTab === tab.key;
+            const lawsuitLocked = tab.key === "lawsuit" && alreadyAggregated;
+            const auditHistoryLocked = tab.key === "audit_history";
+            const tabLocked = lawsuitLocked || auditHistoryLocked;
             return (
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => setActiveWorkspaceTab(tab.key)}
-                title={tab.note}
-                className={active ? "barsh-summary-workflow-button active" : "barsh-summary-workflow-button"}
+                onClick={() => {
+                  if (tabLocked) return;
+                  setActiveWorkspaceTab(tab.key);
+                }}
+                disabled={tabLocked}
+                aria-disabled={tabLocked}
+                title={
+                  lawsuitLocked
+                    ? `Lawsuit workspace is locked because this matter is already part of lawsuit ${tabMasterLawsuitId || textValue(matter?.masterLawsuitId) || "—"}.`
+                    : auditHistoryLocked
+                      ? "Audit / History access is locked."
+                      : tab.note
+                }
+                className={
+                  active
+                    ? "barsh-summary-workflow-button active"
+                    : "barsh-summary-workflow-button"
+                }
+                style={
+                  tabLocked
+                    ? {
+                        opacity: 0.55,
+                        cursor: "not-allowed",
+                        borderColor: auditHistoryLocked ? "#cbd5e1" : "#fecaca",
+                        background: auditHistoryLocked ? "#f8fafc" : "#fef2f2",
+                        color: auditHistoryLocked ? "#475569" : "#991b1b",
+                        marginLeft: auditHistoryLocked ? "auto" : undefined,
+                      }
+                    : undefined
+                }
               >
-                {tab.label}
+                {lawsuitLocked ? "🔒 Lawsuit" : auditHistoryLocked ? "🔒 Audit / History" : tab.label}
               </button>
             );
           })}
         </div>
       </section>
 
-      {activeWorkspaceTab === "lawsuit" && (
+      {activeWorkspaceTab === "lawsuit" && alreadyAggregated && (
+        <section style={tabPlaceholderPanelStyle}>
+          <h2 style={{ marginTop: 0, marginBottom: 6 }}>Lawsuit Workspace Locked</h2>
+          <p style={tabPlaceholderTextStyle}>
+            This matter is already part of lawsuit {tabMasterLawsuitId || textValue(matter?.masterLawsuitId) || "—"}.
+            Use the connected lawsuit/document/settlement workflow instead of generating another lawsuit from this matter.
+          </p>
+        </section>
+      )}
+
+      {activeWorkspaceTab === "lawsuit" && !alreadyAggregated && (
         <section style={tabPlaceholderPanelStyle}>
           <div
             style={{

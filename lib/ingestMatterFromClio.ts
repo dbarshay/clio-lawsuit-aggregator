@@ -3,7 +3,7 @@ import { upsertClaimIndexFromMatter } from "@/lib/claimIndexUpsert";
 
 export async function ingestMatterFromClio(matterId: number) {
   const fields = encodeURIComponent(
-    "id,display_number,description,status,client,custom_field_values{id,value,custom_field}"
+    "id,display_number,description,status,matter_stage{id,name},client,custom_field_values{id,value,custom_field}"
   );
 
   const res = await clioFetch(`/api/v4/matters/${matterId}.json?fields=${fields}`);

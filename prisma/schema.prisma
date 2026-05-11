@@ -244,3 +244,17 @@ model MatterPaymentReceipt {
   @@index([createdAt])
 }
 
+
+
+model ClaimIndexRebuildState {
+  name              String   @id
+  currentBrlNumber  Int?
+  lastProcessedAt   DateTime?
+  status            String   @default("idle")
+  lastError         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status])
+  @@index([updatedAt])
+}

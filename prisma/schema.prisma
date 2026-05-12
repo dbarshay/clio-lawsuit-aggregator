@@ -238,6 +238,11 @@ model MatterPaymentReceipt {
   transactionFee           Float?
   postedBy                 String?
   posted                   Boolean  @default(true)
+  voided                   Boolean  @default(false)
+  voidedAt                 DateTime?
+  voidedBy                 String?
+  voidReason               String?
+  reversalSnapshot         Json?
   claimAmountBefore        Float?
   paymentVoluntaryBefore   Float?
   balancePresuitBefore     Float?
@@ -253,6 +258,7 @@ model MatterPaymentReceipt {
   @@index([paymentDate])
   @@index([transactionType])
   @@index([transactionStatus])
+  @@index([voided])
   @@index([createdAt])
 }
 

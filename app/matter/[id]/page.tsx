@@ -614,6 +614,7 @@ const activeGroupKey =
   const [paymentTransactionStatusInput, setPaymentTransactionStatusInput] = useState("Show on Remittance");
   const [paymentCheckDateInput, setPaymentCheckDateInput] = useState("");
   const [paymentCheckNumberInput, setPaymentCheckNumberInput] = useState("");
+  const [paymentVoidLoadingId, setPaymentVoidLoadingId] = useState<number | null>(null);
 
   async function loadPaymentReceipts(matterIdInput?: string) {
     const targetMatterId = String(matterIdInput || matterId || "").trim();
@@ -635,6 +636,88 @@ const activeGroupKey =
       setPaymentReceipts([]);
     } finally {
       setPaymentReceiptsLoading(false);
+    }
+  }
+
+
+  async function handleVoidPaymentReceipt(receipt: any) {
+    const receiptId = Number(receipt?.id || 0);
+    const receiptDisplayNumber = textValue(receipt?.displayNumber) || textValue(matter?.displayNumber);
+    const receiptAmount = num(receipt?.paymentAmount);
+
+    if (!receiptId) {
+      setPaymentApplyResult({ ok: false, error: "Could not identify the payment receipt to void." });
+      return;
+    }
+
+    if (receipt?.voided) {
+      setPaymentApplyResult({ ok: false, error: "This payment receipt is already voided." });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      [
+        "Void this payment?",
+        "",
+        `Receipt: ${receiptDisplayNumber || "—"}`,
+        `Amount: ${money(receiptAmount)}`,
+        "",
+        "This will reverse the Clio Payment Voluntary / Balance Presuit writeback and keep the receipt as a voided audit record.",
+      ].join("\\n")
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setPaymentVoidLoadingId(receiptId);
+      setPaymentApplyResult(null);
+
+      const response = await fetch("/api/matters/apply-payment", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receiptId,
+          matterId,
+          expectedDisplayNumber: textValue(matter?.displayNumber),
+          voidReason: `Voided from ${textValue(matter?.displayNumber) || "matter"} payment table`,
+          voidedBy: "Barsh Matters UI",
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json?.ok) {
+        setPaymentApplyResult({
+          ok: false,
+          error: json?.error || "Payment could not be voided.",
+          details: json,
+        });
+        return;
+      }
+
+      setPaymentApplyResult({
+        ok: true,
+        action: "void-payment",
+        paymentApplied: -receiptAmount,
+        after: json?.after,
+        receipt: json?.receipt,
+        message: `Voided ${money(receiptAmount)} payment receipt.`,
+      });
+
+      await loadPaymentReceipts(matterId);
+
+      setMatter((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          paymentVoluntary: json?.after?.paymentVoluntary ?? prev.paymentVoluntary,
+          balancePresuit: json?.after?.balancePresuit ?? prev.balancePresuit,
+        };
+      });
+    } catch (error: any) {
+      setPaymentApplyResult({ ok: false, error: error?.message || String(error) });
+    } finally {
+      setPaymentVoidLoadingId(null);
     }
   }
 
@@ -3590,7 +3673,14 @@ const activeGroupKey =
               "—";
 
             return (
-              <tr key={receipt.id} style={{ background: zebra }}>
+              <tr
+                key={receipt.id}
+                style={{
+                  background: receipt?.voided ? "#fee2e2" : zebra,
+                  color: receipt?.voided ? "#7f1d1d" : undefined,
+                  opacity: receipt?.voided ? 0.82 : 1,
+                }}
+              >
                 <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb", whiteSpace: "nowrap" }}>
                   <button
                     type="button"
@@ -3613,21 +3703,23 @@ const activeGroupKey =
                   </button>
                   <button
                     type="button"
-                    disabled
-                    title="Delete payment will be enabled after payment receipt persistence is expanded."
+                    disabled={paymentVoidLoadingId === Number(receipt.id) || !!receipt?.voided}
+                    onClick={() => handleVoidPaymentReceipt(receipt)}
+                    title={receipt?.voided ? "This payment receipt is already voided." : "Void payment and reverse Clio financial writeback."}
                     style={{
                       width: 30,
                       height: 28,
                       border: "1px solid #ef4444",
                       borderRadius: 6,
-                      background: "#ef4444",
+                      background: receipt?.voided ? "#991b1b" : "#ef4444",
                       color: "#fff",
                       fontSize: 13,
                       fontWeight: 900,
-                      cursor: "not-allowed",
+                      cursor: paymentVoidLoadingId === Number(receipt.id) || !!receipt?.voided ? "not-allowed" : "pointer",
+                      opacity: paymentVoidLoadingId === Number(receipt.id) ? 0.65 : 1,
                     }}
                   >
-                    🗑
+                    {paymentVoidLoadingId === Number(receipt.id) ? "…" : "🗑"}
                   </button>
                 </td>
 
@@ -3680,8 +3772,8 @@ const activeGroupKey =
                   {textValue(receipt.postedBy) || "—"}
                 </td>
 
-                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb" }}>
-                  {receipt.createdAt ? "Yes" : "—"}
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb", fontWeight: receipt?.voided ? 900 : 700 }}>
+                  {receipt?.voided ? "VOIDED" : receipt.createdAt ? "Yes" : "—"}
                 </td>
               </tr>
             );
@@ -3693,7 +3785,7 @@ const activeGroupKey =
 
           {!paymentReceiptsLoading && paymentReceipts.length > 0 && (
             <div style={{ marginTop: 8, fontSize: 11, color: "#64748b", fontWeight: 700 }}>
-              Edit/Delete and additional posting fields are UI placeholders until the payment receipt model is expanded.
+              Delete now voids a payment receipt, reverses the Clio financial writeback, and keeps the row as an audit record.  Edit remains disabled for now.
             </div>
           )}
         </div>

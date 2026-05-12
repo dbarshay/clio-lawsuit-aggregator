@@ -60,6 +60,7 @@ function paymentReceiptView(row: any) {
   const transactionFee = row?.transactionFee ?? posting.transactionFee ?? null;
   const postedBy = cleanText(row?.postedBy || posting.postedBy || safetySnapshot.sourceOfPaymentIntent || "Barsh Matters UI");
   const posted = typeof row?.posted === "boolean" ? row.posted : !!row?.createdAt;
+  const voided = typeof row?.voided === "boolean" ? row.voided : false;
 
   return {
     ...row,
@@ -73,6 +74,11 @@ function paymentReceiptView(row: any) {
     transactionFee,
     postedBy,
     posted,
+    voided,
+    voidedAt: row?.voidedAt || null,
+    voidedBy: cleanText(row?.voidedBy),
+    voidReason: cleanText(row?.voidReason),
+    reversalSnapshot: row?.reversalSnapshot || null,
   };
 }
 
@@ -169,6 +175,264 @@ export async function GET(request: Request) {
       matterId,
       count: rows.length,
       rows: rows.map(paymentReceiptView),
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: error?.message || String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+
+    const receiptId = Number(body?.receiptId || body?.id || "");
+    const expectedMatterId = Number(body?.matterId || "");
+    const expectedDisplayNumber = String(body?.expectedDisplayNumber || "").trim();
+    const voidReason = cleanText(body?.voidReason || "Voided from Barsh Matters UI");
+    const voidedBy = cleanText(body?.voidedBy || "Barsh Matters UI");
+
+    if (!Number.isFinite(receiptId) || receiptId <= 0) {
+      return NextResponse.json(
+        { ok: false, error: "Valid receiptId is required." },
+        { status: 400 }
+      );
+    }
+
+    const receipt = await prisma.matterPaymentReceipt.findUnique({
+      where: { id: receiptId },
+    });
+
+    if (!receipt) {
+      return NextResponse.json(
+        { ok: false, error: "Payment receipt not found." },
+        { status: 404 }
+      );
+    }
+
+    if (receipt.voided) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Payment receipt is already voided.",
+          receipt: paymentReceiptView(receipt),
+        },
+        { status: 409 }
+      );
+    }
+
+    if (
+      Number.isFinite(expectedMatterId) &&
+      expectedMatterId > 0 &&
+      Number(receipt.matterId) !== expectedMatterId
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Receipt matterId mismatch.  Refusing payment void.",
+          expectedMatterId,
+          actualMatterId: receipt.matterId,
+        },
+        { status: 409 }
+      );
+    }
+
+    if (
+      expectedDisplayNumber &&
+      String(receipt.displayNumber || "").trim() !== expectedDisplayNumber
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Receipt display number mismatch.  Refusing payment void.",
+          expectedDisplayNumber,
+          actualDisplayNumber: receipt.displayNumber || "",
+        },
+        { status: 409 }
+      );
+    }
+
+    const paymentAmount = num(receipt.paymentAmount);
+
+    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Receipt has no valid payment amount to reverse.",
+          receipt: paymentReceiptView(receipt),
+        },
+        { status: 400 }
+      );
+    }
+
+    const matterId = String(receipt.matterId);
+    const fields =
+      "id,display_number,custom_field_values{id,value,custom_field}";
+
+    const readBeforeJson: any = await clioJson(
+      `/api/v4/matters/${encodeURIComponent(matterId)}.json?fields=${fields}`
+    );
+
+    const matterBefore = readBeforeJson?.data;
+
+    if (!matterBefore?.id) {
+      return NextResponse.json(
+        { ok: false, error: "Could not read matter from Clio before payment void." },
+        { status: 502 }
+      );
+    }
+
+    if (
+      expectedDisplayNumber &&
+      String(matterBefore.display_number || "").trim() !== expectedDisplayNumber
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Matter display number mismatch.  Refusing payment void.",
+          expectedDisplayNumber,
+          actualDisplayNumber: matterBefore.display_number || "",
+        },
+        { status: 409 }
+      );
+    }
+
+    const claimAmountCfv = findCfv(matterBefore, MATTER_CF.CLAIM_AMOUNT);
+    const paymentVoluntaryCfv = findCfv(matterBefore, MATTER_CF.PAYMENT_VOLUNTARY);
+    const balancePresuitCfv = findCfv(matterBefore, MATTER_CF.BALANCE_PRESUIT);
+
+    const claimAmount = num(claimAmountCfv?.value);
+    const currentPaymentVoluntary = num(paymentVoluntaryCfv?.value);
+    const currentBalancePresuit = num(balancePresuitCfv?.value);
+
+    if (paymentAmount > currentPaymentVoluntary) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Cannot void payment because receipt amount exceeds current Payment Voluntary in Clio.",
+          receiptAmount: paymentAmount,
+          currentPaymentVoluntary,
+          currentBalancePresuit,
+          receipt: paymentReceiptView(receipt),
+        },
+        { status: 409 }
+      );
+    }
+
+    const newPaymentVoluntary = Math.max(currentPaymentVoluntary - paymentAmount, 0);
+    const newBalancePresuit = currentBalancePresuit + paymentAmount;
+
+    const customFieldValues = [
+      payloadForExistingCfv(
+        paymentVoluntaryCfv,
+        MATTER_CF.PAYMENT_VOLUNTARY,
+        newPaymentVoluntary
+      ),
+      payloadForExistingCfv(
+        balancePresuitCfv,
+        MATTER_CF.BALANCE_PRESUIT,
+        newBalancePresuit
+      ),
+    ];
+
+    const writeResultJson: any = await clioJson(
+      `/api/v4/matters/${encodeURIComponent(matterId)}.json`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          data: {
+            custom_field_values: customFieldValues,
+          },
+        }),
+      }
+    );
+
+    const readAfterJson: any = await clioJson(
+      `/api/v4/matters/${encodeURIComponent(matterId)}.json?fields=${fields}`
+    );
+
+    const readbackPaymentVoluntary = num(
+      findCfv(readAfterJson?.data, MATTER_CF.PAYMENT_VOLUNTARY)?.value
+    );
+    const readbackBalancePresuit = num(
+      findCfv(readAfterJson?.data, MATTER_CF.BALANCE_PRESUIT)?.value
+    );
+
+    const refreshedIndex = await refreshClaimIndexBestEffort(matterId);
+
+    const voidedReceipt = await prisma.matterPaymentReceipt.update({
+      where: { id: receipt.id },
+      data: {
+        voided: true,
+        voidedAt: new Date(),
+        voidedBy,
+        voidReason,
+        reversalSnapshot: {
+          action: "void-payment",
+          sourceOfVoidIntent: "Barsh Matters UI",
+          systemOfRecordAfterWriteback: "Clio readback",
+          customFieldValueCreation: "blocked",
+          clioWriteConfirmed: !!writeResultJson?.data?.id,
+          receiptId: receipt.id,
+          matterId: receipt.matterId,
+          displayNumber: receipt.displayNumber || "",
+          paymentAmount,
+          before: {
+            claimAmount,
+            paymentVoluntary: currentPaymentVoluntary,
+            balancePresuit: currentBalancePresuit,
+          },
+          after: {
+            claimAmount,
+            paymentVoluntary: readbackPaymentVoluntary,
+            balancePresuit: readbackBalancePresuit,
+          },
+          voidReason,
+          voidedBy,
+          voidedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    return NextResponse.json({
+      ok: true,
+      action: "void-payment",
+      matterId,
+      displayNumber: matterBefore.display_number || "",
+      receiptId: receipt.id,
+      paymentVoided: paymentAmount,
+      before: {
+        claimAmount,
+        paymentVoluntary: currentPaymentVoluntary,
+        balancePresuit: currentBalancePresuit,
+      },
+      after: {
+        claimAmount,
+        paymentVoluntary: readbackPaymentVoluntary,
+        balancePresuit: readbackBalancePresuit,
+      },
+      receipt: paymentReceiptView(voidedReceipt),
+      clioWriteConfirmed: !!writeResultJson?.data?.id,
+      clioReadback: {
+        paymentVoluntary: readbackPaymentVoluntary,
+        balancePresuit: readbackBalancePresuit,
+      },
+      refreshedIndex,
+      safety: {
+        sourceOfVoidIntent: "Barsh Matters UI",
+        systemOfRecordAfterWriteback: "Clio readback",
+        customFieldValueCreation: "blocked",
+        receiptVoidedLocally: true,
+        hardDelete: false,
+      },
     });
   } catch (error: any) {
     return NextResponse.json(

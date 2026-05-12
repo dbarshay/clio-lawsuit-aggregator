@@ -16,6 +16,7 @@ type MatterRow = {
   masterLawsuitId: string;
   claimAmount: any;
   balancePresuit: any;
+  paymentVoluntary?: any;
   billAmount: any;
   isMaster: boolean;
   matchedBy: string;
@@ -183,6 +184,7 @@ function toMatterRow(row: any, matchedBy: string): MatterRow | null {
     masterLawsuitId: masterLawsuitId(row),
     claimAmount: row?.claimAmount ?? row?.claim_amount,
     balancePresuit: row?.balancePresuit ?? row?.balance_presuit,
+    paymentVoluntary: row?.paymentVoluntary ?? row?.payment_voluntary,
     billAmount: row?.billAmount ?? row?.bill_amount ?? row?.amount,
     isMaster: isMasterMatterRow(row),
     matchedBy,
@@ -256,7 +258,7 @@ function filteredUrl(kind: FilterKind, value: string) {
 }
 
 type WorkflowKind = "patient" | "claim" | "";
-type MasterWorkspaceTab = "documents" | "settlement" | "close_paid_settlements";
+type MasterWorkspaceTab = "documents" | "settlement" | "payments" | "close_paid_settlements";
 
 function getWorkflowFromUrl(): WorkflowKind {
   if (typeof window === "undefined") return "";
@@ -295,7 +297,9 @@ export default function FilteredMattersPage() {
   const [rows, setRows] = useState<MatterRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeMasterWorkspaceTab, setActiveMasterWorkspaceTab] = useState<MasterWorkspaceTab>("documents");
+  const [activeMasterWorkspaceTab, setActiveMasterWorkspaceTab] = useState<MasterWorkspaceTab>("payments");
+  const masterWorkspaceTabButtonStyle = (tab: MasterWorkspaceTab): React.CSSProperties =>
+    activeMasterWorkspaceTab === tab ? masterWorkflowActiveButtonStyle : masterWorkflowButtonStyle;
   const [masterSettlementDraft, setMasterSettlementDraft] = useState({
     settlementBasedOn: "lawsuit_amount",
     feeScheduleAmount: "",
@@ -448,6 +452,27 @@ export default function FilteredMattersPage() {
     );
   }, [masterSettlementDetailRows]);
 
+  const masterPaymentSummary = useMemo(() => {
+    const billRows = masterWorkspaceBillRows(masterSettlementDetailRows);
+    const lawsuitAmount = masterWorkspaceBillTotal(masterSettlementDetailRows);
+
+    /*
+      Lawsuit-level payment receipts are not wired yet.  Do not infer posted
+      lawsuit payments from child claim/balance differences.  Until a dedicated
+      lawsuit-payment receipt/readback source exists, this preview must show
+      no lawsuit-level payments posted and preserve the child bill total as the
+      preview Balance Presuit.
+    */
+    const paymentsPosted = 0;
+
+    return {
+      lawsuitAmount,
+      paymentsPosted,
+      balancePresuit: lawsuitAmount,
+      billCount: billRows.length,
+    };
+  }, [masterSettlementDetailRows]);
+
   const masterInsurerSummary = useMemo(() => {
     const insurers = Array.from(
       new Set(rows.map((row) => clean(row.insurer)).filter(Boolean))
@@ -574,15 +599,97 @@ export default function FilteredMattersPage() {
       <div style={shellStyle}>
         <section style={topBarStyle}>
           <div style={leftLogoWrapStyle}>
-            <a href="/" title="Return to Barsh Matters entry screen" style={{ display: "inline-flex" }}>
-              <img src="/brl-logo.png" alt="BRL Logo" style={brlLogoStyle} />
-            </a>
+            <img src="/brl-logo.png" alt="BRL Logo" style={brlLogoStyle} />
             <div style={{ paddingTop: 8 }}>
               <BarshHeaderQuickNav />
             </div>
           </div>
+
+            {kind === "master" && value && (
+              <div
+                style={{
+                  gridColumn: 2,
+                  justifySelf: "center",
+                  alignSelf: "center",
+                  display: "grid",
+                  justifyItems: "center",
+                  gap: 9,
+                  textAlign: "center",
+                  minWidth: 320,
+                  paddingTop: 48,
+                }}
+              >
+                <div
+                  style={{
+                    color: "#0f172a",
+                    fontSize: 34,
+                    lineHeight: 1.05,
+                    fontWeight: 950,
+                    letterSpacing: "-0.01em",
+                    whiteSpace: "nowrap",
+                    display: "grid",
+                    justifyItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  <span>{value}</span>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      justifySelf: "center",
+                      marginTop: 6,
+                      padding: "4px 12px",
+                      borderRadius: 999,
+                      background: "#16a34a",
+                      color: "#fff",
+                      fontSize: 13,
+                      fontWeight: 950,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      boxShadow: "0 4px 12px rgba(22, 163, 74, 0.25)",
+                    }}
+                  >
+                    Open
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "7px 11px",
+                    border: "1px solid #fecaca",
+                    borderRadius: 999,
+                    background: "#fef2f2",
+                    color: "#991b1b",
+                    fontSize: 12,
+                    fontWeight: 900,
+                    whiteSpace: "nowrap",
+                    textDecoration: "none",
+                  }}
+                >
+                  <span>MASTER LAWSUIT ID:</span>
+                  <span>{value}</span>
+                </div>
+              </div>
+            )}
+
 <div style={rightTopWrapStyle}>
             <div style={printButtonRowStyle}>
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
+                title="Audit / History access is locked."
+                style={lockedPrintQueueButtonStyle}
+              >
+                <span aria-hidden="true">🔒</span>
+                <span>Audit / History</span>
+              </button>
+
               <button
                 type="button"
                 disabled
@@ -619,15 +726,7 @@ export default function FilteredMattersPage() {
           }
         `}</style>
 
-        {kind === "master" && (
-          <section style={masterHeroStyle}>
-            <div style={masterHeroCenterStyle}>
-              <div style={masterHeroPillStyle}>LAWSUIT ID: {value}</div>
-            </div>
-          </section>
-        )}
-
-        <section style={summaryPanelStyle}>
+        <section style={kind === "master" && activeMasterWorkspaceTab === "payments" ? { ...summaryPanelStyle, display: "none" } : summaryPanelStyle}>
           <div>
             <div style={eyebrowStyle}>
               {kind === "master" ? "BARSH MATTERS MASTER LAWSUIT SUMMARY" : "BARSH MATTERS FILTERED RESULTS"}
@@ -712,39 +811,6 @@ export default function FilteredMattersPage() {
               </>
             )}
 
-            {kind === "master" && (
-              <div style={masterWorkflowRowStyle}>
-                <button
-                  type="button"
-                  onClick={() => setActiveMasterWorkspaceTab("documents")}
-                  style={activeMasterWorkspaceTab === "documents" ? masterWorkflowActiveButtonStyle : masterWorkflowButtonStyle}
-                >
-                  Documents
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveMasterWorkspaceTab("settlement")}
-                  style={activeMasterWorkspaceTab === "settlement" ? masterWorkflowActiveButtonStyle : masterWorkflowButtonStyle}
-                >
-                  Settlement
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveMasterWorkspaceTab("close_paid_settlements")}
-                  style={activeMasterWorkspaceTab === "close_paid_settlements" ? masterWorkflowActiveButtonStyle : masterWorkflowButtonStyle}
-                >
-                  Close Paid Settlements
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  style={{ ...masterWorkflowLockedButtonStyle, marginLeft: "auto" }}
-                >
-                  🔒 Audit / History
-                </button>
-              </div>
-            )}
-
             {workflowKind && (
               <div style={workflowBannerStyle}>
                 <div>
@@ -777,6 +843,7 @@ export default function FilteredMattersPage() {
 
         {kind === "master" && activeMasterWorkspaceTab === "settlement" && (
           <section style={masterSettlementPanelStyle}>
+
             <div style={masterSettlementTopStripStyle}>
               <div style={masterSettlementBasisGroupStyle}>
                 <div style={masterSettlementRadioLineStyle}>
@@ -1184,54 +1251,441 @@ export default function FilteredMattersPage() {
               <div style={masterSettlementTermFootnoteStyle}>
                 This is a visual/local draft only.  It does not run Clio contact search, settlement preview, writeback, document generation, or Close Paid Settlements.
               </div>
+
             </div>
           </section>
         )}
 
         {kind === "master" && activeMasterWorkspaceTab !== "settlement" && (
           <section style={masterWorkspacePanelStyle}>
-            <div style={masterWorkspacePanelHeaderStyle}>
-              <div>
-                <div style={masterWorkspacePanelEyebrowStyle}>Active Workspace</div>
-                <h2 style={masterWorkspacePanelTitleStyle}>
-                  {activeMasterWorkspaceTab === "documents" ? "Documents" : "Close Paid Settlements"}
-                </h2>
-              </div>
-              <div style={masterWorkspacePanelPillStyle}>Read-only preview shell</div>
-            </div>
 
-            <div style={masterWorkspaceCardsStyle}>
-              <div style={masterWorkspaceCardStyle}>
-                <div style={masterWorkspaceCardLabelStyle}>Purpose</div>
-                <div style={masterWorkspaceCardTextStyle}>
-                  {activeMasterWorkspaceTab === "documents"
-                    ? "Centralize Master Lawsuit packet preview, finalization, Clio upload, and print-queue controls."
-                    : "Review paid settlement eligibility and close only confirmed paid settlement matters from the Master Lawsuit screen."}
+            {activeMasterWorkspaceTab !== "payments" && (
+              <>
+                <div style={masterWorkspacePanelHeaderStyle}>
+                  <div>
+                    <div style={masterWorkspacePanelEyebrowStyle}>Active Workspace</div>
+                    <h2 style={masterWorkspacePanelTitleStyle}>
+                      {activeMasterWorkspaceTab === "documents" ? "Documents" : "Close Paid Settlements"}
+                    </h2>
+                  </div>
+                  <div style={masterWorkspacePanelPillStyle}>Read-only preview shell</div>
+                </div>
+
+                <div style={masterWorkspaceCardsStyle}>
+                  <div style={masterWorkspaceCardStyle}>
+                    <div style={masterWorkspaceCardLabelStyle}>Purpose</div>
+                    <div style={masterWorkspaceCardTextStyle}>
+                      {activeMasterWorkspaceTab === "documents"
+                        ? "Centralize Master Lawsuit packet preview, finalization, Clio upload, and print-queue controls."
+                        : "Review paid settlement eligibility and close only confirmed paid settlement matters from the Master Lawsuit screen."}
+                    </div>
+                  </div>
+
+                  <div style={masterWorkspaceCardStyle}>
+                    <div style={masterWorkspaceCardLabelStyle}>Safety</div>
+                    <div style={masterWorkspaceCardTextStyle}>
+                      {activeMasterWorkspaceTab === "documents"
+                        ? "Document controls will stay separated between preview, finalization, Clio upload, and print queue."
+                        : "Close actions will remain payment-confirmed only, preview-first, and limited to eligible child/bill matters."}
+                    </div>
+                  </div>
+
+                  <div style={masterWorkspaceCardStyle}>
+                    <div style={masterWorkspaceCardLabelStyle}>Next UI Step</div>
+                    <div style={masterWorkspaceCardTextStyle}>
+                      {activeMasterWorkspaceTab === "documents"
+                        ? "Move the existing read-only packet preview shell into this Documents workspace."
+                        : "Move settlement close preview into this Close Paid Settlements workspace."}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeMasterWorkspaceTab === "payments" && (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(0, 1fr) 590px",
+                  gap: 16,
+                  alignItems: "start",
+                  marginBottom: 18,
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                    gap: 12,
+                    alignItems: "stretch",
+                  }}
+                >
+                  <div style={masterSummaryItemStyle}>
+                    <span>Insurer</span>
+                    <strong>{masterInsurerSummary}</strong>
+                  </div>
+
+                  <div style={masterSummaryItemStyle}>
+                    <span>Claim Number</span>
+                    <strong>
+                      {masterClaimSummary.href ? (
+                        <a
+                          href={masterClaimSummary.href}
+                          className="barsh-filter-field-link"
+                          style={fieldLinkStyle}
+                        >
+                          {masterClaimSummary.label}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </strong>
+                  </div>
+
+                  <div style={masterSummaryItemStyle}>
+                    <span>Service Type</span>
+                    <strong>{masterServiceTypeSummary}</strong>
+                  </div>
+
+                  <div style={masterSummaryItemStyle}>
+                    <span>Treating Provider</span>
+                    <strong>{masterTreatingProviderSummary}</strong>
+                  </div>
+
+                  <div style={masterSummaryItemStyle}>
+                    <span>Date of Loss</span>
+                    <strong>{masterDateOfLossSummary}</strong>
+                  </div>
+
+                  <div style={masterSummaryItemStyle}>
+                    <span>Index / AAA Number</span>
+                    <strong>—</strong>
+                  </div>
+
+                  <div style={masterSummaryItemStyle}>
+                    <span>Court</span>
+                    <strong>—</strong>
+                  </div>
+
+                  <div style={masterSummaryItemStyle}>
+                    <span>Date Filed</span>
+                    <strong>—</strong>
+                  </div>
+
+                  <div style={masterSummaryItemStyle}>
+                    <span>Lawsuit Amount</span>
+                    <strong>{money(masterPaymentSummary.lawsuitAmount)}</strong>
+                  </div>
+
+                  <div style={masterSummaryItemStyle}>
+                    <span>Court Costs</span>
+                    <strong>$0.00</strong>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    border: "1px solid #dbe4f0",
+                    borderRadius: 18,
+                    background: "#ffffff",
+                    padding: 18,
+                    boxShadow: "0 14px 34px rgba(15, 23, 42, 0.08)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 12,
+                      marginBottom: 12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateRows: "auto auto 1fr",
+                        gap: 10,
+                        padding: "12px 12px 10px",
+                        border: "1px solid #bbf7d0",
+                        borderRadius: 14,
+                        background: "#f0fdf4",
+                        minHeight: 188,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 950,
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                          color: "#166534",
+                          textAlign: "center",
+                        }}
+                      >
+                        Payment Actions
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled
+                        title="Lawsuit-level payment posting is not wired yet."
+                        style={{
+                          width: "100%",
+                          minWidth: 0,
+                          height: 44,
+                          border: "1px solid #16a34a",
+                          borderRadius: 999,
+                          background: "#16a34a",
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: 950,
+                          cursor: "not-allowed",
+                          boxShadow: "0 8px 24px rgba(22, 163, 74, 0.22)",
+                        }}
+                      >
+                        Apply Payment
+                      </button>
+
+                      <div style={{ display: "grid", alignContent: "start" }} />
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateRows: "auto auto auto auto 1fr",
+                        gap: 10,
+                        padding: "12px 12px 10px",
+                        border: "1px solid #fecaca",
+                        borderRadius: 14,
+                        background: "#fff7f7",
+                        minHeight: 188,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 950,
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                          color: "#991b1b",
+                          textAlign: "center",
+                        }}
+                      >
+                        Lawsuit Actions
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled
+                        title="Record Settlement workflow will be wired from the Master Lawsuit screen."
+                        style={{
+                          width: "100%",
+                          minWidth: 0,
+                          height: 44,
+                          border: "1px solid #93c5fd",
+                          borderRadius: 999,
+                          background: "#eff6ff",
+                          color: "#1d4ed8",
+                          fontSize: 12,
+                          fontWeight: 950,
+                          cursor: "not-allowed",
+                          opacity: 0.82,
+                        }}
+                      >
+                        Record Settlement
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled
+                        title="Document controls remain in the Documents workflow."
+                        style={{
+                          width: "100%",
+                          minWidth: 0,
+                          height: 44,
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 999,
+                          background: "#f8fafc",
+                          color: "#334155",
+                          fontSize: 12,
+                          fontWeight: 950,
+                          cursor: "not-allowed",
+                          opacity: 0.82,
+                        }}
+                      >
+                        View Documents
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled
+                        title="Close Lawsuit workflow will be wired after payment/settlement safety checks."
+                        style={{
+                          width: "100%",
+                          minWidth: 0,
+                          height: 44,
+                          border: "1px solid #dc2626",
+                          borderRadius: 999,
+                          background: "#dc2626",
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: 950,
+                          cursor: "not-allowed",
+                        }}
+                      >
+                        Close Lawsuit
+                      </button>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: 0,
+                      marginTop: 4,
+                      borderTop: "1px solid transparent",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "9px 0",
+                        fontSize: 15,
+                        color: "#475569",
+                        fontWeight: 800,
+                      }}
+                    >
+                      <span>Lawsuit Amount</span>
+                      <strong style={{ color: "#0f172a", fontSize: 18 }}>{money(masterPaymentSummary.lawsuitAmount)}</strong>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "9px 0",
+                        fontSize: 15,
+                        color: "#475569",
+                        fontWeight: 800,
+                      }}
+                    >
+                      <span>Payments Posted</span>
+                      <strong style={{ color: "#0f172a", fontSize: 18 }}>{money(masterPaymentSummary.paymentsPosted)}</strong>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "13px 0 11px",
+                        borderTop: "1px solid #dbe4f0",
+                        fontSize: 16,
+                        color: "#0f172a",
+                        fontWeight: 950,
+                      }}
+                    >
+                      <span>Balance Presuit</span>
+                      <strong style={{ color: "#0f172a", fontSize: 22 }}>{money(masterPaymentSummary.balancePresuit)}</strong>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 10,
+                      display: "grid",
+                      gap: 7,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 8,
+                        fontSize: 12,
+                        fontWeight: 900,
+                        color: "#166534",
+                      }}
+                    >
+                      <span>Payment controls: Preview only</span>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: "4px 8px",
+                          border: "1px solid #93c5fd",
+                          borderRadius: 999,
+                          background: "#eff6ff",
+                          color: "#1d4ed8",
+                          fontSize: 11,
+                          fontWeight: 900,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Master Lawsuit
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>
+                      Last activity: lawsuit payment receipts are not wired yet.
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 14,
+                      paddingTop: 12,
+                      borderTop: "1px solid #e2e8f0",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 8,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 900,
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                          color: "#475569",
+                        }}
+                      >
+                        Recent Receipts
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: "#64748b" }}>
+                        None
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: 13, fontWeight: 750, color: "#64748b" }}>
+                      No lawsuit-level payment receipts posted yet.
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              <div style={masterWorkspaceCardStyle}>
-                <div style={masterWorkspaceCardLabelStyle}>Safety</div>
-                <div style={masterWorkspaceCardTextStyle}>
-                  {activeMasterWorkspaceTab === "documents"
-                    ? "Document controls will stay separated between preview, finalization, Clio upload, and print queue."
-                    : "Close actions will remain payment-confirmed only, preview-first, and limited to eligible child/bill matters."}
-                </div>
-              </div>
-
-              <div style={masterWorkspaceCardStyle}>
-                <div style={masterWorkspaceCardLabelStyle}>Next UI Step</div>
-                <div style={masterWorkspaceCardTextStyle}>
-                  {activeMasterWorkspaceTab === "documents"
-                    ? "Move the existing read-only packet preview shell into this Documents workspace."
-                    : "Move settlement close preview into this Close Paid Settlements workspace."}
-                </div>
-              </div>
-            </div>
+            )}
 
             <div style={masterWorkspaceBillListStyle}>
               <div style={masterSettlementDetailsTitleStyle}>
-                {activeMasterWorkspaceTab === "documents" ? "Lawsuit Bills" : "Close Review Bills"}
+                {activeMasterWorkspaceTab === "documents"
+                  ? "Lawsuit Bills"
+                  : activeMasterWorkspaceTab === "payments"
+                    ? "Payment Allocation Preview"
+                    : "Close Review Bills"}
               </div>
 
               <div style={masterSettlementTableWrapStyle}>
@@ -1242,11 +1696,21 @@ export default function FilteredMattersPage() {
                       <th style={masterSettlementThStyle}>Provider</th>
                       <th style={masterSettlementThStyle}>Patient</th>
                       <th style={masterSettlementRightThStyle}>Bill Amount</th>
+                      {activeMasterWorkspaceTab === "payments" && (
+                        <>
+                          <th style={masterSettlementRightThStyle}>Allocation %</th>
+                          <th style={masterSettlementRightThStyle}>Payment To Post</th>
+                          <th style={masterSettlementRightThStyle}>Expected Balance</th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
                     {masterWorkspaceBillRows(masterSettlementDetailRows).map((row: any) => {
                       const rowId = clean(row.id);
+                      const billAmount = masterWorkspaceBillAmount(row);
+                      const billTotal = masterWorkspaceBillTotal(masterSettlementDetailRows);
+                      const allocationPercent = billTotal > 0 ? (billAmount / billTotal) * 100 : 0;
 
                       return (
                         <tr key={rowId}>
@@ -1281,7 +1745,14 @@ export default function FilteredMattersPage() {
                               "—"
                             )}
                           </td>
-                          <td style={masterSettlementMoneyTdStyle}>{money(masterWorkspaceBillAmount(row))}</td>
+                          <td style={masterSettlementMoneyTdStyle}>{money(billAmount)}</td>
+                          {activeMasterWorkspaceTab === "payments" && (
+                            <>
+                              <td style={masterSettlementMoneyTdStyle}>{allocationPercent.toFixed(2)}%</td>
+                              <td style={masterSettlementMoneyTdStyle}>--</td>
+                              <td style={masterSettlementMoneyTdStyle}>{money(billAmount)}</td>
+                            </>
+                          )}
                         </tr>
                       );
                     })}
@@ -1290,10 +1761,18 @@ export default function FilteredMattersPage() {
                       <td style={masterSettlementTdStyle}></td>
                       <td style={masterSettlementTdStyle}></td>
                       <td style={masterSettlementMoneyTdStyle}>{money(masterWorkspaceBillTotal(masterSettlementDetailRows))}</td>
+                      {activeMasterWorkspaceTab === "payments" && (
+                        <>
+                          <td style={masterSettlementMoneyTdStyle}>100.00%</td>
+                          <td style={masterSettlementMoneyTdStyle}>--</td>
+                          <td style={masterSettlementMoneyTdStyle}>{money(masterWorkspaceBillTotal(masterSettlementDetailRows))}</td>
+                        </>
+                      )}
                     </tr>
                   </tbody>
                 </table>
               </div>
+
             </div>
           </section>
         )}
@@ -1420,17 +1899,23 @@ export default function FilteredMattersPage() {
 }
 
 const pageStyle: React.CSSProperties = {
-  minHeight: "100vh",
-  padding: "28px 24px 44px",
-  background: colors.page,
-  color: colors.ink,
+  padding: "18px 16px 40px",
+  width: "100vw",
+  maxWidth: "none",
+  marginLeft: "calc(50% - 50vw)",
+  marginRight: "calc(50% - 50vw)",
   fontFamily:
     'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  color: colors.ink,
+  background:
+    "radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 30%), #f8fafc",
+  minHeight: "100vh",
 };
 
 const shellStyle: React.CSSProperties = {
+  width: "100%",
   maxWidth: "none",
-  margin: "0 auto",
+  margin: 0,
 };
 
 const topBarStyle: React.CSSProperties = {
@@ -1461,7 +1946,7 @@ const rightTopWrapStyle: React.CSSProperties = {
   justifySelf: "end",
   position: "relative",
   width: 330,
-  height: 144,
+  height: 152,
   display: "flex",
   justifyContent: "flex-end",
   alignItems: "flex-start",
@@ -1509,11 +1994,10 @@ const lockedPrintQueueButtonStyle: React.CSSProperties = {
   background: "#f8fafc",
   color: colors.muted,
   fontSize: 12,
-  fontWeight: 800,
+  fontWeight: 750,
   whiteSpace: "nowrap",
   cursor: "not-allowed",
   opacity: 0.9,
-  marginTop: 0,
 };
 
 const summaryPanelStyle: React.CSSProperties = {

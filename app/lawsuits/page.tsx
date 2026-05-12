@@ -206,18 +206,26 @@ export default function LawsuitsPage() {
     <main style={{ padding: 16, width: "100vw", maxWidth: "none", marginLeft: "calc(50% - 50vw)", marginRight: "calc(50% - 50vw)" }}>
       <div
         style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 10000,
+          isolation: "isolate",
           display: "grid",
-          gridTemplateColumns: "306px minmax(0, 1fr) 430px",
+          gridTemplateColumns: "216px minmax(0, 1fr) 330px",
           alignItems: "start",
-          gap: 24,
-          marginBottom: 24,
+          gap: 16,
+          marginBottom: 14,
+          padding: "8px 0 10px",
+          background: "#f8fafc",
+          boxShadow: "0 8px 24px rgba(15, 23, 42, 0.10)",
+          borderBottom: "1px solid rgba(203, 213, 225, 0.9)",
         }}
       >
         <div style={{ gridColumn: "1", display: "flex", justifyContent: "flex-start", alignItems: "flex-start" }}>
           <img
             src="/brl-logo.png"
             alt="BRL Logo"
-            style={{ width: 306, height: 204, objectFit: "contain", display: "block" }}
+            style={{ width: 216, height: 144, objectFit: "contain", display: "block" }}
           />
         </div>
 
@@ -226,8 +234,8 @@ export default function LawsuitsPage() {
             gridColumn: "3",
             justifySelf: "end",
             position: "relative",
-            width: 430,
-            height: 224,
+            width: 330,
+            height: 152,
             display: "flex",
             justifyContent: "flex-end",
             alignItems: "flex-start",
@@ -236,8 +244,8 @@ export default function LawsuitsPage() {
           <div
             style={{
               position: "absolute",
-              top: -10,
-              left: -95,
+              top: 0,
+              left: -86,
               display: "flex",
               justifyContent: "flex-start",
               alignItems: "center",
@@ -275,8 +283,8 @@ export default function LawsuitsPage() {
               src="/barsh-matters-cropped-transparent.png"
               alt="Barsh Matters Logo"
               style={{
-                width: 485,
-                height: 224,
+                width: 330,
+                height: 152,
                 objectFit: "contain",
                 objectPosition: "right top",
                 display: "block",

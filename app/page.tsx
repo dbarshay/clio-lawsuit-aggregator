@@ -2596,11 +2596,19 @@ const shellStyle: React.CSSProperties = {
 };
 
 const topBarStyle: React.CSSProperties = {
+  position: "sticky",
+  top: 0,
+  zIndex: 10000,
+  isolation: "isolate",
   display: "grid",
-  gridTemplateColumns: "306px minmax(0, 1fr) 430px",
+  gridTemplateColumns: "216px minmax(0, 1fr) 330px",
   alignItems: "start",
-  gap: 24,
+  gap: 16,
   marginBottom: 14,
+  padding: "8px 0 10px",
+  background: "#f8fafc",
+  boxShadow: "0 8px 24px rgba(15, 23, 42, 0.10)",
+  borderBottom: "1px solid rgba(203, 213, 225, 0.9)",
 };
 
 const leftLogoWrapStyle: React.CSSProperties = {
@@ -2632,8 +2640,8 @@ const rightTopWrapStyle: React.CSSProperties = {
   gridColumn: "3",
   justifySelf: "end",
   position: "relative",
-  width: 430,
-  height: 204,
+  width: 330,
+  height: 144,
   display: "flex",
   justifyContent: "flex-end",
   alignItems: "flex-start",
@@ -2641,8 +2649,8 @@ const rightTopWrapStyle: React.CSSProperties = {
 
 const printButtonRowStyle: React.CSSProperties = {
   position: "absolute",
-  top: -10,
-  left: -95,
+  top: 0,
+  left: -86,
   display: "flex",
   justifyContent: "flex-start",
   alignItems: "center",
@@ -2656,15 +2664,15 @@ const bmLogoLinkStyle: React.CSSProperties = {
 };
 
 const brlLogoStyle: React.CSSProperties = {
-  width: 306,
-  height: 204,
+  width: 216,
+  height: 144,
   objectFit: "contain",
   display: "block",
 };
 
 const bmLogoStyle: React.CSSProperties = {
-  width: 485,
-  height: 224,
+  width: 330,
+  height: 152,
   objectFit: "contain",
   objectPosition: "right top",
   display: "block",

@@ -450,31 +450,31 @@ export async function PATCH(request: Request) {
     const priorEditSnapshot = receipt.editSnapshot || null;
     const editedAt = new Date();
 
-    const editedReceipt = await prisma.matterPaymentReceipt.update({
-      where: { id: receipt.id },
-      data: {
-        paymentAmount: requestedPaymentAmount,
-        paymentDate,
-        transactionType,
-        transactionStatus,
-        transactionDate: paymentDate,
-        checkDate,
-        checkNumber,
-        invoiceId,
-        description,
-        transactionFee,
-        editedAt,
-        editedBy,
-        editReason,
-        paymentVoluntaryAfter: readbackPaymentVoluntary ?? receipt.paymentVoluntaryAfter,
-        balancePresuitAfter: readbackBalancePresuit ?? receipt.balancePresuitAfter,
-        clioReadback: amountChanged
-          ? {
+    const editUpdateData: any = {
+      paymentAmount: requestedPaymentAmount,
+      paymentDate,
+      transactionType,
+      transactionStatus,
+      transactionDate: paymentDate,
+      checkDate,
+      checkNumber,
+      invoiceId,
+      description,
+      transactionFee,
+      editedAt,
+      editedBy,
+      editReason,
+      paymentVoluntaryAfter: readbackPaymentVoluntary ?? receipt.paymentVoluntaryAfter,
+      balancePresuitAfter: readbackBalancePresuit ?? receipt.balancePresuitAfter,
+      ...(amountChanged
+        ? {
+            clioReadback: {
               paymentVoluntary: readbackPaymentVoluntary,
               balancePresuit: readbackBalancePresuit,
-            }
-          : receipt.clioReadback,
-        editSnapshot: {
+            },
+          }
+        : {}),
+      editSnapshot: {
           action: "edit-payment",
           sourceOfEditIntent: "Barsh Matters UI",
           systemOfRecordAfterWriteback: amountChanged ? "Clio readback" : "local metadata only",
@@ -517,7 +517,11 @@ export async function PATCH(request: Request) {
             : null,
           priorEditSnapshot,
         },
-      },
+    };
+
+    const editedReceipt = await prisma.matterPaymentReceipt.update({
+      where: { id: receipt.id },
+      data: editUpdateData,
     });
 
     return NextResponse.json({

@@ -335,7 +335,6 @@ type MatterWorkspaceTab =
 const matterWorkspaceTabs: Array<{ key: MatterWorkspaceTab; label: string; note: string }> = [
   { key: "lawsuit", label: "Lawsuit", note: "Aggregation and lawsuit metadata" },
   { key: "documents", label: "Documents", note: "Preview, finalize, and Clio upload" },
-  { key: "settlement", label: "Settlement", note: "Preview, write, document, and close paid settlements" },
   { key: "audit_history", label: "Audit / History", note: "Local workflow history" },
 ];
 
@@ -3124,6 +3123,17 @@ const activeGroupKey =
               type="button"
               disabled
               aria-disabled="true"
+              title="Audit / History access is locked."
+              style={bmGlobalLockedPrintQueueStyle}
+            >
+              <span aria-hidden="true">🔒</span>
+              <span>Audit / History</span>
+            </button>
+
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
               title="Print Queue access is locked unless the user has print-queue rights."
               style={bmGlobalLockedPrintQueueStyle}
             >
@@ -3278,6 +3288,92 @@ const activeGroupKey =
                   {paymentApplyLoading ? (paymentEditingReceipt ? "Saving Edit..." : "Applying Payment...") : paymentFormOpen ? "Close Payment Form" : "Apply Payment"}
                 </button>
 
+                <div
+                  style={{
+                    marginTop: 12,
+                    paddingTop: 10,
+                    borderTop: "1px solid #e2e8f0",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 900,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: "#475569",
+                      }}
+                    >
+                      Recent Receipts
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: "#64748b" }}>
+                      {paymentReceipts.length ? `${Math.min(paymentReceipts.length, 5)} shown` : "None"}
+                    </span>
+                  </div>
+
+                  {paymentReceipts.length === 0 ? (
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>
+                      No receipts posted yet.
+                    </div>
+                  ) : (
+                    <div style={{ display: "grid", gap: 5 }}>
+                      {paymentReceipts.slice(0, 5).map((receipt) => (
+                        <div
+                          key={receipt.id}
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "auto 1fr auto",
+                            gap: 8,
+                            alignItems: "center",
+                            fontSize: 12,
+                            lineHeight: 1.35,
+                            padding: "4px 6px",
+                            borderRadius: 8,
+                            border: receipt?.voided
+                              ? "1px solid #fecaca"
+                              : receipt?.editedAt
+                                ? "1px solid #bbf7d0"
+                                : "1px solid #22c55e",
+                            background: receipt?.voided
+                              ? "#fee2e2"
+                              : receipt?.editedAt
+                                ? "#dcfce7"
+                                : "#86efac",
+                            color: receipt?.voided
+                              ? "#991b1b"
+                              : receipt?.editedAt
+                                ? "#166534"
+                                : "#052e16",
+                            opacity: receipt?.voided ? 0.82 : 1,
+                          }}
+                        >
+                          <strong style={{ whiteSpace: "nowrap" }}>#{receipt.id}</strong>
+                          <span
+                            style={{
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                            title={`${receipt.paymentDate ? formatPaymentDateMMDDYYYY(receipt.paymentDate) : "—"} · ${receipt?.voided ? "Voided" : receipt?.editedAt ? "Edited" : "Posted"} · ${textValue(receipt.description || receipt.transactionType) || "Payment"}`}
+                          >
+                            {receipt.paymentDate ? formatPaymentDateMMDDYYYY(receipt.paymentDate) : "—"} · {receipt?.voided ? "Voided" : receipt?.editedAt ? "Edited" : "Posted"} · {textValue(receipt.description || receipt.transactionType) || "Payment"}
+                          </span>
+                          <strong style={{ whiteSpace: "nowrap" }}>{money(receipt.paymentAmount)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {paymentFormOpen && (
                   <div
                     role="dialog"
@@ -3356,6 +3452,23 @@ const activeGroupKey =
                         ×
                       </button>
                     </div>
+
+                    {paymentEditingReceipt && (
+                      <div
+                        style={{
+                          margin: "18px 18px 0",
+                          padding: "10px 12px",
+                          border: "1px solid #bae6fd",
+                          borderRadius: 12,
+                          background: "#e0f2fe",
+                          color: "#075985",
+                          fontSize: 12,
+                          fontWeight: 900,
+                        }}
+                      >
+                        Editing Receipt #{paymentEditingReceipt.id} · Original Amount: {money(paymentEditingReceipt.paymentAmount)}
+                      </div>
+                    )}
 
                     <div
                       style={{
@@ -3544,6 +3657,13 @@ const activeGroupKey =
                         type="button"
                         className="barsh-direct-payment-cancel-button"
                         onClick={() => {
+                          if (paymentEditingReceipt) {
+                            resetPaymentFormInputs();
+                            setPaymentApplyResult(null);
+                            setPaymentFormOpen(false);
+                            return;
+                          }
+
                           setPaymentAmountInput("");
                           setPaymentDateInput(formatPaymentDateYYYYMMDD(new Date()));
                           setPaymentTransactionTypeInput("Collection Payment");
@@ -3565,7 +3685,7 @@ const activeGroupKey =
                           cursor: paymentApplyLoading ? "not-allowed" : "pointer",
                         }}
                       >
-                        Reset
+                        {paymentEditingReceipt ? "Cancel Edit" : "Reset"}
                       </button>
 
                       <button
@@ -3590,7 +3710,7 @@ const activeGroupKey =
                     </div>
 
                     <div style={{ padding: "0 18px 16px", fontSize: 12, color: "#64748b", fontWeight: 700 }}>
-                      Current writeback remains limited to Payment Voluntary and Balance Presuit.  Transaction type, status, check date, and check number are UI fields only until the receipt/writeback model is expanded.
+                      Payment amount changes update Clio Payment Voluntary and Balance Presuit.  Other receipt fields are stored locally for posting history and remittance workflows.
                     </div>
                     </div>
                   </div>
@@ -3607,39 +3727,7 @@ const activeGroupKey =
                           : `Payment: ${money(paymentApplyResult.paymentApplied)} · New balance: ${money(paymentApplyResult.after?.balancePresuit)}`}
                     </div>
 
-                    {paymentReceipts.length > 0 && (
-                      <div
-                        style={{
-                          marginTop: 10,
-                          paddingTop: 10,
-                          borderTop: "1px solid rgba(22, 101, 52, 0.25)",
-                        }}
-                      >
-                        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 5 }}>
-                          Recent Receipts
-                        </div>
 
-                        {paymentReceipts.slice(0, 5).map((receipt) => (
-                          <div
-                            key={receipt.id}
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              gap: 10,
-                              fontSize: 12,
-                              lineHeight: 1.45,
-                              opacity: receipt?.voided ? 0.72 : 1,
-                              textDecoration: receipt?.voided ? "line-through" : "none",
-                            }}
-                          >
-                            <span>
-                              #{receipt.id} · {receipt.paymentDate ? formatPaymentDateMMDDYYYY(receipt.paymentDate) : "—"} · {receipt?.voided ? "VOIDED · " : ""}{textValue(receipt.description || receipt.transactionType) || "Payment"}
-                            </span>
-                            <strong>{money(receipt.paymentAmount)}</strong>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -3719,6 +3807,7 @@ const activeGroupKey =
         <thead>
           <tr style={{ background: "#94a3b8", color: "#1f2937" }}>
             <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Action</th>
+            <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Receipt #</th>
             <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>BRL Number</th>
             <th style={{ textAlign: "right", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Transaction Amount</th>
             <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Master Lawsuit</th>
@@ -3731,7 +3820,7 @@ const activeGroupKey =
             <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Check Date</th>
             <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Description</th>
             <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Posted By</th>
-            <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Posted</th>
+            <th style={{ textAlign: "left", padding: "9px 8px", border: "1px solid #cbd5e1" }}>Audit Status</th>
           </tr>
         </thead>
         <tbody>
@@ -3747,53 +3836,89 @@ const activeGroupKey =
               <tr
                 key={receipt.id}
                 style={{
-                  background: receipt?.voided ? "#fee2e2" : zebra,
-                  color: receipt?.voided ? "#7f1d1d" : undefined,
+                  background: receipt?.voided
+                    ? "#fee2e2"
+                    : receipt?.editedAt
+                      ? "#dcfce7"
+                      : "#86efac",
+                  color: receipt?.voided
+                    ? "#991b1b"
+                    : receipt?.editedAt
+                      ? "#166534"
+                      : "#052e16",
                   opacity: receipt?.voided ? 0.82 : 1,
                 }}
               >
                 <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb", whiteSpace: "nowrap" }}>
-                  <button
-                    type="button"
-                    disabled={!!receipt?.voided || paymentApplyLoading}
-                    onClick={() => beginEditPaymentReceipt(receipt)}
-                    title={receipt?.voided ? "Cannot edit a voided payment receipt." : "Edit payment receipt."}
-                    style={{
-                      marginRight: 6,
-                      width: 30,
-                      height: 28,
-                      border: "1px solid #0891b2",
-                      borderRadius: 6,
-                      background: receipt?.voided ? "#64748b" : "#06b6d4",
-                      color: "#fff",
-                      fontSize: 13,
-                      fontWeight: 900,
-                      cursor: !!receipt?.voided || paymentApplyLoading ? "not-allowed" : "pointer",
-                      opacity: paymentApplyLoading ? 0.65 : 1,
-                    }}
-                  >
-                    ✎
-                  </button>
-                  <button
-                    type="button"
-                    disabled={paymentVoidLoadingId === Number(receipt.id) || !!receipt?.voided}
-                    onClick={() => handleVoidPaymentReceipt(receipt)}
-                    title={receipt?.voided ? "This payment receipt is already voided." : "Void payment and reverse Clio financial writeback."}
-                    style={{
-                      width: 30,
-                      height: 28,
-                      border: "1px solid #ef4444",
-                      borderRadius: 6,
-                      background: receipt?.voided ? "#991b1b" : "#ef4444",
-                      color: "#fff",
-                      fontSize: 13,
-                      fontWeight: 900,
-                      cursor: paymentVoidLoadingId === Number(receipt.id) || !!receipt?.voided ? "not-allowed" : "pointer",
-                      opacity: paymentVoidLoadingId === Number(receipt.id) ? 0.65 : 1,
-                    }}
-                  >
-                    {paymentVoidLoadingId === Number(receipt.id) ? "…" : "🗑"}
-                  </button>
+                  {receipt?.voided ? (
+                    <span
+                      title="This payment receipt is already voided."
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minWidth: 92,
+                        height: 30,
+                        border: "1px solid #991b1b",
+                        borderRadius: 8,
+                        background: "#991b1b",
+                        color: "#fff",
+                        fontSize: 12,
+                        fontWeight: 900,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Voided
+                    </span>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        disabled={paymentApplyLoading}
+                        onClick={() => beginEditPaymentReceipt(receipt)}
+                        title="Edit payment receipt."
+                        style={{
+                          marginRight: 6,
+                          minWidth: 48,
+                          height: 30,
+                          border: "1px solid #0891b2",
+                          borderRadius: 8,
+                          background: "#06b6d4",
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: 900,
+                          cursor: paymentApplyLoading ? "not-allowed" : "pointer",
+                          opacity: paymentApplyLoading ? 0.65 : 1,
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        disabled={paymentVoidLoadingId === Number(receipt.id)}
+                        onClick={() => handleVoidPaymentReceipt(receipt)}
+                        title="Void payment and reverse Clio financial writeback."
+                        style={{
+                          minWidth: 48,
+                          height: 30,
+                          border: "1px solid #ef4444",
+                          borderRadius: 8,
+                          background: "#ef4444",
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: 900,
+                          cursor: paymentVoidLoadingId === Number(receipt.id) ? "not-allowed" : "pointer",
+                          opacity: paymentVoidLoadingId === Number(receipt.id) ? 0.65 : 1,
+                        }}
+                      >
+                        {paymentVoidLoadingId === Number(receipt.id) ? "…" : "Void"}
+                      </button>
+                    </>
+                  )}
+                </td>
+
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb", fontWeight: 900, whiteSpace: "nowrap" }}>
+                  #{receipt.id}
                 </td>
 
                 <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb", fontWeight: 800 }}>
@@ -3845,8 +3970,8 @@ const activeGroupKey =
                   {textValue(receipt.postedBy) || "—"}
                 </td>
 
-                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb", fontWeight: receipt?.voided ? 900 : 700 }}>
-                  {receipt?.voided ? "VOIDED" : receipt.createdAt ? "Yes" : "—"}
+                <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb", fontWeight: receipt?.voided || receipt?.editedAt ? 900 : 700 }}>
+                  {receipt?.voided ? "VOIDED" : receipt?.editedAt ? "Edited" : receipt.createdAt ? "Posted" : "—"}
                 </td>
               </tr>
             );
@@ -3858,33 +3983,17 @@ const activeGroupKey =
 
           {!paymentReceiptsLoading && paymentReceipts.length > 0 && (
             <div style={{ marginTop: 8, fontSize: 11, color: "#64748b", fontWeight: 700 }}>
-              Edit updates payment receipt details; amount edits apply only the difference to Clio.  Delete voids a payment receipt, reverses the Clio financial writeback, and keeps the row as an audit record.
+              Edit updates payment receipt details; amount edits apply only the difference to Clio.  Void reverses the Clio financial writeback and keeps the receipt as an audit record.
             </div>
           )}
         </div>
 
         <div className="barsh-summary-workflow-divider" />
 
-        <div className="barsh-direct-launch-row">
-          <a
-            className="barsh-direct-launch-button"
-            href={`/matters?workflow=patient&patient=${encodeURIComponent(textValue(matter?.patient?.name || matter?.patient))}&fromMatter=${encodeURIComponent(textValue(matter?.id))}`}
-            title="Open patient-level workflow view."
-          >
-            Launch Patient
-          </a>
-
-          <a
-            className="barsh-direct-launch-button"
-            href={`/matters?workflow=claim&claim=${encodeURIComponent(textValue(matter?.claimNumber))}&fromMatter=${encodeURIComponent(textValue(matter?.id))}`}
-            title="Open claim-level workflow view."
-          >
-            Launch Claim
-          </a>
-        </div>
-
         <div className="barsh-summary-workflow-buttons">
-          {matterWorkspaceTabs.map((tab) => {
+          {matterWorkspaceTabs
+            .filter((tab) => tab.key !== "audit_history" && tab.key !== "settlement")
+            .map((tab) => {
             const active = activeWorkspaceTab === tab.key;
             const lawsuitLocked = tab.key === "lawsuit" && alreadyAggregated;
             const auditHistoryLocked = tab.key === "audit_history";

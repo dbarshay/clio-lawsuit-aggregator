@@ -615,6 +615,54 @@ const activeGroupKey =
   const [paymentCheckNumberInput, setPaymentCheckNumberInput] = useState("");
   const [paymentVoidLoadingId, setPaymentVoidLoadingId] = useState<number | null>(null);
   const [paymentEditingReceipt, setPaymentEditingReceipt] = useState<any>(null);
+  const [paymentShowVoided, setPaymentShowVoided] = useState(true);
+  const [expandedPaymentReceiptId, setExpandedPaymentReceiptId] = useState<number | null>(null);
+
+  function paymentFormAmountValue(): number {
+    return num(paymentAmountInput);
+  }
+
+  function paymentFormOriginalAmountValue(): number {
+    return paymentEditingReceipt ? num(paymentEditingReceipt?.paymentAmount) : 0;
+  }
+
+  function paymentFormDeltaValue(): number {
+    const entered = paymentFormAmountValue();
+    return paymentEditingReceipt ? entered - paymentFormOriginalAmountValue() : entered;
+  }
+
+  function signedMoneyValue(value: number): string {
+    const amount = Number(value || 0);
+    return `${amount >= 0 ? "+" : "-"}${money(Math.abs(amount))}`;
+  }
+
+  function expectedPaymentsPostedAfterPaymentForm(): number {
+    return num(matter?.paymentVoluntary) + paymentFormDeltaValue();
+  }
+
+  function expectedBalancePresuitAfterPaymentForm(): number {
+    return Math.max(currentDirectMatterBalancePresuit(matter) - paymentFormDeltaValue(), 0);
+  }
+
+  function visiblePaymentReceipts(): any[] {
+    return paymentReceipts.filter((receipt) => paymentShowVoided || !receipt?.voided);
+  }
+
+  function selectedPaymentReceipt(): any {
+    if (!expandedPaymentReceiptId) return null;
+    return paymentReceipts.find((receipt) => Number(receipt?.id) === Number(expandedPaymentReceiptId)) || null;
+  }
+
+  function paymentReceiptAuditStatus(receipt: any): string {
+    if (receipt?.voided) return "VOIDED";
+    if (receipt?.editedAt) return "Edited";
+    if (receipt?.createdAt) return "Posted";
+    return "—";
+  }
+
+  function paymentReceiptPrimaryTimestamp(receipt: any): string {
+    return textValue(receipt?.voidedAt || receipt?.editedAt || receipt?.createdAt);
+  }
 
   async function loadPaymentReceipts(matterIdInput?: string) {
     const targetMatterId = String(matterIdInput || matterId || "").trim();
@@ -3264,7 +3312,7 @@ const activeGroupKey =
                 </div>
 
                 <div className="barsh-direct-financial-row">
-                  <span>Payment Voluntary</span>
+                  <span>Payments Posted</span>
                   <strong>{money(num(matter?.paymentVoluntary))}</strong>
                 </div>
 
@@ -3425,7 +3473,7 @@ const activeGroupKey =
                       </div>
 
                       <div style={{ textAlign: "right", fontWeight: 900, color: "#334155" }}>
-                        Total Voluntary Payment:{" "}
+                        Payment Amount:{" "}
                         <span style={{ color: "#dc2626", fontSize: 20 }}>
                           {money(num(paymentAmountInput))}
                         </span>
@@ -3629,14 +3677,20 @@ const activeGroupKey =
                         style={{
                           margin: "0 18px 18px",
                           display: "grid",
-                          gridTemplateColumns: "1fr 1fr 1fr",
+                          gridTemplateColumns: paymentEditingReceipt ? "1fr 1fr 1fr 1fr 1fr" : "1fr 1fr 1fr",
                           gap: 10,
                         }}
                       >
-                        <div>Current Balance Presuit: {money(currentDirectMatterBalancePresuit(matter))}</div>
-                        <div>Payment Amount: {money(num(paymentAmountInput))}</div>
+                        {paymentEditingReceipt && (
+                          <div>Original Amount: {money(paymentFormOriginalAmountValue())}</div>
+                        )}
+                        <div>{paymentEditingReceipt ? "New Amount" : "Payment Amount"}: {money(paymentFormAmountValue())}</div>
+                        {paymentEditingReceipt && (
+                          <div>Clio Delta: {signedMoneyValue(paymentFormDeltaValue())}</div>
+                        )}
+                        <div>Expected Payments Posted: {money(expectedPaymentsPostedAfterPaymentForm())}</div>
                         <div>
-                          New Balance Preview: {money(Math.max(currentDirectMatterBalancePresuit(matter) - num(paymentAmountInput), 0))}
+                          Expected Balance Presuit: {money(expectedBalancePresuitAfterPaymentForm())}
                         </div>
                       </div>
                     )}
@@ -3718,7 +3772,9 @@ const activeGroupKey =
 
                 {paymentApplyResult?.ok && (
                   <div className="barsh-direct-payment-confirmation">
-                    <div>Clio updated.</div>
+                    <div>
+                      Clio updated{paymentApplyResult?.receipt?.id ? ` · Receipt #${paymentApplyResult.receipt.id}` : ""}.
+                    </div>
                     <div>
                       {paymentApplyResult?.action === "edit-payment"
                         ? `Payment edited${Number.isFinite(Number(paymentApplyResult?.amountDelta)) ? ` by ${money(paymentApplyResult.amountDelta)}` : ""}.  New balance: ${money(paymentApplyResult.after?.balancePresuit)}`
@@ -3766,11 +3822,26 @@ const activeGroupKey =
             }}
           >
             <span>Payments</span>
-            <span style={{ fontSize: 12, color: "#64748b", fontWeight: 800 }}>
-              {paymentReceiptsLoading
-        ? "Loading..."
-        : `${paymentReceipts.length.toLocaleString("en-US")} payment${paymentReceipts.length === 1 ? "" : "s"}`}
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "#475569", fontWeight: 900 }}>
+                <input
+                  type="checkbox"
+                  checked={paymentShowVoided}
+                  onChange={(event) => {
+                    setPaymentShowVoided(event.target.checked);
+                    if (!event.target.checked && selectedPaymentReceipt()?.voided) {
+                      setExpandedPaymentReceiptId(null);
+                    }
+                  }}
+                />
+                Show voided
+              </label>
+              <span style={{ fontSize: 12, color: "#64748b", fontWeight: 800 }}>
+                {paymentReceiptsLoading
+          ? "Loading..."
+          : `${visiblePaymentReceipts().length.toLocaleString("en-US")} shown / ${paymentReceipts.length.toLocaleString("en-US")} total`}
+              </span>
+            </div>
           </div>
 
           {paymentReceiptsLoading && (
@@ -3824,7 +3895,7 @@ const activeGroupKey =
           </tr>
         </thead>
         <tbody>
-          {paymentReceipts.slice(0, 25).map((receipt, index) => {
+          {visiblePaymentReceipts().slice(0, 25).map((receipt, index) => {
             const zebra = index % 2 === 0 ? "#f8fafc" : "#ffffff";
             const provider =
               textValue(receipt.provider) ||
@@ -3850,6 +3921,25 @@ const activeGroupKey =
                 }}
               >
                 <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb", whiteSpace: "nowrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedPaymentReceiptId((current) => Number(current) === Number(receipt.id) ? null : Number(receipt.id))}
+                    title="Show receipt details."
+                    style={{
+                      marginRight: 6,
+                      minWidth: 62,
+                      height: 30,
+                      border: "1px solid #64748b",
+                      borderRadius: 8,
+                      background: Number(expandedPaymentReceiptId) === Number(receipt.id) ? "#334155" : "#64748b",
+                      color: "#fff",
+                      fontSize: 12,
+                      fontWeight: 900,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Details
+                  </button>
                   {receipt?.voided ? (
                     <span
                       title="This payment receipt is already voided."
@@ -3971,13 +4061,68 @@ const activeGroupKey =
                 </td>
 
                 <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb", fontWeight: receipt?.voided || receipt?.editedAt ? 900 : 700 }}>
-                  {receipt?.voided ? "VOIDED" : receipt?.editedAt ? "Edited" : receipt.createdAt ? "Posted" : "—"}
+                  {paymentReceiptAuditStatus(receipt)}
                 </td>
               </tr>
             );
           })}
         </tbody>
               </table>
+            </div>
+          )}
+
+          {!paymentReceiptsLoading && selectedPaymentReceipt() && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: 12,
+                border: "1px solid #cbd5e1",
+                borderRadius: 12,
+                background: "#ffffff",
+                color: "#0f172a",
+                fontSize: 12,
+                boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 10 }}>
+                <div style={{ fontWeight: 950, color: "#0f172a" }}>
+                  Receipt Details · #{selectedPaymentReceipt().id}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setExpandedPaymentReceiptId(null)}
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 999,
+                    background: "#f8fafc",
+                    color: "#334155",
+                    fontSize: 11,
+                    fontWeight: 900,
+                    padding: "4px 9px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10 }}>
+                <div><strong>Status:</strong> {paymentReceiptAuditStatus(selectedPaymentReceipt())}</div>
+                <div><strong>Amount:</strong> {money(selectedPaymentReceipt().paymentAmount)}</div>
+                <div><strong>Receipt Date:</strong> {selectedPaymentReceipt().paymentDate ? formatPaymentDateMMDDYYYY(selectedPaymentReceipt().paymentDate) : "—"}</div>
+                <div><strong>Last Activity:</strong> {paymentReceiptPrimaryTimestamp(selectedPaymentReceipt()) || "—"}</div>
+                <div><strong>Created:</strong> {textValue(selectedPaymentReceipt().createdAt) || "—"}</div>
+                <div><strong>Edited:</strong> {textValue(selectedPaymentReceipt().editedAt) || "—"}</div>
+                <div><strong>Edited By:</strong> {textValue(selectedPaymentReceipt().editedBy) || "—"}</div>
+                <div><strong>Edit Reason:</strong> {textValue(selectedPaymentReceipt().editReason) || "—"}</div>
+                <div><strong>Voided:</strong> {textValue(selectedPaymentReceipt().voidedAt) || "—"}</div>
+                <div><strong>Voided By:</strong> {textValue(selectedPaymentReceipt().voidedBy) || "—"}</div>
+                <div style={{ gridColumn: "span 2" }}><strong>Void Reason:</strong> {textValue(selectedPaymentReceipt().voidReason) || "—"}</div>
+                <div><strong>Before Payment Posted:</strong> {money(selectedPaymentReceipt().paymentVoluntaryBefore)}</div>
+                <div><strong>After Payment Posted:</strong> {money(selectedPaymentReceipt().paymentVoluntaryAfter)}</div>
+                <div><strong>Before Balance:</strong> {money(selectedPaymentReceipt().balancePresuitBefore)}</div>
+                <div><strong>After Balance:</strong> {money(selectedPaymentReceipt().balancePresuitAfter)}</div>
+              </div>
             </div>
           )}
 

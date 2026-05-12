@@ -8,6 +8,7 @@ type FilterKind = "patient" | "provider" | "insurer" | "claim" | "master";
 type MatterRow = {
   id: string;
   displayNumber: string;
+  description: string;
   patient: string;
   provider: string;
   insurer: string;
@@ -15,6 +16,8 @@ type MatterRow = {
   masterLawsuitId: string;
   claimAmount: any;
   balancePresuit: any;
+  billAmount: any;
+  isMaster: boolean;
   matchedBy: string;
 };
 
@@ -122,6 +125,41 @@ function moneyDraft(v: any) {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }
 
+function amountDraft(v: any): number {
+  const n = Number(String(v ?? "").replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function isMasterMatterRow(row: any): boolean {
+  return Boolean(
+    row?.isMaster ||
+      row?.is_master ||
+      clean(row?.description).toUpperCase().startsWith("MASTER LAWSUIT")
+  );
+}
+
+function masterWorkspaceBillRows(rows: any[]): any[] {
+  return (Array.isArray(rows) ? rows : []).filter((row) => !isMasterMatterRow(row));
+}
+
+function masterWorkspaceBillAmount(row: any): number {
+  const explicit = row?.billAmount ?? row?.bill_amount ?? row?.amount;
+  const explicitText = clean(explicit);
+
+  if (explicitText && amountDraft(explicit) !== 0) {
+    return amountDraft(explicit);
+  }
+
+  return amountDraft(row?.claimAmount ?? row?.claim_amount ?? row?.balancePresuit ?? row?.balance_presuit);
+}
+
+function masterWorkspaceBillTotal(rows: any[]): number {
+  return masterWorkspaceBillRows(rows).reduce(
+    (sum, row) => sum + masterWorkspaceBillAmount(row),
+    0
+  );
+}
+
 function exactOrContains(haystack: string, q: string) {
   const h = clean(haystack).toLowerCase();
   const n = clean(q).toLowerCase();
@@ -132,9 +170,12 @@ function toMatterRow(row: any, matchedBy: string): MatterRow | null {
   const id = matterId(row);
   if (!id) return null;
 
+  const description = clean(row?.description);
+
   return {
     id,
     displayNumber: displayNumber(row),
+    description,
     patient: patientName(row),
     provider: providerName(row),
     insurer: insurerName(row),
@@ -142,6 +183,8 @@ function toMatterRow(row: any, matchedBy: string): MatterRow | null {
     masterLawsuitId: masterLawsuitId(row),
     claimAmount: row?.claimAmount ?? row?.claim_amount,
     balancePresuit: row?.balancePresuit ?? row?.balance_presuit,
+    billAmount: row?.billAmount ?? row?.bill_amount ?? row?.amount,
+    isMaster: isMasterMatterRow(row),
     matchedBy,
   };
 }
@@ -653,7 +696,7 @@ export default function FilteredMattersPage() {
                 </div>
                 <div style={masterSummaryItemStyle}>
                   <span>Lawsuit Amount</span>
-                  <strong>{money(totalBalancePresuit)}</strong>
+                  <strong>{money(masterWorkspaceBillTotal(masterSettlementDetailRows))}</strong>
                 </div>
                 <div style={masterSummaryItemStyle}>
                   <span>Court Costs</span>
@@ -942,7 +985,7 @@ export default function FilteredMattersPage() {
                 <div style={masterSettlementSummaryGridStyle}>
                   <div style={masterSettlementSummaryItemStyle}>
                     <span>Lawsuit Amount</span>
-                    <strong style={masterSettlementSummaryValueStyle}>{money(totalBalancePresuit)}</strong>
+                    <strong style={masterSettlementSummaryValueStyle}>{money(masterWorkspaceBillTotal(masterSettlementDetailRows))}</strong>
                   </div>
                   <div style={masterSettlementSummaryItemStyle}>
                     <span>Settled Principal</span>
@@ -1032,7 +1075,7 @@ export default function FilteredMattersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {masterSettlementDetailRows.map((row: any) => {
+                    {masterWorkspaceBillRows(masterSettlementDetailRows).map((row: any) => {
                       const rowId = clean(row.id);
                       const rowDraft = masterSettlementBillDrafts[rowId] || {};
 
@@ -1069,7 +1112,7 @@ export default function FilteredMattersPage() {
                               "—"
                             )}
                           </td>
-                          <td style={masterSettlementMoneyTdStyle}>{money(row.billAmount)}</td>
+                          <td style={masterSettlementMoneyTdStyle}>{money(masterWorkspaceBillAmount(row))}</td>
                           <td style={masterSettlementInputTdStyle}>
                             <input
                               value={rowDraft.settlementAmount ?? moneyDraft(row.settlementAmount)}
@@ -1115,7 +1158,7 @@ export default function FilteredMattersPage() {
                       <td style={masterSettlementTdStyle}>Total</td>
                       <td style={masterSettlementTdStyle}></td>
                       <td style={masterSettlementTdStyle}></td>
-                      <td style={masterSettlementMoneyTdStyle}>{money(totalBalancePresuit)}</td>
+                      <td style={masterSettlementMoneyTdStyle}>{money(masterWorkspaceBillTotal(masterSettlementDetailRows))}</td>
                       <td style={masterSettlementMoneyTdStyle}>{money(masterSettlementSummary.settlementAmount)}</td>
                       <td style={masterSettlementMoneyTdStyle}>{money(masterSettlementSummary.interest)}</td>
                       <td style={masterSettlementMoneyTdStyle}>{money(masterSettlementSummary.attorneyFee)}</td>
@@ -1202,7 +1245,7 @@ export default function FilteredMattersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {masterSettlementDetailRows.map((row: any) => {
+                    {masterWorkspaceBillRows(masterSettlementDetailRows).map((row: any) => {
                       const rowId = clean(row.id);
 
                       return (
@@ -1238,7 +1281,7 @@ export default function FilteredMattersPage() {
                               "—"
                             )}
                           </td>
-                          <td style={masterSettlementMoneyTdStyle}>{money(row.billAmount)}</td>
+                          <td style={masterSettlementMoneyTdStyle}>{money(masterWorkspaceBillAmount(row))}</td>
                         </tr>
                       );
                     })}
@@ -1246,7 +1289,7 @@ export default function FilteredMattersPage() {
                       <td style={masterSettlementTdStyle}>Total</td>
                       <td style={masterSettlementTdStyle}></td>
                       <td style={masterSettlementTdStyle}></td>
-                      <td style={masterSettlementMoneyTdStyle}>{money(totalBalancePresuit)}</td>
+                      <td style={masterSettlementMoneyTdStyle}>{money(masterWorkspaceBillTotal(masterSettlementDetailRows))}</td>
                     </tr>
                   </tbody>
                 </table>

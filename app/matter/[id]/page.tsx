@@ -1617,6 +1617,52 @@ const activeGroupKey =
     await loadPacketPreviewForMaster(masterLawsuitId);
   }
 
+  function packetAmountSoughtValue(packet: any): number {
+    const metadataAmount = packet?.metadata?.amountSought?.amount;
+    const lawsuitAmount = packet?.lawsuit?.amountSought;
+    const totalClaimAmount = packet?.totals?.claimAmountTotal;
+
+    if (metadataAmount !== null && metadataAmount !== undefined && String(metadataAmount).trim() !== "") {
+      return num(metadataAmount);
+    }
+
+    if (lawsuitAmount !== null && lawsuitAmount !== undefined && String(lawsuitAmount).trim() !== "") {
+      return num(lawsuitAmount);
+    }
+
+    return num(totalClaimAmount);
+  }
+
+  function packetAmountSoughtModeValue(packet: any): string {
+    return (
+      textValue(packet?.metadata?.amountSought?.mode) ||
+      textValue(packet?.lawsuit?.amountSoughtMode) ||
+      "claim_amount"
+    );
+  }
+
+  function packetBillDisplayAmount(child: any): number {
+    const billAmount = child?.billAmount ?? child?.amount;
+    if (billAmount !== null && billAmount !== undefined && String(billAmount).trim() !== "") {
+      return num(billAmount);
+    }
+
+    return num(child?.claimAmount);
+  }
+
+  function packetChildMatters(packet: any): any[] {
+    return (Array.isArray(packet?.childMatters) ? packet.childMatters : []).filter(
+      (child: any) => !(child?.isMaster || child?.is_master)
+    );
+  }
+
+  function packetChildBillTotal(packet: any): number {
+    return packetChildMatters(packet).reduce(
+      (sum: number, child: any) => sum + packetBillDisplayAmount(child),
+      0
+    );
+  }
+
   function buildPacketSummaryText(packet: any): string {
     const metadata = packet?.metadata || {};
     const totals = packet?.totals || {};
@@ -1664,7 +1710,7 @@ const activeGroupKey =
             `Patient: ${textValue(child.patientName) || "—"}`,
             `Provider: ${textValue(child.providerName) || "—"}`,
             `DOS: ${formatDOS(child.dosStart, child.dosEnd) || "—"}`,
-            `Claim Amount: ${money(child.claimAmount)}`,
+            `Claim Amount: ${money(packetBillDisplayAmount(child))}`,
             `Balance Presuit: ${money(child.balancePresuit)}`,
           ].join(" | ")
         );
@@ -5346,9 +5392,9 @@ const activeGroupKey =
                 <div>
                   <strong>Amount Sought:</strong>
                   <br />
-                  {money(packetPreview.packet.metadata?.amountSought?.amount)}
+                  {money(packetAmountSoughtValue(packetPreview.packet))}
                   {" "}
-                  ({textValue(packetPreview.packet.metadata?.amountSought?.mode) || "—"})
+                  ({packetAmountSoughtModeValue(packetPreview.packet)})
                 </div>
                 <div>
                   <strong>Index / AAA:</strong>
@@ -8296,9 +8342,9 @@ const activeGroupKey =
                 <div>
                   <strong>Amount Sought:</strong>
                   <br />
-                  {money(packetPreview.packet.metadata?.amountSought?.amount)}
+                  {money(packetAmountSoughtValue(packetPreview.packet))}
                   {" "}
-                  ({textValue(packetPreview.packet.metadata?.amountSought?.mode) || "—"})
+                  ({packetAmountSoughtModeValue(packetPreview.packet)})
                 </div>
                 <div>
                   <strong>Index / AAA:</strong>
@@ -9651,7 +9697,7 @@ const activeGroupKey =
                     </tr>
                   </thead>
                   <tbody>
-                    {(packetPreview.packet.childMatters || []).map((child: any) => (
+                    {packetChildMatters(packetPreview.packet).map((child: any) => (
                       <tr key={String(child.matterId)}>
                         <td style={tdStyle}>
                           {child.matterId ? (

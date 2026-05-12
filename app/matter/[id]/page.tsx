@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
 
 function num(v: any) {
   const n = Number(v);
@@ -420,7 +421,7 @@ const bmGlobalTopBarStyle: React.CSSProperties = {
   zIndex: 10000,
   isolation: "isolate",
   display: "grid",
-  gridTemplateColumns: "216px minmax(0, 1fr) 330px",
+  gridTemplateColumns: "500px minmax(0, 1fr) 330px",
   alignItems: "start",
   gap: 16,
   marginBottom: 14,
@@ -625,6 +626,7 @@ const activeGroupKey =
   const [paymentEditingReceipt, setPaymentEditingReceipt] = useState<any>(null);
   const [paymentShowVoided, setPaymentShowVoided] = useState(true);
   const [expandedPaymentReceiptId, setExpandedPaymentReceiptId] = useState<number | null>(null);
+  const [paymentClosePromptOpen, setPaymentClosePromptOpen] = useState(false);
 
   function paymentFormAmountValue(): number {
     return num(paymentAmountInput);
@@ -670,6 +672,43 @@ const activeGroupKey =
 
   function paymentReceiptPrimaryTimestamp(receipt: any): string {
     return textValue(receipt?.voidedAt || receipt?.editedAt || receipt?.createdAt);
+  }
+
+  function latestPaymentReceipt(): any {
+    return paymentReceipts[0] || null;
+  }
+
+  function matterIsClosedForPayment(): boolean {
+    return String(matter?.status || "").trim().toLowerCase() === "closed";
+  }
+
+  function matterHasFinalStatusForPayment(): boolean {
+    return !!String(matter?.closeReason || "").trim();
+  }
+
+  function paymentCloseMatterAvailable(): boolean {
+    return !!matter?.id && !matterIsClosedForPayment();
+  }
+
+  function openCloseMatterFromPayment() {
+    if (!paymentCloseMatterAvailable()) return;
+    setPaymentClosePromptOpen(false);
+    setCloseMatterTarget({
+      id: matter?.id,
+      displayNumber: matter?.displayNumber,
+      patient: matter?.patient,
+      provider: matter?.provider,
+      clientName: matter?.clientName,
+      closeReason: matter?.closeReason,
+    });
+    setCloseReason("PAID VOLUNTARY");
+    setShowCloseModal(true);
+  }
+
+  function maybePromptCloseMatterAfterPayment() {
+    if (paymentCloseMatterAvailable()) {
+      setPaymentClosePromptOpen(true);
+    }
   }
 
   async function loadPaymentReceipts(matterIdInput?: string) {
@@ -798,6 +837,8 @@ const activeGroupKey =
           balancePresuit: json?.after?.balancePresuit ?? prev.balancePresuit,
         };
       });
+
+      maybePromptCloseMatterAfterPayment();
     } catch (error: any) {
       setPaymentApplyResult({ ok: false, error: error?.message || String(error) });
     } finally {
@@ -890,6 +931,7 @@ const activeGroupKey =
       await loadPaymentReceipts(matterId);
       resetPaymentFormInputs();
       setPaymentFormOpen(false);
+      maybePromptCloseMatterAfterPayment();
     } catch (error: any) {
       setPaymentApplyResult({
         ok: false,
@@ -3121,6 +3163,9 @@ const activeGroupKey =
       <div style={bmGlobalTopBarStyle}>
         <div style={bmGlobalLeftLogoWrapStyle}>
           <img src="/brl-logo.png" alt="BRL Logo" style={bmGlobalBrlLogoStyle} />
+          <div style={{ paddingTop: 8 }}>
+            <BarshHeaderQuickNav />
+          </div>
         </div>
         <div
           style={{
@@ -3143,9 +3188,34 @@ const activeGroupKey =
               fontWeight: 950,
               letterSpacing: "-0.01em",
               whiteSpace: "nowrap",
+              display: "grid",
+              justifyItems: "center",
+              gap: 4,
             }}
           >
-            {textValue(matter?.displayNumber)}
+            <span>{textValue(matter?.displayNumber)}</span>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                justifySelf: "center",
+                marginTop: 6,
+                padding: "4px 12px",
+                borderRadius: 999,
+                background: matterIsClosedForPayment() ? "#dc2626" : "#16a34a",
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 950,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                boxShadow: matterIsClosedForPayment()
+                  ? "0 4px 12px rgba(220, 38, 38, 0.25)"
+                  : "0 4px 12px rgba(22, 163, 74, 0.25)",
+              }}
+            >
+              {matterIsClosedForPayment() ? "Closed" : "Open"}
+            </span>
           </div>
 
           {alreadyAggregated && (
@@ -3172,7 +3242,7 @@ const activeGroupKey =
               <span>{textValue(matter?.masterLawsuitId)}</span>
             </a>
           )}
-        </div>
+</div>
 <div style={bmGlobalRightWrapStyle}>
           <div style={bmGlobalPrintButtonRowStyle}>
             <button
@@ -3338,11 +3408,62 @@ const activeGroupKey =
                     setPaymentFormOpen((open) => !open);
                     setPaymentDateInput((current) => current || formatPaymentDateYYYYMMDD(new Date()));
                   }}
-                  disabled={paymentApplyLoading}
-                  title="Open payment entry form."
+                  disabled={paymentApplyLoading || matterIsClosedForPayment()}
+                  title={matterIsClosedForPayment() ? "Payment controls are locked because matter status is Closed." : "Open payment entry form."}
                 >
                   {paymentApplyLoading ? (paymentEditingReceipt ? "Saving Edit..." : "Applying Payment...") : paymentFormOpen ? "Close Payment Form" : "Apply Payment"}
                 </button>
+
+                <div
+                  style={{
+                    marginTop: 10,
+                    display: "grid",
+                    gap: 7,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
+                      fontSize: 11,
+                      fontWeight: 900,
+                      color: matterIsClosedForPayment() ? "#991b1b" : "#166534",
+                    }}
+                  >
+                    <span>
+                      Payment controls: {matterIsClosedForPayment() ? "Locked because matter status is Closed" : "Active"}
+                    </span>
+                    <a
+                      href={clioMatterUrl(matter?.id)}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "4px 8px",
+                        border: "1px solid #93c5fd",
+                        borderRadius: 999,
+                        background: "#eff6ff",
+                        color: "#1d4ed8",
+                        textDecoration: "none",
+                        fontSize: 11,
+                        fontWeight: 900,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Open in Clio
+                    </a>
+                  </div>
+
+                  {latestPaymentReceipt() && (
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "#475569" }}>
+                      Last activity: Receipt #{latestPaymentReceipt().id} {paymentReceiptAuditStatus(latestPaymentReceipt()).toLowerCase()} · {paymentReceiptPrimaryTimestamp(latestPaymentReceipt()) || "—"}
+                    </div>
+                  )}
+                </div>
 
                 <div
                   style={{
@@ -3493,7 +3614,7 @@ const activeGroupKey =
                           setPaymentFormOpen(false);
                           setPaymentApplyResult(null);
                         }}
-                        disabled={paymentApplyLoading}
+                        disabled={paymentApplyLoading || matterIsClosedForPayment()}
                         style={{
                           border: "none",
                           background: "transparent",
@@ -3696,6 +3817,23 @@ const activeGroupKey =
                         {paymentEditingReceipt && (
                           <div>Clio Delta: {signedMoneyValue(paymentFormDeltaValue())}</div>
                         )}
+                        {paymentEditingReceipt && (
+                          <div
+                            style={{
+                              gridColumn: "1 / -1",
+                              padding: "8px 10px",
+                              border: "1px solid #facc15",
+                              borderRadius: 10,
+                              background: "#fef9c3",
+                              color: "#854d0e",
+                              fontWeight: 900,
+                            }}
+                          >
+                            {Math.abs(paymentFormDeltaValue()) >= 0.005
+                              ? `This edit will change Clio financials by ${signedMoneyValue(paymentFormDeltaValue())}.`
+                              : "Metadata-only edit.  Clio financial totals will not change."}
+                          </div>
+                        )}
                         <div>Expected Payments Posted: {money(expectedPaymentsPostedAfterPaymentForm())}</div>
                         <div>
                           Expected Balance Presuit: {money(expectedBalancePresuitAfterPaymentForm())}
@@ -3719,20 +3857,9 @@ const activeGroupKey =
                         type="button"
                         className="barsh-direct-payment-cancel-button"
                         onClick={() => {
-                          if (paymentEditingReceipt) {
-                            resetPaymentFormInputs();
-                            setPaymentApplyResult(null);
-                            setPaymentFormOpen(false);
-                            return;
-                          }
-
-                          setPaymentAmountInput("");
-                          setPaymentDateInput(formatPaymentDateYYYYMMDD(new Date()));
-                          setPaymentTransactionTypeInput("Collection Payment");
-                          setPaymentTransactionStatusInput("Show on Remittance");
-                          setPaymentCheckDateInput("");
-                          setPaymentCheckNumberInput("");
+                          resetPaymentFormInputs();
                           setPaymentApplyResult(null);
+                          setPaymentFormOpen(false);
                         }}
                         disabled={paymentApplyLoading}
                         style={{
@@ -3747,7 +3874,35 @@ const activeGroupKey =
                           cursor: paymentApplyLoading ? "not-allowed" : "pointer",
                         }}
                       >
-                        {paymentEditingReceipt ? "Cancel Edit" : "Reset"}
+                        Cancel
+                      </button>
+
+                      <button
+                        type="button"
+                        className="barsh-direct-payment-cancel-button"
+                        onClick={() => {
+                          setPaymentAmountInput("");
+                          setPaymentDateInput(formatPaymentDateYYYYMMDD(new Date()));
+                          setPaymentTransactionTypeInput("Collection Payment");
+                          setPaymentTransactionStatusInput("Show on Remittance");
+                          setPaymentCheckDateInput("");
+                          setPaymentCheckNumberInput("");
+                          setPaymentApplyResult(null);
+                        }}
+                        disabled={paymentApplyLoading}
+                        style={{
+                          minWidth: 132,
+                          height: 44,
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 12,
+                          background: paymentApplyLoading ? "#f1f5f9" : "#ffffff",
+                          color: "#334155",
+                          fontWeight: 900,
+                          fontSize: 15,
+                          cursor: paymentApplyLoading ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        Clear
                       </button>
 
                       <button
@@ -3756,7 +3911,7 @@ const activeGroupKey =
                         onClick={applyVoluntaryPaymentFromSummary}
                         disabled={paymentApplyLoading}
                         style={{
-                          minWidth: 132,
+                          minWidth: 150,
                           height: 44,
                           border: "1px solid #16a34a",
                           borderRadius: 12,
@@ -3767,7 +3922,7 @@ const activeGroupKey =
                           cursor: paymentApplyLoading ? "not-allowed" : "pointer",
                         }}
                       >
-                        {paymentApplyLoading ? "Saving..." : paymentEditingReceipt ? "Save Edit" : "Save"}
+                        {paymentApplyLoading ? "Applying..." : "Apply Payment"}
                       </button>
                     </div>
 
@@ -3781,14 +3936,18 @@ const activeGroupKey =
                 {paymentApplyResult?.ok && (
                   <div className="barsh-direct-payment-confirmation">
                     <div>
-                      Clio updated{paymentApplyResult?.receipt?.id ? ` · Receipt #${paymentApplyResult.receipt.id}` : ""}.
+                      {paymentApplyResult?.action === "edit-payment"
+                        ? `Receipt #${paymentApplyResult?.receipt?.id || "—"} edited.`
+                        : paymentApplyResult?.action === "void-payment"
+                          ? `Receipt #${paymentApplyResult?.receipt?.id || "—"} voided.`
+                          : `Receipt #${paymentApplyResult?.receipt?.id || "—"} posted.`}
                     </div>
                     <div>
                       {paymentApplyResult?.action === "edit-payment"
-                        ? `Payment edited${Number.isFinite(Number(paymentApplyResult?.amountDelta)) ? ` by ${money(paymentApplyResult.amountDelta)}` : ""}.  New balance: ${money(paymentApplyResult.after?.balancePresuit)}`
+                        ? `Edit delta: ${Number.isFinite(Number(paymentApplyResult?.amountDelta)) ? signedMoneyValue(paymentApplyResult.amountDelta) : "$0.00"}.  Payments Posted: ${money(paymentApplyResult.after?.paymentVoluntary)}.  Balance Presuit: ${money(paymentApplyResult.after?.balancePresuit)}.`
                         : paymentApplyResult?.action === "void-payment"
-                          ? `Payment voided.  New balance: ${money(paymentApplyResult.after?.balancePresuit)}`
-                          : `Payment: ${money(paymentApplyResult.paymentApplied)} · New balance: ${money(paymentApplyResult.after?.balancePresuit)}`}
+                          ? `Payment voided by ${money(paymentApplyResult.paymentVoided || paymentApplyResult.paymentApplied || 0)}.  Payments Posted: ${money(paymentApplyResult.after?.paymentVoluntary)}.  Balance Presuit: ${money(paymentApplyResult.after?.balancePresuit)}.`
+                          : `Payment: ${money(paymentApplyResult.paymentApplied)}.  Payments Posted: ${money(paymentApplyResult.after?.paymentVoluntary)}.  Balance Presuit: ${money(paymentApplyResult.after?.balancePresuit)}.`}
                     </div>
 
 
@@ -3798,6 +3957,81 @@ const activeGroupKey =
                 {paymentApplyResult && !paymentApplyResult.ok && (
                   <div className="barsh-direct-payment-error">
                     {textValue(paymentApplyResult.error) || "Payment could not be applied."}
+                  </div>
+                )}
+
+                {paymentClosePromptOpen && (
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Close Matter?"
+                    style={{
+                      position: "fixed",
+                      inset: 0,
+                      zIndex: 11000,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: 24,
+                      background: "rgba(15, 23, 42, 0.45)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "min(420px, calc(100vw - 48px))",
+                        border: "1px solid #fecaca",
+                        borderRadius: 18,
+                        background: "#fff",
+                        boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
+                        padding: 20,
+                        textAlign: "center",
+                      }}
+                    >
+                      <div style={{ fontSize: 22, fontWeight: 950, color: "#0f172a", marginBottom: 8 }}>
+                        Close Matter?
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#475569", marginBottom: 18 }}>
+                        Payment activity was saved.  Do you want to close this matter now?
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentClosePromptOpen(false)}
+                          style={{
+                            minWidth: 104,
+                            height: 40,
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 12,
+                            background: "#f8fafc",
+                            color: "#334155",
+                            fontSize: 14,
+                            fontWeight: 900,
+                            cursor: "pointer",
+                          }}
+                        >
+                          No
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={openCloseMatterFromPayment}
+                          style={{
+                            minWidth: 104,
+                            height: 40,
+                            border: "1px solid #dc2626",
+                            borderRadius: 12,
+                            background: "#dc2626",
+                            color: "#fff",
+                            fontSize: 14,
+                            fontWeight: 900,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Yes
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -3993,7 +4227,7 @@ const activeGroupKey =
                       </button>
                       <button
                         type="button"
-                        disabled={paymentVoidLoadingId === Number(receipt.id)}
+                        disabled={paymentVoidLoadingId === Number(receipt.id) || matterIsClosedForPayment()}
                         onClick={() => handleVoidPaymentReceipt(receipt)}
                         title="Void payment and reverse Clio financial writeback."
                         style={{
@@ -9598,7 +9832,7 @@ const activeGroupKey =
             boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
           }}
         >
-          <h2 style={{ marginTop: 0 }}>Close Matter in Clio</h2>
+          <h2 style={{ marginTop: 0 }}>Close Matter</h2>
 
           <p style={{ marginBottom: 14 }}>
             This will close matter <strong>{textValue(closeMatterTarget?.displayNumber)}</strong> in Clio

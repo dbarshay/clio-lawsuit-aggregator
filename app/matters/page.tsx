@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
 
 type FilterKind = "patient" | "provider" | "insurer" | "claim" | "master";
 
@@ -533,9 +534,11 @@ export default function FilteredMattersPage() {
             <a href="/" title="Return to Barsh Matters entry screen" style={{ display: "inline-flex" }}>
               <img src="/brl-logo.png" alt="BRL Logo" style={brlLogoStyle} />
             </a>
+            <div style={{ paddingTop: 8 }}>
+              <BarshHeaderQuickNav />
+            </div>
           </div>
-
-          <div style={rightTopWrapStyle}>
+<div style={rightTopWrapStyle}>
             <div style={printButtonRowStyle}>
               <button
                 type="button"
@@ -1393,7 +1396,7 @@ const topBarStyle: React.CSSProperties = {
   zIndex: 10000,
   isolation: "isolate",
   display: "grid",
-  gridTemplateColumns: "216px minmax(0, 1fr) 330px",
+  gridTemplateColumns: "500px minmax(0, 1fr) 330px",
   alignItems: "start",
   gap: 16,
   marginBottom: 14,

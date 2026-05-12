@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
 
 type SearchKind = "brl_matter" | "numeric_ambiguous" | "master" | "text";
 
@@ -1932,6 +1933,9 @@ export default function Home() {
         <section style={topBarStyle}>
           <div style={leftLogoWrapStyle}>
             <img src="/brl-logo.png" alt="BRL Logo" style={brlLogoStyle} />
+            <div style={{ paddingTop: 8 }}>
+              <BarshHeaderQuickNav />
+            </div>
           </div>
 
           
@@ -1942,8 +1946,7 @@ export default function Home() {
               style={headerCaricatureStyle}
             />
           </div>
-
-          <div style={rightTopWrapStyle}>
+<div style={rightTopWrapStyle}>
             <div style={printButtonRowStyle}>
               <button
                 type="button"
@@ -2601,7 +2604,7 @@ const topBarStyle: React.CSSProperties = {
   zIndex: 10000,
   isolation: "isolate",
   display: "grid",
-  gridTemplateColumns: "216px minmax(0, 1fr) 330px",
+  gridTemplateColumns: "500px minmax(0, 1fr) 330px",
   alignItems: "start",
   gap: 16,
   marginBottom: 14,

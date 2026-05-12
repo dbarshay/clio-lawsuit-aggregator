@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
 
 type Matter = any;
 type ClaimGroup = any;
@@ -211,7 +212,7 @@ export default function LawsuitsPage() {
           zIndex: 10000,
           isolation: "isolate",
           display: "grid",
-          gridTemplateColumns: "216px minmax(0, 1fr) 330px",
+          gridTemplateColumns: "500px minmax(0, 1fr) 330px",
           alignItems: "start",
           gap: 16,
           marginBottom: 14,
@@ -221,15 +222,17 @@ export default function LawsuitsPage() {
           borderBottom: "1px solid rgba(203, 213, 225, 0.9)",
         }}
       >
-        <div style={{ gridColumn: "1", display: "flex", justifyContent: "flex-start", alignItems: "flex-start" }}>
+        <div style={{ gridColumn: "1", display: "flex", justifyContent: "flex-start", alignItems: "flex-start", gap: 12 }}>
           <img
             src="/brl-logo.png"
             alt="BRL Logo"
             style={{ width: 216, height: 144, objectFit: "contain", display: "block" }}
           />
+          <div style={{ paddingTop: 8 }}>
+            <BarshHeaderQuickNav />
+          </div>
         </div>
-
-        <div
+<div
           style={{
             gridColumn: "3",
             justifySelf: "end",

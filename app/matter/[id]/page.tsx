@@ -690,9 +690,9 @@ const activeGroupKey =
     return !!matter?.id && !matterIsClosedForPayment();
   }
 
-  function openCloseMatterFromPayment() {
-    if (!paymentCloseMatterAvailable()) return;
-    setPaymentClosePromptOpen(false);
+  function openCloseMatterDialogFromMatter() {
+    if (!matter?.id || matterIsClosedForPayment() || matterHasFinalStatusForPayment()) return;
+
     setCloseMatterTarget({
       id: matter?.id,
       displayNumber: matter?.displayNumber,
@@ -703,6 +703,12 @@ const activeGroupKey =
     });
     setCloseReason("PAID VOLUNTARY");
     setShowCloseModal(true);
+  }
+
+  function openCloseMatterFromPayment() {
+    if (!paymentCloseMatterAvailable()) return;
+    setPaymentClosePromptOpen(false);
+    openCloseMatterDialogFromMatter();
   }
 
   function maybePromptCloseMatterAfterPayment() {
@@ -3375,6 +3381,82 @@ const activeGroupKey =
               </div>
 
               <div className="barsh-direct-financial-bubble">
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 12,
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="barsh-direct-apply-payment-button"
+                    onClick={() => {
+                      setPaymentApplyResult(null);
+                      setPaymentEditingReceipt(null);
+                      setPaymentFormOpen((open) => !open);
+                      setPaymentDateInput((current) => current || formatPaymentDateYYYYMMDD(new Date()));
+                    }}
+                    disabled={paymentApplyLoading || matterIsClosedForPayment()}
+                    title={matterIsClosedForPayment() ? "Payment controls are locked because matter status is Closed." : "Open payment entry form."}
+                    style={{
+                      width: 168,
+                      minWidth: 168,
+                      height: 40,
+                      flex: "0 0 168px",
+                      border: "1px solid #16a34a",
+                      borderRadius: 999,
+                      background: matterIsClosedForPayment() ? "#f3f4f6" : "#16a34a",
+                      color: matterIsClosedForPayment() ? "#64748b" : "#fff",
+                      fontSize: 12,
+                      fontWeight: 950,
+                      cursor: matterIsClosedForPayment() ? "not-allowed" : "pointer",
+                      boxShadow: matterIsClosedForPayment() ? "none" : "0 8px 24px rgba(22, 163, 74, 0.22)",
+                    }}
+                  >
+                    {paymentApplyLoading ? (paymentEditingReceipt ? "Saving Edit..." : "Applying Payment...") : paymentFormOpen ? "Close Payment Form" : "Apply Payment"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={openCloseMatterDialogFromMatter}
+                    disabled={matterIsClosedForPayment() || matterHasFinalStatusForPayment()}
+                    title={
+                      matterIsClosedForPayment()
+                        ? "Matter is already Closed in Clio."
+                        : matterHasFinalStatusForPayment()
+                          ? "Matter already has a Final Status."
+                          : "Close this matter without posting a payment."
+                    }
+                    style={{
+                      width: 168,
+                      minWidth: 168,
+                      height: 40,
+                      flex: "0 0 168px",
+                      border: "1px solid #dc2626",
+                      borderRadius: 999,
+                      background:
+                        matterIsClosedForPayment() || matterHasFinalStatusForPayment()
+                          ? "#f3f4f6"
+                          : "#dc2626",
+                      color:
+                        matterIsClosedForPayment() || matterHasFinalStatusForPayment()
+                          ? "#64748b"
+                          : "#fff",
+                      fontSize: 12,
+                      fontWeight: 950,
+                      cursor:
+                        matterIsClosedForPayment() || matterHasFinalStatusForPayment()
+                          ? "not-allowed"
+                          : "pointer",
+                    }}
+                  >
+                    Close Matter
+                  </button>
+                </div>
+
                 <div style={{ textAlign: "center", marginBottom: 12 }}>
                   <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", color: "#1d4ed8" }}>
                     Individual Bill Payment
@@ -3399,20 +3481,7 @@ const activeGroupKey =
                   <strong>{money(currentDirectMatterBalancePresuit(matter))}</strong>
                 </div>
 
-                <button
-                  type="button"
-                  className="barsh-direct-apply-payment-button"
-                  onClick={() => {
-                    setPaymentApplyResult(null);
-                    setPaymentEditingReceipt(null);
-                    setPaymentFormOpen((open) => !open);
-                    setPaymentDateInput((current) => current || formatPaymentDateYYYYMMDD(new Date()));
-                  }}
-                  disabled={paymentApplyLoading || matterIsClosedForPayment()}
-                  title={matterIsClosedForPayment() ? "Payment controls are locked because matter status is Closed." : "Open payment entry form."}
-                >
-                  {paymentApplyLoading ? (paymentEditingReceipt ? "Saving Edit..." : "Applying Payment...") : paymentFormOpen ? "Close Payment Form" : "Apply Payment"}
-                </button>
+
 
                 <div
                   style={{

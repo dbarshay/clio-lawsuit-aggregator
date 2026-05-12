@@ -615,6 +615,7 @@ const activeGroupKey =
   const [paymentCheckDateInput, setPaymentCheckDateInput] = useState("");
   const [paymentCheckNumberInput, setPaymentCheckNumberInput] = useState("");
   const [paymentVoidLoadingId, setPaymentVoidLoadingId] = useState<number | null>(null);
+  const [paymentEditingReceipt, setPaymentEditingReceipt] = useState<any>(null);
 
   async function loadPaymentReceipts(matterIdInput?: string) {
     const targetMatterId = String(matterIdInput || matterId || "").trim();
@@ -639,6 +640,34 @@ const activeGroupKey =
     }
   }
 
+
+
+  function resetPaymentFormInputs() {
+    setPaymentAmountInput("");
+    setPaymentDateInput(formatPaymentDateYYYYMMDD(new Date()));
+    setPaymentTransactionTypeInput("Collection Payment");
+    setPaymentTransactionStatusInput("Show on Remittance");
+    setPaymentCheckDateInput("");
+    setPaymentCheckNumberInput("");
+    setPaymentEditingReceipt(null);
+  }
+
+  function beginEditPaymentReceipt(receipt: any) {
+    if (receipt?.voided) {
+      setPaymentApplyResult({ ok: false, error: "Cannot edit a voided payment receipt." });
+      return;
+    }
+
+    setPaymentApplyResult(null);
+    setPaymentEditingReceipt(receipt);
+    setPaymentAmountInput(String(num(receipt?.paymentAmount).toFixed(2)));
+    setPaymentDateInput(formatPaymentDateYYYYMMDD(receipt?.paymentDate));
+    setPaymentTransactionTypeInput(textValue(receipt?.transactionType) || "Collection Payment");
+    setPaymentTransactionStatusInput(textValue(receipt?.transactionStatus) || "Show on Remittance");
+    setPaymentCheckDateInput(receipt?.checkDate ? formatPaymentDateYYYYMMDD(receipt.checkDate) : "");
+    setPaymentCheckNumberInput(textValue(receipt?.checkNumber));
+    setPaymentFormOpen(true);
+  }
 
   async function handleVoidPaymentReceipt(receipt: any) {
     const receiptId = Number(receipt?.id || 0);
@@ -743,17 +772,21 @@ const activeGroupKey =
       return;
     }
 
+    const editingReceipt = paymentEditingReceipt;
+    const previousPaymentAmount = editingReceipt ? num(editingReceipt?.paymentAmount) : 0;
+    const paymentDelta = editingReceipt ? paymentAmount - previousPaymentAmount : paymentAmount;
+
     const claimAmount = num(matter?.claimAmount);
     const currentPaymentVoluntary = num(matter?.paymentVoluntary);
     const currentBalancePresuit = currentDirectMatterBalancePresuit(matter);
-    const newPaymentVoluntary = currentPaymentVoluntary + paymentAmount;
-    const newBalancePresuit = Math.max(currentBalancePresuit - paymentAmount, 0);
+    const newPaymentVoluntary = currentPaymentVoluntary + paymentDelta;
+    const newBalancePresuit = Math.max(currentBalancePresuit - paymentDelta, 0);
 
-    if (paymentAmount > currentBalancePresuit) {
+    if (paymentDelta > currentBalancePresuit) {
       setPaymentApplyResult({
         ok: false,
         error:
-          `Payment exceeds the current Balance Presuit.  Current Balance Presuit: ${money(currentBalancePresuit)}.  Payment Entered: ${money(paymentAmount)}.`,
+          `Payment exceeds the current Balance Presuit.  Current Balance Presuit: ${money(currentBalancePresuit)}.  ${editingReceipt ? "Edit Delta" : "Payment Entered"}: ${money(paymentDelta)}.`,
       });
       return;
     }
@@ -762,11 +795,12 @@ const activeGroupKey =
 
     try {
       const response = await fetch("/api/matters/apply-payment", {
-        method: "POST",
+        method: editingReceipt ? "PATCH" : "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          receiptId: editingReceipt?.id,
           matterId,
           expectedDisplayNumber: textValue(matter?.displayNumber),
           paymentAmount,
@@ -775,13 +809,16 @@ const activeGroupKey =
           transactionStatus: paymentTransactionStatusInput,
           checkDate: paymentCheckDateInput,
           checkNumber: paymentCheckNumberInput,
+          description: editingReceipt ? textValue(editingReceipt?.description) || paymentTransactionTypeInput : undefined,
+          editedBy: "Barsh Matters UI",
+          editReason: editingReceipt ? "Edited from individual payment form" : undefined,
         }),
       });
 
       const json = await response.json();
 
       if (!response.ok || !json?.ok) {
-        throw new Error(json?.error || "Payment writeback failed.");
+        throw new Error(json?.error || (editingReceipt ? "Payment edit failed." : "Payment writeback failed."));
       }
 
       setPaymentApplyResult(json);
@@ -796,12 +833,7 @@ const activeGroupKey =
       }
 
       await loadPaymentReceipts(matterId);
-      setPaymentAmountInput("");
-      setPaymentDateInput(formatPaymentDateYYYYMMDD(new Date()));
-      setPaymentTransactionTypeInput("Collection Payment");
-      setPaymentTransactionStatusInput("Show on Remittance");
-      setPaymentCheckDateInput("");
-      setPaymentCheckNumberInput("");
+      resetPaymentFormInputs();
       setPaymentFormOpen(false);
     } catch (error: any) {
       setPaymentApplyResult({
@@ -3236,20 +3268,21 @@ const activeGroupKey =
                   className="barsh-direct-apply-payment-button"
                   onClick={() => {
                     setPaymentApplyResult(null);
+                    setPaymentEditingReceipt(null);
                     setPaymentFormOpen((open) => !open);
                     setPaymentDateInput((current) => current || formatPaymentDateYYYYMMDD(new Date()));
                   }}
                   disabled={paymentApplyLoading}
                   title="Open payment entry form."
                 >
-                  {paymentApplyLoading ? "Applying Payment..." : paymentFormOpen ? "Close Payment Form" : "Apply Payment"}
+                  {paymentApplyLoading ? (paymentEditingReceipt ? "Saving Edit..." : "Applying Payment...") : paymentFormOpen ? "Close Payment Form" : "Apply Payment"}
                 </button>
 
                 {paymentFormOpen && (
                   <div
                     role="dialog"
                     aria-modal="true"
-                    aria-label="Post Payment"
+                    aria-label={paymentEditingReceipt ? "Edit Payment" : "Post Payment"}
                     style={{
                       position: "fixed",
                       inset: 0,
@@ -3288,7 +3321,7 @@ const activeGroupKey =
                     >
                       <div>
                         <div style={{ fontSize: 20, fontWeight: 900, color: "#0f172a" }}>
-                          Post Payment
+                          {paymentEditingReceipt ? "Edit Payment" : "Post Payment"}
                         </div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", marginTop: 3 }}>
                           This posts only to {textValue(matter?.displayNumber) || "this bill/matter"}.
@@ -3552,7 +3585,7 @@ const activeGroupKey =
                           cursor: paymentApplyLoading ? "not-allowed" : "pointer",
                         }}
                       >
-                        {paymentApplyLoading ? "Saving..." : "Save"}
+                        {paymentApplyLoading ? "Saving..." : paymentEditingReceipt ? "Save Edit" : "Save"}
                       </button>
                     </div>
 
@@ -3567,8 +3600,46 @@ const activeGroupKey =
                   <div className="barsh-direct-payment-confirmation">
                     <div>Clio updated.</div>
                     <div>
-                      Payment: {money(paymentApplyResult.paymentApplied)} · New balance: {money(paymentApplyResult.after?.balancePresuit)}
+                      {paymentApplyResult?.action === "edit-payment"
+                        ? `Payment edited${Number.isFinite(Number(paymentApplyResult?.amountDelta)) ? ` by ${money(paymentApplyResult.amountDelta)}` : ""}.  New balance: ${money(paymentApplyResult.after?.balancePresuit)}`
+                        : paymentApplyResult?.action === "void-payment"
+                          ? `Payment voided.  New balance: ${money(paymentApplyResult.after?.balancePresuit)}`
+                          : `Payment: ${money(paymentApplyResult.paymentApplied)} · New balance: ${money(paymentApplyResult.after?.balancePresuit)}`}
                     </div>
+
+                    {paymentReceipts.length > 0 && (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          paddingTop: 10,
+                          borderTop: "1px solid rgba(22, 101, 52, 0.25)",
+                        }}
+                      >
+                        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 5 }}>
+                          Recent Receipts
+                        </div>
+
+                        {paymentReceipts.slice(0, 5).map((receipt) => (
+                          <div
+                            key={receipt.id}
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: 10,
+                              fontSize: 12,
+                              lineHeight: 1.45,
+                              opacity: receipt?.voided ? 0.72 : 1,
+                              textDecoration: receipt?.voided ? "line-through" : "none",
+                            }}
+                          >
+                            <span>
+                              #{receipt.id} · {receipt.paymentDate ? formatPaymentDateMMDDYYYY(receipt.paymentDate) : "—"} · {receipt?.voided ? "VOIDED · " : ""}{textValue(receipt.description || receipt.transactionType) || "Payment"}
+                            </span>
+                            <strong>{money(receipt.paymentAmount)}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -3684,19 +3755,21 @@ const activeGroupKey =
                 <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb", whiteSpace: "nowrap" }}>
                   <button
                     type="button"
-                    disabled
-                    title="Edit payment will be enabled after payment receipt persistence is expanded."
+                    disabled={!!receipt?.voided || paymentApplyLoading}
+                    onClick={() => beginEditPaymentReceipt(receipt)}
+                    title={receipt?.voided ? "Cannot edit a voided payment receipt." : "Edit payment receipt."}
                     style={{
                       marginRight: 6,
                       width: 30,
                       height: 28,
                       border: "1px solid #0891b2",
                       borderRadius: 6,
-                      background: "#06b6d4",
+                      background: receipt?.voided ? "#64748b" : "#06b6d4",
                       color: "#fff",
                       fontSize: 13,
                       fontWeight: 900,
-                      cursor: "not-allowed",
+                      cursor: !!receipt?.voided || paymentApplyLoading ? "not-allowed" : "pointer",
+                      opacity: paymentApplyLoading ? 0.65 : 1,
                     }}
                   >
                     ✎
@@ -3785,7 +3858,7 @@ const activeGroupKey =
 
           {!paymentReceiptsLoading && paymentReceipts.length > 0 && (
             <div style={{ marginTop: 8, fontSize: 11, color: "#64748b", fontWeight: 700 }}>
-              Delete now voids a payment receipt, reverses the Clio financial writeback, and keeps the row as an audit record.  Edit remains disabled for now.
+              Edit updates payment receipt details; amount edits apply only the difference to Clio.  Delete voids a payment receipt, reverses the Clio financial writeback, and keeps the row as an audit record.
             </div>
           )}
         </div>

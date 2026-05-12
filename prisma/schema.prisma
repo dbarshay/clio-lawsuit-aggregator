@@ -243,6 +243,10 @@ model MatterPaymentReceipt {
   voidedBy                 String?
   voidReason               String?
   reversalSnapshot         Json?
+  editedAt                 DateTime?
+  editedBy                 String?
+  editReason               String?
+  editSnapshot             Json?
   claimAmountBefore        Float?
   paymentVoluntaryBefore   Float?
   balancePresuitBefore     Float?

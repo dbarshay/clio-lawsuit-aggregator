@@ -701,7 +701,7 @@ const activeGroupKey =
   }
 
   function openCloseMatterDialogFromMatter() {
-    if (!matter?.id || matterIsClosedForPayment() || matterHasFinalStatusForPayment()) return;
+    if (!matter?.id || matterIsClosedForPayment()) return;
 
     setCloseMatterTarget({
       id: matter?.id,
@@ -810,7 +810,7 @@ const activeGroupKey =
 
       setDirectFieldEditResult({
         ok: true,
-        message: "Date of Service updated in Clio.",
+        message: "Date of Service updated.",
       });
       setDirectFieldEditModal(null);
     } catch (error: any) {
@@ -889,7 +889,7 @@ const activeGroupKey =
   function directPicklistFieldLabel(field: "denialReason" | "status" | "finalStatus"): string {
     if (field === "denialReason") return "Denial Reason";
     if (field === "status") return "Status";
-    return "Final Status";
+    return "Closed Reason";
   }
 
   function directPicklistInputValue(field: "denialReason" | "status" | "finalStatus"): string {
@@ -958,7 +958,7 @@ const activeGroupKey =
 
       setDirectFieldEditResult({
         ok: true,
-        message: `${directPicklistFieldLabel(field)} updated in Clio.`,
+        message: `${directPicklistFieldLabel(field)} updated.`,
       });
       setDirectFieldEditModal(null);
     } catch (error: any) {
@@ -3563,7 +3563,7 @@ const activeGroupKey =
           >
             <h2 style={{ marginTop: 0, marginBottom: 8 }}>Edit Date of Service</h2>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#475569", marginBottom: 16 }}>
-              This writes DOS Start and DOS End directly to Clio.
+              This updates DOS Start and DOS End.
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
@@ -3680,7 +3680,7 @@ const activeGroupKey =
               Edit {directPicklistFieldLabel(directFieldEditModal)}
             </h2>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#475569", marginBottom: 16 }}>
-              This writes {directPicklistFieldLabel(directFieldEditModal)} directly to Clio.
+              This writes {directPicklistFieldLabel(directFieldEditModal)} directly.
             </div>
 
             <label style={{ display: "grid", gap: 6, fontWeight: 900, marginBottom: 16 }}>
@@ -3846,7 +3846,7 @@ const activeGroupKey =
                       type="button"
                       onClick={openDosEditDialog}
                       disabled={directFieldEditLoading}
-                      title="Edit Date of Service in Clio."
+                      title="Edit Date of Service."
                       style={{
                         border: "1px solid #93c5fd",
                         borderRadius: 999,
@@ -3876,7 +3876,7 @@ const activeGroupKey =
                       type="button"
                       onClick={() => openPicklistEditDialog("denialReason")}
                       disabled={directFieldEditLoading}
-                      title="Edit Denial Reason in Clio."
+                      title="Edit Denial Reason."
                       style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
                     >
                       Edit
@@ -3899,7 +3899,7 @@ const activeGroupKey =
                       type="button"
                       onClick={() => openPicklistEditDialog("status")}
                       disabled={directFieldEditLoading}
-                      title="Edit Status in Clio."
+                      title="Edit Status."
                       style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
                     >
                       Edit
@@ -3915,13 +3915,13 @@ const activeGroupKey =
                     className="barsh-direct-summary-label"
                     style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
                   >
-                    <span>Final Status</span>
+                    <span>Closed Reason</span>
                     <button
                       type="button"
                       onClick={() => openPicklistEditDialog("finalStatus")}
                       disabled={directFieldEditLoading}
-                      title="Edit Final Status in Clio."
-                      style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
+                      title="Edit Closed Reason."
+                      style={{ border: "1px solid #fdba74", borderRadius: 999, background: "#fff7ed", color: "#c2410c", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
                     >
                       Edit
                     </button>
@@ -3935,87 +3935,177 @@ const activeGroupKey =
               <div className="barsh-direct-financial-bubble">
                 <div
                   style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    gap: 10,
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 12,
                     marginBottom: 12,
                   }}
                 >
-                  <button
-                    type="button"
-                    className="barsh-direct-apply-payment-button"
-                    onClick={() => {
-                      setPaymentApplyResult(null);
-                      setPaymentEditingReceipt(null);
-                      setPaymentFormOpen((open) => !open);
-                      setPaymentDateInput((current) => current || formatPaymentDateYYYYMMDD(new Date()));
-                    }}
-                    disabled={paymentApplyLoading || matterIsClosedForPayment()}
-                    title={matterIsClosedForPayment() ? "Payment controls are locked because matter status is Closed." : "Open payment entry form."}
+                  <div
                     style={{
-                      width: 168,
-                      minWidth: 168,
-                      height: 40,
-                      flex: "0 0 168px",
-                      border: "1px solid #16a34a",
-                      borderRadius: 999,
-                      background: matterIsClosedForPayment() ? "#f3f4f6" : "#16a34a",
-                      color: matterIsClosedForPayment() ? "#64748b" : "#fff",
-                      fontSize: 12,
-                      fontWeight: 950,
-                      cursor: matterIsClosedForPayment() ? "not-allowed" : "pointer",
-                      boxShadow: matterIsClosedForPayment() ? "none" : "0 8px 24px rgba(22, 163, 74, 0.22)",
+                      display: "grid",
+                      gridTemplateRows: "auto auto 1fr",
+                      gap: 10,
+                      padding: "12px 12px 10px",
+                      border: "1px solid #bbf7d0",
+                      borderRadius: 14,
+                      background: "#f0fdf4",
+                      minHeight: 188,
                     }}
                   >
-                    {paymentApplyLoading ? (paymentEditingReceipt ? "Saving Edit..." : "Applying Payment...") : paymentFormOpen ? "Close Payment Form" : "Apply Payment"}
-                  </button>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 950,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: "#166534",
+                        textAlign: "center",
+                      }}
+                    >
+                      Payment Actions
+                    </div>
 
-                  <button
-                    type="button"
-                    onClick={openCloseMatterDialogFromMatter}
-                    disabled={matterIsClosedForPayment() || matterHasFinalStatusForPayment()}
-                    title={
-                      matterIsClosedForPayment()
-                        ? "Matter is already Closed in Clio."
-                        : matterHasFinalStatusForPayment()
-                          ? "Matter already has a Final Status."
-                          : "Close this matter without posting a payment."
-                    }
+                    <button
+                      type="button"
+                      className="barsh-direct-apply-payment-button"
+                      onClick={() => {
+                        setPaymentApplyResult(null);
+                        setPaymentEditingReceipt(null);
+                        setPaymentFormOpen((open) => !open);
+                        setPaymentDateInput((current) => current || formatPaymentDateYYYYMMDD(new Date()));
+                      }}
+                      disabled={paymentApplyLoading || matterIsClosedForPayment()}
+                      title={matterIsClosedForPayment() ? "Payment controls are locked because this matter is Closed." : "Open payment entry form."}
+                      style={{
+                        width: "100%",
+                        minWidth: 0,
+                        height: 44,
+                        border: "1px solid #16a34a",
+                        borderRadius: 999,
+                        background: matterIsClosedForPayment() ? "#f3f4f6" : "#16a34a",
+                        color: matterIsClosedForPayment() ? "#64748b" : "#fff",
+                        fontSize: 12,
+                        fontWeight: 950,
+                        cursor: matterIsClosedForPayment() ? "not-allowed" : "pointer",
+                        boxShadow: matterIsClosedForPayment() ? "none" : "0 8px 24px rgba(22, 163, 74, 0.22)",
+                      }}
+                    >
+                      {paymentApplyLoading ? (paymentEditingReceipt ? "Saving Edit..." : "Applying Payment...") : paymentFormOpen ? "Close Payment Form" : "Apply Payment"}
+                    </button>
+
+                    <div style={{ display: "grid", alignContent: "start" }}>
+                      {matterIsClosedForPayment() && (
+                        <div style={{ color: "#991b1b", fontSize: 11, fontWeight: 850, textAlign: "center" }}>
+                          Disabled because this matter is Closed.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div
                     style={{
-                      width: 168,
-                      minWidth: 168,
-                      height: 40,
-                      flex: "0 0 168px",
-                      border: "1px solid #dc2626",
-                      borderRadius: 999,
-                      background:
-                        matterIsClosedForPayment() || matterHasFinalStatusForPayment()
-                          ? "#f3f4f6"
-                          : "#dc2626",
-                      color:
-                        matterIsClosedForPayment() || matterHasFinalStatusForPayment()
-                          ? "#64748b"
-                          : "#fff",
-                      fontSize: 12,
-                      fontWeight: 950,
-                      cursor:
-                        matterIsClosedForPayment() || matterHasFinalStatusForPayment()
-                          ? "not-allowed"
-                          : "pointer",
+                      display: "grid",
+                      gridTemplateRows: "auto auto auto auto 1fr",
+                      gap: 10,
+                      padding: "12px 12px 10px",
+                      border: "1px solid #fecaca",
+                      borderRadius: 14,
+                      background: "#fff7f7",
+                      minHeight: 188,
                     }}
                   >
-                    Close Matter
-                  </button>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 950,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: "#991b1b",
+                        textAlign: "center",
+                      }}
+                    >
+                      Matter Actions
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={openCloseMatterDialogFromMatter}
+                      disabled={matterIsClosedForPayment()}
+                      title={
+                        matterIsClosedForPayment()
+                          ? "Matter is already Closed."
+                          : "Close this matter without posting a payment."
+                      }
+                      style={{
+                        width: "100%",
+                        minWidth: 0,
+                        height: 44,
+                        border: "1px solid #dc2626",
+                        borderRadius: 999,
+                        background: matterIsClosedForPayment() ? "#f3f4f6" : "#dc2626",
+                        color: matterIsClosedForPayment() ? "#64748b" : "#fff",
+                        fontSize: 12,
+                        fontWeight: 950,
+                        cursor: matterIsClosedForPayment() ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      Close Matter
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled
+                      title="Start Lawsuit action will be wired later."
+                      style={{
+                        width: "100%",
+                        minWidth: 0,
+                        height: 44,
+                        border: "1px solid #93c5fd",
+                        borderRadius: 999,
+                        background: "#eff6ff",
+                        color: "#1d4ed8",
+                        fontSize: 12,
+                        fontWeight: 950,
+                        cursor: "not-allowed",
+                        opacity: 0.82,
+                      }}
+                    >
+                      Start Lawsuit
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled
+                      title="View Documents action will be wired later."
+                      style={{
+                        width: "100%",
+                        minWidth: 0,
+                        height: 44,
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 999,
+                        background: "#f8fafc",
+                        color: "#334155",
+                        fontSize: 12,
+                        fontWeight: 950,
+                        cursor: "not-allowed",
+                        opacity: 0.82,
+                      }}
+                    >
+                      View Documents
+                    </button>
+
+                    <div style={{ display: "grid", alignContent: "start" }}>
+                      {matterIsClosedForPayment() && (
+                        <div style={{ color: "#991b1b", fontSize: 11, fontWeight: 850, textAlign: "center" }}>
+                          Disabled because this matter is Closed.
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div style={{ textAlign: "center", marginBottom: 12 }}>
-                  <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", color: "#1d4ed8" }}>
-                    Individual Bill Payment
-                  </div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginTop: 3 }}>
-                    Posts payment to this bill/matter only.
-                  </div>
                 </div>
 
                 <div className="barsh-direct-financial-row">
@@ -4182,9 +4272,10 @@ const activeGroupKey =
                       inset: 0,
                       zIndex: 10000,
                       display: "flex",
-                      alignItems: "center",
+                      alignItems: "flex-start",
                       justifyContent: "center",
-                      padding: 24,
+                      padding: "18px 24px 24px",
+                      overflowY: "auto",
                       background: "rgba(15, 23, 42, 0.52)",
                       backdropFilter: "blur(2px)",
                     }}
@@ -4193,12 +4284,13 @@ const activeGroupKey =
                       className="barsh-direct-payment-inline-form"
                       style={{
                         width: "min(1040px, calc(100vw - 48px))",
-                        maxHeight: "calc(100vh - 48px)",
+                        maxHeight: "calc(100vh - 36px)",
+                        marginTop: 0,
                         padding: 0,
                         border: "1px solid #dbeafe",
                         borderRadius: 18,
                         background: "#fff",
-                        overflow: "auto",
+                        overflowY: "auto",
                         boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
                       }}
                     >
@@ -4998,54 +5090,6 @@ const activeGroupKey =
 
         <div className="barsh-summary-workflow-divider" />
 
-        <div className="barsh-summary-workflow-buttons">
-          {matterWorkspaceTabs
-            .filter((tab) => tab.key !== "audit_history" && tab.key !== "settlement")
-            .map((tab) => {
-            const active = activeWorkspaceTab === tab.key;
-            const lawsuitLocked = tab.key === "lawsuit" && alreadyAggregated;
-            const auditHistoryLocked = tab.key === "audit_history";
-            const tabLocked = lawsuitLocked || auditHistoryLocked;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => {
-                  if (tabLocked) return;
-                  setActiveWorkspaceTab(tab.key);
-                }}
-                disabled={tabLocked}
-                aria-disabled={tabLocked}
-                title={
-                  lawsuitLocked
-                    ? `Lawsuit workspace is locked because this matter is already part of lawsuit ${tabMasterLawsuitId || textValue(matter?.masterLawsuitId) || "—"}.`
-                    : auditHistoryLocked
-                      ? "Audit / History access is locked."
-                      : tab.note
-                }
-                className={
-                  active
-                    ? "barsh-summary-workflow-button active"
-                    : "barsh-summary-workflow-button"
-                }
-                style={
-                  tabLocked
-                    ? {
-                        opacity: 0.55,
-                        cursor: "not-allowed",
-                        borderColor: auditHistoryLocked ? "#cbd5e1" : "#fecaca",
-                        background: auditHistoryLocked ? "#f8fafc" : "#fef2f2",
-                        color: auditHistoryLocked ? "#475569" : "#991b1b",
-                        marginLeft: auditHistoryLocked ? "auto" : undefined,
-                      }
-                    : undefined
-                }
-              >
-                {lawsuitLocked ? "🔒 Lawsuit" : auditHistoryLocked ? "🔒 Audit / History" : tab.label}
-              </button>
-            );
-          })}
-        </div>
       </section>
 
       {activeWorkspaceTab === "lawsuit" && alreadyAggregated && (
@@ -7065,7 +7109,7 @@ const activeGroupKey =
                       <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Status</th>
                       <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Master?</th>
                       <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Eligible</th>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Existing Final Status</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", padding: 5 }}>Existing Closed Reason</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -9674,7 +9718,7 @@ const activeGroupKey =
             <th style={thStyle}>{matterSortHeader("Balance (Presuit)", "balance")}</th>
             <th style={thStyle}>{matterSortHeader("Denial Reason", "denial")}</th>
             <th style={thStyle}>{matterSortHeader("Status", "status")}</th>
-            <th style={thStyle}>{matterSortHeader("Final Status", "finalStatus")}</th>
+            <th style={thStyle}>{matterSortHeader("Closed Reason", "finalStatus")}</th>
             <th style={thStyle}>Actions</th>
           </tr>
         </thead>

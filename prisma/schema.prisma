@@ -228,6 +228,16 @@ model MatterPaymentReceipt {
   displayNumber            String?
   paymentDate              String
   paymentAmount            Float
+  transactionType          String?
+  transactionStatus        String?
+  transactionDate          String?
+  checkNumber              String?
+  checkDate                String?
+  invoiceId                String?
+  description              String?
+  transactionFee           Float?
+  postedBy                 String?
+  posted                   Boolean  @default(true)
   claimAmountBefore        Float?
   paymentVoluntaryBefore   Float?
   balancePresuitBefore     Float?
@@ -241,6 +251,8 @@ model MatterPaymentReceipt {
   @@index([matterId])
   @@index([displayNumber])
   @@index([paymentDate])
+  @@index([transactionType])
+  @@index([transactionStatus])
   @@index([createdAt])
 }
 

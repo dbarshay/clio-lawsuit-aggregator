@@ -50,18 +50,29 @@ function paymentReceiptView(row: any) {
   const safetySnapshot = row?.safetySnapshot || {};
   const posting = safetySnapshot?.posting || {};
 
+  const transactionType = cleanText(row?.transactionType || posting.transactionType);
+  const transactionStatus = cleanText(row?.transactionStatus || posting.transactionStatus);
+  const transactionDate = cleanText(row?.transactionDate || posting.transactionDate || row?.paymentDate);
+  const checkNumber = cleanText(row?.checkNumber || posting.checkNumber);
+  const checkDate = cleanText(row?.checkDate || posting.checkDate);
+  const invoiceId = cleanText(row?.invoiceId || posting.invoiceId);
+  const description = cleanText(row?.description || posting.description || transactionType);
+  const transactionFee = row?.transactionFee ?? posting.transactionFee ?? null;
+  const postedBy = cleanText(row?.postedBy || posting.postedBy || safetySnapshot.sourceOfPaymentIntent || "Barsh Matters UI");
+  const posted = typeof row?.posted === "boolean" ? row.posted : !!row?.createdAt;
+
   return {
     ...row,
-    transactionType: cleanText(posting.transactionType),
-    transactionStatus: cleanText(posting.transactionStatus),
-    transactionDate: cleanText(posting.transactionDate || row?.paymentDate),
-    checkNumber: cleanText(posting.checkNumber),
-    checkDate: cleanText(posting.checkDate),
-    invoiceId: cleanText(posting.invoiceId),
-    description: cleanText(posting.description || posting.transactionType),
-    transactionFee: posting.transactionFee ?? null,
-    postedBy: cleanText(posting.postedBy || safetySnapshot.sourceOfPaymentIntent || "Barsh Matters UI"),
-    posted: !!row?.createdAt,
+    transactionType,
+    transactionStatus,
+    transactionDate,
+    checkNumber,
+    checkDate,
+    invoiceId,
+    description,
+    transactionFee,
+    postedBy,
+    posted,
   };
 }
 
@@ -308,6 +319,16 @@ export async function POST(request: Request) {
         displayNumber: matterBefore.display_number || "",
         paymentDate,
         paymentAmount,
+        transactionType,
+        transactionStatus,
+        transactionDate: paymentDate,
+        checkDate,
+        checkNumber,
+        invoiceId: "",
+        description: transactionType,
+        transactionFee: null,
+        postedBy: "Barsh Matters UI",
+        posted: true,
         claimAmountBefore: claimAmount,
         paymentVoluntaryBefore: currentPaymentVoluntary,
         balancePresuitBefore: currentBalancePresuit,

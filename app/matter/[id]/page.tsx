@@ -627,6 +627,16 @@ const activeGroupKey =
   const [paymentShowVoided, setPaymentShowVoided] = useState(true);
   const [expandedPaymentReceiptId, setExpandedPaymentReceiptId] = useState<number | null>(null);
   const [paymentClosePromptOpen, setPaymentClosePromptOpen] = useState(false);
+  const [directFieldEditModal, setDirectFieldEditModal] = useState<"dos" | "denialReason" | "status" | "finalStatus" | null>(null);
+  const [directFieldEditLoading, setDirectFieldEditLoading] = useState(false);
+  const [directFieldEditResult, setDirectFieldEditResult] = useState<any>(null);
+  const [directFieldPicklistsLoading, setDirectFieldPicklistsLoading] = useState(false);
+  const [directFieldPicklists, setDirectFieldPicklists] = useState<any>(null);
+  const [dosStartInput, setDosStartInput] = useState("");
+  const [dosEndInput, setDosEndInput] = useState("");
+  const [denialReasonInput, setDenialReasonInput] = useState("");
+  const [matterStageInput, setMatterStageInput] = useState("");
+  const [finalStatusInput, setFinalStatusInput] = useState("");
 
   function paymentFormAmountValue(): number {
     return num(paymentAmountInput);
@@ -714,6 +724,250 @@ const activeGroupKey =
   function maybePromptCloseMatterAfterPayment() {
     if (paymentCloseMatterAvailable()) {
       setPaymentClosePromptOpen(true);
+    }
+  }
+
+  function directFieldDateInputValue(value: any): string {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+    const dotMatch = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+    if (dotMatch) {
+      const month = dotMatch[1].padStart(2, "0");
+      const day = dotMatch[2].padStart(2, "0");
+      const year = dotMatch[3];
+      return `${year}-${month}-${day}`;
+    }
+
+    const date = new Date(raw);
+    if (!Number.isNaN(date.getTime())) {
+      const year = String(date.getFullYear());
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    return "";
+  }
+
+  function openDosEditDialog() {
+    setDirectFieldEditResult(null);
+    setDosStartInput(directFieldDateInputValue(matter?.dosStart));
+    setDosEndInput(directFieldDateInputValue(matter?.dosEnd));
+    setDirectFieldEditModal("dos");
+  }
+
+  async function saveDosEditDialog() {
+    const dosStart = String(dosStartInput || "").trim();
+    const dosEnd = String(dosEndInput || "").trim();
+
+    if (!dosStart || !dosEnd) {
+      setDirectFieldEditResult({
+        ok: false,
+        error: "DOS Start and DOS End are required.",
+      });
+      return;
+    }
+
+    try {
+      setDirectFieldEditLoading(true);
+      setDirectFieldEditResult(null);
+
+      const response = await fetch("/api/matters/update-direct-field", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          matterId,
+          field: "dos",
+          dosStart,
+          dosEnd,
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json?.ok) {
+        setDirectFieldEditResult({
+          ok: false,
+          error: json?.error || "Date of Service could not be updated.",
+          details: json,
+        });
+        return;
+      }
+
+      const refreshed = await fetch(
+        `/api/clio/matter-context?matterId=${encodeURIComponent(matterId)}`,
+        { cache: "no-store" }
+      ).then((result) => result.json());
+
+      if (refreshed?.ok && refreshed?.matter) {
+        setMatter(refreshed.matter);
+      }
+
+      setDirectFieldEditResult({
+        ok: true,
+        message: "Date of Service updated in Clio.",
+      });
+      setDirectFieldEditModal(null);
+    } catch (error: any) {
+      setDirectFieldEditResult({
+        ok: false,
+        error: error?.message || String(error),
+      });
+    } finally {
+      setDirectFieldEditLoading(false);
+    }
+  }
+
+  function picklistOptionsForDirectField(field: "denialReason" | "status" | "finalStatus"): any[] {
+    if (field === "denialReason") {
+      return directFieldPicklists?.denialReason?.options || directFieldPicklists?.denialReasons || [];
+    }
+
+    if (field === "finalStatus") {
+      return directFieldPicklists?.closeReason?.options || directFieldPicklists?.closeReasons || [];
+    }
+
+    return directFieldPicklists?.status?.options || directFieldPicklists?.status || directFieldPicklists?.matterStages || [];
+  }
+
+  function optionLabel(option: any): string {
+    return textValue(option?.label || option?.name || option?.value || option?.id);
+  }
+
+  function optionValue(option: any): string {
+    return textValue(option?.value || option?.id || option?.label || option?.name);
+  }
+
+  function findOptionValueByLabel(options: any[], label: string): string {
+    const target = textValue(label).toLowerCase();
+    if (!target) return "";
+    const found = options.find((option) => optionLabel(option).toLowerCase() === target);
+    return found ? optionValue(found) : "";
+  }
+
+  async function loadDirectFieldPicklists() {
+    if (directFieldPicklists) return directFieldPicklists;
+
+    setDirectFieldPicklistsLoading(true);
+
+    try {
+      const json = await fetch("/api/advanced-search/picklists", { cache: "no-store" }).then((result) => result.json());
+      setDirectFieldPicklists(json);
+      return json;
+    } finally {
+      setDirectFieldPicklistsLoading(false);
+    }
+  }
+
+  async function openPicklistEditDialog(field: "denialReason" | "status" | "finalStatus") {
+    setDirectFieldEditResult(null);
+    setDirectFieldEditModal(field);
+
+    const picklists = await loadDirectFieldPicklists();
+
+    if (field === "denialReason") {
+      const options = picklists?.denialReason?.options || picklists?.denialReasons || [];
+      setDenialReasonInput(findOptionValueByLabel(options, denialReasonValue(matter)));
+    }
+
+    if (field === "status") {
+      const options = picklists?.status?.options || picklists?.status || picklists?.matterStages || [];
+      setMatterStageInput(findOptionValueByLabel(options, textValue(matter?.matterStage?.name)));
+    }
+
+    if (field === "finalStatus") {
+      const options = picklists?.closeReason?.options || picklists?.closeReasons || [];
+      setFinalStatusInput(findOptionValueByLabel(options, textValue(matter?.closeReason)));
+    }
+  }
+
+  function directPicklistFieldLabel(field: "denialReason" | "status" | "finalStatus"): string {
+    if (field === "denialReason") return "Denial Reason";
+    if (field === "status") return "Status";
+    return "Final Status";
+  }
+
+  function directPicklistInputValue(field: "denialReason" | "status" | "finalStatus"): string {
+    if (field === "denialReason") return denialReasonInput;
+    if (field === "status") return matterStageInput;
+    return finalStatusInput;
+  }
+
+  function setDirectPicklistInputValue(field: "denialReason" | "status" | "finalStatus", value: string) {
+    if (field === "denialReason") setDenialReasonInput(value);
+    if (field === "status") setMatterStageInput(value);
+    if (field === "finalStatus") setFinalStatusInput(value);
+  }
+
+  async function savePicklistEditDialog(field: "denialReason" | "status" | "finalStatus") {
+    const value = directPicklistInputValue(field);
+
+    if (!value) {
+      setDirectFieldEditResult({
+        ok: false,
+        error: `${directPicklistFieldLabel(field)} is required.`,
+      });
+      return;
+    }
+
+    try {
+      setDirectFieldEditLoading(true);
+      setDirectFieldEditResult(null);
+
+      const body: any = {
+        matterId,
+        field,
+      };
+
+      if (field === "denialReason") body.denialReasonValue = value;
+      if (field === "status") body.statusValue = value;
+      if (field === "finalStatus") body.finalStatusValue = value;
+
+      const response = await fetch("/api/matters/update-direct-field", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json?.ok) {
+        setDirectFieldEditResult({
+          ok: false,
+          error: json?.error || `${directPicklistFieldLabel(field)} could not be updated.`,
+          details: json,
+        });
+        return;
+      }
+
+      const refreshed = await fetch(
+        `/api/clio/matter-context?matterId=${encodeURIComponent(matterId)}`,
+        { cache: "no-store" }
+      ).then((result) => result.json());
+
+      if (refreshed?.ok && refreshed?.matter) {
+        setMatter(refreshed.matter);
+      }
+
+      setDirectFieldEditResult({
+        ok: true,
+        message: `${directPicklistFieldLabel(field)} updated in Clio.`,
+      });
+      setDirectFieldEditModal(null);
+    } catch (error: any) {
+      setDirectFieldEditResult({
+        ok: false,
+        error: error?.message || String(error),
+      });
+    } finally {
+      setDirectFieldEditLoading(false);
     }
   }
 
@@ -3281,7 +3535,235 @@ const activeGroupKey =
       </div>
 
 
-{(matterHydrationLoading || matterHydrationError) && (
+{directFieldEditModal === "dos" && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Edit Date of Service"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 12000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+            background: "rgba(15, 23, 42, 0.45)",
+          }}
+        >
+          <div
+            style={{
+              width: "min(520px, calc(100vw - 48px))",
+              border: "1px solid #cbd5e1",
+              borderRadius: 18,
+              background: "#fff",
+              boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
+              padding: 20,
+            }}
+          >
+            <h2 style={{ marginTop: 0, marginBottom: 8 }}>Edit Date of Service</h2>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#475569", marginBottom: 16 }}>
+              This writes DOS Start and DOS End directly to Clio.
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+              <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>
+                <span>DOS Start</span>
+                <input
+                  type="date"
+                  value={dosStartInput}
+                  onChange={(event) => setDosStartInput(event.target.value)}
+                  style={{
+                    height: 40,
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 10,
+                    padding: "0 10px",
+                    fontWeight: 800,
+                  }}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>
+                <span>DOS End</span>
+                <input
+                  type="date"
+                  value={dosEndInput}
+                  onChange={(event) => setDosEndInput(event.target.value)}
+                  style={{
+                    height: 40,
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 10,
+                    padding: "0 10px",
+                    fontWeight: 800,
+                  }}
+                />
+              </label>
+            </div>
+
+            {directFieldEditResult && !directFieldEditResult.ok && (
+              <div style={{ color: "#991b1b", fontWeight: 800, marginBottom: 12 }}>
+                {textValue(directFieldEditResult.error) || "Date of Service could not be updated."}
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setDirectFieldEditModal(null);
+                  setDirectFieldEditResult(null);
+                }}
+                disabled={directFieldEditLoading}
+                style={{
+                  minWidth: 96,
+                  height: 38,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 10,
+                  background: "#f8fafc",
+                  color: "#334155",
+                  fontWeight: 900,
+                  cursor: directFieldEditLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={saveDosEditDialog}
+                disabled={directFieldEditLoading}
+                style={{
+                  minWidth: 118,
+                  height: 38,
+                  border: "1px solid #16a34a",
+                  borderRadius: 10,
+                  background: directFieldEditLoading ? "#bbf7d0" : "#16a34a",
+                  color: "#fff",
+                  fontWeight: 900,
+                  cursor: directFieldEditLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                {directFieldEditLoading ? "Saving..." : "Save to Clio"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {directFieldEditModal && directFieldEditModal !== "dos" && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Edit ${directPicklistFieldLabel(directFieldEditModal)}`}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 12000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+            background: "rgba(15, 23, 42, 0.45)",
+          }}
+        >
+          <div
+            style={{
+              width: "min(560px, calc(100vw - 48px))",
+              border: "1px solid #cbd5e1",
+              borderRadius: 18,
+              background: "#fff",
+              boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
+              padding: 20,
+            }}
+          >
+            <h2 style={{ marginTop: 0, marginBottom: 8 }}>
+              Edit {directPicklistFieldLabel(directFieldEditModal)}
+            </h2>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#475569", marginBottom: 16 }}>
+              This writes {directPicklistFieldLabel(directFieldEditModal)} directly to Clio.
+            </div>
+
+            <label style={{ display: "grid", gap: 6, fontWeight: 900, marginBottom: 16 }}>
+              <span>{directPicklistFieldLabel(directFieldEditModal)}</span>
+              <select
+                value={directPicklistInputValue(directFieldEditModal)}
+                onChange={(event) => setDirectPicklistInputValue(directFieldEditModal, event.target.value)}
+                disabled={directFieldPicklistsLoading || directFieldEditLoading}
+                style={{
+                  height: 42,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 10,
+                  padding: "0 10px",
+                  fontWeight: 800,
+                  background: "#fff",
+                }}
+              >
+                <option value="">
+                  {directFieldPicklistsLoading ? "Loading..." : "Select..."}
+                </option>
+                {picklistOptionsForDirectField(directFieldEditModal).map((option: any) => {
+                  const value = optionValue(option);
+                  const label = optionLabel(option);
+                  return (
+                    <option key={`${value}-${label}`} value={value}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+
+            {directFieldEditResult && !directFieldEditResult.ok && (
+              <div style={{ color: "#991b1b", fontWeight: 800, marginBottom: 12 }}>
+                {textValue(directFieldEditResult.error) || `${directPicklistFieldLabel(directFieldEditModal)} could not be updated.`}
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setDirectFieldEditModal(null);
+                  setDirectFieldEditResult(null);
+                }}
+                disabled={directFieldEditLoading}
+                style={{
+                  minWidth: 96,
+                  height: 38,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 10,
+                  background: "#f8fafc",
+                  color: "#334155",
+                  fontWeight: 900,
+                  cursor: directFieldEditLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => savePicklistEditDialog(directFieldEditModal)}
+                disabled={directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal)}
+                style={{
+                  minWidth: 118,
+                  height: 38,
+                  border: "1px solid #16a34a",
+                  borderRadius: 10,
+                  background: directFieldEditLoading ? "#bbf7d0" : "#16a34a",
+                  color: "#fff",
+                  fontWeight: 900,
+                  cursor: directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal) ? "not-allowed" : "pointer",
+                }}
+              >
+                {directFieldEditLoading ? "Saving..." : "Save to Clio"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(matterHydrationLoading || matterHydrationError) && (
         <div
           style={{
             margin: "0 0 14px",
@@ -3350,14 +3832,56 @@ const activeGroupKey =
 
               <div className="barsh-direct-summary-column">
                 <div className="barsh-direct-summary-card">
-                  <div className="barsh-direct-summary-label">Date of Service</div>
+                  <div
+                    className="barsh-direct-summary-label"
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <span>Date of Service</span>
+                    <button
+                      type="button"
+                      onClick={openDosEditDialog}
+                      disabled={directFieldEditLoading}
+                      title="Edit Date of Service in Clio."
+                      style={{
+                        border: "1px solid #93c5fd",
+                        borderRadius: 999,
+                        background: "#eff6ff",
+                        color: "#1d4ed8",
+                        fontSize: 11,
+                        fontWeight: 900,
+                        padding: "3px 8px",
+                        cursor: directFieldEditLoading ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      Edit
+                    </button>
+                  </div>
                   <div className="barsh-direct-summary-value">
                     {formatDOS(matter?.dosStart, matter?.dosEnd) || "—"}
                   </div>
                 </div>
 
                 <div className="barsh-direct-summary-card">
-                  <div className="barsh-direct-summary-label">Denial Reason</div>
+                  <div
+                    className="barsh-direct-summary-label"
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
+                  >
+                    <span>Denial Reason</span>
+                    <button
+                      type="button"
+                      onClick={() => openPicklistEditDialog("denialReason")}
+                      disabled={directFieldEditLoading}
+                      title="Edit Denial Reason in Clio."
+                      style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
+                    >
+                      Edit
+                    </button>
+                  </div>
                   <div className="barsh-direct-summary-value">
                     {denialReasonValue(matter) || "—"}
                   </div>
@@ -3366,14 +3890,42 @@ const activeGroupKey =
 
               <div className="barsh-direct-summary-column">
                 <div className="barsh-direct-summary-card">
-                  <div className="barsh-direct-summary-label">Status</div>
+                  <div
+                    className="barsh-direct-summary-label"
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
+                  >
+                    <span>Status</span>
+                    <button
+                      type="button"
+                      onClick={() => openPicklistEditDialog("status")}
+                      disabled={directFieldEditLoading}
+                      title="Edit Status in Clio."
+                      style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
+                    >
+                      Edit
+                    </button>
+                  </div>
                   <div className="barsh-direct-summary-value">
                     {textValue(matter?.matterStage?.name) || "—"}
                   </div>
                 </div>
 
                 <div className="barsh-direct-summary-card">
-                  <div className="barsh-direct-summary-label">Final Status</div>
+                  <div
+                    className="barsh-direct-summary-label"
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
+                  >
+                    <span>Final Status</span>
+                    <button
+                      type="button"
+                      onClick={() => openPicklistEditDialog("finalStatus")}
+                      disabled={directFieldEditLoading}
+                      title="Edit Final Status in Clio."
+                      style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
+                    >
+                      Edit
+                    </button>
+                  </div>
                   <div className="barsh-direct-summary-value">
                     {textValue(matter?.closeReason || "") || "—"}
                   </div>

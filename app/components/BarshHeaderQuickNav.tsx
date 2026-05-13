@@ -2,6 +2,9 @@
 
 import { FormEvent, useState } from "react";
 
+const GLOBAL_QUICK_NAV_OFFSET_PX = 24;
+const GLOBAL_QUICK_NAV_RAISE_PX = -8;
+
 function cleanInput(value: string): string {
   return String(value || "").trim();
 }
@@ -72,6 +75,8 @@ export default function BarshHeaderQuickNav() {
     <form
       onSubmit={openTarget}
       style={{
+          marginLeft: GLOBAL_QUICK_NAV_OFFSET_PX,
+          transform: `translateY(${GLOBAL_QUICK_NAV_RAISE_PX}px)`,
         display: "grid",
         gridTemplateColumns: "minmax(170px, 230px) auto auto",
         alignItems: "center",

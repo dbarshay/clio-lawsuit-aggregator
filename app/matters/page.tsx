@@ -298,6 +298,93 @@ export default function FilteredMattersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeMasterWorkspaceTab, setActiveMasterWorkspaceTab] = useState<MasterWorkspaceTab>("payments");
+
+  function masterPaymentTodayInput(): string {
+    const d = new Date();
+    const yyyy = String(d.getFullYear());
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  const [masterPaymentFormOpen, setMasterPaymentFormOpen] = useState(false);
+  const [masterPaymentAmountInput, setMasterPaymentAmountInput] = useState("");
+  const [masterPaymentDateInput, setMasterPaymentDateInput] = useState(() => masterPaymentTodayInput());
+  const [masterPaymentTransactionTypeInput, setMasterPaymentTransactionTypeInput] = useState("Collection Payment");
+  const [masterPaymentTransactionStatusInput, setMasterPaymentTransactionStatusInput] = useState("Show on Remittance");
+  const [masterPaymentCheckDateInput, setMasterPaymentCheckDateInput] = useState("");
+  const [masterPaymentCheckNumberInput, setMasterPaymentCheckNumberInput] = useState("");
+
+  function masterPaymentPreviewAmountValue(): number {
+    const cleaned = String(masterPaymentAmountInput || "").replace(/[$,\s]/g, "");
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function formatMasterPaymentAmountInput(value: string): string {
+    const cleaned = String(value || "").replace(/[$,\s]/g, "");
+    if (!cleaned) return "";
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n.toFixed(2) : value;
+  }
+
+  function resetMasterPaymentPreviewForm() {
+    setMasterPaymentAmountInput("");
+    setMasterPaymentDateInput(masterPaymentTodayInput());
+    setMasterPaymentTransactionTypeInput("Collection Payment");
+    setMasterPaymentTransactionStatusInput("Show on Remittance");
+    setMasterPaymentCheckDateInput("");
+    setMasterPaymentCheckNumberInput("");
+  }
+
+  const [masterSettlementFormOpen, setMasterSettlementFormOpen] = useState(false);
+  const [masterSettlementGrossInput, setMasterSettlementGrossInput] = useState("");
+  const [masterSettlementWithInput, setMasterSettlementWithInput] = useState("");
+  const [masterSettlementDateInput, setMasterSettlementDateInput] = useState(() => masterPaymentTodayInput());
+  const [masterSettlementPaymentExpectedDateInput, setMasterSettlementPaymentExpectedDateInput] = useState("");
+  const [masterSettlementPrincipalFeePercentInput, setMasterSettlementPrincipalFeePercentInput] = useState("");
+  const [masterSettlementInterestAmountInput, setMasterSettlementInterestAmountInput] = useState("");
+  const [masterSettlementInterestFeePercentInput, setMasterSettlementInterestFeePercentInput] = useState("");
+  const [masterSettlementNotesInput, setMasterSettlementNotesInput] = useState("");
+
+  function masterSettlementMoneyValue(value: string): number {
+    const cleaned = String(value || "").replace(/[$,\s]/g, "");
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function masterSettlementGrossValue(): number {
+    return masterSettlementMoneyValue(masterSettlementGrossInput);
+  }
+
+  function masterSettlementInterestValue(): number {
+    return masterSettlementMoneyValue(masterSettlementInterestAmountInput);
+  }
+
+  function masterSettlementPercentValue(value: string): number {
+    const cleaned = String(value || "").replace(/[%\s]/g, "");
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function formatMasterSettlementMoneyInput(value: string): string {
+    const cleaned = String(value || "").replace(/[$,\s]/g, "");
+    if (!cleaned) return "";
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n.toFixed(2) : value;
+  }
+
+  function resetMasterSettlementPreviewForm() {
+    setMasterSettlementGrossInput("");
+    setMasterSettlementWithInput("");
+    setMasterSettlementDateInput(masterPaymentTodayInput());
+    setMasterSettlementPaymentExpectedDateInput("");
+    setMasterSettlementPrincipalFeePercentInput("");
+    setMasterSettlementInterestAmountInput("");
+    setMasterSettlementInterestFeePercentInput("");
+    setMasterSettlementNotesInput("");
+  }
+
   const masterWorkspaceTabButtonStyle = (tab: MasterWorkspaceTab): React.CSSProperties =>
     activeMasterWorkspaceTab === tab ? masterWorkflowActiveButtonStyle : masterWorkflowButtonStyle;
   const [masterSettlementDraft, setMasterSettlementDraft] = useState({
@@ -1427,8 +1514,8 @@ export default function FilteredMattersPage() {
 
                       <button
                         type="button"
-                        disabled
-                        title="Lawsuit-level payment posting is not wired yet."
+                        onClick={() => setMasterPaymentFormOpen(true)}
+                        title="Open lawsuit-level payment preview popup.  No Clio writeback will occur."
                         style={{
                           width: "100%",
                           minWidth: 0,
@@ -1439,7 +1526,7 @@ export default function FilteredMattersPage() {
                           color: "#fff",
                           fontSize: 12,
                           fontWeight: 950,
-                          cursor: "not-allowed",
+                          cursor: "pointer",
                           boxShadow: "0 8px 24px rgba(22, 163, 74, 0.22)",
                         }}
                       >
@@ -1476,8 +1563,8 @@ export default function FilteredMattersPage() {
 
                       <button
                         type="button"
-                        disabled
-                        title="Record Settlement workflow will be wired from the Master Lawsuit screen."
+                        onClick={() => setMasterSettlementFormOpen(true)}
+                        title="Open settlement preview popup.  No Clio writeback will occur."
                         style={{
                           width: "100%",
                           minWidth: 0,
@@ -1488,8 +1575,8 @@ export default function FilteredMattersPage() {
                           color: "#1d4ed8",
                           fontSize: 12,
                           fontWeight: 950,
-                          cursor: "not-allowed",
-                          opacity: 0.82,
+                          cursor: "pointer",
+                          opacity: 1,
                         }}
                       >
                         Record Settlement
@@ -1679,6 +1766,928 @@ export default function FilteredMattersPage() {
               </div>
             )}
 
+
+
+            {masterSettlementFormOpen && activeMasterWorkspaceTab === "payments" && (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Settlement preview popup"
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  zIndex: 50000,
+                  display: "block",
+                  padding: 0,
+                  overflow: "hidden",
+                  background: "rgba(15, 23, 42, 0.58)",
+                }}
+                onClick={() => setMasterSettlementFormOpen(false)}
+              >
+                <div
+                  onClick={(event) => event.stopPropagation()}
+                  style={{
+                    position: "fixed",
+                    top: 154,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: "min(1080px, 94vw)",
+                    maxHeight: "calc(100vh - 178px)",
+                    overflowY: "auto",
+                    border: "1px solid #bfdbfe",
+                    borderRadius: 22,
+                    background: "#ffffff",
+                    boxShadow: "0 30px 90px rgba(15, 23, 42, 0.38)",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "sticky",
+                      top: 0,
+                      zIndex: 1,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      padding: "16px 18px",
+                      borderBottom: "1px solid #dbe4f0",
+                      background: "#eff6ff",
+                      borderTopLeftRadius: 22,
+                      borderTopRightRadius: 22,
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 18,
+                          fontWeight: 950,
+                          color: "#1d4ed8",
+                        }}
+                      >
+                        Settlement Preview
+                      </div>
+                      <div
+                        style={{
+                          marginTop: 3,
+                          fontSize: 12,
+                          fontWeight: 800,
+                          color: "#1e40af",
+                        }}
+                      >
+                        Master Lawsuit Settlement · Preview only, no Clio writeback.
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetMasterSettlementPreviewForm();
+                        setMasterSettlementFormOpen(false);
+                      }}
+                      style={{
+                        width: 38,
+                        height: 38,
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 999,
+                        background: "#ffffff",
+                        color: "#64748b",
+                        fontSize: 26,
+                        fontWeight: 900,
+                        cursor: "pointer",
+                        lineHeight: 1,
+                      }}
+                      aria-label="Close settlement preview popup"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1.15fr 1fr 1fr",
+                      gap: 16,
+                      padding: 18,
+                    }}
+                  >
+                    <label className="barsh-direct-payment-field">
+                      <span>Gross Settlement Amount *</span>
+                      <div style={{ position: "relative", width: "100%" }}>
+                        <span
+                          style={{
+                            position: "absolute",
+                            left: 12,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            color: "#475569",
+                            fontWeight: 900,
+                            pointerEvents: "none",
+                          }}
+                        >
+                          $
+                        </span>
+                        <input
+                          value={masterSettlementGrossInput}
+                          onChange={(event) => setMasterSettlementGrossInput(event.target.value)}
+                          onBlur={() => setMasterSettlementGrossInput((current) => formatMasterSettlementMoneyInput(current))}
+                          placeholder="0.00"
+                          inputMode="decimal"
+                          style={{
+                            width: "100%",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 10,
+                            padding: "10px 12px 10px 28px",
+                            background: "#fff",
+                            color: "#0f172a",
+                            fontWeight: 800,
+                            outline: "none",
+                          }}
+                        />
+                      </div>
+                    </label>
+
+                    <label className="barsh-direct-payment-field">
+                      <span>Settled With *</span>
+                      <input
+                        value={masterSettlementWithInput}
+                        onChange={(event) => setMasterSettlementWithInput(event.target.value)}
+                        placeholder="Person contact search will be wired later"
+                        style={{
+                          width: "100%",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 10,
+                          padding: "10px 12px",
+                          background: "#fff",
+                          color: "#0f172a",
+                          fontWeight: 800,
+                          outline: "none",
+                        }}
+                      />
+                    </label>
+
+                    <label className="barsh-direct-payment-field">
+                      <span>Settlement Date *</span>
+                      <input
+                        type="date"
+                        value={masterSettlementDateInput}
+                        onChange={(event) => setMasterSettlementDateInput(event.target.value)}
+                        style={{
+                          width: "100%",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 10,
+                          padding: "10px 12px",
+                          background: "#fff",
+                          color: "#0f172a",
+                          fontWeight: 800,
+                          outline: "none",
+                        }}
+                      />
+                    </label>
+
+                    <label className="barsh-direct-payment-field">
+                      <span>Payment Expected Date</span>
+                      <input
+                        type="date"
+                        value={masterSettlementPaymentExpectedDateInput}
+                        onChange={(event) => setMasterSettlementPaymentExpectedDateInput(event.target.value)}
+                        style={{
+                          width: "100%",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 10,
+                          padding: "10px 12px",
+                          background: "#fff",
+                          color: "#0f172a",
+                          fontWeight: 800,
+                          outline: "none",
+                        }}
+                      />
+                    </label>
+
+                    <label className="barsh-direct-payment-field">
+                      <span>Principal Fee %</span>
+                      <input
+                        value={masterSettlementPrincipalFeePercentInput}
+                        onChange={(event) => setMasterSettlementPrincipalFeePercentInput(event.target.value)}
+                        placeholder="Provider default will be wired later"
+                        inputMode="decimal"
+                        style={{
+                          width: "100%",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 10,
+                          padding: "10px 12px",
+                          background: "#fff",
+                          color: "#0f172a",
+                          fontWeight: 800,
+                          outline: "none",
+                        }}
+                      />
+                    </label>
+
+                    <label className="barsh-direct-payment-field">
+                      <span>Interest Amount</span>
+                      <div style={{ position: "relative", width: "100%" }}>
+                        <span
+                          style={{
+                            position: "absolute",
+                            left: 12,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            color: "#475569",
+                            fontWeight: 900,
+                            pointerEvents: "none",
+                          }}
+                        >
+                          $
+                        </span>
+                        <input
+                          value={masterSettlementInterestAmountInput}
+                          onChange={(event) => setMasterSettlementInterestAmountInput(event.target.value)}
+                          onBlur={() => setMasterSettlementInterestAmountInput((current) => formatMasterSettlementMoneyInput(current))}
+                          placeholder="0.00"
+                          inputMode="decimal"
+                          style={{
+                            width: "100%",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 10,
+                            padding: "10px 12px 10px 28px",
+                            background: "#fff",
+                            color: "#0f172a",
+                            fontWeight: 800,
+                            outline: "none",
+                          }}
+                        />
+                      </div>
+                    </label>
+
+                    <label className="barsh-direct-payment-field">
+                      <span>Interest Fee %</span>
+                      <input
+                        value={masterSettlementInterestFeePercentInput}
+                        onChange={(event) => setMasterSettlementInterestFeePercentInput(event.target.value)}
+                        placeholder="Provider default will be wired later"
+                        inputMode="decimal"
+                        style={{
+                          width: "100%",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 10,
+                          padding: "10px 12px",
+                          background: "#fff",
+                          color: "#0f172a",
+                          fontWeight: 800,
+                          outline: "none",
+                        }}
+                      />
+                    </label>
+
+                    <label className="barsh-direct-payment-field" style={{ gridColumn: "2 / span 2" }}>
+                      <span>Notes</span>
+                      <input
+                        value={masterSettlementNotesInput}
+                        onChange={(event) => setMasterSettlementNotesInput(event.target.value)}
+                        placeholder="Optional settlement notes"
+                        style={{
+                          width: "100%",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 10,
+                          padding: "10px 12px",
+                          background: "#fff",
+                          color: "#0f172a",
+                          fontWeight: 800,
+                          outline: "none",
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  <div
+                    className="barsh-direct-payment-preview"
+                    style={{
+                      margin: "0 18px 18px",
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                      gap: 10,
+                    }}
+                  >
+                    <div>Gross Settlement: {money(masterSettlementGrossValue())}</div>
+                    <div>Interest: {money(masterSettlementInterestValue())}</div>
+                    <div>Principal Fee %: {masterSettlementPercentValue(masterSettlementPrincipalFeePercentInput).toFixed(2)}%</div>
+                    <div>Interest Fee %: {masterSettlementPercentValue(masterSettlementInterestFeePercentInput).toFixed(2)}%</div>
+                    <div
+                      style={{
+                        gridColumn: "1 / -1",
+                        padding: "8px 10px",
+                        border: "1px solid #bae6fd",
+                        borderRadius: 10,
+                        background: "#e0f2fe",
+                        color: "#075985",
+                        fontWeight: 900,
+                      }}
+                    >
+                      This is a local settlement draft only.  It does not run Clio contact search, settlement preview, settlement writeback, document generation, or Close Paid Settlements.
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      margin: "0 18px 18px",
+                      border: "1px solid #dbe4f0",
+                      borderRadius: 14,
+                      overflow: "hidden",
+                      background: "#ffffff",
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: "10px 12px",
+                        borderBottom: "1px solid #e2e8f0",
+                        background: "#f8fafc",
+                        fontSize: 12,
+                        fontWeight: 950,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: "#475569",
+                      }}
+                    >
+                      Settlement Allocation Preview
+                    </div>
+
+                    <div style={{ overflowX: "auto" }}>
+                      <table
+                        style={{
+                          width: "100%",
+                          minWidth: 820,
+                          borderCollapse: "collapse",
+                          fontSize: 12,
+                          color: "#0f172a",
+                        }}
+                      >
+                        <thead>
+                          <tr style={{ background: "#e2e8f0" }}>
+                            <th style={{ textAlign: "left", padding: "8px 10px", border: "1px solid #cbd5e1" }}>Matter</th>
+                            <th style={{ textAlign: "left", padding: "8px 10px", border: "1px solid #cbd5e1" }}>Provider</th>
+                            <th style={{ textAlign: "left", padding: "8px 10px", border: "1px solid #cbd5e1" }}>Patient</th>
+                            <th style={{ textAlign: "right", padding: "8px 10px", border: "1px solid #cbd5e1" }}>Bill Amount</th>
+                            <th style={{ textAlign: "right", padding: "8px 10px", border: "1px solid #cbd5e1" }}>Allocation %</th>
+                            <th style={{ textAlign: "right", padding: "8px 10px", border: "1px solid #cbd5e1" }}>Settled Principal</th>
+                            <th style={{ textAlign: "right", padding: "8px 10px", border: "1px solid #cbd5e1" }}>Expected Balance</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {masterWorkspaceBillRows(masterSettlementDetailRows).map((row: any) => {
+                            const rowId = clean(row.id);
+                            const billAmount = masterWorkspaceBillAmount(row);
+                            const billTotal = masterWorkspaceBillTotal(masterSettlementDetailRows);
+                            const allocationPercent = billTotal > 0 ? (billAmount / billTotal) * 100 : 0;
+                            const settledPrincipal =
+                              billTotal > 0
+                                ? Math.min(masterSettlementGrossValue() * (billAmount / billTotal), billAmount)
+                                : 0;
+                            const expectedBalance = Math.max(billAmount - settledPrincipal, 0);
+
+                            return (
+                              <tr key={`master-settlement-popup-${rowId}`}>
+                                <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb", fontWeight: 900 }}>
+                                  {clean(row.displayNumber) || rowId}
+                                </td>
+                                <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb" }}>
+                                  {clean(row.provider) || "—"}
+                                </td>
+                                <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb" }}>
+                                  {clean(row.patient) || "—"}
+                                </td>
+                                <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 900 }}>
+                                  {money(billAmount)}
+                                </td>
+                                <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb", textAlign: "right" }}>
+                                  {allocationPercent.toFixed(2)}%
+                                </td>
+                                <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950, color: "#1d4ed8" }}>
+                                  {money(settledPrincipal)}
+                                </td>
+                                <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950 }}>
+                                  {money(expectedBalance)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: 14,
+                      padding: "14px 18px",
+                      borderTop: "1px solid #e5e7eb",
+                      background: "#f8fafc",
+                      borderBottomLeftRadius: 22,
+                      borderBottomRightRadius: 22,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetMasterSettlementPreviewForm();
+                        setMasterSettlementFormOpen(false);
+                      }}
+                      style={{
+                        minWidth: 132,
+                        height: 44,
+                        border: "1px solid #dc2626",
+                        borderRadius: 12,
+                        background: "#dc2626",
+                        color: "#fff",
+                        fontWeight: 900,
+                        fontSize: 15,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={resetMasterSettlementPreviewForm}
+                      style={{
+                        minWidth: 132,
+                        height: 44,
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 12,
+                        background: "#ffffff",
+                        color: "#334155",
+                        fontWeight: 900,
+                        fontSize: 15,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Clear
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled
+                      title="Preview only.  Settlement API/writeback will be wired after UI behavior is confirmed."
+                      style={{
+                        minWidth: 250,
+                        height: 44,
+                        border: "1px solid #bfdbfe",
+                        borderRadius: 12,
+                        background: "#dbeafe",
+                        color: "#1d4ed8",
+                        fontWeight: 950,
+                        fontSize: 15,
+                        cursor: "not-allowed",
+                      }}
+                    >
+                      Preview Only — No Writeback
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+
+            {masterPaymentFormOpen && activeMasterWorkspaceTab === "payments" && (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Lawsuit payment preview popup"
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  zIndex: 50000,
+                  display: "block",
+                  padding: 0,
+                  background: "rgba(15, 23, 42, 0.58)",
+                }}
+                onClick={() => setMasterPaymentFormOpen(false)}
+              >
+                <div
+                  onClick={(event) => event.stopPropagation()}
+                  style={{
+                    position: "fixed",
+                    top: 104,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: "min(1080px, 96vw)",
+                    maxHeight: "calc(100vh - 178px)",
+                    overflowY: "auto",
+                    border: "1px solid #bbf7d0",
+                    borderRadius: 22,
+                    background: "#ffffff",
+                    boxShadow: "0 30px 90px rgba(15, 23, 42, 0.38)",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "sticky",
+                      top: 0,
+                      zIndex: 1,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "16px 18px",
+                      borderBottom: "1px solid #dbe4f0",
+                      background: "#f0fdf4",
+                      borderTopLeftRadius: 22,
+                      borderTopRightRadius: 22,
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 18,
+                          fontWeight: 950,
+                          color: "#14532d",
+                        }}
+                      >
+                        Lawsuit Payment Preview
+                      </div>
+                      <div
+                        style={{
+                          marginTop: 3,
+                          fontSize: 12,
+                          fontWeight: 800,
+                          color: "#166534",
+                        }}
+                      >
+                        Master Lawsuit Payment · Preview only, no Clio writeback.
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetMasterPaymentPreviewForm();
+                        setMasterPaymentFormOpen(false);
+                      }}
+                      style={{
+                        width: 38,
+                        height: 38,
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 999,
+                        background: "#ffffff",
+                        color: "#64748b",
+                        fontSize: 26,
+                        fontWeight: 900,
+                        cursor: "pointer",
+                        lineHeight: 1,
+                      }}
+                      aria-label="Close lawsuit payment preview popup"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1.25fr 1fr 1fr",
+                      gap: 16,
+                      padding: 18,
+                    }}
+                  >
+                    <label className="barsh-direct-payment-field">
+                      <span>Transaction Type *</span>
+                      <select
+                        value={masterPaymentTransactionTypeInput}
+                        onChange={(event) => setMasterPaymentTransactionTypeInput(event.target.value)}
+                        style={{
+                          width: "100%",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 10,
+                          padding: "10px 12px",
+                          background: "#fff",
+                          color: "#0f172a",
+                          fontWeight: 700,
+                          outline: "none",
+                        }}
+                      >
+                        <option value="Collection Payment">Collection Payment</option>
+                        <option value="Voluntary Payment">Voluntary Payment</option>
+                        <option value="Attorney Fee">Attorney Fee</option>
+                        <option value="Filing Fee Collected">Filing Fee Collected</option>
+                        <option value="Filing Fee Billed">Filing Fee Billed</option>
+                        <option value="Interest">Interest</option>
+                        <option value="PreC to Provider">PreC to Provider</option>
+                        <option value="Service Fee Collected">Service Fee Collected</option>
+                        <option value="Service Fee Billed">Service Fee Billed</option>
+                        <option value="Other Court Fees Collected">Other Court Fees Collected</option>
+                        <option value="Other Court Fees Billed">Other Court Fees Billed</option>
+                      </select>
+                    </label>
+
+                    <label className="barsh-direct-payment-field">
+                      <span>Transaction Status *</span>
+                      <select
+                        value={masterPaymentTransactionStatusInput}
+                        onChange={(event) => setMasterPaymentTransactionStatusInput(event.target.value)}
+                        style={{
+                          width: "100%",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 10,
+                          padding: "10px 12px",
+                          background: "#fff",
+                          color: "#0f172a",
+                          fontWeight: 700,
+                          outline: "none",
+                        }}
+                      >
+                        <option value="Show on Remittance">Show on Remittance</option>
+                        <option value="Do Not Show on Remittance">Do Not Show on Remittance</option>
+                      </select>
+                    </label>
+
+                    <label className="barsh-direct-payment-field">
+                      <span>Transaction Date *</span>
+                      <input
+                        type="date"
+                        value={masterPaymentDateInput}
+                        onChange={(event) => setMasterPaymentDateInput(event.target.value)}
+                        style={{
+                          width: "100%",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 10,
+                          padding: "10px 12px",
+                          background: "#fff",
+                          color: "#0f172a",
+                          fontWeight: 800,
+                          outline: "none",
+                        }}
+                      />
+                    </label>
+
+                    <label className="barsh-direct-payment-field">
+                      <span>Amount *</span>
+                      <div style={{ position: "relative", width: "100%" }}>
+                        <span
+                          style={{
+                            position: "absolute",
+                            left: 12,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            color: "#475569",
+                            fontWeight: 900,
+                            pointerEvents: "none",
+                          }}
+                        >
+                          $
+                        </span>
+                        <input
+                          value={masterPaymentAmountInput}
+                          onChange={(event) => setMasterPaymentAmountInput(event.target.value)}
+                          onBlur={() => setMasterPaymentAmountInput((current) => formatMasterPaymentAmountInput(current))}
+                          placeholder="0.00"
+                          inputMode="decimal"
+                          style={{
+                            width: "100%",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 10,
+                            padding: "10px 12px 10px 28px",
+                            background: "#fff",
+                            color: "#0f172a",
+                            fontWeight: 800,
+                            outline: "none",
+                          }}
+                        />
+                      </div>
+                    </label>
+
+                    <label className="barsh-direct-payment-field">
+                      <span>Check Date</span>
+                      <input
+                        type="date"
+                        value={masterPaymentCheckDateInput}
+                        onChange={(event) => setMasterPaymentCheckDateInput(event.target.value)}
+                        style={{
+                          width: "100%",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 10,
+                          padding: "10px 12px",
+                          background: "#fff",
+                          color: "#0f172a",
+                          fontWeight: 800,
+                          outline: "none",
+                        }}
+                      />
+                    </label>
+
+                    <label className="barsh-direct-payment-field">
+                      <span>Check Number</span>
+                      <input
+                        value={masterPaymentCheckNumberInput}
+                        onChange={(event) => setMasterPaymentCheckNumberInput(event.target.value)}
+                        placeholder="Check number"
+                        style={{
+                          width: "100%",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 10,
+                          padding: "10px 12px",
+                          background: "#fff",
+                          color: "#0f172a",
+                          fontWeight: 800,
+                          outline: "none",
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  <div
+                    className="barsh-direct-payment-preview"
+                    style={{
+                      margin: "0 18px 18px",
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr 1fr",
+                      gap: 10,
+                    }}
+                  >
+                    <div>Payment Amount: {money(masterPaymentPreviewAmountValue())}</div>
+                    <div>Expected Payments Posted: {money(masterPaymentSummary.paymentsPosted + masterPaymentPreviewAmountValue())}</div>
+                    <div>Expected Balance Presuit: {money(Math.max(masterPaymentSummary.balancePresuit - masterPaymentPreviewAmountValue(), 0))}</div>
+                    <div
+                      style={{
+                        gridColumn: "1 / -1",
+                        padding: "8px 10px",
+                        border: "1px solid #bae6fd",
+                        borderRadius: 10,
+                        background: "#e0f2fe",
+                        color: "#075985",
+                        fontWeight: 900,
+                      }}
+                    >
+                      This is a local allocation preview only.  It does not write to Clio, create receipts, or change child matters.
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      margin: "0 18px 18px",
+                      border: "1px solid #dbe4f0",
+                      borderRadius: 14,
+                      overflow: "hidden",
+                      background: "#ffffff",
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: "10px 12px",
+                        borderBottom: "1px solid #e2e8f0",
+                        background: "#f8fafc",
+                        fontSize: 12,
+                        fontWeight: 950,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: "#475569",
+                      }}
+                    >
+                      Allocation Preview
+                    </div>
+
+                    <div style={{ overflowX: "auto" }}>
+                      <table
+                        style={{
+                          width: "100%",
+                          minWidth: 760,
+                          borderCollapse: "collapse",
+                          fontSize: 12,
+                          color: "#0f172a",
+                        }}
+                      >
+                        <thead>
+                          <tr style={{ background: "#e2e8f0" }}>
+                            <th style={{ textAlign: "left", padding: "8px 10px", border: "1px solid #cbd5e1" }}>Matter</th>
+                            <th style={{ textAlign: "left", padding: "8px 10px", border: "1px solid #cbd5e1" }}>Provider</th>
+                            <th style={{ textAlign: "left", padding: "8px 10px", border: "1px solid #cbd5e1" }}>Patient</th>
+                            <th style={{ textAlign: "right", padding: "8px 10px", border: "1px solid #cbd5e1" }}>Bill Amount</th>
+                            <th style={{ textAlign: "right", padding: "8px 10px", border: "1px solid #cbd5e1" }}>Allocation %</th>
+                            <th style={{ textAlign: "right", padding: "8px 10px", border: "1px solid #cbd5e1" }}>Payment To Post</th>
+                            <th style={{ textAlign: "right", padding: "8px 10px", border: "1px solid #cbd5e1" }}>Expected Balance</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {masterWorkspaceBillRows(masterSettlementDetailRows).map((row: any) => {
+                            const rowId = clean(row.id);
+                            const billAmount = masterWorkspaceBillAmount(row);
+                            const billTotal = masterWorkspaceBillTotal(masterSettlementDetailRows);
+                            const allocationPercent = billTotal > 0 ? (billAmount / billTotal) * 100 : 0;
+                            const paymentToPost =
+                              billTotal > 0
+                                ? Math.min(masterPaymentPreviewAmountValue() * (billAmount / billTotal), billAmount)
+                                : 0;
+                            const expectedBalance = Math.max(billAmount - paymentToPost, 0);
+
+                            return (
+                              <tr key={`master-payment-popup-${rowId}`}>
+                                <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb", fontWeight: 900 }}>
+                                  {clean(row.displayNumber) || rowId}
+                                </td>
+                                <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb" }}>
+                                  {clean(row.provider) || "—"}
+                                </td>
+                                <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb" }}>
+                                  {clean(row.patient) || "—"}
+                                </td>
+                                <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 900 }}>
+                                  {money(billAmount)}
+                                </td>
+                                <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb", textAlign: "right" }}>
+                                  {allocationPercent.toFixed(2)}%
+                                </td>
+                                <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950, color: "#166534" }}>
+                                  {money(paymentToPost)}
+                                </td>
+                                <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950 }}>
+                                  {money(expectedBalance)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 14,
+                      padding: "14px 18px",
+                      borderTop: "1px solid #e5e7eb",
+                      background: "#f8fafc",
+                      borderBottomLeftRadius: 22,
+                      borderBottomRightRadius: 22,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetMasterPaymentPreviewForm();
+                        setMasterPaymentFormOpen(false);
+                      }}
+                      style={{
+                        minWidth: 132,
+                        height: 44,
+                        border: "1px solid #dc2626",
+                        borderRadius: 12,
+                        background: "#dc2626",
+                        color: "#fff",
+                        fontWeight: 900,
+                        fontSize: 15,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={resetMasterPaymentPreviewForm}
+                      style={{
+                        minWidth: 132,
+                        height: 44,
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 12,
+                        background: "#ffffff",
+                        color: "#334155",
+                        fontWeight: 900,
+                        fontSize: 15,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Clear
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled
+                      title="Preview only.  Writeback will be wired after UI/allocation behavior is confirmed."
+                      style={{
+                        minWidth: 190,
+                        height: 44,
+                        border: "1px solid #86efac",
+                        borderRadius: 12,
+                        background: "#bbf7d0",
+                        color: "#166534",
+                        fontWeight: 950,
+                        fontSize: 15,
+                        cursor: "not-allowed",
+                      }}
+                    >
+                      Preview Only — No Writeback
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+
             <div style={masterWorkspaceBillListStyle}>
               <div style={masterSettlementDetailsTitleStyle}>
                 {activeMasterWorkspaceTab === "documents"
@@ -1711,6 +2720,14 @@ export default function FilteredMattersPage() {
                       const billAmount = masterWorkspaceBillAmount(row);
                       const billTotal = masterWorkspaceBillTotal(masterSettlementDetailRows);
                       const allocationPercent = billTotal > 0 ? (billAmount / billTotal) * 100 : 0;
+                      const masterPaymentRowPreviewPayment =
+                        activeMasterWorkspaceTab === "payments" && billTotal > 0
+                          ? Math.min(masterPaymentPreviewAmountValue() * (billAmount / billTotal), billAmount)
+                          : 0;
+                      const masterPaymentRowExpectedBalance =
+                        activeMasterWorkspaceTab === "payments"
+                          ? Math.max(billAmount - masterPaymentRowPreviewPayment, 0)
+                          : billAmount;
 
                       return (
                         <tr key={rowId}>

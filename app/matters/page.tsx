@@ -719,7 +719,27 @@ export default function FilteredMattersPage() {
                     gap: 4,
                   }}
                 >
-                  <span>{value}</span>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      justifySelf: "center",
+                      padding: "12px 24px",
+                      border: "2px solid #16a34a",
+                      borderRadius: 999,
+                      background: "#dcfce7",
+                      color: "#14532d",
+                      fontSize: 34,
+                      lineHeight: 1,
+                      fontWeight: 950,
+                      letterSpacing: "-0.01em",
+                      whiteSpace: "nowrap",
+                      boxShadow: "0 10px 30px rgba(22, 163, 74, 0.18)",
+                    }}
+                  >
+                    {value}
+                  </span>
                   <span
                     style={{
                       display: "inline-flex",
@@ -742,25 +762,6 @@ export default function FilteredMattersPage() {
                   </span>
                 </div>
 
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "7px 11px",
-                    border: "1px solid #fecaca",
-                    borderRadius: 999,
-                    background: "#fef2f2",
-                    color: "#991b1b",
-                    fontSize: 12,
-                    fontWeight: 900,
-                    whiteSpace: "nowrap",
-                    textDecoration: "none",
-                  }}
-                >
-                  <span>MASTER LAWSUIT ID:</span>
-                  <span>{value}</span>
-                </div>
               </div>
             )}
 
@@ -1393,7 +1394,7 @@ export default function FilteredMattersPage() {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "minmax(0, 1fr) 590px",
+                  gridTemplateColumns: "minmax(0, 1fr) 520px",
                   gap: 16,
                   alignItems: "start",
                   marginBottom: 18,
@@ -1402,72 +1403,261 @@ export default function FilteredMattersPage() {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                    gap: 12,
-                    alignItems: "stretch",
+                    gap: 14,
+                    alignItems: "start",
                   }}
                 >
-                  <div style={masterSummaryItemStyle}>
-                    <span>Insurer</span>
-                    <strong>{masterInsurerSummary}</strong>
-                  </div>
+                  <section
+                    style={{
+                      display: "grid",
+                      gap: 10,
+                      padding: 12,
+                      border: "1px solid #dbe4f0",
+                      borderRadius: 18,
+                      background: "rgba(255, 255, 255, 0.74)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 950,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        color: "#1e3a8a",
+                      }}
+                    >
+                      Claim Information
+                    </div>
 
-                  <div style={masterSummaryItemStyle}>
-                    <span>Claim Number</span>
-                    <strong>
-                      {masterClaimSummary.href ? (
-                        <a
-                          href={masterClaimSummary.href}
-                          className="barsh-filter-field-link"
-                          style={fieldLinkStyle}
-                        >
-                          {masterClaimSummary.label}
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                    </strong>
-                  </div>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+                        gap: 12,
+                        alignItems: "stretch",
+                      }}
+                    >
+                      <div style={masterInfoCardStyle}>
+                        <span style={masterSummaryCardTitleStyle}>Provider</span>
+                        <strong style={masterSummaryCardValueStyle}>
+                          {clean(masterTreatingProviderSummary) && clean(masterTreatingProviderSummary) !== "—" ? (
+                            <a
+                              href={filteredUrl("provider", masterTreatingProviderSummary)}
+                              className="barsh-filter-field-link"
+                              style={fieldLinkStyle}
+                            >
+                              {masterTreatingProviderSummary}
+                            </a>
+                          ) : (
+                            "—"
+                          )}
+                        </strong>
+                        <button type="button" disabled title="Provider editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                          Edit
+                        </button>
+                      </div>
 
-                  <div style={masterSummaryItemStyle}>
-                    <span>Service Type</span>
-                    <strong>{masterServiceTypeSummary}</strong>
-                  </div>
+                      <div style={masterInfoCardStyle}>
+                        <span style={masterSummaryCardTitleStyle}>Patient</span>
+                        <strong style={masterSummaryCardValueStyle}>
+                          {clean((masterSettlementDetailRows as any[])[0]?.patient) ? (
+                            <a
+                              href={filteredUrl("patient", clean((masterSettlementDetailRows as any[])[0]?.patient))}
+                              className="barsh-filter-field-link"
+                              style={fieldLinkStyle}
+                            >
+                              {clean((masterSettlementDetailRows as any[])[0]?.patient)}
+                            </a>
+                          ) : (
+                            "—"
+                          )}
+                        </strong>
+                        <button type="button" disabled title="Patient editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                          Edit
+                        </button>
+                      </div>
 
-                  <div style={masterSummaryItemStyle}>
-                    <span>Treating Provider</span>
-                    <strong>{masterTreatingProviderSummary}</strong>
-                  </div>
+                      <div style={masterInfoCardStyle}>
+                        <span style={masterSummaryCardTitleStyle}>Insurer</span>
+                        <strong style={masterSummaryCardValueStyle}>
+                          {clean(masterInsurerSummary) && clean(masterInsurerSummary) !== "—" ? (
+                            <a
+                              href={filteredUrl("insurer", masterInsurerSummary)}
+                              className="barsh-filter-field-link"
+                              style={fieldLinkStyle}
+                            >
+                              {masterInsurerSummary}
+                            </a>
+                          ) : (
+                            "—"
+                          )}
+                        </strong>
+                        <button type="button" disabled title="Insurer editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                          Edit
+                        </button>
+                      </div>
 
-                  <div style={masterSummaryItemStyle}>
-                    <span>Date of Loss</span>
-                    <strong>{masterDateOfLossSummary}</strong>
-                  </div>
+                      <div style={masterInfoCardStyle}>
+                        <span style={masterSummaryCardTitleStyle}>Claim Number</span>
+                        <strong style={masterSummaryCardValueStyle}>
+                          {masterClaimSummary.href ? (
+                            <a
+                              href={masterClaimSummary.href}
+                              className="barsh-filter-field-link"
+                              style={fieldLinkStyle}
+                            >
+                              {masterClaimSummary.label}
+                            </a>
+                          ) : (
+                            "—"
+                          )}
+                        </strong>
+                        <button type="button" disabled title="Claim Number editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                          Edit
+                        </button>
+                      </div>
 
-                  <div style={masterSummaryItemStyle}>
-                    <span>Index / AAA Number</span>
-                    <strong>—</strong>
-                  </div>
+                      <div style={masterInfoCardStyle}>
+                        <span style={masterSummaryCardTitleStyle}>Date of Loss</span>
+                        <strong style={masterSummaryCardValueStyle}>{masterDateOfLossSummary}</strong>
+                        <button type="button" disabled title="Date of Loss editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                          Edit
+                        </button>
+                      </div>
+                    </div>
+                  </section>
 
-                  <div style={masterSummaryItemStyle}>
-                    <span>Court</span>
-                    <strong>—</strong>
-                  </div>
+                  <section
+                    style={{
+                      display: "grid",
+                      gap: 10,
+                      padding: 12,
+                      border: "1px solid #dbe4f0",
+                      borderRadius: 18,
+                      background: "rgba(255, 255, 255, 0.74)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 950,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        color: "#1e3a8a",
+                      }}
+                    >
+                      Lawsuit Information
+                    </div>
 
-                  <div style={masterSummaryItemStyle}>
-                    <span>Date Filed</span>
-                    <strong>—</strong>
-                  </div>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+                        gap: 12,
+                        alignItems: "stretch",
+                      }}
+                    >
+                      <div style={masterInfoCardStyle}>
+                        <span style={masterSummaryCardTitleStyle}>Index / AAA Number</span>
+                        <strong style={masterSummaryCardValueStyle}>—</strong>
+                        <button type="button" disabled title="Index / AAA Number editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                          Edit
+                        </button>
+                      </div>
 
-                  <div style={masterSummaryItemStyle}>
-                    <span>Lawsuit Amount</span>
-                    <strong>{money(masterPaymentSummary.lawsuitAmount)}</strong>
-                  </div>
+                      <div style={masterInfoCardStyle}>
+                        <span style={masterSummaryCardTitleStyle}>Court</span>
+                        <strong style={masterSummaryCardValueStyle}>—</strong>
+                        <button type="button" disabled title="Court editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                          Edit
+                        </button>
+                      </div>
 
-                  <div style={masterSummaryItemStyle}>
-                    <span>Court Costs</span>
-                    <strong>$0.00</strong>
-                  </div>
+                      <div style={masterInfoCardStyle}>
+                        <span style={masterSummaryCardTitleStyle}>Date Filed</span>
+                        <strong style={masterSummaryCardValueStyle}>—</strong>
+                        <button type="button" disabled title="Date Filed editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                          Edit
+                        </button>
+                      </div>
+
+                      <div style={masterInfoCardStyle}>
+                        <span style={masterSummaryCardTitleStyle}>Filing Fee</span>
+                        <strong style={masterSummaryCardValueStyle}>$0.00</strong>
+                        <button type="button" disabled title="Filing Fee editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                          Edit
+                        </button>
+                      </div>
+
+                      <div style={masterInfoCardStyle}>
+                        <span style={masterSummaryCardTitleStyle}>Service Fee</span>
+                        <strong style={masterSummaryCardValueStyle}>$0.00</strong>
+                        <button type="button" disabled title="Service Fee editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                          Edit
+                        </button>
+                      </div>
+
+                      <div style={masterInfoCardStyle}>
+                        <span style={masterSummaryCardTitleStyle}>Other Court Costs</span>
+                        <strong style={masterSummaryCardValueStyle}>$0.00</strong>
+                        <button type="button" disabled title="Other Court Costs editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                          Edit
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section
+                    style={{
+                      display: "grid",
+                      gap: 10,
+                      padding: 12,
+                      border: "1px solid #dbe4f0",
+                      borderRadius: 18,
+                      background: "rgba(255, 255, 255, 0.74)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 950,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        color: "#1e3a8a",
+                      }}
+                    >
+                      Notes
+                    </div>
+
+                    <div
+                      style={{
+                        ...masterSummaryItemStyle,
+                        minHeight: 132,
+                        alignContent: "start",
+                      }}
+                    >
+                      <strong style={{ fontSize: 15, lineHeight: 1.35 }}>No notes entered yet.</strong>
+                      <button
+                        type="button"
+                        disabled
+                        title="Notes popup and note log will be wired after layout approval."
+                        style={{
+                          marginTop: 12,
+                          width: "fit-content",
+                          border: "1px solid #2563eb",
+                          borderRadius: 999,
+                          background: "#eff6ff",
+                          color: "#1d4ed8",
+                          fontSize: 12,
+                          fontWeight: 950,
+                          padding: "7px 13px",
+                          cursor: "not-allowed",
+                        }}
+                      >
+                        Add Note
+                      </button>
+                    </div>
+                  </section>
                 </div>
 
                 <div
@@ -1569,13 +1759,14 @@ export default function FilteredMattersPage() {
                           width: "100%",
                           minWidth: 0,
                           height: 44,
-                          border: "1px solid #93c5fd",
+                          border: "1px solid #16a34a",
                           borderRadius: 999,
-                          background: "#eff6ff",
-                          color: "#1d4ed8",
+                          background: "#16a34a",
+                          color: "#fff",
                           fontSize: 12,
                           fontWeight: 950,
                           cursor: "pointer",
+                          boxShadow: "0 8px 24px rgba(22, 163, 74, 0.22)",
                           opacity: 1,
                         }}
                       >
@@ -2693,7 +2884,7 @@ export default function FilteredMattersPage() {
                 {activeMasterWorkspaceTab === "documents"
                   ? "Lawsuit Bills"
                   : activeMasterWorkspaceTab === "payments"
-                    ? "Payment Allocation Preview"
+                    ? "Lawsuit Bills"
                     : "Close Review Bills"}
               </div>
 
@@ -2704,30 +2895,30 @@ export default function FilteredMattersPage() {
                       <th style={masterSettlementThStyle}>Matter</th>
                       <th style={masterSettlementThStyle}>Provider</th>
                       <th style={masterSettlementThStyle}>Patient</th>
+                      <th style={masterSettlementThStyle}>DOS</th>
+                      <th style={masterSettlementThStyle}>Denial Reason</th>
                       <th style={masterSettlementRightThStyle}>Bill Amount</th>
-                      {activeMasterWorkspaceTab === "payments" && (
-                        <>
-                          <th style={masterSettlementRightThStyle}>Allocation %</th>
-                          <th style={masterSettlementRightThStyle}>Payment To Post</th>
-                          <th style={masterSettlementRightThStyle}>Expected Balance</th>
-                        </>
-                      )}
+                      <th style={masterSettlementRightThStyle}>Pre-Suit Payment</th>
+                      <th style={masterSettlementRightThStyle}>Balance</th>
+                      <th style={masterSettlementThStyle}>Insurer</th>
+                      <th style={masterSettlementThStyle}>Claim Number</th>
                     </tr>
                   </thead>
                   <tbody>
                     {masterWorkspaceBillRows(masterSettlementDetailRows).map((row: any) => {
                       const rowId = clean(row.id);
                       const billAmount = masterWorkspaceBillAmount(row);
-                      const billTotal = masterWorkspaceBillTotal(masterSettlementDetailRows);
-                      const allocationPercent = billTotal > 0 ? (billAmount / billTotal) * 100 : 0;
-                      const masterPaymentRowPreviewPayment =
-                        activeMasterWorkspaceTab === "payments" && billTotal > 0
-                          ? Math.min(masterPaymentPreviewAmountValue() * (billAmount / billTotal), billAmount)
-                          : 0;
-                      const masterPaymentRowExpectedBalance =
-                        activeMasterWorkspaceTab === "payments"
-                          ? Math.max(billAmount - masterPaymentRowPreviewPayment, 0)
-                          : billAmount;
+                      const balanceAmount = Number(row.balancePresuit ?? row.balance_presuit ?? row.balance ?? billAmount) || 0;
+                      const preSuitPaymentAmount = Math.max(billAmount - balanceAmount, 0);
+                      const dosStart = clean(row.dosStart ?? row.dos_start ?? row.serviceStart ?? row.service_start ?? "");
+                      const dosEnd = clean(row.dosEnd ?? row.dos_end ?? row.serviceEnd ?? row.service_end ?? "");
+                      const dosLabel =
+                        dosStart && dosEnd && dosStart !== dosEnd
+                          ? `${dosStart} – ${dosEnd}`
+                          : dosStart || dosEnd || clean(row.dos) || "—";
+                      const denialReason = clean(row.denialReason ?? row.denial_reason ?? row.closeReason ?? row.close_reason ?? "");
+                      const insurer = clean(row.insurer ?? row.insuranceCompany ?? row.insurance_company ?? "");
+                      const claimNumber = clean(row.claimNumber ?? row.claim_number ?? "");
 
                       return (
                         <tr key={rowId}>
@@ -2762,14 +2953,37 @@ export default function FilteredMattersPage() {
                               "—"
                             )}
                           </td>
+                          <td style={masterSettlementTdStyle}>{dosLabel}</td>
+                          <td style={masterSettlementTdStyle}>{denialReason || "—"}</td>
                           <td style={masterSettlementMoneyTdStyle}>{money(billAmount)}</td>
-                          {activeMasterWorkspaceTab === "payments" && (
-                            <>
-                              <td style={masterSettlementMoneyTdStyle}>{allocationPercent.toFixed(2)}%</td>
-                              <td style={masterSettlementMoneyTdStyle}>--</td>
-                              <td style={masterSettlementMoneyTdStyle}>{money(billAmount)}</td>
-                            </>
-                          )}
+                          <td style={masterSettlementMoneyTdStyle}>{money(preSuitPaymentAmount)}</td>
+                          <td style={masterSettlementMoneyTdStyle}>{money(balanceAmount)}</td>
+                          <td style={masterSettlementTdStyle}>
+                            {insurer ? (
+                              <a
+                                href={filteredUrl("insurer", insurer)}
+                                className="barsh-filter-field-link"
+                                style={fieldLinkStyle}
+                              >
+                                {insurer}
+                              </a>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                          <td style={masterSettlementTdStyle}>
+                            {claimNumber ? (
+                              <a
+                                href={filteredUrl("claim", claimNumber)}
+                                className="barsh-filter-field-link"
+                                style={fieldLinkStyle}
+                              >
+                                {claimNumber}
+                              </a>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
@@ -2777,14 +2991,29 @@ export default function FilteredMattersPage() {
                       <td style={masterSettlementTdStyle}>Total</td>
                       <td style={masterSettlementTdStyle}></td>
                       <td style={masterSettlementTdStyle}></td>
+                      <td style={masterSettlementTdStyle}></td>
+                      <td style={masterSettlementTdStyle}></td>
                       <td style={masterSettlementMoneyTdStyle}>{money(masterWorkspaceBillTotal(masterSettlementDetailRows))}</td>
-                      {activeMasterWorkspaceTab === "payments" && (
-                        <>
-                          <td style={masterSettlementMoneyTdStyle}>100.00%</td>
-                          <td style={masterSettlementMoneyTdStyle}>--</td>
-                          <td style={masterSettlementMoneyTdStyle}>{money(masterWorkspaceBillTotal(masterSettlementDetailRows))}</td>
-                        </>
-                      )}
+                      <td style={masterSettlementMoneyTdStyle}>
+                        {money(
+                          masterWorkspaceBillRows(masterSettlementDetailRows).reduce((sum: number, row: any) => {
+                            const billAmount = masterWorkspaceBillAmount(row);
+                            const balanceAmount = Number(row.balancePresuit ?? row.balance_presuit ?? row.balance ?? billAmount) || 0;
+                            return sum + Math.max(billAmount - balanceAmount, 0);
+                          }, 0)
+                        )}
+                      </td>
+                      <td style={masterSettlementMoneyTdStyle}>
+                        {money(
+                          masterWorkspaceBillRows(masterSettlementDetailRows).reduce((sum: number, row: any) => {
+                            const billAmount = masterWorkspaceBillAmount(row);
+                            const balanceAmount = Number(row.balancePresuit ?? row.balance_presuit ?? row.balance ?? billAmount) || 0;
+                            return sum + balanceAmount;
+                          }, 0)
+                        )}
+                      </td>
+                      <td style={masterSettlementTdStyle}></td>
+                      <td style={masterSettlementTdStyle}></td>
                     </tr>
                   </tbody>
                 </table>
@@ -3239,6 +3468,43 @@ const masterSummaryItemStyle: React.CSSProperties = {
   color: "#334155",
   fontSize: 12,
 };
+
+const masterSummaryCardTitleStyle: React.CSSProperties = {
+  fontSize: 14,
+  lineHeight: 1.15,
+  fontWeight: 950,
+  color: "#334155",
+};
+
+const masterSummaryCardValueStyle: React.CSSProperties = {
+  fontSize: 13,
+  lineHeight: 1.25,
+  fontWeight: 800,
+  color: "#0f172a",
+};
+
+const masterInfoCardStyle: React.CSSProperties = {
+  ...masterSummaryItemStyle,
+  position: "relative",
+  paddingRight: 72,
+  minHeight: 82,
+};
+
+const masterInfoCardEditButtonStyle: React.CSSProperties = {
+  position: "absolute",
+  top: 12,
+  right: 12,
+  border: "1px solid #cbd5e1",
+  borderRadius: 999,
+  background: "#ffffff",
+  color: "#475569",
+  fontSize: 11,
+  fontWeight: 900,
+  padding: "4px 10px",
+  cursor: "not-allowed",
+};
+
+
 
 const masterWorkflowRowStyle: React.CSSProperties = {
   display: "flex",

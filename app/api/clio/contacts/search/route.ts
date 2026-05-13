@@ -25,13 +25,32 @@ function normalizeContact(contact: any) {
   };
 }
 
-function filterContacts(contacts: any[], query: string) {
+function normalizeContactTypeFilter(value: unknown): "person" | "company" | "all" {
+  const type = clean(value).toLowerCase();
+
+  if (type === "company") return "company";
+  if (type === "all") return "all";
+
+  return "person";
+}
+
+function contactTypeLabel(value: "person" | "company" | "all") {
+  if (value === "company") return "Company";
+  if (value === "all") return "All";
+
+  return "Person";
+}
+
+function filterContacts(contacts: any[], query: string, contactTypeFilter: "person" | "company" | "all") {
   const q = query.toLowerCase();
 
   return contacts
     .map(normalizeContact)
     .filter((contact) => Number.isFinite(contact.id) && contact.name)
-    .filter((contact) => clean(contact.type).toLowerCase() === "person")
+    .filter((contact) => {
+      if (contactTypeFilter === "all") return true;
+      return clean(contact.type).toLowerCase() === contactTypeFilter;
+    })
     .filter((contact) => !q || contact.name.toLowerCase().includes(q))
     .slice(0, 25);
 }
@@ -39,6 +58,8 @@ function filterContacts(contacts: any[], query: string) {
 export async function GET(req: NextRequest) {
   try {
     const query = clean(req.nextUrl.searchParams.get("q"));
+    const contactTypeFilter = normalizeContactTypeFilter(req.nextUrl.searchParams.get("type"));
+    const contactTypeFilterLabel = contactTypeLabel(contactTypeFilter);
 
     if (query.length < 1) {
       return NextResponse.json({
@@ -48,7 +69,8 @@ export async function GET(req: NextRequest) {
         count: 0,
         contacts: [],
         safety: safetyReadOnly(),
-        note: "Enter at least 1 character to search Clio person contacts.",
+        contactTypeFilter: contactTypeFilterLabel,
+        note: `Enter at least 1 character to search Clio ${contactTypeFilterLabel.toLowerCase()} contacts.`,
       });
     }
 
@@ -93,7 +115,7 @@ export async function GET(req: NextRequest) {
     }
 
     const json = text ? JSON.parse(text) : null;
-    const contacts = filterContacts(Array.isArray(json?.data) ? json.data : [], query);
+    const contacts = filterContacts(Array.isArray(json?.data) ? json.data : [], query, contactTypeFilter);
 
     return NextResponse.json({
       ok: true,
@@ -101,7 +123,7 @@ export async function GET(req: NextRequest) {
       query,
       count: contacts.length,
       contacts,
-      contactTypeFilter: "Person",
+      contactTypeFilter: contactTypeFilterLabel,
       safety: safetyReadOnly(),
     });
   } catch (err: any) {

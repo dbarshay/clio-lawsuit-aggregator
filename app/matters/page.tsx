@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
 
 type FilterKind = "patient" | "provider" | "insurer" | "claim" | "master";
@@ -347,6 +347,330 @@ export default function FilteredMattersPage() {
   const [masterSettlementInterestFeePercentInput, setMasterSettlementInterestFeePercentInput] = useState("");
   const [masterSettlementNotesInput, setMasterSettlementNotesInput] = useState("");
 
+  const [masterInfoEditDialog, setMasterInfoEditDialog] = useState<null | {
+    field: string;
+    label: string;
+    currentValue: string;
+  }>(null);
+  const [masterInfoEditValue, setMasterInfoEditValue] = useState("");
+  const [masterInfoContactSearch, setMasterInfoContactSearch] = useState("");
+  const [masterInfoContactResults, setMasterInfoContactResults] = useState<any[]>([]);
+  const [masterInfoContactLoading, setMasterInfoContactLoading] = useState(false);
+  const [masterInfoSelectedContact, setMasterInfoSelectedContact] = useState<any>(null);
+  const masterInfoPrimaryInputRef = useRef<HTMLInputElement | null>(null);
+  const [masterInfoOverrides, setMasterInfoOverrides] = useState<Record<string, string>>({});
+  const [masterInfoAuditEntries, setMasterInfoAuditEntries] = useState<Array<{
+    id: string;
+    field: string;
+    label: string;
+    before: string;
+    after: string;
+    timestamp: string;
+  }>>([]);
+  const [masterNoteDialogOpen, setMasterNoteDialogOpen] = useState(false);
+  const [masterNoteDraft, setMasterNoteDraft] = useState("");
+  const [masterNoteEditingId, setMasterNoteEditingId] = useState<string | null>(null);
+  const [masterNoteDeleteTarget, setMasterNoteDeleteTarget] = useState<null | { id: string; note: string }>(null);
+  const masterNoteTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const masterNoteDeleteConfirmButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [masterNotes, setMasterNotes] = useState<Array<{
+    id: string;
+    note: string;
+    timestamp: string;
+    user: string;
+    editedAt?: string;
+  }>>([]);
+
+  function masterInfoDisplayValue(field: string, fallback: any): string {
+    const override = masterInfoOverrides[field];
+    if (override !== undefined) return override || "—";
+    return clean(fallback) || "—";
+  }
+
+  function masterInfoMoneyNumber(field: string, fallback: any): number {
+    const raw = masterInfoDisplayValue(field, fallback);
+    const cleaned = String(raw || "").replace(/[^0-9.-]/g, "");
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function masterInfoFieldKind(field: string): "contact" | "date" | "money" | "text" {
+    if (["provider", "patient", "insurer"].includes(field)) return "contact";
+    if (["dateOfLoss", "dateFiled"].includes(field)) return "date";
+    if (["filingFee", "serviceFee", "otherCourtCosts"].includes(field)) return "money";
+
+    return "text";
+  }
+
+  function masterInfoContactType(field: string): "person" | "company" | "all" {
+    if (field === "patient") return "person";
+    if (field === "insurer") return "company";
+
+    return "all";
+  }
+
+  function formatMasterInfoMoneyInput(value: string): string {
+    const cleaned = String(value || "").replace(/[$,\s]/g, "");
+    if (!cleaned) return "";
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n.toFixed(2) : value;
+  }
+
+  function masterInfoDateInputValue(value: any): string {
+    const raw = clean(value);
+    if (!raw || raw === "—") return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+    const slashMatch = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+    if (slashMatch) {
+      return `${slashMatch[3]}-${slashMatch[1].padStart(2, "0")}-${slashMatch[2].padStart(2, "0")}`;
+    }
+
+    const date = new Date(raw);
+    if (!Number.isNaN(date.getTime())) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    }
+
+    return "";
+  }
+
+  function openMasterInfoEditDialog(field: string, label: string, currentValue: any) {
+    const value = masterInfoDisplayValue(field, currentValue);
+
+    setMasterInfoEditDialog({
+      field,
+      label,
+      currentValue: value,
+    });
+
+    // The Current box shows the existing value.  The editable field intentionally starts blank.
+    setMasterInfoEditValue("");
+    setMasterInfoContactSearch("");
+    setMasterInfoContactResults([]);
+    setMasterInfoSelectedContact(null);
+  }
+
+  function closeMasterInfoEditDialog() {
+    setMasterInfoEditDialog(null);
+    setMasterInfoEditValue("");
+    setMasterInfoContactSearch("");
+    setMasterInfoContactResults([]);
+    setMasterInfoSelectedContact(null);
+  }
+
+  useEffect(() => {
+    if (!masterInfoEditDialog) return;
+
+    const focusHandle = window.setTimeout(() => {
+      masterInfoPrimaryInputRef.current?.focus();
+    }, 60);
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+
+      event.preventDefault();
+      closeMasterInfoEditDialog();
+    }
+
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.clearTimeout(focusHandle);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [masterInfoEditDialog]);
+
+  async function loadMasterInfoContactSuggestions(queryOverride?: string) {
+    if (!masterInfoEditDialog) return;
+
+    const query = clean(queryOverride ?? masterInfoContactSearch);
+    if (query.length < 2) {
+      setMasterInfoContactResults([]);
+      return;
+    }
+
+    try {
+      setMasterInfoContactLoading(true);
+
+      const type = masterInfoContactType(masterInfoEditDialog.field);
+      const response = await fetch(`/api/clio/contacts/search?q=${encodeURIComponent(query)}&type=${encodeURIComponent(type)}`, {
+        cache: "no-store",
+      });
+      const json = await response.json();
+
+      if (!response.ok || !json?.ok) {
+        setMasterInfoContactResults([]);
+        return;
+      }
+
+      setMasterInfoContactResults(Array.isArray(json.contacts) ? json.contacts : []);
+    } catch {
+      setMasterInfoContactResults([]);
+    } finally {
+      setMasterInfoContactLoading(false);
+    }
+  }
+
+  function selectMasterInfoContact(contact: any) {
+    const name = clean(contact?.name);
+    if (!name) return;
+
+    setMasterInfoSelectedContact(contact);
+    setMasterInfoEditValue(name);
+    setMasterInfoContactSearch(name);
+    setMasterInfoContactResults([]);
+
+    window.setTimeout(() => {
+      masterInfoPrimaryInputRef.current?.focus();
+    }, 0);
+  }
+
+  function confirmMasterInfoEditDialog() {
+    if (!masterInfoEditDialog) return;
+
+    const before = masterInfoEditDialog.currentValue || "—";
+    const kind = masterInfoFieldKind(masterInfoEditDialog.field);
+    let after = clean(masterInfoEditValue) || "—";
+
+    if (kind === "money") {
+      const formatted = formatMasterInfoMoneyInput(masterInfoEditValue);
+      after = formatted ? `$${formatted}` : "—";
+    }
+
+    setMasterInfoOverrides((prev) => ({
+      ...prev,
+      [masterInfoEditDialog.field]: after,
+    }));
+
+    setMasterInfoAuditEntries((prev) => [
+      {
+        id: `${Date.now()}-${masterInfoEditDialog.field}`,
+        field: masterInfoEditDialog.field,
+        label: masterInfoEditDialog.label,
+        before,
+        after,
+        timestamp: new Date().toLocaleString(),
+      },
+      ...prev,
+    ]);
+
+    closeMasterInfoEditDialog();
+  }
+
+  function masterNoteUserName(): string {
+    return "Dave";
+  }
+
+  function openMasterNoteDialog(noteEntry?: { id: string; note: string }) {
+    setMasterNoteEditingId(noteEntry?.id || null);
+    setMasterNoteDraft(noteEntry?.note || "");
+    setMasterNoteDialogOpen(true);
+  }
+
+  function closeMasterNoteDialog() {
+    setMasterNoteDialogOpen(false);
+    setMasterNoteDraft("");
+    setMasterNoteEditingId(null);
+  }
+
+  function saveMasterNote() {
+    const note = clean(masterNoteDraft);
+    if (!note) return;
+
+    if (masterNoteEditingId) {
+      setMasterNotes((prev) =>
+        prev.map((entry) =>
+          entry.id === masterNoteEditingId
+            ? {
+                ...entry,
+                note,
+                editedAt: new Date().toLocaleString(),
+                user: entry.user || masterNoteUserName(),
+              }
+            : entry
+        )
+      );
+
+      closeMasterNoteDialog();
+      return;
+    }
+
+    setMasterNotes((prev) => [
+      {
+        id: `${Date.now()}-note`,
+        note,
+        timestamp: new Date().toLocaleString(),
+        user: masterNoteUserName(),
+      },
+      ...prev,
+    ]);
+
+    closeMasterNoteDialog();
+  }
+
+  function requestDeleteMasterNote(noteEntry: { id: string; note: string }) {
+    setMasterNoteDeleteTarget({
+      id: noteEntry.id,
+      note: noteEntry.note,
+    });
+  }
+
+  function closeDeleteMasterNoteDialog() {
+    setMasterNoteDeleteTarget(null);
+  }
+
+  function confirmDeleteMasterNote() {
+    if (!masterNoteDeleteTarget?.id) return;
+
+    setMasterNotes((prev) => prev.filter((entry) => entry.id !== masterNoteDeleteTarget.id));
+    setMasterNoteDeleteTarget(null);
+  }
+
+  useEffect(() => {
+    if (!masterNoteDialogOpen) return;
+
+    const focusHandle = window.setTimeout(() => {
+      masterNoteTextareaRef.current?.focus();
+    }, 60);
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+
+      event.preventDefault();
+      closeMasterNoteDialog();
+    }
+
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.clearTimeout(focusHandle);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [masterNoteDialogOpen]);
+
+  useEffect(() => {
+    if (!masterNoteDeleteTarget) return;
+
+    const focusHandle = window.setTimeout(() => {
+      masterNoteDeleteConfirmButtonRef.current?.focus();
+    }, 60);
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+
+      event.preventDefault();
+      closeDeleteMasterNoteDialog();
+    }
+
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.clearTimeout(focusHandle);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [masterNoteDeleteTarget]);
+
+
   function masterSettlementMoneyValue(value: string): number {
     const cleaned = String(value || "").replace(/[$,\s]/g, "");
     const n = Number(cleaned);
@@ -630,6 +954,22 @@ export default function FilteredMattersPage() {
   }
 
   useEffect(() => {
+    if (!masterInfoEditDialog || masterInfoFieldKind(masterInfoEditDialog.field) !== "contact") return;
+
+    const query = clean(masterInfoContactSearch);
+    if (query.length < 2) {
+      setMasterInfoContactResults([]);
+      return;
+    }
+
+    const handle = window.setTimeout(() => {
+      loadMasterInfoContactSuggestions(query);
+    }, 250);
+
+    return () => window.clearTimeout(handle);
+  }, [masterInfoContactSearch, masterInfoEditDialog]);
+
+  useEffect(() => {
     async function load() {
       const filter = getFilterFromUrl();
       const workflow = getWorkflowFromUrl();
@@ -839,7 +1179,7 @@ export default function FilteredMattersPage() {
               <div style={masterSummaryGridStyle}>
                 <div style={masterSummaryItemStyle}>
                   <span>Insurer</span>
-                  <strong>{masterInsurerSummary}</strong>
+                  <strong>{masterInfoDisplayValue("insurer", masterInsurerSummary)}</strong>
                 </div>
                 <div style={masterSummaryItemStyle}>
                   <span>Claim Number</span>
@@ -850,7 +1190,7 @@ export default function FilteredMattersPage() {
                         className="barsh-filter-field-link"
                         style={fieldLinkStyle}
                       >
-                        {masterClaimSummary.label}
+                        {masterInfoDisplayValue("claimNumber", masterClaimSummary.label)}
                       </a>
                     ) : (
                       "—"
@@ -863,7 +1203,7 @@ export default function FilteredMattersPage() {
                 </div>
                 <div style={masterSummaryItemStyle}>
                   <span>Treating Provider</span>
-                  <strong>{masterTreatingProviderSummary}</strong>
+                  <strong>{masterInfoDisplayValue("provider", masterTreatingProviderSummary)}</strong>
                 </div>
                 <div style={masterSummaryItemStyle}>
                   <span>Date of Loss</span>
@@ -1202,7 +1542,7 @@ export default function FilteredMattersPage() {
                     </div>
                   </div>
                   <div style={masterSettlementSummaryItemStyle}>
-                    <span>Filing Fee</span>
+                    <span>Index Fee</span>
                     <strong style={masterSettlementSummaryValueStyle}>{money(masterSettlementSummary.filingFee)}</strong>
                   </div>
                   <div style={masterSettlementSummaryItemStyle}>
@@ -1225,7 +1565,7 @@ export default function FilteredMattersPage() {
                       <th style={masterSettlementRightThStyle}>Settled Principal</th>
                       <th style={masterSettlementRightThStyle}>Settled Interest</th>
                       <th style={masterSettlementRightThStyle}>Attorney Fee</th>
-                      <th style={masterSettlementRightThStyle}>Filing Fee</th>
+                      <th style={masterSettlementRightThStyle}>Index Fee</th>
                       <th style={masterSettlementRightThStyle}>Settlement Total</th>
                     </tr>
                   </thead>
@@ -1440,9 +1780,9 @@ export default function FilteredMattersPage() {
                       <div style={masterInfoCardStyle}>
                         <span style={masterSummaryCardTitleStyle}>Provider</span>
                         <strong style={masterSummaryCardValueStyle}>
-                          {clean(masterTreatingProviderSummary) && clean(masterTreatingProviderSummary) !== "—" ? (
+                          {clean(masterInfoDisplayValue("provider", masterTreatingProviderSummary)) && masterInfoDisplayValue("provider", masterTreatingProviderSummary) !== "—" ? (
                             <a
-                              href={filteredUrl("provider", masterTreatingProviderSummary)}
+                              href={filteredUrl("provider", masterInfoDisplayValue("provider", masterTreatingProviderSummary))}
                               className="barsh-filter-field-link"
                               style={fieldLinkStyle}
                             >
@@ -1452,7 +1792,18 @@ export default function FilteredMattersPage() {
                             "—"
                           )}
                         </strong>
-                        <button type="button" disabled title="Provider editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                        <button
+                          type="button"
+                          onClick={() => openMasterInfoEditDialog("provider", "Provider", masterInfoDisplayValue("provider", masterTreatingProviderSummary))}
+                          title="Open Provider edit preview dialog."
+                          style={{
+                            ...masterInfoCardEditButtonStyle,
+                            borderColor: "#93c5fd",
+                            background: "#ffffff",
+                            color: "#1d4ed8",
+                            cursor: "pointer",
+                          }}
+                        >
                           Edit
                         </button>
                       </div>
@@ -1460,19 +1811,30 @@ export default function FilteredMattersPage() {
                       <div style={masterInfoCardStyle}>
                         <span style={masterSummaryCardTitleStyle}>Patient</span>
                         <strong style={masterSummaryCardValueStyle}>
-                          {clean((masterSettlementDetailRows as any[])[0]?.patient) ? (
+                          {clean(masterInfoDisplayValue("patient", clean((masterSettlementDetailRows as any[])[0]?.patient))) ? (
                             <a
-                              href={filteredUrl("patient", clean((masterSettlementDetailRows as any[])[0]?.patient))}
+                              href={filteredUrl("patient", masterInfoDisplayValue("patient", clean((masterSettlementDetailRows as any[])[0]?.patient)))}
                               className="barsh-filter-field-link"
                               style={fieldLinkStyle}
                             >
-                              {clean((masterSettlementDetailRows as any[])[0]?.patient)}
+                              {masterInfoDisplayValue("patient", clean((masterSettlementDetailRows as any[])[0]?.patient))}
                             </a>
                           ) : (
                             "—"
                           )}
                         </strong>
-                        <button type="button" disabled title="Patient editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                        <button
+                          type="button"
+                          onClick={() => openMasterInfoEditDialog("patient", "Patient", masterInfoDisplayValue("patient", clean((masterSettlementDetailRows as any[])[0]?.patient)))}
+                          title="Open Patient edit dialog."
+                          style={{
+                            ...masterInfoCardEditButtonStyle,
+                            borderColor: "#93c5fd",
+                            background: "#ffffff",
+                            color: "#1d4ed8",
+                            cursor: "pointer",
+                          }}
+                        >
                           Edit
                         </button>
                       </div>
@@ -1480,9 +1842,9 @@ export default function FilteredMattersPage() {
                       <div style={masterInfoCardStyle}>
                         <span style={masterSummaryCardTitleStyle}>Insurer</span>
                         <strong style={masterSummaryCardValueStyle}>
-                          {clean(masterInsurerSummary) && clean(masterInsurerSummary) !== "—" ? (
+                          {clean(masterInfoDisplayValue("insurer", masterInsurerSummary)) && masterInfoDisplayValue("insurer", masterInsurerSummary) !== "—" ? (
                             <a
-                              href={filteredUrl("insurer", masterInsurerSummary)}
+                              href={filteredUrl("insurer", masterInfoDisplayValue("insurer", masterInsurerSummary))}
                               className="barsh-filter-field-link"
                               style={fieldLinkStyle}
                             >
@@ -1492,7 +1854,18 @@ export default function FilteredMattersPage() {
                             "—"
                           )}
                         </strong>
-                        <button type="button" disabled title="Insurer editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                        <button
+                          type="button"
+                          onClick={() => openMasterInfoEditDialog("insurer", "Insurer", masterInfoDisplayValue("insurer", masterInsurerSummary))}
+                          title="Open Insurer edit dialog."
+                          style={{
+                            ...masterInfoCardEditButtonStyle,
+                            borderColor: "#93c5fd",
+                            background: "#ffffff",
+                            color: "#1d4ed8",
+                            cursor: "pointer",
+                          }}
+                        >
                           Edit
                         </button>
                       </div>
@@ -1512,15 +1885,37 @@ export default function FilteredMattersPage() {
                             "—"
                           )}
                         </strong>
-                        <button type="button" disabled title="Claim Number editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                        <button
+                          type="button"
+                          onClick={() => openMasterInfoEditDialog("claimNumber", "Claim Number", masterInfoDisplayValue("claimNumber", masterClaimSummary.label))}
+                          title="Open Claim Number edit dialog."
+                          style={{
+                            ...masterInfoCardEditButtonStyle,
+                            borderColor: "#93c5fd",
+                            background: "#ffffff",
+                            color: "#1d4ed8",
+                            cursor: "pointer",
+                          }}
+                        >
                           Edit
                         </button>
                       </div>
 
                       <div style={masterInfoCardStyle}>
                         <span style={masterSummaryCardTitleStyle}>Date of Loss</span>
-                        <strong style={masterSummaryCardValueStyle}>{masterDateOfLossSummary}</strong>
-                        <button type="button" disabled title="Date of Loss editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                        <strong style={masterSummaryCardValueStyle}>{masterInfoDisplayValue("dateOfLoss", masterDateOfLossSummary)}</strong>
+                        <button
+                          type="button"
+                          onClick={() => openMasterInfoEditDialog("dateOfLoss", "Date of Loss", masterInfoDisplayValue("dateOfLoss", masterDateOfLossSummary))}
+                          title="Open Date of Loss edit dialog."
+                          style={{
+                            ...masterInfoCardEditButtonStyle,
+                            borderColor: "#93c5fd",
+                            background: "#ffffff",
+                            color: "#1d4ed8",
+                            cursor: "pointer",
+                          }}
+                        >
                           Edit
                         </button>
                       </div>
@@ -1559,48 +1954,114 @@ export default function FilteredMattersPage() {
                     >
                       <div style={masterInfoCardStyle}>
                         <span style={masterSummaryCardTitleStyle}>Index / AAA Number</span>
-                        <strong style={masterSummaryCardValueStyle}>—</strong>
-                        <button type="button" disabled title="Index / AAA Number editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                        <strong style={masterSummaryCardValueStyle}>{masterInfoDisplayValue("indexAaaNumber", "—")}</strong>
+                        <button
+                          type="button"
+                          onClick={() => openMasterInfoEditDialog("indexAaaNumber", "Index / AAA Number", masterInfoDisplayValue("indexAaaNumber", "—"))}
+                          title="Open Index / AAA Number edit dialog."
+                          style={{
+                            ...masterInfoCardEditButtonStyle,
+                            borderColor: "#93c5fd",
+                            background: "#ffffff",
+                            color: "#1d4ed8",
+                            cursor: "pointer",
+                          }}
+                        >
                           Edit
                         </button>
                       </div>
 
                       <div style={masterInfoCardStyle}>
                         <span style={masterSummaryCardTitleStyle}>Court</span>
-                        <strong style={masterSummaryCardValueStyle}>—</strong>
-                        <button type="button" disabled title="Court editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                        <strong style={masterSummaryCardValueStyle}>{masterInfoDisplayValue("court", "—")}</strong>
+                        <button
+                          type="button"
+                          onClick={() => openMasterInfoEditDialog("court", "Court", masterInfoDisplayValue("court", "—"))}
+                          title="Open Court edit dialog."
+                          style={{
+                            ...masterInfoCardEditButtonStyle,
+                            borderColor: "#93c5fd",
+                            background: "#ffffff",
+                            color: "#1d4ed8",
+                            cursor: "pointer",
+                          }}
+                        >
                           Edit
                         </button>
                       </div>
 
                       <div style={masterInfoCardStyle}>
                         <span style={masterSummaryCardTitleStyle}>Date Filed</span>
-                        <strong style={masterSummaryCardValueStyle}>—</strong>
-                        <button type="button" disabled title="Date Filed editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                        <strong style={masterSummaryCardValueStyle}>{masterInfoDisplayValue("dateFiled", "—")}</strong>
+                        <button
+                          type="button"
+                          onClick={() => openMasterInfoEditDialog("dateFiled", "Date Filed", masterInfoDisplayValue("dateFiled", "—"))}
+                          title="Open Date Filed edit dialog."
+                          style={{
+                            ...masterInfoCardEditButtonStyle,
+                            borderColor: "#93c5fd",
+                            background: "#ffffff",
+                            color: "#1d4ed8",
+                            cursor: "pointer",
+                          }}
+                        >
                           Edit
                         </button>
                       </div>
 
                       <div style={masterInfoCardStyle}>
-                        <span style={masterSummaryCardTitleStyle}>Filing Fee</span>
-                        <strong style={masterSummaryCardValueStyle}>$0.00</strong>
-                        <button type="button" disabled title="Filing Fee editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                        <span style={masterSummaryCardTitleStyle}>Index Fee</span>
+                        <strong style={masterSummaryCardValueStyle}>{masterInfoDisplayValue("filingFee", "$0.00")}</strong>
+                        <button
+                          type="button"
+                          onClick={() => openMasterInfoEditDialog("filingFee", "Index Fee", masterInfoDisplayValue("filingFee", "$0.00"))}
+                          title="Open Index Fee edit dialog."
+                          style={{
+                            ...masterInfoCardEditButtonStyle,
+                            borderColor: "#93c5fd",
+                            background: "#ffffff",
+                            color: "#1d4ed8",
+                            cursor: "pointer",
+                          }}
+                        >
                           Edit
                         </button>
                       </div>
 
                       <div style={masterInfoCardStyle}>
                         <span style={masterSummaryCardTitleStyle}>Service Fee</span>
-                        <strong style={masterSummaryCardValueStyle}>$0.00</strong>
-                        <button type="button" disabled title="Service Fee editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                        <strong style={masterSummaryCardValueStyle}>{masterInfoDisplayValue("serviceFee", "$0.00")}</strong>
+                        <button
+                          type="button"
+                          onClick={() => openMasterInfoEditDialog("serviceFee", "Service Fee", masterInfoDisplayValue("serviceFee", "$0.00"))}
+                          title="Open Service Fee edit dialog."
+                          style={{
+                            ...masterInfoCardEditButtonStyle,
+                            borderColor: "#93c5fd",
+                            background: "#ffffff",
+                            color: "#1d4ed8",
+                            cursor: "pointer",
+                          }}
+                        >
                           Edit
                         </button>
                       </div>
 
                       <div style={masterInfoCardStyle}>
-                        <span style={masterSummaryCardTitleStyle}>Other Court Costs</span>
-                        <strong style={masterSummaryCardValueStyle}>$0.00</strong>
-                        <button type="button" disabled title="Other Court Costs editing will be wired later." style={masterInfoCardEditButtonStyle}>
+                        <span style={masterSummaryCardTitleStyle}>Other Court Fees</span>
+                        <strong style={masterSummaryCardValueStyle}>{masterInfoDisplayValue("otherCourtCosts", "$0.00")}</strong>
+                        <button
+                          type="button"
+                          onClick={() => openMasterInfoEditDialog("otherCourtCosts", "Other Court Fees", masterInfoDisplayValue("otherCourtCosts", "$0.00"))}
+                          title="Open Other Court Fees edit dialog."
+                          style={{
+                            ...masterInfoCardEditButtonStyle,
+                            borderColor: "#93c5fd",
+                            background: "#ffffff",
+                            color: "#1d4ed8",
+                            cursor: "pointer",
+                          }}
+                        >
                           Edit
                         </button>
                       </div>
@@ -1636,27 +2097,118 @@ export default function FilteredMattersPage() {
                         alignContent: "start",
                       }}
                     >
-                      <strong style={{ fontSize: 15, lineHeight: 1.35 }}>No notes entered yet.</strong>
-                      <button
-                        type="button"
-                        disabled
-                        title="Notes popup and note log will be wired after layout approval."
+                      <div
                         style={{
-                          marginTop: 12,
-                          width: "fit-content",
-                          border: "1px solid #2563eb",
-                          borderRadius: 999,
-                          background: "#eff6ff",
-                          color: "#1d4ed8",
-                          fontSize: 12,
-                          fontWeight: 950,
-                          padding: "7px 13px",
-                          cursor: "not-allowed",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: 12,
                         }}
                       >
-                        Add Note
-                      </button>
+                        <strong style={{ fontSize: 15, lineHeight: 1.35 }}>
+                          {masterNotes.length ? `${masterNotes.length} note${masterNotes.length === 1 ? "" : "s"}` : "No notes entered yet."}
+                        </strong>
+                        <button
+                          type="button"
+                          onClick={() => openMasterNoteDialog()}
+                          title="Add a note to this Master Lawsuit."
+                          style={{
+                            width: "fit-content",
+                            border: "1px solid #2563eb",
+                            borderRadius: 999,
+                            background: "#eff6ff",
+                            color: "#1d4ed8",
+                            fontSize: 12,
+                            fontWeight: 950,
+                            padding: "7px 13px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Add Note
+                        </button>
+                      </div>
+
+                      {masterNotes.length > 0 && (
+                        <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+                          {masterNotes.map((entry) => (
+                            <div
+                              key={entry.id}
+                              style={{
+                                display: "grid",
+                                gap: 6,
+                                padding: "9px 11px",
+                                border: "1px solid #dbe4f0",
+                                borderRadius: 12,
+                                background: "#ffffff",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "flex-start",
+                                  gap: 10,
+                                }}
+                              >
+                                <div style={{ fontSize: 13, fontWeight: 850, color: "#0f172a", whiteSpace: "pre-wrap" }}>
+                                  {entry.note}
+                                </div>
+
+                                <div style={{ display: "inline-flex", gap: 6, flexShrink: 0 }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => openMasterNoteDialog(entry)}
+                                    title="Edit note"
+                                    aria-label="Edit note"
+                                    style={{
+                                      width: 30,
+                                      height: 30,
+                                      border: "1px solid #cbd5e1",
+                                      borderRadius: 999,
+                                      background: "#f8fafc",
+                                      color: "#1d4ed8",
+                                      cursor: "pointer",
+                                      fontSize: 14,
+                                      fontWeight: 950,
+                                      lineHeight: 1,
+                                    }}
+                                  >
+                                    ✎
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => requestDeleteMasterNote(entry)}
+                                    title="Delete note"
+                                    aria-label="Delete note"
+                                    style={{
+                                      width: 30,
+                                      height: 30,
+                                      border: "1px solid #fecaca",
+                                      borderRadius: 999,
+                                      background: "#fef2f2",
+                                      color: "#dc2626",
+                                      cursor: "pointer",
+                                      fontSize: 14,
+                                      fontWeight: 950,
+                                      lineHeight: 1,
+                                    }}
+                                  >
+                                    🗑
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div style={{ fontSize: 11, fontWeight: 800, color: "#64748b" }}>
+                                By {entry.user || masterNoteUserName()} · {entry.timestamp}
+                                {entry.editedAt ? ` · Edited ${entry.editedAt}` : ""}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
+
                   </section>
                 </div>
 
@@ -1846,6 +2398,29 @@ export default function FilteredMattersPage() {
                         justifyContent: "space-between",
                         alignItems: "center",
                         gap: 12,
+                        padding: "8px 0",
+                        borderBottom: "1px solid #e2e8f0",
+                        fontSize: 14,
+                        color: "#475569",
+                        fontWeight: 800,
+                      }}
+                    >
+                      <span>Costs</span>
+                      <strong style={{ color: "#0f172a", fontSize: 17 }}>
+                        {money(
+                          masterInfoMoneyNumber("filingFee", "$0.00") +
+                            masterInfoMoneyNumber("serviceFee", "$0.00") +
+                            masterInfoMoneyNumber("otherCourtCosts", "$0.00")
+                        )}
+                      </strong>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 12,
                         padding: "9px 0",
                         fontSize: 15,
                         color: "#475569",
@@ -1869,8 +2444,16 @@ export default function FilteredMattersPage() {
                         fontWeight: 950,
                       }}
                     >
-                      <span>Balance Presuit</span>
-                      <strong style={{ color: "#0f172a", fontSize: 22 }}>{money(masterPaymentSummary.balancePresuit)}</strong>
+                      <span>Balance</span>
+                      <strong style={{ color: "#0f172a", fontSize: 22 }}>
+                        {money(
+                          masterPaymentSummary.lawsuitAmount +
+                            masterInfoMoneyNumber("filingFee", "$0.00") +
+                            masterInfoMoneyNumber("serviceFee", "$0.00") +
+                            masterInfoMoneyNumber("otherCourtCosts", "$0.00") -
+                            masterPaymentSummary.paymentsPosted
+                        )}
+                      </strong>
                     </div>
                   </div>
 
@@ -1953,6 +2536,690 @@ export default function FilteredMattersPage() {
                       No lawsuit-level payment receipts posted yet.
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+
+
+
+            {masterNoteDeleteTarget && activeMasterWorkspaceTab === "payments" && (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Confirm note deletion"
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  zIndex: 50000,
+                  display: "block",
+                  padding: 0,
+                  overflow: "hidden",
+                  background: "rgba(15, 23, 42, 0.58)",
+                }}
+                onClick={closeDeleteMasterNoteDialog}
+              >
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    confirmDeleteMasterNote();
+                  }}
+                  onClick={(event) => event.stopPropagation()}
+                  style={{
+                    position: "fixed",
+                    top: 154,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: "min(360px, 94vw)",
+                    display: "grid",
+                    gap: 16,
+                    padding: 20,
+                    border: "1px solid #fecaca",
+                    borderRadius: 18,
+                    background: "#ffffff",
+                    boxShadow: "0 30px 90px rgba(15, 23, 42, 0.38)",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 950,
+                      color: "#991b1b",
+                      textAlign: "center",
+                    }}
+                  >
+                    Delete Note?
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 10,
+                    }}
+                  >
+                    <button
+                      ref={masterNoteDeleteConfirmButtonRef}
+                      type="submit"
+                      style={{
+                        height: 42,
+                        border: "1px solid #dc2626",
+                        borderRadius: 12,
+                        background: "#dc2626",
+                        color: "#ffffff",
+                        fontWeight: 950,
+                        fontSize: 14,
+                        cursor: "pointer",
+                        boxShadow: "0 8px 24px rgba(220, 38, 38, 0.22)",
+                      }}
+                    >
+                      Confirm
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={closeDeleteMasterNoteDialog}
+                      style={{
+                        height: 42,
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 12,
+                        background: "#ffffff",
+                        color: "#334155",
+                        fontWeight: 900,
+                        fontSize: 14,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+
+
+            {masterNoteDialogOpen && activeMasterWorkspaceTab === "payments" && (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Master Lawsuit note popup"
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  zIndex: 50000,
+                  display: "block",
+                  padding: 0,
+                  overflow: "hidden",
+                  background: "rgba(15, 23, 42, 0.58)",
+                }}
+                onClick={closeMasterNoteDialog}
+              >
+                <div
+                  onClick={(event) => event.stopPropagation()}
+                  style={{
+                    position: "fixed",
+                    top: 154,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: "min(720px, 94vw)",
+                    maxHeight: "calc(100vh - 178px)",
+                    overflowY: "auto",
+                    border: "1px solid #bfdbfe",
+                    borderRadius: 22,
+                    background: "#ffffff",
+                    boxShadow: "0 30px 90px rgba(15, 23, 42, 0.38)",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "sticky",
+                      top: 0,
+                      zIndex: 1,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      padding: "16px 18px",
+                      borderBottom: "1px solid #dbe4f0",
+                      background: "#eff6ff",
+                      borderTopLeftRadius: 22,
+                      borderTopRightRadius: 22,
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 18,
+                          fontWeight: 950,
+                          color: "#1d4ed8",
+                        }}
+                      >
+                        {masterNoteEditingId ? "Edit Note" : "Add Note"}
+                      </div>
+                      <div
+                        style={{
+                          marginTop: 3,
+                          fontSize: 12,
+                          fontWeight: 800,
+                          color: "#1e40af",
+                        }}
+                      >
+                        Master Lawsuit note · By {masterNoteUserName()} · Local UI log only until persistent Audit/History is wired.
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={closeMasterNoteDialog}
+                      style={{
+                        width: 38,
+                        height: 38,
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 999,
+                        background: "#ffffff",
+                        color: "#64748b",
+                        fontSize: 26,
+                        fontWeight: 900,
+                        cursor: "pointer",
+                        lineHeight: 1,
+                      }}
+                      aria-label="Close note popup"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      saveMasterNote();
+                    }}
+                    style={{
+                      display: "grid",
+                      gap: 14,
+                      padding: 18,
+                    }}
+                  >
+                    <label
+                      style={{
+                        display: "grid",
+                        gap: 7,
+                        fontSize: 12,
+                        fontWeight: 950,
+                        color: "#334155",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      Note
+                      <textarea
+                        ref={masterNoteTextareaRef}
+                        value={masterNoteDraft}
+                        onChange={(event) => setMasterNoteDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Enter") return;
+                          if (!event.metaKey && !event.ctrlKey) return;
+
+                          event.preventDefault();
+                          saveMasterNote();
+                        }}
+                        placeholder="Type note here..."
+                        style={{
+                          width: "100%",
+                          minHeight: 160,
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 12,
+                          padding: "11px 12px",
+                          background: "#fff",
+                          color: "#0f172a",
+                          fontSize: 15,
+                          fontWeight: 750,
+                          lineHeight: 1.4,
+                          outline: "none",
+                          resize: "vertical",
+                          textTransform: "none",
+                          letterSpacing: 0,
+                        }}
+                      />
+                    </label>
+
+                    <div
+                      style={{
+                        padding: "10px 12px",
+                        border: "1px solid #bae6fd",
+                        borderRadius: 12,
+                        background: "#e0f2fe",
+                        color: "#075985",
+                        fontSize: 13,
+                        fontWeight: 850,
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      Press Command+Enter or Ctrl+Enter to save.  Press Esc to cancel.  Plain Enter creates a new line.
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        gap: 10,
+                        paddingTop: 4,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={closeMasterNoteDialog}
+                        style={{
+                          minWidth: 110,
+                          height: 42,
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 12,
+                          background: "#ffffff",
+                          color: "#334155",
+                          fontWeight: 900,
+                          fontSize: 14,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={!clean(masterNoteDraft)}
+                        title="Save note to the local notes log."
+                        style={{
+                          minWidth: 150,
+                          height: 42,
+                          border: "1px solid #16a34a",
+                          borderRadius: 12,
+                          background: clean(masterNoteDraft) ? "#16a34a" : "#bbf7d0",
+                          color: clean(masterNoteDraft) ? "#ffffff" : "#166534",
+                          fontWeight: 950,
+                          fontSize: 14,
+                          cursor: clean(masterNoteDraft) ? "pointer" : "not-allowed",
+                          boxShadow: clean(masterNoteDraft) ? "0 8px 24px rgba(22, 163, 74, 0.22)" : "none",
+                        }}
+                      >
+                        {masterNoteEditingId ? "Save Changes" : "Save Note"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+
+
+            {masterInfoEditDialog && activeMasterWorkspaceTab === "payments" && (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label={`${masterInfoEditDialog.label} edit preview popup`}
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  zIndex: 50000,
+                  display: "block",
+                  padding: 0,
+                  overflow: "hidden",
+                  background: "rgba(15, 23, 42, 0.58)",
+                }}
+                onClick={closeMasterInfoEditDialog}
+              >
+                <div
+                  onClick={(event) => event.stopPropagation()}
+                  style={{
+                    position: "fixed",
+                    top: 154,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: "min(620px, 94vw)",
+                    maxHeight: "calc(100vh - 178px)",
+                    overflowY: "auto",
+                    border: "1px solid #bfdbfe",
+                    borderRadius: 22,
+                    background: "#ffffff",
+                    boxShadow: "0 30px 90px rgba(15, 23, 42, 0.38)",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "sticky",
+                      top: 0,
+                      zIndex: 1,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      padding: "16px 18px",
+                      borderBottom: "1px solid #dbe4f0",
+                      background: "#eff6ff",
+                      borderTopLeftRadius: 22,
+                      borderTopRightRadius: 22,
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 18,
+                          fontWeight: 950,
+                          color: "#1d4ed8",
+                        }}
+                      >
+                        Edit {masterInfoEditDialog.label}
+                      </div>
+                      <div
+                        style={{
+                          marginTop: 3,
+                          fontSize: 12,
+                          fontWeight: 800,
+                          color: "#1e40af",
+                        }}
+                      >
+                        Master Lawsuit field edit · Preview only, no Clio writeback.
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={closeMasterInfoEditDialog}
+                      style={{
+                        width: 38,
+                        height: 38,
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 999,
+                        background: "#ffffff",
+                        color: "#64748b",
+                        fontSize: 26,
+                        fontWeight: 900,
+                        cursor: "pointer",
+                        lineHeight: 1,
+                      }}
+                      aria-label={`Close ${masterInfoEditDialog.label} edit preview popup`}
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+
+                      if (
+                        masterInfoEditDialog &&
+                        masterInfoFieldKind(masterInfoEditDialog.field) === "contact" &&
+                        !masterInfoSelectedContact
+                      ) {
+                        return;
+                      }
+
+                      confirmMasterInfoEditDialog();
+                    }}
+                    style={{
+                      display: "grid",
+                      gap: 14,
+                      padding: 18,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "grid",
+                        gap: 6,
+                        padding: 12,
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 14,
+                        background: "#f8fafc",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 950,
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                          color: "#475569",
+                        }}
+                      >
+                        Current
+                      </span>
+                      <strong style={{ fontSize: 16, color: "#0f172a" }}>
+                        {masterInfoEditDialog.currentValue || "—"}
+                      </strong>
+                    </div>
+
+                    {masterInfoFieldKind(masterInfoEditDialog.field) === "contact" ? (
+                      <div style={{ display: "grid", gap: 10 }}>
+                        <label
+                          style={{
+                            display: "grid",
+                            gap: 7,
+                            fontSize: 12,
+                            fontWeight: 950,
+                            color: "#334155",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          Search Clio Contact
+                          <input
+                            ref={masterInfoPrimaryInputRef}
+                            value={masterInfoContactSearch}
+                            onChange={(event) => {
+                              setMasterInfoContactSearch(event.target.value);
+                              setMasterInfoSelectedContact(null);
+                              setMasterInfoEditValue("");
+                            }}
+                            placeholder={`Start typing ${masterInfoEditDialog.label}`}
+                            autoComplete="off"
+                            style={{
+                              width: "100%",
+                              border: "1px solid #cbd5e1",
+                              borderRadius: 12,
+                              padding: "11px 12px",
+                              background: "#fff",
+                              color: "#0f172a",
+                              fontSize: 15,
+                              fontWeight: 850,
+                              outline: "none",
+                              textTransform: "none",
+                              letterSpacing: 0,
+                            }}
+                          />
+                        </label>
+
+                        {masterInfoContactLoading && (
+                          <div style={{ fontSize: 12, fontWeight: 800, color: "#64748b" }}>
+                            Loading suggestions...
+                          </div>
+                        )}
+
+                        {masterInfoSelectedContact && (
+                          <div
+                            style={{
+                              padding: "9px 11px",
+                              border: "1px solid #bbf7d0",
+                              borderRadius: 12,
+                              background: "#f0fdf4",
+                              color: "#166534",
+                              fontSize: 13,
+                              fontWeight: 850,
+                            }}
+                          >
+                            Selected: {masterInfoSelectedContact.name}
+                            {masterInfoSelectedContact.type ? ` (${masterInfoSelectedContact.type})` : ""}
+                            {masterInfoSelectedContact.id ? ` · ID ${masterInfoSelectedContact.id}` : ""}
+                          </div>
+                        )}
+
+                        {masterInfoContactResults.length > 0 && (
+                          <div style={{ display: "grid", gap: 6 }}>
+                            {masterInfoContactResults.map((contact: any) => (
+                              <button
+                                key={contact.id}
+                                type="button"
+                                onClick={() => selectMasterInfoContact(contact)}
+                                style={{
+                                  textAlign: "left",
+                                  padding: "9px 11px",
+                                  border: "1px solid #dbe4f0",
+                                  borderRadius: 12,
+                                  background: "#ffffff",
+                                  color: "#0f172a",
+                                  cursor: "pointer",
+                                  fontWeight: 850,
+                                }}
+                              >
+                                {contact.name}
+                                {contact.type ? <span style={{ color: "#64748b" }}> — {contact.type}</span> : null}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {!masterInfoContactLoading && masterInfoContactSearch.length >= 2 && masterInfoContactResults.length === 0 && !masterInfoSelectedContact && (
+                          <div style={{ fontSize: 12, fontWeight: 800, color: "#64748b" }}>
+                            No suggestions found.
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <label
+                        style={{
+                          display: "grid",
+                          gap: 7,
+                          fontSize: 12,
+                          fontWeight: 950,
+                          color: "#334155",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        New {masterInfoEditDialog.label}
+                        {masterInfoFieldKind(masterInfoEditDialog.field) === "money" ? (
+                          <div style={{ position: "relative", width: "100%" }}>
+                            <span
+                              style={{
+                                position: "absolute",
+                                left: 12,
+                                top: "50%",
+                                transform: "translateY(-50%)",
+                                color: "#475569",
+                                fontWeight: 950,
+                                pointerEvents: "none",
+                              }}
+                            >
+                              $
+                            </span>
+                            <input
+                              ref={masterInfoPrimaryInputRef}
+                              type="text"
+                              value={masterInfoEditValue}
+                              onChange={(event) => setMasterInfoEditValue(event.target.value)}
+                              onBlur={() => setMasterInfoEditValue((current) => formatMasterInfoMoneyInput(current))}
+                              placeholder="0.00"
+                              inputMode="decimal"
+                              style={{
+                                width: "100%",
+                                border: "1px solid #cbd5e1",
+                                borderRadius: 12,
+                                padding: "11px 12px 11px 28px",
+                                background: "#fff",
+                                color: "#0f172a",
+                                fontSize: 15,
+                                fontWeight: 850,
+                                outline: "none",
+                                textTransform: "none",
+                                letterSpacing: 0,
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <input
+                            ref={masterInfoPrimaryInputRef}
+                            type={masterInfoFieldKind(masterInfoEditDialog.field) === "date" ? "date" : "text"}
+                            value={masterInfoEditValue}
+                            onChange={(event) => setMasterInfoEditValue(event.target.value)}
+                            placeholder={`Enter ${masterInfoEditDialog.label}`}
+                            style={{
+                              width: "100%",
+                              border: "1px solid #cbd5e1",
+                              borderRadius: 12,
+                              padding: "11px 12px",
+                              background: "#fff",
+                              color: "#0f172a",
+                              fontSize: 15,
+                              fontWeight: 850,
+                              outline: "none",
+                              textTransform: "none",
+                              letterSpacing: 0,
+                            }}
+                          />
+                        )}
+                      </label>
+                    )}
+
+                    <div
+                      style={{
+                        padding: "10px 12px",
+                        border: "1px solid #bae6fd",
+                        borderRadius: 12,
+                        background: "#e0f2fe",
+                        color: "#075985",
+                        fontSize: 13,
+                        fontWeight: 850,
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      This dialog is a UI preview only.  It does not search Clio contacts, validate custom fields, update Clio, or persist local data.
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        gap: 10,
+                        paddingTop: 4,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={closeMasterInfoEditDialog}
+                        style={{
+                          minWidth: 110,
+                          height: 42,
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 12,
+                          background: "#ffffff",
+                          color: "#334155",
+                          fontWeight: 900,
+                          fontSize: 14,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="submit"
+                        title="Confirm this UI edit and write it to the local Audit/History log."
+                        style={{
+                          minWidth: 190,
+                          height: 42,
+                          border: "1px solid #16a34a",
+                          borderRadius: 12,
+                          background: "#16a34a",
+                          color: "#ffffff",
+                          fontWeight: 950,
+                          fontSize: 14,
+                          cursor: "pointer",
+                          boxShadow: "0 8px 24px rgba(22, 163, 74, 0.22)",
+                        }}
+                      >
+                        Confirm Edit
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             )}
@@ -2562,8 +3829,8 @@ export default function FilteredMattersPage() {
                         <option value="Collection Payment">Collection Payment</option>
                         <option value="Voluntary Payment">Voluntary Payment</option>
                         <option value="Attorney Fee">Attorney Fee</option>
-                        <option value="Filing Fee Collected">Filing Fee Collected</option>
-                        <option value="Filing Fee Billed">Filing Fee Billed</option>
+                        <option value="Index Fee Collected">Index Fee Collected</option>
+                        <option value="Index Fee Billed">Index Fee Billed</option>
                         <option value="Interest">Interest</option>
                         <option value="PreC to Provider">PreC to Provider</option>
                         <option value="Service Fee Collected">Service Fee Collected</option>

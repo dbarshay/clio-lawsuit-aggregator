@@ -556,6 +556,10 @@ const activeGroupKey =
   const [finalizationHistory, setFinalizationHistory] = useState<any>(null);
   const [finalizationHistoryLoading, setFinalizationHistoryLoading] = useState(false);
   const [expandedFinalizationId, setExpandedFinalizationId] = useState<string | null>(null);
+  const [matterAuditHistoryLoading, setMatterAuditHistoryLoading] = useState(false);
+  const [matterAuditHistoryResult, setMatterAuditHistoryResult] = useState<any>(null);
+  const [expandedMatterAuditEntryId, setExpandedMatterAuditEntryId] = useState<string | null>(null);
+  const [matterAuditHistoryPopupOpen, setMatterAuditHistoryPopupOpen] = useState(false);
   const [printQueuePreview, setPrintQueuePreview] = useState<any>(null);
   const [printQueuePreviewLoading, setPrintQueuePreviewLoading] = useState(false);
   const [printQueueAddLoading, setPrintQueueAddLoading] = useState(false);
@@ -637,6 +641,85 @@ const activeGroupKey =
   const [denialReasonInput, setDenialReasonInput] = useState("");
   const [matterStageInput, setMatterStageInput] = useState("");
   const [finalStatusInput, setFinalStatusInput] = useState("");
+
+  function formatMatterAuditValue(value: any): string {
+    if (value === null || value === undefined || value === "") return "—";
+    if (typeof value === "string") return value;
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+
+  function formatMatterAuditTimestamp(value: any): string {
+    const date = new Date(String(value || ""));
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleString();
+  }
+
+  async function loadMatterAuditHistory() {
+    const numericMatterId = Number(matterId);
+    const displayNumber = textValue(matter?.displayNumber || matter?.display_number);
+    const masterLawsuitId = textValue(matter?.masterLawsuitId || matter?.master_lawsuit_id);
+
+    if ((!Number.isFinite(numericMatterId) || numericMatterId <= 0) && !displayNumber && !masterLawsuitId) {
+      setMatterAuditHistoryResult({
+        ok: false,
+        error: "No matter identifier is available for audit history lookup.",
+        entries: [],
+      });
+      return;
+    }
+
+    try {
+      setMatterAuditHistoryLoading(true);
+
+      const params = new URLSearchParams();
+      params.set("limit", "100");
+
+      if (Number.isFinite(numericMatterId) && numericMatterId > 0) {
+        params.set("matterId", String(numericMatterId));
+      }
+
+      if (displayNumber) {
+        params.set("matterDisplayNumber", displayNumber);
+      }
+
+      if (masterLawsuitId) {
+        params.set("masterLawsuitId", masterLawsuitId);
+      }
+
+      const response = await fetch(`/api/audit-log?${params.toString()}`, {
+        cache: "no-store",
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json?.ok) {
+        throw new Error(json?.error || "Matter audit history lookup failed.");
+      }
+
+      setMatterAuditHistoryResult(json);
+    } catch (err: any) {
+      setMatterAuditHistoryResult({
+        ok: false,
+        error: err?.message || "Matter audit history lookup failed.",
+        entries: [],
+      });
+    } finally {
+      setMatterAuditHistoryLoading(false);
+    }
+  }
+
+  function openMatterAuditHistoryTab() {
+    setMatterAuditHistoryPopupOpen(true);
+    void loadMatterAuditHistory();
+  }
+
+  function closeMatterAuditHistoryPopup() {
+    setMatterAuditHistoryPopupOpen(false);
+  }
 
   function paymentFormAmountValue(): number {
     return num(paymentAmountInput);
@@ -3553,12 +3636,15 @@ const activeGroupKey =
           <div style={bmGlobalPrintButtonRowStyle}>
             <button
               type="button"
-              disabled
-              aria-disabled="true"
-              title="Audit / History access is locked."
-              style={bmGlobalLockedPrintQueueStyle}
+              onClick={openMatterAuditHistoryTab}
+              title="Open matter-specific Audit / History log."
+              style={{
+                ...bmGlobalLockedPrintQueueStyle,
+                cursor: "pointer",
+                opacity: 1,
+              }}
             >
-              <span aria-hidden="true">🔒</span>
+              <span aria-hidden="true">📜</span>
               <span>Audit / History</span>
             </button>
 
@@ -3580,6 +3666,279 @@ const activeGroupKey =
         </div>
       </div>
 
+
+
+{matterAuditHistoryPopupOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Matter Audit History"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50000,
+            display: "block",
+            padding: 0,
+            overflow: "hidden",
+            background: "rgba(15, 23, 42, 0.58)",
+          }}
+          onClick={closeMatterAuditHistoryPopup}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              position: "fixed",
+              top: 104,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "min(1120px, 96vw)",
+              maxHeight: "calc(100vh - 178px)",
+              overflowY: "auto",
+              border: "1px solid #bfdbfe",
+              borderRadius: 22,
+              background: "#ffffff",
+              boxShadow: "0 30px 90px rgba(15, 23, 42, 0.38)",
+            }}
+          >
+            <div
+              style={{
+                position: "sticky",
+                top: 0,
+                zIndex: 1,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 12,
+                padding: "16px 18px",
+                borderBottom: "1px solid #dbe4f0",
+                background: "#eff6ff",
+                borderTopLeftRadius: 22,
+                borderTopRightRadius: 22,
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 950,
+                    color: "#1d4ed8",
+                  }}
+                >
+                  Matter-Level Audit / History
+                </div>
+                <div
+                  style={{
+                    marginTop: 3,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    color: "#1e40af",
+                  }}
+                >
+                  {textValue(matter?.displayNumber || matter?.display_number) || matterId || "Matter"} · Local database audit log.
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <button
+                  type="button"
+                  onClick={loadMatterAuditHistory}
+                  disabled={matterAuditHistoryLoading}
+                  style={{
+                    minWidth: 98,
+                    height: 38,
+                    border: "1px solid #bfdbfe",
+                    borderRadius: 999,
+                    background: "#ffffff",
+                    color: "#1d4ed8",
+                    fontWeight: 900,
+                    cursor: matterAuditHistoryLoading ? "default" : "pointer",
+                  }}
+                >
+                  {matterAuditHistoryLoading ? "Loading..." : "Refresh"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={closeMatterAuditHistoryPopup}
+                  style={{
+                    width: 38,
+                    height: 38,
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 999,
+                    background: "#ffffff",
+                    color: "#64748b",
+                    fontSize: 26,
+                    fontWeight: 900,
+                    cursor: "pointer",
+                    lineHeight: 1,
+                  }}
+                  aria-label="Close matter audit history popup"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div style={{ padding: 18 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                  gap: 10,
+                  marginBottom: 14,
+                }}
+              >
+                <div style={bmStatCardStyle}>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: bmColors.subtle, textTransform: "uppercase" }}>Matter</div>
+                  <div style={{ marginTop: 4, fontSize: 14, fontWeight: 900, color: bmColors.ink }}>
+                    {textValue(matter?.displayNumber || matter?.display_number) || matterId || "—"}
+                  </div>
+                </div>
+
+                <div style={bmStatCardStyle}>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: bmColors.subtle, textTransform: "uppercase" }}>Matter ID</div>
+                  <div style={{ marginTop: 4, fontSize: 14, fontWeight: 900, color: bmColors.ink }}>
+                    {matterId || "—"}
+                  </div>
+                </div>
+
+                <div style={bmStatCardStyle}>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: bmColors.subtle, textTransform: "uppercase" }}>Master Lawsuit</div>
+                  <div style={{ marginTop: 4, fontSize: 14, fontWeight: 900, color: bmColors.ink }}>
+                    {textValue(matter?.masterLawsuitId || matter?.master_lawsuit_id) || "—"}
+                  </div>
+                </div>
+
+                <div style={bmStatCardStyle}>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: bmColors.subtle, textTransform: "uppercase" }}>Entries</div>
+                  <div style={{ marginTop: 4, fontSize: 14, fontWeight: 900, color: bmColors.ink }}>
+                    {Array.isArray(matterAuditHistoryResult?.entries) ? matterAuditHistoryResult.entries.length : 0}
+                  </div>
+                </div>
+              </div>
+
+              {matterAuditHistoryResult?.error && (
+                <div
+                  style={{
+                    marginBottom: 14,
+                    padding: 12,
+                    borderRadius: 12,
+                    border: "1px solid #fecaca",
+                    background: "#fef2f2",
+                    color: "#991b1b",
+                    fontWeight: 800,
+                  }}
+                >
+                  {textValue(matterAuditHistoryResult.error)}
+                </div>
+              )}
+
+              {matterAuditHistoryLoading && !matterAuditHistoryResult && (
+                <div style={{ color: bmColors.muted }}>
+                  Loading matter audit history...
+                </div>
+              )}
+
+              {matterAuditHistoryResult?.ok &&
+                Array.isArray(matterAuditHistoryResult.entries) &&
+                matterAuditHistoryResult.entries.length === 0 && (
+                  <div style={{ color: bmColors.muted }}>
+                    No matter-specific audit entries found yet.
+                  </div>
+                )}
+
+              {matterAuditHistoryResult?.ok &&
+                Array.isArray(matterAuditHistoryResult.entries) &&
+                matterAuditHistoryResult.entries.length > 0 && (
+                  <div style={{ display: "grid", gap: 12 }}>
+                    {matterAuditHistoryResult.entries.map((entry: any) => {
+                      const rowKey = textValue(entry.id);
+                      const isExpanded = expandedMatterAuditEntryId === rowKey;
+
+                      return (
+                        <article
+                          key={rowKey}
+                          style={{
+                            display: "grid",
+                            gap: 10,
+                            padding: 14,
+                            borderRadius: 16,
+                            border: "1px solid " + bmColors.line,
+                            background: "#ffffff",
+                            boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: 12,
+                              alignItems: "flex-start",
+                            }}
+                          >
+                            <div>
+                              <div style={{ fontSize: 15, fontWeight: 950, color: bmColors.ink }}>
+                                {textValue(entry.summary) || textValue(entry.action) || "Audit entry"}
+                              </div>
+                              <div style={{ marginTop: 4, fontSize: 12, color: bmColors.subtle, fontWeight: 750 }}>
+                                {formatMatterAuditTimestamp(entry.createdAt)} · {textValue(entry.actorName || entry.actorEmail) || "Unknown user"} · {textValue(entry.sourcePage) || "unknown source"}
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setExpandedMatterAuditEntryId(isExpanded ? null : rowKey)}
+                              style={{
+                                fontSize: 12,
+                                padding: "5px 9px",
+                                border: "1px solid #94a3b8",
+                                borderRadius: 999,
+                                background: isExpanded ? "#e2e8f0" : "#fff",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                                fontWeight: 800,
+                              }}
+                            >
+                              {isExpanded ? "Hide Details" : "Details"}
+                            </button>
+                          </div>
+
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                              gap: 10,
+                            }}
+                          >
+                            <div>
+                              <div style={{ fontSize: 11, color: bmColors.subtle, fontWeight: 900, textTransform: "uppercase" }}>Action</div>
+                              <div style={{ marginTop: 3, fontSize: 13, fontWeight: 850, color: bmColors.ink }}>{textValue(entry.action) || "—"}</div>
+                            </div>
+
+                            <div>
+                              <div style={{ fontSize: 11, color: bmColors.subtle, fontWeight: 900, textTransform: "uppercase" }}>Field</div>
+                              <div style={{ marginTop: 3, fontSize: 13, fontWeight: 850, color: bmColors.ink }}>{textValue(entry.fieldName) || "—"}</div>
+                            </div>
+
+                            <div>
+                              <div style={{ fontSize: 11, color: bmColors.subtle, fontWeight: 900, textTransform: "uppercase" }}>Prior Value</div>
+                              <div style={{ marginTop: 3, fontSize: 13, fontWeight: 850, color: bmColors.ink, overflowWrap: "anywhere" }}>{formatMatterAuditValue(entry.priorValue)}</div>
+                            </div>
+
+                            <div>
+                              <div style={{ fontSize: 11, color: bmColors.subtle, fontWeight: 900, textTransform: "uppercase" }}>New Value</div>
+                              <div style={{ marginTop: 3, fontSize: 13, fontWeight: 850, color: bmColors.ink, overflowWrap: "anywhere" }}>{formatMatterAuditValue(entry.newValue)}</div>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+            </div>
+          </div>
+        </div>
+      )}
 
 {directFieldEditModal === "dos" && (
         <div
@@ -7998,7 +8357,7 @@ const activeGroupKey =
       )}
 
       {activeWorkspaceTab === "audit_history" && (
-        <section style={tabPlaceholderPanelStyle}>
+        <section id="matter-audit-history-section" style={tabPlaceholderPanelStyle}>
           <div
             style={{
               display: "flex",
@@ -8011,219 +8370,255 @@ const activeGroupKey =
             <div>
               <h2 style={{ marginTop: 0, marginBottom: 6 }}>Matter-Level Audit / History</h2>
               <p style={tabPlaceholderTextStyle}>
-                Local finalization and workflow history for this lawsuit.  These records do not replace Clio;
-                the Clio master matter Documents tab remains the record-copy source of truth.
+                Persistent local database audit entries for this matter and, when applicable, its master lawsuit context.  These records do not replace Clio as the source of truth.
               </p>
             </div>
 
             <button
               type="button"
-              onClick={() => loadFinalizationHistory(tabMasterLawsuitId)}
-              disabled={finalizationHistoryLoading || !tabMasterLawsuitId}
+              onClick={loadMatterAuditHistory}
+              disabled={matterAuditHistoryLoading}
               style={{
                 padding: "7px 10px",
                 border: "1px solid #2563eb",
-                background:
-                  finalizationHistoryLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#2563eb",
-                color: finalizationHistoryLoading || !tabMasterLawsuitId ? "#666" : "#fff",
+                background: matterAuditHistoryLoading ? "#f3f4f6" : "#2563eb",
+                color: matterAuditHistoryLoading ? "#666" : "#fff",
                 borderRadius: 4,
-                cursor:
-                  finalizationHistoryLoading || !tabMasterLawsuitId ? "not-allowed" : "pointer",
+                cursor: matterAuditHistoryLoading ? "not-allowed" : "pointer",
                 fontWeight: 700,
                 whiteSpace: "nowrap",
               }}
             >
-              {finalizationHistoryLoading ? "Loading..." : "Refresh History"}
+              {matterAuditHistoryLoading ? "Loading..." : "Refresh Audit Log"}
             </button>
           </div>
 
-          {!tabMasterLawsuitId ? (
-            <div style={{ marginTop: 12, color: "#475569" }}>
-              No MASTER_LAWSUIT_ID is available yet.  Generate or connect a lawsuit before loading audit/history records.
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+              gap: 10,
+              marginTop: 14,
+              marginBottom: 14,
+            }}
+          >
+            <div style={bmStatCardStyle}>
+              <div style={{ fontSize: 11, fontWeight: 900, color: bmColors.subtle, textTransform: "uppercase" }}>Matter</div>
+              <div style={{ marginTop: 4, fontSize: 14, fontWeight: 900, color: bmColors.ink }}>
+                {textValue(matter?.displayNumber || matter?.display_number) || matterId || "—"}
+              </div>
             </div>
-          ) : (
-            <>
-              {finalizationHistory?.error && (
-                <div style={{ marginTop: 12, color: "#991b1b" }}>
-                  <strong>Error:</strong> {textValue(finalizationHistory.error)}
-                </div>
-              )}
 
-              {finalizationHistoryLoading && !finalizationHistory && (
-                <div style={{ marginTop: 12, color: "#475569" }}>
-                  Loading finalization history...
-                </div>
-              )}
+            <div style={bmStatCardStyle}>
+              <div style={{ fontSize: 11, fontWeight: 900, color: bmColors.subtle, textTransform: "uppercase" }}>Matter ID</div>
+              <div style={{ marginTop: 4, fontSize: 14, fontWeight: 900, color: bmColors.ink }}>
+                {matterId || "—"}
+              </div>
+            </div>
 
-              {finalizationHistory?.ok &&
-                Array.isArray(finalizationHistory.rows) &&
-                finalizationHistory.rows.length === 0 && (
-                  <div style={{ marginTop: 12, color: "#475569" }}>
-                    No finalization history recorded yet.
-                  </div>
-                )}
+            <div style={bmStatCardStyle}>
+              <div style={{ fontSize: 11, fontWeight: 900, color: bmColors.subtle, textTransform: "uppercase" }}>Master Lawsuit</div>
+              <div style={{ marginTop: 4, fontSize: 14, fontWeight: 900, color: bmColors.ink }}>
+                {textValue(matter?.masterLawsuitId || matter?.master_lawsuit_id) || "—"}
+              </div>
+            </div>
 
-              {finalizationHistory?.ok &&
-                Array.isArray(finalizationHistory.rows) &&
-                finalizationHistory.rows.length > 0 && (
-                  <div style={{ marginTop: 14 }}>
-                    {finalizationHistory.rows.map((row: any) => {
-                      const uploaded = Array.isArray(row.uploaded) ? row.uploaded : [];
-                      const skipped = Array.isArray(row.skipped) ? row.skipped : [];
-                      const rowKey = textValue(row.id);
-                      const isExpanded = expandedFinalizationId === rowKey;
+            <div style={bmStatCardStyle}>
+              <div style={{ fontSize: 11, fontWeight: 900, color: bmColors.subtle, textTransform: "uppercase" }}>Entries</div>
+              <div style={{ marginTop: 4, fontSize: 14, fontWeight: 900, color: bmColors.ink }}>
+                {Array.isArray(matterAuditHistoryResult?.entries) ? matterAuditHistoryResult.entries.length : 0}
+              </div>
+            </div>
+          </div>
 
-                      return (
-                        <div
-                          key={rowKey}
+          {matterAuditHistoryResult?.error && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: 12,
+                borderRadius: 12,
+                border: "1px solid #fecaca",
+                background: "#fef2f2",
+                color: "#991b1b",
+                fontWeight: 800,
+              }}
+            >
+              {textValue(matterAuditHistoryResult.error)}
+            </div>
+          )}
+
+          {matterAuditHistoryLoading && !matterAuditHistoryResult && (
+            <div style={{ marginTop: 12, color: bmColors.muted }}>
+              Loading matter audit history...
+            </div>
+          )}
+
+          {matterAuditHistoryResult?.ok &&
+            Array.isArray(matterAuditHistoryResult.entries) &&
+            matterAuditHistoryResult.entries.length === 0 && (
+              <div style={{ marginTop: 12, color: bmColors.muted }}>
+                No matter-specific audit entries found yet.
+              </div>
+            )}
+
+          {matterAuditHistoryResult?.ok &&
+            Array.isArray(matterAuditHistoryResult.entries) &&
+            matterAuditHistoryResult.entries.length > 0 && (
+              <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
+                {matterAuditHistoryResult.entries.map((entry: any) => {
+                  const rowKey = textValue(entry.id);
+                  const isExpanded = expandedMatterAuditEntryId === rowKey;
+
+                  return (
+                    <article
+                      key={rowKey}
+                      style={{
+                        display: "grid",
+                        gap: 10,
+                        padding: 14,
+                        borderRadius: 16,
+                        border: "1px solid " + bmColors.line,
+                        background: "#ffffff",
+                        boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: 15, fontWeight: 950, color: bmColors.ink }}>
+                            {textValue(entry.summary) || textValue(entry.action) || "Audit entry"}
+                          </div>
+                          <div style={{ marginTop: 4, fontSize: 12, color: bmColors.subtle, fontWeight: 750 }}>
+                            {formatMatterAuditTimestamp(entry.createdAt)} · {textValue(entry.actorName || entry.actorEmail) || "Unknown user"} · {textValue(entry.sourcePage) || "unknown source"}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setExpandedMatterAuditEntryId(isExpanded ? null : rowKey)}
                           style={{
-                            marginBottom: 10,
-                            padding: 12,
-                            background: "#f8fafc",
-                            border: "1px solid #cbd5e1",
-                            borderRadius: 6,
+                            fontSize: 12,
+                            padding: "5px 9px",
+                            border: "1px solid #94a3b8",
+                            borderRadius: 999,
+                            background: isExpanded ? "#e2e8f0" : "#fff",
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                            fontWeight: 800,
+                          }}
+                        >
+                          {isExpanded ? "Hide Details" : "Details"}
+                        </button>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                          gap: 10,
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: 11, color: bmColors.subtle, fontWeight: 900, textTransform: "uppercase" }}>Action</div>
+                          <div style={{ marginTop: 3, fontSize: 13, fontWeight: 850, color: bmColors.ink }}>{textValue(entry.action) || "—"}</div>
+                        </div>
+
+                        <div>
+                          <div style={{ fontSize: 11, color: bmColors.subtle, fontWeight: 900, textTransform: "uppercase" }}>Field</div>
+                          <div style={{ marginTop: 3, fontSize: 13, fontWeight: 850, color: bmColors.ink }}>{textValue(entry.fieldName) || "—"}</div>
+                        </div>
+
+                        <div>
+                          <div style={{ fontSize: 11, color: bmColors.subtle, fontWeight: 900, textTransform: "uppercase" }}>Prior Value</div>
+                          <div style={{ marginTop: 3, fontSize: 13, fontWeight: 850, color: bmColors.ink, overflowWrap: "anywhere" }}>{formatMatterAuditValue(entry.priorValue)}</div>
+                        </div>
+
+                        <div>
+                          <div style={{ fontSize: 11, color: bmColors.subtle, fontWeight: 900, textTransform: "uppercase" }}>New Value</div>
+                          <div style={{ marginTop: 3, fontSize: 13, fontWeight: 850, color: bmColors.ink, overflowWrap: "anywhere" }}>{formatMatterAuditValue(entry.newValue)}</div>
+                        </div>
+                      </div>
+
+                      {isExpanded && (
+                        <div
+                          style={{
+                            padding: 10,
+                            borderRadius: 12,
+                            border: "1px solid " + bmColors.softLine,
+                            background: bmColors.page,
+                            fontSize: 12,
                           }}
                         >
                           <div
                             style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              gap: 10,
-                              alignItems: "flex-start",
+                              display: "grid",
+                              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                              gap: 8,
+                              marginBottom: 10,
                             }}
                           >
                             <div>
-                              <div style={{ fontWeight: 800 }}>
-                                {row.finalizedAt
-                                  ? new Date(row.finalizedAt).toLocaleString()
-                                  : "Unknown date"}
-                              </div>
-                              <div style={{ color: "#475569", marginTop: 2, fontSize: 13 }}>
-                                Audit ID {rowKey} · Status {textValue(row.status) || "unknown"} · Uploaded {uploaded.length} · Skipped {skipped.length}
-                                {row.noUploadPerformed ? " · No upload performed" : ""}
-                                {row.allowDuplicateUploads ? " · Duplicate override allowed" : ""}
-                              </div>
+                              <strong>Matter:</strong>
+                              <br />
+                              {textValue(entry.matterDisplayNumber) || textValue(entry.matterId) || "—"}
                             </div>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setExpandedFinalizationId(isExpanded ? null : rowKey)
-                              }
-                              style={{
-                                fontSize: 12,
-                                padding: "4px 9px",
-                                border: "1px solid #94a3b8",
-                                borderRadius: 4,
-                                background: isExpanded ? "#e2e8f0" : "#fff",
-                                cursor: "pointer",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {isExpanded ? "Hide Details" : "Details"}
-                            </button>
+                            <div>
+                              <strong>Master Matter:</strong>
+                              <br />
+                              {textValue(entry.masterMatterDisplayNumber) || textValue(entry.masterMatterId) || "—"}
+                            </div>
+                            <div>
+                              <strong>Master Lawsuit:</strong>
+                              <br />
+                              {textValue(entry.masterLawsuitId) || "—"}
+                            </div>
+                            <div>
+                              <strong>Workflow:</strong>
+                              <br />
+                              {textValue(entry.workflow) || "—"}
+                            </div>
                           </div>
 
-                          {uploaded.length > 0 && (
-                            <div style={{ color: "#065f46", marginTop: 6, fontSize: 13 }}>
-                              Uploaded:{" "}
-                              {uploaded
-                                .map((doc: any) => `${textValue(doc.label) || textValue(doc.key)}${doc.clioDocumentId ? ` (Clio ${doc.clioDocumentId})` : ""}`)
-                                .join(", ")}
+                          {Array.isArray(entry.affectedMatterIds) && entry.affectedMatterIds.length > 0 && (
+                            <div style={{ marginBottom: 8 }}>
+                              <strong>Affected matter IDs:</strong> {entry.affectedMatterIds.join(", ")}
                             </div>
                           )}
 
-                          {skipped.length > 0 && (
-                            <div style={{ color: "#92400e", marginTop: 6, fontSize: 13 }}>
-                              Skipped:{" "}
-                              {skipped
-                                .map((doc: any) => `${textValue(doc.label) || textValue(doc.key)}${textValue(doc.reason) ? ` (${textValue(doc.reason)})` : ""}`)
-                                .join(", ")}
-                            </div>
-                          )}
-
-                          {textValue(row.error) && (
-                            <div style={{ color: "#991b1b", marginTop: 6, fontSize: 13 }}>
-                              <strong>Error:</strong> {textValue(row.error)}
-                            </div>
-                          )}
-
-                          {isExpanded && (
-                            <div
+                          <details>
+                            <summary style={{ cursor: "pointer", fontWeight: 800 }}>
+                              Raw audit entry JSON
+                            </summary>
+                            <pre
                               style={{
-                                marginTop: 10,
-                                padding: 10,
-                                background: "#fff",
-                                border: "1px solid #e5e7eb",
+                                whiteSpace: "pre-wrap",
+                                overflowX: "auto",
+                                margin: "6px 0 0 0",
+                                padding: 8,
+                                background: "#ffffff",
+                                border: "1px solid " + bmColors.softLine,
                                 borderRadius: 4,
-                                fontSize: 12,
                               }}
                             >
-                              <div
-                                style={{
-                                  display: "grid",
-                                  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-                                  gap: 8,
-                                  marginBottom: 10,
-                                }}
-                              >
-                                <div>
-                                  <strong>Master Lawsuit ID:</strong>
-                                  <br />
-                                  {textValue(row.masterLawsuitId) || "—"}
-                                </div>
-                                <div>
-                                  <strong>Master Matter:</strong>
-                                  <br />
-                                  {textValue(row.masterDisplayNumber) || textValue(row.masterMatterId) || "—"}
-                                </div>
-                                <div>
-                                  <strong>Requested Docs:</strong>
-                                  <br />
-                                  {Array.isArray(row.requestedKeys) && row.requestedKeys.length > 0
-                                    ? row.requestedKeys.map(textValue).join(", ")
-                                    : "—"}
-                                </div>
-                                <div>
-                                  <strong>Audit Updated:</strong>
-                                  <br />
-                                  {row.updatedAt ? new Date(row.updatedAt).toLocaleString() : "—"}
-                                </div>
-                              </div>
-
-                              <details>
-                                <summary style={{ cursor: "pointer", fontWeight: 700 }}>
-                                  Raw finalization audit JSON
-                                </summary>
-                                <pre
-                                  style={{
-                                    whiteSpace: "pre-wrap",
-                                    overflowX: "auto",
-                                    margin: "6px 0 0 0",
-                                    padding: 8,
-                                    background: "#f8fafc",
-                                    border: "1px solid #e5e7eb",
-                                    borderRadius: 4,
-                                  }}
-                                >
-                                  {JSON.stringify(row, null, 2)}
-                                </pre>
-                              </details>
-
-                              <div style={{ marginTop: 8, color: "#475569" }}>
-                                This drilldown displays local audit/history data only.  It does not verify current Clio document existence.
-                              </div>
-                            </div>
-                          )}
+                              {JSON.stringify(entry, null, 2)}
+                            </pre>
+                          </details>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-            </>
-          )}
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
         </section>
       )}
+
 
       {activeWorkspaceTab !== "settlement" && (
         <>

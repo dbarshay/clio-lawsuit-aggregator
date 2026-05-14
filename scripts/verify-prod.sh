@@ -77,3 +77,6 @@ npm run verify:claimindex-rebuild-status-safety
 echo
 echo "=== RUN PRODUCTION WORKFLOW SMOKE TEST ==="
 npm run smoke:workflow:prod
+
+echo "=== VERIFY LOCAL-FIRST INDIVIDUAL PAYMENT SAFETY ==="
+npm run verify:local-first-payment-safety

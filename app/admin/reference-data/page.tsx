@@ -309,6 +309,8 @@ export default function AdminReferenceDataPage() {
 
   const [importHistory, setImportHistory] = useState<ImportHistoryResponse | null>(null);
   const [importHistoryLoading, setImportHistoryLoading] = useState(false);
+  const [selectedImportHistoryItem, setSelectedImportHistoryItem] =
+    useState<NonNullable<ImportHistoryResponse["imports"]>[number] | null>(null);
 
   const selectedTypeLabel = useMemo(
     () => typeOptions.find((option) => option.value === selectedType)?.label || selectedType,
@@ -1132,7 +1134,7 @@ export default function AdminReferenceDataPage() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: "#eff6ff" }}>
-                    {["Imported", "Type", "Rows", "Created", "Updated", "Aliases", "Actor", "Imported Rows"].map((header) => (
+                    {["Imported", "Type", "Rows", "Created", "Updated", "Aliases", "Actor", "Imported Rows", "Details"].map((header) => (
                       <th
                         key={header}
                         style={{
@@ -1172,6 +1174,23 @@ export default function AdminReferenceDataPage() {
                           : "—"}
                         {item.importedRows && item.importedRows.length > 4 ? " …" : ""}
                       </td>
+                      <td style={{ padding: "10px 8px" }}>
+                        <button
+                          onClick={() => setSelectedImportHistoryItem(item)}
+                          style={{
+                            border: "1px solid #bfdbfe",
+                            background: "#eff6ff",
+                            color: "#1d4ed8",
+                            borderRadius: 10,
+                            padding: "7px 10px",
+                            fontWeight: 900,
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          View Details
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1192,6 +1211,200 @@ export default function AdminReferenceDataPage() {
             </div>
           ) : null}
         </section>
+
+        {selectedImportHistoryItem ? (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Reference import detail"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 1000,
+              background: "rgba(15, 23, 42, 0.42)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 24,
+            }}
+          >
+            <div
+              style={{
+                width: "min(1040px, calc(100vw - 48px))",
+                maxHeight: "calc(100vh - 48px)",
+                overflow: "auto",
+                background: "#ffffff",
+                border: "1px solid #bfdbfe",
+                borderRadius: 22,
+                boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
+                padding: 20,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  alignItems: "flex-start",
+                  marginBottom: 16,
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: "#1d4ed8", letterSpacing: 1.2 }}>
+                    READ-ONLY IMPORT DETAIL
+                  </div>
+                  <h2 style={{ margin: "4px 0 6px", fontSize: 24 }}>Reference Import Detail</h2>
+                  <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.45 }}>
+                    This popup reads the audit log only.  It does not modify local records, Clio, documents, or the print queue.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSelectedImportHistoryItem(null)}
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    background: "#f8fafc",
+                    color: "#0f172a",
+                    borderRadius: 12,
+                    padding: "10px 12px",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, marginBottom: 16 }}>
+                {[
+                  ["Imported", formatDate(selectedImportHistoryItem.createdAt)],
+                  ["Type", selectedImportHistoryItem.typeLabel || selectedImportHistoryItem.type || "—"],
+                  ["Actor", selectedImportHistoryItem.actorName || "—"],
+                  ["Rows Imported", selectedImportHistoryItem.imported?.rowsImported ?? 0],
+                  ["Created", selectedImportHistoryItem.imported?.created ?? 0],
+                  ["Updated", selectedImportHistoryItem.imported?.updated ?? 0],
+                  ["Aliases Created", selectedImportHistoryItem.imported?.aliasesCreated ?? 0],
+                  ["Aliases Skipped", selectedImportHistoryItem.imported?.aliasesSkippedExisting ?? 0],
+                ].map(([label, value]) => (
+                  <div
+                    key={String(label)}
+                    style={{
+                      border: "1px solid #e2e8f0",
+                      background: "#f8fafc",
+                      borderRadius: 14,
+                      padding: 12,
+                    }}
+                  >
+                    <div style={{ fontSize: 11, color: "#64748b", fontWeight: 900 }}>{label}</div>
+                    <div style={{ fontSize: 15, fontWeight: 900, marginTop: 4 }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+                <div
+                  style={{
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 16,
+                    padding: 14,
+                    background: "#ffffff",
+                  }}
+                >
+                  <h3 style={{ margin: "0 0 10px", fontSize: 16 }}>Preview Summary</h3>
+                  <pre
+                    style={{
+                      margin: 0,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 12,
+                      padding: 12,
+                      fontSize: 12,
+                    }}
+                  >
+                    {prettyJson(selectedImportHistoryItem.previewSummary)}
+                  </pre>
+                </div>
+
+                <div
+                  style={{
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 16,
+                    padding: 14,
+                    background: "#ffffff",
+                  }}
+                >
+                  <h3 style={{ margin: "0 0 10px", fontSize: 16 }}>Column Mapping</h3>
+                  <pre
+                    style={{
+                      margin: 0,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 12,
+                      padding: 12,
+                      fontSize: 12,
+                    }}
+                  >
+                    {prettyJson(selectedImportHistoryItem.mappingSummary)}
+                  </pre>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 16,
+                  padding: 14,
+                  background: "#ffffff",
+                }}
+              >
+                <h3 style={{ margin: "0 0 10px", fontSize: 16 }}>Imported Rows</h3>
+                {selectedImportHistoryItem.importedRows?.length ? (
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ background: "#eff6ff" }}>
+                          {["CSV Row", "Action", "Display Name", "Aliases Created", "Aliases Skipped", "Entity ID"].map((header) => (
+                            <th
+                              key={header}
+                              style={{
+                                textAlign: "left",
+                                padding: "9px 8px",
+                                borderBottom: "1px solid #bfdbfe",
+                                color: "#1e3a8a",
+                                fontSize: 12,
+                                fontWeight: 900,
+                              }}
+                            >
+                              {header}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedImportHistoryItem.importedRows.map((row) => (
+                          <tr key={`${row.entityId}-${row.rowNumber}`} style={{ borderBottom: "1px solid #e2e8f0" }}>
+                            <td style={{ padding: "9px 8px", fontWeight: 800 }}>{row.rowNumber}</td>
+                            <td style={{ padding: "9px 8px", fontWeight: 800 }}>{row.action}</td>
+                            <td style={{ padding: "9px 8px", fontWeight: 800 }}>{row.displayName}</td>
+                            <td style={{ padding: "9px 8px" }}>{row.aliasesCreated}</td>
+                            <td style={{ padding: "9px 8px" }}>{row.aliasesSkippedExisting}</td>
+                            <td style={{ padding: "9px 8px", color: "#64748b", fontSize: 11 }}>{row.entityId}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div style={{ color: "#64748b", fontWeight: 800 }}>No imported row details were recorded.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <section
           style={{

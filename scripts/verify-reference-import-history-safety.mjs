@@ -67,6 +67,30 @@ if (!page.includes("does not modify local records or Clio")) {
   fail("History panel must state it is read-only and does not modify local records or Clio.");
 }
 
+if (!page.includes("View Details")) {
+  fail("Import history table must include a View Details action.");
+}
+
+if (!page.includes("READ-ONLY IMPORT DETAIL")) {
+  fail("Admin page must include read-only import detail popup.");
+}
+
+if (!page.includes("Preview Summary")) {
+  fail("Import detail popup must show preview summary.");
+}
+
+if (!page.includes("Column Mapping")) {
+  fail("Import detail popup must show column mapping.");
+}
+
+if (!page.includes("Imported Rows")) {
+  fail("Import detail popup must show imported rows.");
+}
+
+if (!page.includes("It does not modify local records, Clio, documents, or the print queue")) {
+  fail("Import detail popup must clearly state it is read-only and does not modify records or Clio.");
+}
+
 if (pkg.scripts?.["verify:reference-import-history-safety"] !== "node scripts/verify-reference-import-history-safety.mjs") {
   fail("package.json must include verify:reference-import-history-safety script.");
 }

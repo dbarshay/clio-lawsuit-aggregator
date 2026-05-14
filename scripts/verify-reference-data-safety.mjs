@@ -64,6 +64,7 @@ mustContain("helper", helper, "individual");
 mustContain("helper", helper, "adversary_attorney");
 mustContain("helper", helper, "insurer_company");
 mustContain("helper", helper, "provider_client");
+mustContain("helper", helper, "treating_provider");
 mustContain("helper", helper, "patient");
 mustContain("helper", helper, "court_venue");
 mustContain("helper", helper, "service_type");

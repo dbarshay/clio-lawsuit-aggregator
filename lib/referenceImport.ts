@@ -131,6 +131,8 @@ export function autoMapHeader(header: string): ColumnMappingAction {
       "company_name",
       "person_name",
       "provider_name",
+      "treating_provider_name",
+      "rendering_provider_name",
       "patient_name",
       "insurer_name",
       "court_name",

@@ -5,6 +5,7 @@ export const REFERENCE_ENTITY_TYPES = [
   "adversary_attorney",
   "insurer_company",
   "provider_client",
+  "treating_provider",
   "patient",
   "court_venue",
   "service_type",
@@ -56,6 +57,12 @@ export function normalizeReferenceEntityType(value: unknown): ReferenceEntityTyp
     clients: "provider_client",
     provider_clients: "provider_client",
 
+    treating_provider: "treating_provider",
+    treating_providers: "treating_provider",
+    treating: "treating_provider",
+    rendering_provider: "treating_provider",
+    rendering_providers: "treating_provider",
+
     patients: "patient",
 
     court: "court_venue",
@@ -105,6 +112,7 @@ export function referenceTypeLabel(type: ReferenceEntityType): string {
     adversary_attorney: "Adversary Attorneys",
     insurer_company: "Insurers / Companies",
     provider_client: "Providers / Clients",
+    treating_provider: "Treating Providers",
     patient: "Patients",
     court_venue: "Courts / Venues",
     service_type: "Service Types",

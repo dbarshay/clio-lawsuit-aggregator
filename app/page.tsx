@@ -1142,7 +1142,7 @@ export default function Home() {
 
   function openReferenceImportsAdmin() {
     const confirmed = window.confirm(
-      "ADMIN ACCESS REQUIRED\n\nOpen Reference Data Imports?\n\nThis area controls local Barsh Matters reference-data imports, import history, cleanup previews, and deactivate-only cleanup tools.\n\nContinue?"
+      "ADMIN ACCESS REQUIRED\n\nOpen Reference Data Import?\n\nThis area controls local Barsh Matters reference-data import, import history, cleanup previews, and deactivate-only cleanup tools.\n\nContinue?"
     );
 
     if (!confirmed) return;
@@ -1940,28 +1940,19 @@ export default function Home() {
   return (
     <main style={pageStyle}>
       <div style={shellStyle}>
-        <section style={topBarStyle}>
+        <section style={compactLandingTopBarStyle}>
           <div style={leftLogoWrapStyle}>
             <img src="/brl-logo.png" alt="BRL Logo" style={brlLogoStyle} />
             <div style={{ paddingTop: 8 }}>
               <BarshHeaderQuickNav />
             </div>
           </div>
-
-          
-          <div style={centerCaricatureWrapStyle}>
-            <img
-              src="/header-caricature.png"
-              alt="Header caricature"
-              style={headerCaricatureStyle}
-            />
-          </div>
 <div style={rightTopWrapStyle}>
             <div style={printButtonRowStyle}>
               <button
                 type="button"
                 onClick={openReferenceImportsAdmin}
-                title="Admin access required. Open Reference Data Imports."
+                title="Admin access required. Open Reference Data Import."
                 style={{
                   ...lockedPrintQueueButtonStyle,
                   cursor: "pointer",
@@ -1969,7 +1960,7 @@ export default function Home() {
                 }}
               >
                 <span aria-hidden="true">🔐</span>
-                <span>Imports</span>
+                <span>Import</span>
               </button>
 
               <button
@@ -2041,23 +2032,23 @@ export default function Home() {
 `}
 </style>
 
-        <section style={lookupPanelStyle}>
+        <section style={compactLandingLookupPanelStyle}>
           <div
             style={{
-              padding: 24,
+              padding: "20px 22px 22px",
               border: "2px solid #cbd5e1",
-              borderRadius: 24,
+              borderRadius: 22,
               background: "#ffffff",
-              boxShadow: "0 14px 34px rgba(15, 23, 42, 0.08)",
+              boxShadow: "0 10px 26px rgba(15, 23, 42, 0.07)",
             }}
           >
             <div
               style={{
-                marginBottom: 16,
+                marginBottom: 14,
                 color: "#475569",
-                fontSize: 13,
+                fontSize: 18,
                 fontWeight: 950,
-                letterSpacing: "0.14em",
+                letterSpacing: "0.10em",
                 textTransform: "uppercase",
               }}
             >
@@ -2099,33 +2090,31 @@ export default function Home() {
                 />
               </label>
             </div>
-          </div>
 
-          <div
-            style={{
-              marginTop: 28,
-              padding: 24,
-              border: "2px solid #cbd5e1",
-              borderRadius: 24,
-              background: "#ffffff",
-              boxShadow: "0 14px 34px rgba(15, 23, 42, 0.08)",
-            }}
-          >
+            <div
+              style={{
+                height: 3,
+                margin: "28px 0 26px",
+                background: "#d5dfec",
+                borderRadius: 999,
+              }}
+            />
+
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
                 gap: 16,
-                marginBottom: 16,
+                marginBottom: 14,
               }}
             >
               <div
                 style={{
                   color: "#475569",
-                  fontSize: 13,
+                  fontSize: 18,
                   fontWeight: 950,
-                  letterSpacing: "0.14em",
+                  letterSpacing: "0.10em",
                   textTransform: "uppercase",
                 }}
               >
@@ -2610,7 +2599,7 @@ export default function Home() {
 
 const pageStyle: React.CSSProperties = {
   minHeight: "100vh",
-  padding: "28px 24px 44px",
+  padding: "12px 20px 32px",
   background: colors.page,
   color: colors.ink,
   fontFamily:
@@ -2667,8 +2656,8 @@ const rightTopWrapStyle: React.CSSProperties = {
   gridColumn: "3",
   justifySelf: "end",
   position: "relative",
-  width: 330,
-  height: 144,
+  width: 292,
+  height: 126,
   display: "flex",
   justifyContent: "flex-end",
   alignItems: "flex-start",
@@ -2677,7 +2666,7 @@ const rightTopWrapStyle: React.CSSProperties = {
 const printButtonRowStyle: React.CSSProperties = {
   position: "absolute",
   top: 0,
-  right: 248,
+  right: 218,
   display: "flex",
   justifyContent: "flex-end",
   alignItems: "center",
@@ -2693,15 +2682,15 @@ const bmLogoLinkStyle: React.CSSProperties = {
 };
 
 const brlLogoStyle: React.CSSProperties = {
-  width: 216,
-  height: 144,
+  width: 190,
+  height: 126,
   objectFit: "contain",
   display: "block",
 };
 
 const bmLogoStyle: React.CSSProperties = {
-  width: 330,
-  height: 152,
+  width: 292,
+  height: 132,
   objectFit: "contain",
   objectPosition: "right top",
   display: "block",
@@ -3275,6 +3264,27 @@ const advancedModalActionsStyle: React.CSSProperties = {
   borderTop: "1px solid " + colors.lineSoft,
 };
 
+
+
+const compactLandingTopBarStyle: React.CSSProperties = {
+  ...topBarStyle,
+  position: "relative",
+  top: "auto",
+  zIndex: 10,
+  gridTemplateColumns: "500px minmax(0, 1fr) 330px",
+  minHeight: 124,
+  padding: "6px 0 4px",
+  marginBottom: 6,
+  alignItems: "start",
+  background: "transparent",
+  boxShadow: "none",
+  borderBottom: "none",
+};
+
+const compactLandingLookupPanelStyle: React.CSSProperties = {
+  ...lookupPanelStyle,
+  marginTop: 4,
+};
 
 const mainPageSectionLabelStyle: React.CSSProperties = {
   margin: "4px 0 10px",

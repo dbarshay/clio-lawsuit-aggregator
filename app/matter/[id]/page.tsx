@@ -424,11 +424,12 @@ const bmGlobalTopBarStyle: React.CSSProperties = {
   gridTemplateColumns: "500px minmax(0, 1fr) 330px",
   alignItems: "start",
   gap: 16,
-  marginBottom: 14,
-  padding: "8px 0 10px",
+  marginBottom: 10,
+  padding: "4px 0 12px",
   background: "#f8fafc",
-  boxShadow: "0 8px 24px rgba(15, 23, 42, 0.10)",
-  borderBottom: "1px solid rgba(203, 213, 225, 0.9)",
+  backdropFilter: "blur(10px)",
+  boxShadow: "none",
+  borderBottom: "1px solid rgba(203, 213, 225, 0.45)",
 };
 
 const bmGlobalLeftLogoWrapStyle: React.CSSProperties = {
@@ -450,8 +451,8 @@ const bmGlobalRightWrapStyle: React.CSSProperties = {
 };
 
 const bmGlobalBrlLogoStyle: React.CSSProperties = {
-  width: 216,
-  height: 144,
+  width: 190,
+  height: 126,
   objectFit: "contain",
   display: "block",
 };
@@ -474,7 +475,7 @@ const bmGlobalLogoStyle: React.CSSProperties = {
 const bmGlobalPrintButtonRowStyle: React.CSSProperties = {
   position: "absolute",
   top: 0,
-  right: 248,
+  right: 218,
   display: "flex",
   justifyContent: "flex-end",
   alignItems: "center",
@@ -716,7 +717,7 @@ const activeGroupKey =
 
   function openReferenceImportsAdmin() {
     const confirmed = window.confirm(
-      "ADMIN ACCESS REQUIRED\n\nOpen Reference Data Imports?\n\nThis area controls local Barsh Matters reference-data imports, import history, cleanup previews, and deactivate-only cleanup tools.\n\nContinue?"
+      "ADMIN ACCESS REQUIRED\n\nOpen Reference Data Import?\n\nThis area controls local Barsh Matters reference-data import, import history, cleanup previews, and deactivate-only cleanup tools.\n\nContinue?"
     );
 
     if (!confirmed) return;
@@ -3562,7 +3563,7 @@ const activeGroupKey =
 
     <main
       style={{
-        padding: "18px 16px 40px",
+        padding: "12px 14px 30px",
         width: "100vw",
         maxWidth: "none",
         marginLeft: "calc(50% - 50vw)",
@@ -3592,7 +3593,7 @@ const activeGroupKey =
             gap: 9,
             textAlign: "center",
             minWidth: 320,
-            paddingTop: 48,
+            paddingTop: 24,
           }}
         >
           <div
@@ -3685,7 +3686,7 @@ const activeGroupKey =
             <button
               type="button"
               onClick={openReferenceImportsAdmin}
-              title="Admin access required. Open Reference Data Imports."
+              title="Admin access required. Open Reference Data Import."
               style={{
                 ...bmGlobalLockedPrintQueueStyle,
                 cursor: "pointer",
@@ -3693,7 +3694,7 @@ const activeGroupKey =
               }}
             >
               <span aria-hidden="true">🔐</span>
-              <span>Imports</span>
+              <span>Import</span>
             </button>
 
             <button
@@ -4400,7 +4401,17 @@ const activeGroupKey =
                 </div>
               </div>
 
-              <div className="barsh-direct-financial-bubble">
+              <div
+                className="barsh-direct-financial-bubble"
+                style={{
+                  border: matterIsClosedForPayment()
+                    ? "1px solid rgba(220, 38, 38, 0.28)"
+                    : "1px solid rgba(22, 163, 74, 0.26)",
+                  boxShadow: matterIsClosedForPayment()
+                    ? "0 10px 26px rgba(220, 38, 38, 0.075)"
+                    : "0 10px 26px rgba(22, 163, 74, 0.075)",
+                }}
+              >
                 <div
                   style={{
                     display: "grid",
@@ -5225,13 +5236,13 @@ const activeGroupKey =
         <div
           className="barsh-direct-payment-receipts"
           style={{
-            marginTop: 18,
+            marginTop: -22,
             width: "100%",
-            padding: 16,
-            border: "1px solid #dbeafe",
-            borderRadius: 18,
+            padding: "8px 16px 12px",
+            border: "none",
+            borderRadius: 12,
             background: "#f8fafc",
-            boxShadow: "0 12px 30px rgba(15, 23, 42, 0.08)",
+            boxShadow: "none",
           }}
         >
           <div
@@ -5283,10 +5294,10 @@ const activeGroupKey =
             <div
               style={{
         overflowX: "auto",
-        border: "1px solid #d7dee8",
+        border: "none",
         borderRadius: 10,
-        background: "#fff",
-        boxShadow: "0 8px 24px rgba(15, 23, 42, 0.08)",
+        background: "#f8fafc",
+        boxShadow: "none",
               }}
             >
               <table

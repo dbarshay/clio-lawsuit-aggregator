@@ -648,7 +648,7 @@ export default function FilteredMattersPage() {
 
   function openReferenceImportsAdmin() {
     const confirmed = window.confirm(
-      "ADMIN ACCESS REQUIRED\n\nOpen Reference Data Imports?\n\nThis area controls local Barsh Matters reference-data imports, import history, cleanup previews, and deactivate-only cleanup tools.\n\nContinue?"
+      "ADMIN ACCESS REQUIRED\n\nOpen Reference Data Import?\n\nThis area controls local Barsh Matters reference-data import, import history, cleanup previews, and deactivate-only cleanup tools.\n\nContinue?"
     );
 
     if (!confirmed) return;
@@ -1315,7 +1315,7 @@ export default function FilteredMattersPage() {
               <button
                 type="button"
                 onClick={openReferenceImportsAdmin}
-                title="Admin access required. Open Reference Data Imports."
+                title="Admin access required. Open Reference Data Import."
                 style={{
                   ...lockedPrintQueueButtonStyle,
                   cursor: "pointer",
@@ -1323,7 +1323,7 @@ export default function FilteredMattersPage() {
                 }}
               >
                 <span aria-hidden="true">🔐</span>
-                <span>Imports</span>
+                <span>Import</span>
               </button>
 
               <button

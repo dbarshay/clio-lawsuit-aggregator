@@ -646,6 +646,16 @@ export default function FilteredMattersPage() {
     }
   }
 
+  function openReferenceImportsAdmin() {
+    const confirmed = window.confirm(
+      "ADMIN ACCESS REQUIRED\n\nOpen Reference Data Imports?\n\nThis area controls local Barsh Matters reference-data imports, import history, cleanup previews, and deactivate-only cleanup tools.\n\nContinue?"
+    );
+
+    if (!confirmed) return;
+
+    window.location.href = "/admin/reference-data";
+  }
+
   function openMasterAuditHistoryPopup() {
     setMasterAuditHistoryOpen(true);
     void loadMasterAuditHistory();
@@ -1302,6 +1312,20 @@ export default function FilteredMattersPage() {
 
 <div style={rightTopWrapStyle}>
             <div style={printButtonRowStyle}>
+              <button
+                type="button"
+                onClick={openReferenceImportsAdmin}
+                title="Admin access required. Open Reference Data Imports."
+                style={{
+                  ...lockedPrintQueueButtonStyle,
+                  cursor: "pointer",
+                  opacity: 1,
+                }}
+              >
+                <span aria-hidden="true">🔐</span>
+                <span>Imports</span>
+              </button>
+
               <button
                 type="button"
                 onClick={openMasterAuditHistoryPopup}
@@ -4911,10 +4935,12 @@ const rightTopWrapStyle: React.CSSProperties = {
 const printButtonRowStyle: React.CSSProperties = {
   position: "absolute",
   top: 0,
-  left: -86,
+  right: 248,
   display: "flex",
-  justifyContent: "flex-start",
+  justifyContent: "flex-end",
   alignItems: "center",
+  gap: 8,
+  flexWrap: "nowrap",
 };
 
 const bmLogoLinkStyle: React.CSSProperties = {

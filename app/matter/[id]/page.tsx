@@ -474,10 +474,12 @@ const bmGlobalLogoStyle: React.CSSProperties = {
 const bmGlobalPrintButtonRowStyle: React.CSSProperties = {
   position: "absolute",
   top: 0,
-  left: -86,
+  right: 248,
   display: "flex",
-  justifyContent: "flex-start",
+  justifyContent: "flex-end",
   alignItems: "center",
+  gap: 8,
+  flexWrap: "nowrap",
 };
 
 const bmGlobalLockedPrintQueueStyle: React.CSSProperties = {
@@ -710,6 +712,16 @@ const activeGroupKey =
     } finally {
       setMatterAuditHistoryLoading(false);
     }
+  }
+
+  function openReferenceImportsAdmin() {
+    const confirmed = window.confirm(
+      "ADMIN ACCESS REQUIRED\n\nOpen Reference Data Imports?\n\nThis area controls local Barsh Matters reference-data imports, import history, cleanup previews, and deactivate-only cleanup tools.\n\nContinue?"
+    );
+
+    if (!confirmed) return;
+
+    window.location.href = "/admin/reference-data";
   }
 
   function openMatterAuditHistoryTab() {
@@ -3596,7 +3608,29 @@ const activeGroupKey =
               gap: 4,
             }}
           >
-            <span>{textValue(matter?.displayNumber)}</span>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                justifySelf: "center",
+                padding: "12px 24px",
+                border: `2px solid ${matterIsClosedForPayment() ? "#dc2626" : "#16a34a"}`,
+                borderRadius: 999,
+                background: matterIsClosedForPayment() ? "#fee2e2" : "#dcfce7",
+                color: matterIsClosedForPayment() ? "#991b1b" : "#14532d",
+                fontSize: 34,
+                lineHeight: 1,
+                fontWeight: 950,
+                letterSpacing: "-0.01em",
+                whiteSpace: "nowrap",
+                boxShadow: matterIsClosedForPayment()
+                  ? "0 10px 30px rgba(220, 38, 38, 0.18)"
+                  : "0 10px 30px rgba(22, 163, 74, 0.18)",
+              }}
+            >
+              {textValue(matter?.displayNumber)}
+            </span>
             <span
               style={{
                 display: "inline-flex",
@@ -3630,10 +3664,10 @@ const activeGroupKey =
                 alignItems: "center",
                 gap: 6,
                 padding: "7px 11px",
-                border: "1px solid #fecaca",
+                border: "1px solid #86efac",
                 borderRadius: 999,
-                background: "#fef2f2",
-                color: "#991b1b",
+                background: "#dcfce7",
+                color: "#14532d",
                 fontSize: 12,
                 fontWeight: 900,
                 whiteSpace: "nowrap",
@@ -3648,6 +3682,20 @@ const activeGroupKey =
 </div>
 <div style={bmGlobalRightWrapStyle}>
           <div style={bmGlobalPrintButtonRowStyle}>
+            <button
+              type="button"
+              onClick={openReferenceImportsAdmin}
+              title="Admin access required. Open Reference Data Imports."
+              style={{
+                ...bmGlobalLockedPrintQueueStyle,
+                cursor: "pointer",
+                opacity: 1,
+              }}
+            >
+              <span aria-hidden="true">🔐</span>
+              <span>Imports</span>
+            </button>
+
             <button
               type="button"
               onClick={openMatterAuditHistoryTab}
@@ -3807,6 +3855,7 @@ const activeGroupKey =
                   <div style={{ marginTop: 4, fontSize: 14, fontWeight: 900, color: bmColors.ink }}>
                     {textValue(matter?.displayNumber || matter?.display_number) || matterId || "—"}
                   </div>
+
                 </div>
 
                 <div style={bmStatCardStyle}>

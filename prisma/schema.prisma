@@ -48,7 +48,7 @@ model ClioToken {
 }
 
 model ClaimIndex {
-  matter_id               Int      @id
+  matter_id               Int     @id
   display_number          String?
   description             String?
   claim_number_raw        String?
@@ -58,38 +58,38 @@ model ClaimIndex {
   insurer_name            String?
   claim_amount            Float?
   settled_amount          Float?
-  
-  settled_with              String?
-  allocated_settlement      Float?
-  interest_amount           Float?
-  principal_fee             Float?
-  interest_fee              Float?
-  total_fee                 Float?
-  provider_net              Float?
-  provider_principal_net    Float?
-  provider_interest_net     Float?
-  overdue_days              Float?
-payment_amount          Float?
-  balance_amount          Float?
-  bill_number             String?
-  dos_start               String?
-  dos_end                 String?
-  denial_reason           String?
-  service_type            String?
-  policy_number           String?
-  date_of_loss            String?
-  payment_voluntary       Float?
-  balance_presuit         Float?
-  master_lawsuit_id       String?
-  status                  String?
-  close_reason            String?
-  raw_json                String?
-  indexed_at              DateTime @default(now())
-  matter_stage_name       String?
-  index_aaa_number        String?
-  patient_insurer         String?
-  patient_provider        String?
-  provider_name           String?
+
+  settled_with           String?
+  allocated_settlement   Float?
+  interest_amount        Float?
+  principal_fee          Float?
+  interest_fee           Float?
+  total_fee              Float?
+  provider_net           Float?
+  provider_principal_net Float?
+  provider_interest_net  Float?
+  overdue_days           Float?
+  payment_amount         Float?
+  balance_amount         Float?
+  bill_number            String?
+  dos_start              String?
+  dos_end                String?
+  denial_reason          String?
+  service_type           String?
+  policy_number          String?
+  date_of_loss           String?
+  payment_voluntary      Float?
+  balance_presuit        Float?
+  master_lawsuit_id      String?
+  status                 String?
+  close_reason           String?
+  raw_json               String?
+  indexed_at             DateTime @default(now())
+  matter_stage_name      String?
+  index_aaa_number       String?
+  patient_insurer        String?
+  patient_provider       String?
+  provider_name          String?
 
   @@index([claim_number_normalized])
   @@index([patient_name])
@@ -223,39 +223,39 @@ model SettlementWriteback {
 }
 
 model MatterPaymentReceipt {
-  id                       Int      @id @default(autoincrement())
-  matterId                 Int
-  displayNumber            String?
-  paymentDate              String
-  paymentAmount            Float
-  transactionType          String?
-  transactionStatus        String?
-  transactionDate          String?
-  checkNumber              String?
-  checkDate                String?
-  invoiceId                String?
-  description              String?
-  transactionFee           Float?
-  postedBy                 String?
-  posted                   Boolean  @default(true)
-  voided                   Boolean  @default(false)
-  voidedAt                 DateTime?
-  voidedBy                 String?
-  voidReason               String?
-  reversalSnapshot         Json?
-  editedAt                 DateTime?
-  editedBy                 String?
-  editReason               String?
-  editSnapshot             Json?
-  claimAmountBefore        Float?
-  paymentVoluntaryBefore   Float?
-  balancePresuitBefore     Float?
-  paymentVoluntaryAfter    Float?
-  balancePresuitAfter      Float?
-  clioReadback             Json?
-  safetySnapshot           Json?
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  id                     Int       @id @default(autoincrement())
+  matterId               Int
+  displayNumber          String?
+  paymentDate            String
+  paymentAmount          Float
+  transactionType        String?
+  transactionStatus      String?
+  transactionDate        String?
+  checkNumber            String?
+  checkDate              String?
+  invoiceId              String?
+  description            String?
+  transactionFee         Float?
+  postedBy               String?
+  posted                 Boolean   @default(true)
+  voided                 Boolean   @default(false)
+  voidedAt               DateTime?
+  voidedBy               String?
+  voidReason             String?
+  reversalSnapshot       Json?
+  editedAt               DateTime?
+  editedBy               String?
+  editReason             String?
+  editSnapshot           Json?
+  claimAmountBefore      Float?
+  paymentVoluntaryBefore Float?
+  balancePresuitBefore   Float?
+  paymentVoluntaryAfter  Float?
+  balancePresuitAfter    Float?
+  clioReadback           Json?
+  safetySnapshot         Json?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   @@index([matterId])
   @@index([displayNumber])
@@ -266,35 +266,33 @@ model MatterPaymentReceipt {
   @@index([createdAt])
 }
 
-
-
 model ClaimIndexRebuildState {
-  name              String   @id
-  currentBrlNumber  Int?
-  lastProcessedAt   DateTime?
-  status            String   @default("idle")
-  lastError         String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  name             String    @id
+  currentBrlNumber Int?
+  lastProcessedAt  DateTime?
+  status           String    @default("idle")
+  lastError        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([status])
   @@index([updatedAt])
 }
 
 model AuditLog {
-  id                        String   @id @default(cuid())
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  action                    String
-  summary                   String
-  entityType                String
-  fieldName                 String?
+  action     String
+  summary    String
+  entityType String
+  fieldName  String?
 
-  priorValue                Json?
-  newValue                  Json?
-  details                   Json?
-  affectedMatterIds         Json?
+  priorValue        Json?
+  newValue          Json?
+  details           Json?
+  affectedMatterIds Json?
 
   matterId                  Int?
   matterDisplayNumber       String?
@@ -302,11 +300,11 @@ model AuditLog {
   masterMatterDisplayNumber String?
   masterLawsuitId           String?
 
-  sourcePage                String?
-  workflow                  String?
+  sourcePage String?
+  workflow   String?
 
-  actorName                 String?
-  actorEmail                String?
+  actorName  String?
+  actorEmail String?
 
   @@index([matterId])
   @@index([matterDisplayNumber])
@@ -315,4 +313,41 @@ model AuditLog {
   @@index([masterLawsuitId])
   @@index([createdAt])
   @@index([action])
+}
+
+model ReferenceEntity {
+  id             String   @id @default(cuid())
+  type           String
+  displayName    String
+  normalizedName String
+  active         Boolean  @default(true)
+  notes          String?
+  details        Json?
+  source         String   @default("barsh-matters-local")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  aliases ReferenceAlias[]
+
+  @@unique([type, normalizedName])
+  @@index([type])
+  @@index([active])
+  @@index([displayName])
+  @@index([normalizedName])
+  @@index([createdAt])
+}
+
+model ReferenceAlias {
+  id              String   @id @default(cuid())
+  entityId        String
+  alias           String
+  normalizedAlias String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  entity ReferenceEntity @relation(fields: [entityId], references: [id], onDelete: Restrict)
+
+  @@unique([entityId, normalizedAlias])
+  @@index([entityId])
+  @@index([normalizedAlias])
 }

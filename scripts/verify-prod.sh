@@ -79,4 +79,5 @@ echo "=== RUN PRODUCTION WORKFLOW SMOKE TEST ==="
 npm run smoke:workflow:prod
 
 echo "=== VERIFY LOCAL-FIRST INDIVIDUAL PAYMENT SAFETY ==="
+npm run verify:reference-data-safety
 npm run verify:local-first-payment-safety

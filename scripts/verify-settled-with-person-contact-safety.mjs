@@ -40,14 +40,15 @@ const writebackRoute = read("app/api/settlements/writeback/route.ts");
 const packageJson = read("package.json");
 
 console.log("");
-console.log("=== VERIFY CONTACT SEARCH IS PERSON-ONLY AND READ-ONLY ===");
-mustContain("contact search route", contactSearchRoute, 'contactTypeFilter: "Person"');
-mustContain("contact search route", contactSearchRoute, 'clean(contact.type).toLowerCase() === "person"');
+console.log("=== VERIFY GENERAL CONTACT SEARCH IS READ-ONLY ===");
 mustContain("contact search route", contactSearchRoute, "readOnly: true");
 mustContain("contact search route", contactSearchRoute, "noClioRecordsChanged: true");
 mustContain("contact search route", contactSearchRoute, "noDatabaseRecordsChanged: true");
 mustContain("contact search route", contactSearchRoute, "noDocumentsGenerated: true");
 mustContain("contact search route", contactSearchRoute, "noPrintQueueRecordsChanged: true");
+mustContain("contact search route", contactSearchRoute, "normalizeContactTypeFilter");
+mustContain("contact search route", contactSearchRoute, "filterContacts");
+mustContain("contact search route", contactSearchRoute, "contactTypeFilter");
 mustNotContain("contact search route", contactSearchRoute, "method: \"PATCH\"");
 mustNotContain("contact search route", contactSearchRoute, "method: \"POST\"");
 mustNotContain("contact search route", contactSearchRoute, "method: \"DELETE\"");

@@ -315,6 +315,28 @@ model AuditLog {
   @@index([action])
 }
 
+
+model MatterLocalField {
+  id                  String   @id @default(cuid())
+  matterId            Int
+  matterDisplayNumber String?
+  fieldName           String
+  fieldValue          String?
+  fieldValueId        String?
+  details             Json?
+  source              String   @default("barsh-matters-local")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([matterId, fieldName])
+  @@index([matterId])
+  @@index([matterDisplayNumber])
+  @@index([fieldName])
+  @@index([fieldValue])
+  @@index([fieldValueId])
+  @@index([updatedAt])
+}
+
 model ReferenceEntity {
   id             String   @id @default(cuid())
   type           String

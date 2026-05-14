@@ -644,6 +644,13 @@ const activeGroupKey =
   const [denialReasonInput, setDenialReasonInput] = useState("");
   const [matterStageInput, setMatterStageInput] = useState("");
   const [finalStatusInput, setFinalStatusInput] = useState("");
+  const [treatingProviderOptions, setTreatingProviderOptions] = useState<any[]>([]);
+  const [treatingProviderOptionsLoading, setTreatingProviderOptionsLoading] = useState(false);
+  const [localTreatingProviderField, setLocalTreatingProviderField] = useState<any>(null);
+  const [treatingProviderInput, setTreatingProviderInput] = useState("");
+  const [treatingProviderSaving, setTreatingProviderSaving] = useState(false);
+  const [treatingProviderResult, setTreatingProviderResult] = useState<any>(null);
+  const [treatingProviderEditOpen, setTreatingProviderEditOpen] = useState(false);
 
   function formatMatterAuditValue(value: any): string {
     if (value === null || value === undefined || value === "") return "—";
@@ -733,6 +740,149 @@ const activeGroupKey =
   function closeMatterAuditHistoryPopup() {
     setMatterAuditHistoryPopupOpen(false);
   }
+
+  function selectedTreatingProviderOption(): any {
+    return treatingProviderOptions.find((option: any) => String(option?.id) === String(treatingProviderInput)) || null;
+  }
+
+  function localTreatingProviderName(): string {
+    return textValue(localTreatingProviderField?.fieldValue);
+  }
+
+  function localTreatingProviderSaved(): boolean {
+    return !!localTreatingProviderName();
+  }
+
+  async function openLocalTreatingProviderEditDialog() {
+    setTreatingProviderResult(null);
+    setTreatingProviderInput(textValue(localTreatingProviderField?.fieldValueId));
+    setTreatingProviderEditOpen(true);
+    await loadTreatingProviderOptions();
+  }
+
+  function closeLocalTreatingProviderEditDialog() {
+    if (treatingProviderSaving) return;
+    setTreatingProviderEditOpen(false);
+    setTreatingProviderResult(null);
+    setTreatingProviderInput(textValue(localTreatingProviderField?.fieldValueId));
+  }
+
+  async function loadTreatingProviderOptions() {
+    setTreatingProviderOptionsLoading(true);
+
+    try {
+      const json = await fetch("/api/matters/local-field/treating-provider-options", {
+        cache: "no-store",
+      }).then((result) => result.json());
+
+      if (json?.ok && Array.isArray(json.options)) {
+        setTreatingProviderOptions(json.options);
+      } else {
+        setTreatingProviderOptions([]);
+      }
+
+      return json;
+    } catch {
+      setTreatingProviderOptions([]);
+      return null;
+    } finally {
+      setTreatingProviderOptionsLoading(false);
+    }
+  }
+
+  async function loadLocalTreatingProviderField() {
+    if (!matterId) return;
+
+    setTreatingProviderResult(null);
+
+    const [optionsJson, fieldJson] = await Promise.all([
+      loadTreatingProviderOptions(),
+      fetch(
+        `/api/matters/local-field?matterId=${encodeURIComponent(String(matterId))}&fieldName=treating_provider`,
+        { cache: "no-store" }
+      ).then((result) => result.json()).catch(() => null),
+    ]);
+
+    if (fieldJson?.ok) {
+      const field = fieldJson.field || null;
+      setLocalTreatingProviderField(field);
+      setTreatingProviderInput(textValue(field?.fieldValueId));
+    } else {
+      setLocalTreatingProviderField(null);
+      setTreatingProviderInput("");
+    }
+
+    if (optionsJson?.ok === false) {
+      setTreatingProviderResult(optionsJson);
+    }
+  }
+
+  async function saveLocalTreatingProvider() {
+    if (!matterId) {
+      setTreatingProviderResult({ ok: false, error: "No matter ID is available." });
+      return;
+    }
+
+    const option = selectedTreatingProviderOption();
+
+    if (!option) {
+      setTreatingProviderResult({ ok: false, error: "Select a Treating Provider before saving." });
+      return;
+    }
+
+    try {
+      setTreatingProviderSaving(true);
+      setTreatingProviderResult(null);
+
+      const response = await fetch("/api/matters/local-field", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          matterId: Number(matterId),
+          matterDisplayNumber: textValue(matter?.displayNumber || matter?.display_number),
+          fieldName: "treating_provider",
+          fieldValueId: option.id,
+          fieldValue: option.displayName,
+          actorName: "Barsh Matters User",
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json?.ok) {
+        setTreatingProviderResult({
+          ok: false,
+          error: json?.error || "Treating Provider could not be saved locally.",
+          details: json,
+        });
+        return;
+      }
+
+      setLocalTreatingProviderField(json.field || null);
+      setTreatingProviderInput(textValue(json.field?.fieldValueId || option.id));
+      setTreatingProviderResult({
+        ok: true,
+        message: "Treating Provider saved.",
+        safety: json.safety,
+      });
+      setTreatingProviderEditOpen(false);
+    } catch (err: any) {
+      setTreatingProviderResult({
+        ok: false,
+        error: err?.message || "Treating Provider could not be saved locally.",
+      });
+    } finally {
+      setTreatingProviderSaving(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!matterId) return;
+    void loadLocalTreatingProviderField();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matterId]);
 
   function paymentFormAmountValue(): number {
     return num(paymentAmountInput);
@@ -4231,6 +4381,169 @@ const activeGroupKey =
         </div>
       )}
 
+      {treatingProviderEditOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Edit Treating Provider"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            background: "rgba(15, 23, 42, 0.42)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+        >
+          <div
+            style={{
+              width: "min(560px, calc(100vw - 48px))",
+              maxHeight: "calc(100vh - 48px)",
+              overflow: "auto",
+              background: "#ffffff",
+              border: "1px solid #bfdbfe",
+              borderRadius: 22,
+              boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
+              padding: 20,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 16,
+                alignItems: "flex-start",
+                marginBottom: 16,
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 900, color: "#1d4ed8", letterSpacing: 1.2 }}>
+                  LOCAL MATTER FIELD
+                </div>
+                <h2 style={{ margin: "4px 0 6px", fontSize: 24 }}>Edit Treating Provider</h2>
+                <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.45 }}>
+                  Matter: {textValue(matter?.displayNumber || matter?.display_number) || matterId || "—"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeLocalTreatingProviderEditDialog}
+                disabled={treatingProviderSaving}
+                style={{
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#0f172a",
+                  borderRadius: 12,
+                  padding: "10px 12px",
+                  fontWeight: 900,
+                  cursor: treatingProviderSaving ? "not-allowed" : "pointer",
+                }}
+              >
+                Close
+              </button>
+            </div>
+
+            <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#334155", marginBottom: 6 }}>
+              Treating Provider
+            </label>
+
+            <select
+              value={treatingProviderInput}
+              onChange={(event) => {
+                setTreatingProviderInput(event.target.value);
+                setTreatingProviderResult(null);
+              }}
+              disabled={treatingProviderOptionsLoading || treatingProviderSaving}
+              style={{
+                width: "100%",
+                minWidth: 0,
+                border: "1px solid #cbd5e1",
+                borderRadius: 12,
+                background: "#ffffff",
+                color: "#0f172a",
+                padding: "11px 12px",
+                fontSize: 14,
+                fontWeight: 800,
+                marginBottom: 12,
+              }}
+            >
+              <option value="">
+                {treatingProviderOptionsLoading ? "Loading Treating Providers..." : "Select Treating Provider"}
+              </option>
+              {treatingProviderOptions.map((option: any) => (
+                <option key={option.id} value={option.id}>
+                  {option.displayName}
+                </option>
+              ))}
+            </select>
+
+            {treatingProviderResult && !treatingProviderResult.ok ? (
+              <div
+                style={{
+                  border: "1px solid #fecaca",
+                  background: "#fef2f2",
+                  color: "#991b1b",
+                  borderRadius: 12,
+                  padding: 10,
+                  marginBottom: 12,
+                  fontSize: 13,
+                  fontWeight: 800,
+                }}
+              >
+                {textValue(treatingProviderResult.error) || "Treating Provider could not be saved."}
+              </div>
+            ) : null}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                onClick={closeLocalTreatingProviderEditDialog}
+                disabled={treatingProviderSaving}
+                style={{
+                  minWidth: 96,
+                  height: 38,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 10,
+                  background: "#f8fafc",
+                  color: "#334155",
+                  fontWeight: 900,
+                  cursor: treatingProviderSaving ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={saveLocalTreatingProvider}
+                disabled={treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput}
+                style={{
+                  minWidth: 118,
+                  height: 38,
+                  border: "1px solid #16a34a",
+                  borderRadius: 10,
+                  background:
+                    treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput
+                      ? "#bbf7d0"
+                      : "#16a34a",
+                  color: "#ffffff",
+                  fontWeight: 900,
+                  cursor:
+                    treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput
+                      ? "not-allowed"
+                      : "pointer",
+                }}
+              >
+                {treatingProviderSaving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {(matterHydrationLoading || matterHydrationError) && (
         <div
           style={{
@@ -4274,6 +4587,51 @@ const activeGroupKey =
                     {providerValue(matter) || "—"}
                   </div>
                 </a>
+
+                <div className="barsh-direct-summary-card">
+                  <div
+                    className="barsh-direct-summary-label"
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
+                  >
+                    <span>Treating Provider</span>
+                    <button
+                      type="button"
+                      onClick={openLocalTreatingProviderEditDialog}
+                      disabled={treatingProviderOptionsLoading || treatingProviderSaving}
+                      title="Edit Treating Provider."
+                      style={{
+                        border: "1px solid #93c5fd",
+                        borderRadius: 999,
+                        background: "#eff6ff",
+                        color: "#1d4ed8",
+                        fontSize: 11,
+                        fontWeight: 900,
+                        padding: "3px 8px",
+                        cursor: treatingProviderOptionsLoading || treatingProviderSaving ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      Edit
+                    </button>
+                  </div>
+
+                  {localTreatingProviderName() ? (
+                    <a
+                      className="barsh-direct-summary-value"
+                      href={`/matters?treatingProvider=${encodeURIComponent(localTreatingProviderName())}`}
+                      title="Open all matters for this treating provider"
+                      style={{
+                        color: "#1d4ed8",
+                        textDecoration: "underline",
+                        textUnderlineOffset: 3,
+                        fontWeight: 900,
+                      }}
+                    >
+                      {localTreatingProviderName()}
+                    </a>
+                  ) : (
+                    <div className="barsh-direct-summary-value">—</div>
+                  )}
+                </div>
 
                 <a
                   className="barsh-direct-summary-card barsh-direct-summary-link-card"

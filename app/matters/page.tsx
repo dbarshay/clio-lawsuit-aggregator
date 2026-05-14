@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
 
-type FilterKind = "patient" | "provider" | "insurer" | "claim" | "master";
+type FilterKind = "patient" | "provider" | "insurer" | "claim" | "master" | "treatingProvider";
 
 type MatterRow = {
   id: string;
@@ -14,6 +14,7 @@ type MatterRow = {
   insurer: string;
   claimNumber: string;
   masterLawsuitId: string;
+  treatingProvider: string;
   claimAmount: any;
   balancePresuit: any;
   paymentVoluntary?: any;
@@ -105,6 +106,10 @@ function claimNumberFromMatter(m: any) {
   );
 }
 
+function treatingProviderName(m: any) {
+  return nameLike(m?.treatingProvider ?? m?.treating_provider);
+}
+
 function masterLawsuitId(m: any) {
   return clean(m?.masterLawsuitId ?? m?.master_lawsuit_id);
 }
@@ -182,6 +187,7 @@ function toMatterRow(row: any, matchedBy: string): MatterRow | null {
     insurer: insurerName(row),
     claimNumber: claimNumberFromMatter(row),
     masterLawsuitId: masterLawsuitId(row),
+    treatingProvider: treatingProviderName(row),
     claimAmount: row?.claimAmount ?? row?.claim_amount,
     balancePresuit: row?.balancePresuit ?? row?.balance_presuit,
     paymentVoluntary: row?.paymentVoluntary ?? row?.payment_voluntary,
@@ -223,7 +229,9 @@ function getFilterFromUrl(): { kind: FilterKind | ""; value: string } {
   const insurer = clean(params.get("insurer"));
   const claim = clean(params.get("claim"));
   const master = clean(params.get("master"));
+  const treatingProvider = clean(params.get("treatingProvider"));
 
+  if (treatingProvider) return { kind: "treatingProvider", value: treatingProvider };
   if (patient) return { kind: "patient", value: patient };
   if (provider) return { kind: "provider", value: provider };
   if (insurer) return { kind: "insurer", value: insurer };
@@ -237,6 +245,7 @@ function filterTitle(kind: FilterKind | "", value: string) {
   if (!kind || !value) return "Filtered Matters";
   if (kind === "patient") return `Matters for Patient: ${value}`;
   if (kind === "provider") return `Matters for Provider: ${value}`;
+  if (kind === "treatingProvider") return `Matters for Treating Provider: ${value}`;
   if (kind === "insurer") return `Matters for Insurer: ${value}`;
   if (kind === "master") return `Matters for Master Lawsuit: ${value}`;
   return `Matters for Claim: ${value}`;
@@ -245,6 +254,7 @@ function filterTitle(kind: FilterKind | "", value: string) {
 function filterLabel(kind: FilterKind | "") {
   if (kind === "patient") return "Patient";
   if (kind === "provider") return "Provider";
+  if (kind === "treatingProvider") return "Treating Provider";
   if (kind === "insurer") return "Insurer";
   if (kind === "claim") return "Claim Number";
   if (kind === "master") return "Master Lawsuit";
@@ -1196,11 +1206,13 @@ export default function FilteredMattersPage() {
             ? `/api/claim-index/search?patient=${encodeURIComponent(filter.value)}`
             : filter.kind === "provider"
               ? `/api/claim-index/search?provider=${encodeURIComponent(filter.value)}`
-              : filter.kind === "insurer"
-                ? `/api/claim-index/search?insurer=${encodeURIComponent(filter.value)}`
-                : filter.kind === "master"
-                  ? `/api/claim-index/by-master?masterLawsuitId=${encodeURIComponent(filter.value)}`
-                  : `/api/claim-index/search?claim=${encodeURIComponent(filter.value)}`;
+              : filter.kind === "treatingProvider"
+                ? `/api/matters/local-field/search?fieldName=treating_provider&value=${encodeURIComponent(filter.value)}`
+                : filter.kind === "insurer"
+                  ? `/api/claim-index/search?insurer=${encodeURIComponent(filter.value)}`
+                  : filter.kind === "master"
+                    ? `/api/claim-index/by-master?masterLawsuitId=${encodeURIComponent(filter.value)}`
+                    : `/api/claim-index/search?claim=${encodeURIComponent(filter.value)}`;
 
         const rawRows = await fetchRows(url);
         const mapped: MatterRow[] = [];
@@ -1208,6 +1220,7 @@ export default function FilteredMattersPage() {
         for (const row of rawRows) {
           if (filter.kind === "patient" && !exactOrContains(patientName(row), filter.value)) continue;
           if (filter.kind === "provider" && !exactOrContains(providerName(row), filter.value)) continue;
+          if (filter.kind === "treatingProvider" && !exactOrContains(treatingProviderName(row), filter.value)) continue;
           if (filter.kind === "insurer" && !exactOrContains(insurerName(row), filter.value)) continue;
           if (filter.kind === "claim" && !exactOrContains(claimNumberFromMatter(row), filter.value)) continue;
 

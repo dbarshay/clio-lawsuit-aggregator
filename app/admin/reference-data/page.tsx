@@ -83,6 +83,43 @@ type ImportPreviewResponse = {
   safety?: any;
 };
 
+type ImportHistoryResponse = {
+  ok: boolean;
+  action: string;
+  error?: string;
+  count?: number;
+  imports?: Array<{
+    id: string;
+    createdAt: string;
+    action: string;
+    summaryText: string;
+    actorName: string | null;
+    actorEmail: string | null;
+    sourcePage: string | null;
+    workflow: string | null;
+    type: string;
+    typeLabel: string;
+    imported: {
+      rowsImported: number;
+      created: number;
+      updated: number;
+      aliasesCreated: number;
+      aliasesSkippedExisting: number;
+    };
+    previewSummary: Record<string, any>;
+    mappingSummary: Record<string, string[]>;
+    importedRows: Array<{
+      rowNumber: number;
+      action: string;
+      entityId: string;
+      displayName: string;
+      aliasesCreated: number;
+      aliasesSkippedExisting: number;
+    }>;
+  }>;
+  safety?: any;
+};
+
 const DEFAULT_TYPES: ReferenceTypeOption[] = [
   { value: "individual", label: "Individuals" },
   { value: "adversary_attorney", label: "Adversary Attorneys" },
@@ -270,6 +307,9 @@ export default function AdminReferenceDataPage() {
   const [importLoading, setImportLoading] = useState(false);
   const [importConfirming, setImportConfirming] = useState(false);
 
+  const [importHistory, setImportHistory] = useState<ImportHistoryResponse | null>(null);
+  const [importHistoryLoading, setImportHistoryLoading] = useState(false);
+
   const selectedTypeLabel = useMemo(
     () => typeOptions.find((option) => option.value === selectedType)?.label || selectedType,
     [selectedType, typeOptions]
@@ -350,6 +390,42 @@ export default function AdminReferenceDataPage() {
     setEditDetailsJson(prettyJson(selectedRow.details));
     setNewAlias("");
   }, [selectedRow]);
+
+
+  useEffect(() => {
+    void loadImportHistory(selectedType);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedType]);
+
+  async function loadImportHistory(nextType = selectedType) {
+    try {
+      setImportHistoryLoading(true);
+
+      const params = new URLSearchParams({
+        type: nextType,
+        limit: "25",
+      });
+
+      const res = await fetch(`/api/reference-data/import-history?${params.toString()}`, {
+        cache: "no-store",
+      });
+
+      const json = await res.json();
+      setImportHistory(json);
+
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Could not load reference import history.");
+      }
+    } catch (err: any) {
+      setImportHistory({
+        ok: false,
+        action: "reference-import-history",
+        error: err?.message || "Could not load reference import history.",
+      });
+    } finally {
+      setImportHistoryLoading(false);
+    }
+  }
 
   async function previewImport() {
     try {
@@ -432,6 +508,7 @@ export default function AdminReferenceDataPage() {
       );
 
       await loadRows(selectedType, query, activeFilter);
+      await loadImportHistory(selectedType);
     } catch (err: any) {
       setErrorMessage(err?.message || "Could not confirm CSV import.");
     } finally {
@@ -986,6 +1063,132 @@ export default function AdminReferenceDataPage() {
                   Showing first 50 preview rows.  Total preview rows: {importPreview.rowPreviews.length}.
                 </div>
               ) : null}
+            </div>
+          ) : null}
+        </section>
+
+        <section
+          style={{
+            border: "1px solid #dbeafe",
+            background: "#ffffff",
+            borderRadius: 22,
+            padding: 18,
+            marginBottom: 18,
+            boxShadow: "0 18px 42px rgba(15, 23, 42, 0.10)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 14,
+              alignItems: "flex-start",
+              marginBottom: 14,
+            }}
+          >
+            <div>
+              <h2 style={{ margin: "0 0 6px", fontSize: 22 }}>Reference Import History</h2>
+              <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.45 }}>
+                Read-only history of confirmed CSV imports for the selected list.  This panel reads the audit log
+                and does not modify local records or Clio.
+              </p>
+            </div>
+
+            <button
+              onClick={() => loadImportHistory()}
+              disabled={importHistoryLoading}
+              style={{
+                border: "1px solid #cbd5e1",
+                background: importHistoryLoading ? "#e2e8f0" : "#f8fafc",
+                color: "#0f172a",
+                borderRadius: 12,
+                padding: "10px 12px",
+                fontWeight: 900,
+                cursor: importHistoryLoading ? "default" : "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {importHistoryLoading ? "Loading..." : "Refresh History"}
+            </button>
+          </div>
+
+          {importHistory?.error ? (
+            <div
+              style={{
+                border: "1px solid #fecaca",
+                background: "#fef2f2",
+                color: "#991b1b",
+                borderRadius: 14,
+                padding: 12,
+                fontWeight: 800,
+              }}
+            >
+              {importHistory.error}
+            </div>
+          ) : null}
+
+          {importHistory?.imports?.length ? (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: "#eff6ff" }}>
+                    {["Imported", "Type", "Rows", "Created", "Updated", "Aliases", "Actor", "Imported Rows"].map((header) => (
+                      <th
+                        key={header}
+                        style={{
+                          textAlign: "left",
+                          padding: "10px 8px",
+                          borderBottom: "1px solid #bfdbfe",
+                          color: "#1e3a8a",
+                          fontSize: 12,
+                          fontWeight: 900,
+                        }}
+                      >
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {importHistory.imports.map((item) => (
+                    <tr key={item.id} style={{ borderBottom: "1px solid #e2e8f0" }}>
+                      <td style={{ padding: "10px 8px", whiteSpace: "nowrap", fontWeight: 800 }}>
+                        {formatDate(item.createdAt)}
+                      </td>
+                      <td style={{ padding: "10px 8px", fontWeight: 800 }}>
+                        {item.typeLabel || item.type || "—"}
+                      </td>
+                      <td style={{ padding: "10px 8px" }}>{item.imported?.rowsImported ?? 0}</td>
+                      <td style={{ padding: "10px 8px" }}>{item.imported?.created ?? 0}</td>
+                      <td style={{ padding: "10px 8px" }}>{item.imported?.updated ?? 0}</td>
+                      <td style={{ padding: "10px 8px" }}>{item.imported?.aliasesCreated ?? 0}</td>
+                      <td style={{ padding: "10px 8px" }}>{item.actorName || "—"}</td>
+                      <td style={{ padding: "10px 8px", color: "#475569" }}>
+                        {item.importedRows?.length
+                          ? item.importedRows
+                              .slice(0, 4)
+                              .map((row) => `${row.action}: ${row.displayName}`)
+                              .join("; ")
+                          : "—"}
+                        {item.importedRows && item.importedRows.length > 4 ? " …" : ""}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : !importHistoryLoading ? (
+            <div
+              style={{
+                border: "1px solid #e2e8f0",
+                background: "#f8fafc",
+                borderRadius: 14,
+                padding: 14,
+                color: "#64748b",
+                fontWeight: 800,
+              }}
+            >
+              No confirmed CSV imports found for this selected list.
             </div>
           ) : null}
         </section>

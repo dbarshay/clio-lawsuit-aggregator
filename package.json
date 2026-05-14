@@ -28,7 +28,8 @@
     "verify:local-first-payment-safety": "node scripts/verify-local-first-payment-safety.mjs",
     "verify:reference-data-safety": "node scripts/verify-reference-data-safety.mjs",
     "verify:reference-import-preview-safety": "node scripts/verify-reference-import-preview-safety.mjs",
-    "verify:reference-import-confirm-safety": "node scripts/verify-reference-import-confirm-safety.mjs"
+    "verify:reference-import-confirm-safety": "node scripts/verify-reference-import-confirm-safety.mjs",
+    "verify:reference-import-history-safety": "node scripts/verify-reference-import-history-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

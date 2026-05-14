@@ -120,6 +120,34 @@ type ImportHistoryResponse = {
   safety?: any;
 };
 
+type ImportCleanupPreviewResponse = {
+  ok: boolean;
+  action: string;
+  error?: string;
+  type?: string;
+  query?: string;
+  count?: number;
+  eligibleCount?: number;
+  rows?: Array<{
+    id: string;
+    type: string;
+    displayName: string;
+    normalizedName: string;
+    active: boolean;
+    source: string;
+    notes: string | null;
+    createdAt: string;
+    updatedAt: string;
+    aliasCount: number;
+    aliases: Array<{ id: string; alias: string; normalizedAlias: string }>;
+    visibleDetailKeys: string[];
+    hiddenInternalDetailKeys: string[];
+    eligibleForDeactivate: boolean;
+    blockedReasons: string[];
+  }>;
+  safety?: any;
+};
+
 const DEFAULT_TYPES: ReferenceTypeOption[] = [
   { value: "individual", label: "Individuals" },
   { value: "adversary_attorney", label: "Adversary Attorneys" },
@@ -314,6 +342,10 @@ export default function AdminReferenceDataPage() {
 
   const [importPreviewPanelOpen, setImportPreviewPanelOpen] = useState(true);
   const [importHistoryPanelOpen, setImportHistoryPanelOpen] = useState(true);
+  const [cleanupPreviewPanelOpen, setCleanupPreviewPanelOpen] = useState(false);
+  const [cleanupQuery, setCleanupQuery] = useState("Import");
+  const [cleanupPreview, setCleanupPreview] = useState<ImportCleanupPreviewResponse | null>(null);
+  const [cleanupPreviewLoading, setCleanupPreviewLoading] = useState(false);
 
   const selectedTypeLabel = useMemo(
     () => typeOptions.find((option) => option.value === selectedType)?.label || selectedType,
@@ -401,6 +433,43 @@ export default function AdminReferenceDataPage() {
     void loadImportHistory(selectedType);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedType]);
+
+  async function loadCleanupPreview(nextType = selectedType, nextQuery = cleanupQuery) {
+    try {
+      setCleanupPreviewLoading(true);
+      resetMessages();
+
+      const params = new URLSearchParams({
+        type: nextType,
+        q: nextQuery,
+        limit: "100",
+      });
+
+      const res = await fetch(`/api/reference-data/import-cleanup-preview?${params.toString()}`, {
+        cache: "no-store",
+      });
+
+      const json = await res.json();
+      setCleanupPreview(json);
+
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Could not load import cleanup preview.");
+      }
+
+      setStatusMessage(
+        `Cleanup preview loaded ${json.eligibleCount ?? 0} eligible imported reference records.  No records were changed.`
+      );
+    } catch (err: any) {
+      setCleanupPreview({
+        ok: false,
+        action: "reference-import-cleanup-preview",
+        error: err?.message || "Could not load import cleanup preview.",
+      });
+      setErrorMessage(err?.message || "Could not load import cleanup preview.");
+    } finally {
+      setCleanupPreviewLoading(false);
+    }
+  }
 
   async function loadImportHistory(nextType = selectedType) {
     try {
@@ -1447,6 +1516,208 @@ export default function AdminReferenceDataPage() {
             </div>
           </div>
         ) : null}
+
+        <section
+          style={{
+            border: "1px solid #dbeafe",
+            background: "#ffffff",
+            borderRadius: 22,
+            padding: 18,
+            marginBottom: 18,
+            boxShadow: "0 18px 42px rgba(15, 23, 42, 0.10)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 14,
+              alignItems: "flex-start",
+              marginBottom: cleanupPreviewPanelOpen ? 14 : 0,
+            }}
+          >
+            <div>
+              <h2 style={{ margin: "0 0 6px", fontSize: 22 }}>Import Cleanup Preview</h2>
+              <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.45 }}>
+                Preview imported reference records that could be deactivated later.  This is preview-only,
+                deactivate-only, and does not hard-delete records, touch Clio, generate documents, or change the print queue.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <div
+                style={{
+                  border: "1px solid #fde68a",
+                  background: "#fffbeb",
+                  color: "#92400e",
+                  borderRadius: 999,
+                  padding: "8px 12px",
+                  fontSize: 12,
+                  fontWeight: 900,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Preview Only
+              </div>
+
+              <button
+                onClick={() => setCleanupPreviewPanelOpen((value) => !value)}
+                aria-expanded={cleanupPreviewPanelOpen}
+                style={{
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#0f172a",
+                  borderRadius: 12,
+                  padding: "10px 12px",
+                  fontWeight: 900,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {cleanupPreviewPanelOpen ? "Collapse" : "Expand"}
+              </button>
+            </div>
+          </div>
+
+          {cleanupPreviewPanelOpen ? (
+            <div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(0, 1fr) 180px",
+                  gap: 10,
+                  alignItems: "end",
+                  marginBottom: 12,
+                }}
+              >
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#334155", marginBottom: 6 }}>
+                    Cleanup Search
+                  </label>
+                  <input
+                    value={cleanupQuery}
+                    onChange={(event) => setCleanupQuery(event.target.value)}
+                    placeholder="Search imported records"
+                    style={{
+                      width: "100%",
+                      padding: "11px 12px",
+                      borderRadius: 12,
+                      border: "1px solid #cbd5e1",
+                    }}
+                  />
+                </div>
+
+                <button
+                  onClick={() => loadCleanupPreview()}
+                  disabled={cleanupPreviewLoading}
+                  style={{
+                    border: 0,
+                    background: cleanupPreviewLoading ? "#94a3b8" : "#f59e0b",
+                    color: "#ffffff",
+                    borderRadius: 14,
+                    padding: "12px 14px",
+                    fontWeight: 900,
+                    cursor: cleanupPreviewLoading ? "default" : "pointer",
+                  }}
+                >
+                  {cleanupPreviewLoading ? "Previewing..." : "Preview Cleanup"}
+                </button>
+              </div>
+
+              {cleanupPreview?.error ? (
+                <div
+                  style={{
+                    border: "1px solid #fecaca",
+                    background: "#fef2f2",
+                    color: "#991b1b",
+                    borderRadius: 14,
+                    padding: 12,
+                    fontWeight: 800,
+                    marginBottom: 12,
+                  }}
+                >
+                  {cleanupPreview.error}
+                </div>
+              ) : null}
+
+              {cleanupPreview?.ok ? (
+                <div
+                  style={{
+                    border: "1px solid #fde68a",
+                    background: "#fffbeb",
+                    color: "#92400e",
+                    borderRadius: 14,
+                    padding: 12,
+                    fontWeight: 800,
+                    marginBottom: 12,
+                  }}
+                >
+                  Preview found {cleanupPreview.eligibleCount ?? 0} active imported records eligible for future deactivate-only cleanup.  No records were changed.
+                </div>
+              ) : null}
+
+              {cleanupPreview?.rows?.length ? (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: "#fffbeb" }}>
+                        {["Name", "Source", "Aliases", "Visible Details", "Hidden/Internal", "Eligible", "Blocked Reasons"].map((header) => (
+                          <th
+                            key={header}
+                            style={{
+                              textAlign: "left",
+                              padding: "10px 8px",
+                              borderBottom: "1px solid #fde68a",
+                              color: "#92400e",
+                              fontSize: 12,
+                              fontWeight: 900,
+                            }}
+                          >
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cleanupPreview.rows.map((row) => (
+                        <tr key={row.id} style={{ borderBottom: "1px solid #e2e8f0" }}>
+                          <td style={{ padding: "10px 8px", fontWeight: 900 }}>{row.displayName}</td>
+                          <td style={{ padding: "10px 8px" }}>{row.source}</td>
+                          <td style={{ padding: "10px 8px" }}>{row.aliasCount}</td>
+                          <td style={{ padding: "10px 8px" }}>
+                            {row.visibleDetailKeys?.length ? row.visibleDetailKeys.join(", ") : "—"}
+                          </td>
+                          <td style={{ padding: "10px 8px" }}>
+                            {row.hiddenInternalDetailKeys?.length ? row.hiddenInternalDetailKeys.join(", ") : "—"}
+                          </td>
+                          <td style={{ padding: "10px 8px", fontWeight: 900 }}>
+                            {row.eligibleForDeactivate ? "Yes" : "No"}
+                          </td>
+                          <td style={{ padding: "10px 8px", color: row.blockedReasons?.length ? "#991b1b" : "#64748b" }}>
+                            {row.blockedReasons?.length ? row.blockedReasons.join("; ") : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : cleanupPreview?.ok ? (
+                <div
+                  style={{
+                    border: "1px solid #e2e8f0",
+                    background: "#f8fafc",
+                    borderRadius: 14,
+                    padding: 14,
+                    color: "#64748b",
+                    fontWeight: 800,
+                  }}
+                >
+                  No imported active records matched this cleanup preview.
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
 
         <section
           style={{

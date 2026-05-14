@@ -148,6 +148,26 @@ type ImportCleanupPreviewResponse = {
   safety?: any;
 };
 
+type ImportCleanupConfirmResponse = {
+  ok: boolean;
+  action: string;
+  error?: string;
+  type?: string;
+  query?: string;
+  summary?: {
+    matchedEligibleRows: number;
+    deactivated: number;
+    skipped: number;
+    deactivatedRows: Array<{
+      id: string;
+      displayName: string;
+      aliasCount: number;
+      source: string;
+    }>;
+  };
+  safety?: any;
+};
+
 const DEFAULT_TYPES: ReferenceTypeOption[] = [
   { value: "individual", label: "Individuals" },
   { value: "adversary_attorney", label: "Adversary Attorneys" },
@@ -345,7 +365,9 @@ export default function AdminReferenceDataPage() {
   const [cleanupPreviewPanelOpen, setCleanupPreviewPanelOpen] = useState(false);
   const [cleanupQuery, setCleanupQuery] = useState("Import");
   const [cleanupPreview, setCleanupPreview] = useState<ImportCleanupPreviewResponse | null>(null);
+  const [cleanupConfirmResult, setCleanupConfirmResult] = useState<ImportCleanupConfirmResponse | null>(null);
   const [cleanupPreviewLoading, setCleanupPreviewLoading] = useState(false);
+  const [cleanupConfirming, setCleanupConfirming] = useState(false);
 
   const selectedTypeLabel = useMemo(
     () => typeOptions.find((option) => option.value === selectedType)?.label || selectedType,
@@ -451,6 +473,7 @@ export default function AdminReferenceDataPage() {
 
       const json = await res.json();
       setCleanupPreview(json);
+      setCleanupConfirmResult(null);
 
       if (!res.ok || !json?.ok) {
         throw new Error(json?.error || "Could not load import cleanup preview.");
@@ -468,6 +491,48 @@ export default function AdminReferenceDataPage() {
       setErrorMessage(err?.message || "Could not load import cleanup preview.");
     } finally {
       setCleanupPreviewLoading(false);
+    }
+  }
+
+  async function confirmCleanupDeactivate() {
+    try {
+      setCleanupConfirming(true);
+      resetMessages();
+
+      if (!cleanupPreview?.ok || !cleanupPreview?.eligibleCount) {
+        throw new Error("Run cleanup preview before confirming deactivate cleanup.");
+      }
+
+      const res = await fetch("/api/reference-data/import-cleanup-confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: selectedType,
+          q: cleanupQuery,
+          limit: "100",
+          confirm: true,
+          actorName: "Barsh Matters User",
+        }),
+      });
+
+      const json = await res.json();
+      setCleanupConfirmResult(json);
+
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Could not confirm deactivate cleanup.");
+      }
+
+      setStatusMessage(
+        `Confirmed cleanup deactivated ${json.summary?.deactivated ?? 0} imported reference records.  No records were hard-deleted, and no Clio data was changed.`
+      );
+
+      await loadRows(selectedType, query, activeFilter);
+      await loadCleanupPreview(selectedType, cleanupQuery);
+      await loadImportHistory(selectedType);
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Could not confirm deactivate cleanup.");
+    } finally {
+      setCleanupConfirming(false);
     }
   }
 
@@ -1607,21 +1672,53 @@ export default function AdminReferenceDataPage() {
                   />
                 </div>
 
-                <button
-                  onClick={() => loadCleanupPreview()}
-                  disabled={cleanupPreviewLoading}
-                  style={{
-                    border: 0,
-                    background: cleanupPreviewLoading ? "#94a3b8" : "#f59e0b",
-                    color: "#ffffff",
-                    borderRadius: 14,
-                    padding: "12px 14px",
-                    fontWeight: 900,
-                    cursor: cleanupPreviewLoading ? "default" : "pointer",
-                  }}
-                >
-                  {cleanupPreviewLoading ? "Previewing..." : "Preview Cleanup"}
-                </button>
+                <div style={{ display: "grid", gap: 8 }}>
+                  <button
+                    onClick={() => loadCleanupPreview()}
+                    disabled={cleanupPreviewLoading}
+                    style={{
+                      border: 0,
+                      background: cleanupPreviewLoading ? "#94a3b8" : "#f59e0b",
+                      color: "#ffffff",
+                      borderRadius: 14,
+                      padding: "12px 14px",
+                      fontWeight: 900,
+                      cursor: cleanupPreviewLoading ? "default" : "pointer",
+                    }}
+                  >
+                    {cleanupPreviewLoading ? "Previewing..." : "Preview Cleanup"}
+                  </button>
+
+                  <button
+                    onClick={confirmCleanupDeactivate}
+                    disabled={
+                      cleanupConfirming ||
+                      !cleanupPreview?.ok ||
+                      !cleanupPreview?.eligibleCount
+                    }
+                    style={{
+                      border: 0,
+                      background:
+                        cleanupConfirming ||
+                        !cleanupPreview?.ok ||
+                        !cleanupPreview?.eligibleCount
+                          ? "#94a3b8"
+                          : "#dc2626",
+                      color: "#ffffff",
+                      borderRadius: 14,
+                      padding: "12px 14px",
+                      fontWeight: 900,
+                      cursor:
+                        cleanupConfirming ||
+                        !cleanupPreview?.ok ||
+                        !cleanupPreview?.eligibleCount
+                          ? "default"
+                          : "pointer",
+                    }}
+                  >
+                    {cleanupConfirming ? "Deactivating..." : "Confirm Deactivate Cleanup"}
+                  </button>
+                </div>
               </div>
 
               {cleanupPreview?.error ? (
@@ -1653,6 +1750,22 @@ export default function AdminReferenceDataPage() {
                   }}
                 >
                   Preview found {cleanupPreview.eligibleCount ?? 0} active imported records eligible for future deactivate-only cleanup.  No records were changed.
+                </div>
+              ) : null}
+
+              {cleanupConfirmResult?.ok ? (
+                <div
+                  style={{
+                    border: "1px solid #bbf7d0",
+                    background: "#f0fdf4",
+                    color: "#166534",
+                    borderRadius: 14,
+                    padding: 12,
+                    fontWeight: 800,
+                    marginBottom: 12,
+                  }}
+                >
+                  Confirmed deactivate cleanup: {cleanupConfirmResult.summary?.deactivated ?? 0} imported records deactivated.  No records were hard-deleted, no aliases were deleted, and no Clio data was changed.
                 </div>
               ) : null}
 

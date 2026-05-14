@@ -84,4 +84,5 @@ npm run verify:reference-import-preview-safety
 npm run verify:reference-import-confirm-safety
 npm run verify:reference-import-history-safety
 npm run verify:reference-import-cleanup-preview-safety
+npm run verify:reference-import-cleanup-confirm-safety
 npm run verify:local-first-payment-safety

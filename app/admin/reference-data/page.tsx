@@ -179,6 +179,7 @@ const DEFAULT_TYPES: ReferenceTypeOption[] = [
   { value: "court_venue", label: "Courts / Venues" },
   { value: "service_type", label: "Service Types" },
   { value: "denial_reason", label: "Denial Reasons" },
+  { value: "closed_reason", label: "Closed Reasons / Final Statuses" },
   { value: "transaction_type", label: "Transaction Types" },
   { value: "transaction_status", label: "Transaction Statuses" },
   { value: "other", label: "Other" },
@@ -277,6 +278,9 @@ function autoMapImportHeader(header: string): ImportColumnMappingAction {
       "patient_name",
       "insurer_name",
       "court_name",
+      "closed_reason_name",
+      "close_reason_name",
+      "final_status_name",
     ].includes(normalized)
   ) {
     return "displayName";

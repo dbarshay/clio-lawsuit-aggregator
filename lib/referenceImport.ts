@@ -136,6 +136,9 @@ export function autoMapHeader(header: string): ColumnMappingAction {
       "patient_name",
       "insurer_name",
       "court_name",
+      "closed_reason_name",
+      "close_reason_name",
+      "final_status_name",
     ].includes(normalized)
   ) {
     return "displayName";

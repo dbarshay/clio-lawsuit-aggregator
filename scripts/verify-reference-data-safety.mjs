@@ -69,6 +69,7 @@ mustContain("helper", helper, "patient");
 mustContain("helper", helper, "court_venue");
 mustContain("helper", helper, "service_type");
 mustContain("helper", helper, "denial_reason");
+mustContain("helper", helper, "closed_reason");
 mustContain("helper", helper, "transaction_type");
 mustContain("helper", helper, "transaction_status");
 mustContain("helper", helper, "normalizeReferenceEntityType");

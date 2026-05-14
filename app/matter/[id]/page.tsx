@@ -1063,12 +1063,24 @@ const activeGroupKey =
 
     try {
       const json = await fetch(
-        `/api/matters/apply-payment?matterId=${encodeURIComponent(targetMatterId)}`,
+        `/api/matters/apply-payment?matterId=${encodeURIComponent(targetMatterId)}&claimAmount=${encodeURIComponent(String(num(matter?.claimAmount)))}`,
         { cache: "no-store" }
       ).then((r) => r.json());
 
       if (json?.ok && Array.isArray(json.rows)) {
-        setPaymentReceipts(json.rows);
+        const rows = Array.isArray(json.rows) ? json.rows : [];
+        setPaymentReceipts(rows);
+
+        if (json?.after) {
+          setMatter((prev: any) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              paymentVoluntary: json.after.paymentVoluntary ?? prev.paymentVoluntary,
+              balancePresuit: json.after.balancePresuit ?? prev.balancePresuit,
+            };
+          });
+        }
       }
     } catch {
       setPaymentReceipts([]);
@@ -1128,7 +1140,7 @@ const activeGroupKey =
         `Receipt: ${receiptDisplayNumber || "—"}`,
         `Amount: ${money(receiptAmount)}`,
         "",
-        "This will reverse the Clio Payment Voluntary / Balance Presuit writeback and keep the receipt as a voided audit record.",
+        "This will void the Barsh Matters local payment record and keep the receipt as a voided audit record.",
       ].join("\\n")
     );
 
@@ -1147,6 +1159,7 @@ const activeGroupKey =
           expectedDisplayNumber: textValue(matter?.displayNumber),
           voidReason: `Voided from ${textValue(matter?.displayNumber) || "matter"} payment table`,
           voidedBy: "Barsh Matters UI",
+          claimAmount: num(matter?.claimAmount),
         }),
       });
 
@@ -1251,25 +1264,26 @@ const activeGroupKey =
           description: editingReceipt ? textValue(editingReceipt?.description) || paymentTransactionTypeInput : undefined,
           editedBy: "Barsh Matters UI",
           editReason: editingReceipt ? "Edited from individual payment form" : undefined,
+          claimAmount: num(matter?.claimAmount),
         }),
       });
 
       const json = await response.json();
 
       if (!response.ok || !json?.ok) {
-        throw new Error(json?.error || (editingReceipt ? "Payment edit failed." : "Payment writeback failed."));
+        throw new Error(json?.error || (editingReceipt ? "Payment edit failed." : "Payment save failed."));
       }
 
       setPaymentApplyResult(json);
 
-      const refreshed = await fetch(
-        `/api/clio/matter-context?matterId=${encodeURIComponent(matterId)}`,
-        { cache: "no-store" }
-      ).then((r) => r.json());
-
-      if (refreshed?.ok && refreshed?.matter) {
-        setMatter(refreshed.matter);
-      }
+      setMatter((prev: any) => {
+        if (!prev || !json?.after) return prev;
+        return {
+          ...prev,
+          paymentVoluntary: json.after.paymentVoluntary ?? prev.paymentVoluntary,
+          balancePresuit: json.after.balancePresuit ?? prev.balancePresuit,
+        };
+      });
 
       await loadPaymentReceipts(matterId);
       resetPaymentFormInputs();
@@ -4396,7 +4410,7 @@ const activeGroupKey =
                         boxShadow: matterIsClosedForPayment() ? "none" : "0 8px 24px rgba(22, 163, 74, 0.22)",
                       }}
                     >
-                      {paymentApplyLoading ? (paymentEditingReceipt ? "Saving Edit..." : "Applying Payment...") : paymentFormOpen ? "Close Payment Form" : "Apply Payment"}
+                      {paymentApplyLoading ? (paymentEditingReceipt ? "Saving Edit..." : "Saving Payment...") : paymentFormOpen ? "Close Payment Form" : "Apply Payment"}
                     </button>
 
                     <div style={{ display: "grid", alignContent: "start" }}>
@@ -4519,12 +4533,12 @@ const activeGroupKey =
                 </div>
 
                 <div className="barsh-direct-financial-row">
-                  <span>Payments Posted</span>
+                  <span>Barsh Matters Payments</span>
                   <strong>{money(num(matter?.paymentVoluntary))}</strong>
                 </div>
 
                 <div className="barsh-direct-financial-row total">
-                  <span>Balance Presuit</span>
+                  <span>Barsh Matters Balance</span>
                   <strong>{money(currentDirectMatterBalancePresuit(matter))}</strong>
                 </div>
 

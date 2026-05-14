@@ -312,6 +312,9 @@ export default function AdminReferenceDataPage() {
   const [selectedImportHistoryItem, setSelectedImportHistoryItem] =
     useState<NonNullable<ImportHistoryResponse["imports"]>[number] | null>(null);
 
+  const [importPreviewPanelOpen, setImportPreviewPanelOpen] = useState(true);
+  const [importHistoryPanelOpen, setImportHistoryPanelOpen] = useState(true);
+
   const selectedTypeLabel = useMemo(
     () => typeOptions.find((option) => option.value === selectedType)?.label || selectedType,
     [selectedType, typeOptions]
@@ -747,33 +750,52 @@ export default function AdminReferenceDataPage() {
               justifyContent: "space-between",
               gap: 18,
               alignItems: "flex-start",
-              marginBottom: 14,
+              marginBottom: importPreviewPanelOpen ? 14 : 0,
             }}
           >
             <div>
               <h2 style={{ margin: "0 0 6px", fontSize: 22 }}>CSV Import Preview</h2>
               <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.45 }}>
-                Preview CSV rows for the selected list before writing anything.  This first pass is preview-only:
-                no reference records, Clio records, documents, or print-queue records are changed.
+                Preview CSV rows for the selected list before writing anything, then confirm only after review.
+                Preview itself does not change reference records, Clio records, documents, or print-queue records.
               </p>
             </div>
-            <div
-              style={{
-                border: "1px solid #bbf7d0",
-                background: "#f0fdf4",
-                color: "#166534",
-                borderRadius: 999,
-                padding: "8px 12px",
-                fontSize: 12,
-                fontWeight: 900,
-                whiteSpace: "nowrap",
-              }}
-            >
-              Preview Only
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <div
+                style={{
+                  border: "1px solid #bbf7d0",
+                  background: "#f0fdf4",
+                  color: "#166534",
+                  borderRadius: 999,
+                  padding: "8px 12px",
+                  fontSize: 12,
+                  fontWeight: 900,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Preview Only Until Confirmed
+              </div>
+              <button
+                onClick={() => setImportPreviewPanelOpen((value) => !value)}
+                aria-expanded={importPreviewPanelOpen}
+                style={{
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#0f172a",
+                  borderRadius: 12,
+                  padding: "9px 12px",
+                  fontWeight: 900,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {importPreviewPanelOpen ? "Collapse" : "Expand"}
+              </button>
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 360px", gap: 16, alignItems: "start" }}>
+          {importPreviewPanelOpen ? (
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 360px", gap: 16, alignItems: "start" }}>
             <div>
               <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#334155", marginBottom: 6 }}>
                 Paste CSV Text
@@ -976,8 +998,9 @@ export default function AdminReferenceDataPage() {
               ) : null}
             </div>
           </div>
+          ) : null}
 
-          {importPreview?.rowPreviews?.length ? (
+          {importPreviewPanelOpen && importPreview?.rowPreviews?.length ? (
             <div style={{ marginTop: 18, overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
@@ -1096,25 +1119,44 @@ export default function AdminReferenceDataPage() {
               </p>
             </div>
 
-            <button
-              onClick={() => loadImportHistory()}
-              disabled={importHistoryLoading}
-              style={{
-                border: "1px solid #cbd5e1",
-                background: importHistoryLoading ? "#e2e8f0" : "#f8fafc",
-                color: "#0f172a",
-                borderRadius: 12,
-                padding: "10px 12px",
-                fontWeight: 900,
-                cursor: importHistoryLoading ? "default" : "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {importHistoryLoading ? "Loading..." : "Refresh History"}
-            </button>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <button
+                onClick={() => loadImportHistory()}
+                disabled={importHistoryLoading}
+                style={{
+                  border: "1px solid #cbd5e1",
+                  background: importHistoryLoading ? "#e2e8f0" : "#f8fafc",
+                  color: "#0f172a",
+                  borderRadius: 12,
+                  padding: "10px 12px",
+                  fontWeight: 900,
+                  cursor: importHistoryLoading ? "default" : "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {importHistoryLoading ? "Loading..." : "Refresh History"}
+              </button>
+
+              <button
+                onClick={() => setImportHistoryPanelOpen((value) => !value)}
+                aria-expanded={importHistoryPanelOpen}
+                style={{
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#0f172a",
+                  borderRadius: 12,
+                  padding: "10px 12px",
+                  fontWeight: 900,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {importHistoryPanelOpen ? "Collapse" : "Expand"}
+              </button>
+            </div>
           </div>
 
-          {importHistory?.error ? (
+          {importHistoryPanelOpen && importHistory?.error ? (
             <div
               style={{
                 border: "1px solid #fecaca",
@@ -1129,7 +1171,7 @@ export default function AdminReferenceDataPage() {
             </div>
           ) : null}
 
-          {importHistory?.imports?.length ? (
+          {importHistoryPanelOpen && importHistory?.imports?.length ? (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
@@ -1196,7 +1238,7 @@ export default function AdminReferenceDataPage() {
                 </tbody>
               </table>
             </div>
-          ) : !importHistoryLoading ? (
+          ) : importHistoryPanelOpen && !importHistoryLoading ? (
             <div
               style={{
                 border: "1px solid #e2e8f0",

@@ -63,6 +63,34 @@ if (!page.includes("Refresh History")) {
   fail("Admin page must include Refresh History button.");
 }
 
+if (!page.includes("importPreviewPanelOpen")) {
+  fail("Admin page must track CSV Import Preview collapse state.");
+}
+
+if (!page.includes("importHistoryPanelOpen")) {
+  fail("Admin page must track Reference Import History collapse state.");
+}
+
+if (!page.includes("setImportHistoryPanelOpen((value) => !value)")) {
+  fail("Reference Import History must include a working Collapse/Expand toggle.");
+}
+
+if (!page.includes("{importHistoryPanelOpen ? \"Collapse\" : \"Expand\"}")) {
+  fail("Reference Import History toggle must display Collapse/Expand text.");
+}
+
+if (!page.includes("importHistoryPanelOpen && importHistory?.imports?.length")) {
+  fail("Reference Import History table must be gated by importHistoryPanelOpen.");
+}
+
+if (!page.includes("aria-expanded") || !page.includes("importPreviewPanelOpen")) {
+  fail("CSV Import Preview collapse button must expose aria-expanded and use importPreviewPanelOpen.");
+}
+
+if (!page.includes("aria-expanded") || !page.includes("importHistoryPanelOpen")) {
+  fail("Reference Import History collapse button must expose aria-expanded and use importHistoryPanelOpen.");
+}
+
 if (!page.includes("does not modify local records or Clio")) {
   fail("History panel must state it is read-only and does not modify local records or Clio.");
 }

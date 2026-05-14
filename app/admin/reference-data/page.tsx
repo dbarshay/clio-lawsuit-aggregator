@@ -30,6 +30,59 @@ type ReferenceEntity = {
   aliases?: ReferenceAlias[];
 };
 
+type ImportColumnMappingAction =
+  | "ignore"
+  | "displayName"
+  | "aliases"
+  | "notes"
+  | "active"
+  | "source"
+  | "details_show"
+  | "details_hidden";
+
+type ImportPreviewResponse = {
+  ok: boolean;
+  action: string;
+  error?: string;
+  type?: string;
+  typeLabel?: string;
+  headers?: string[];
+  mappings?: Record<string, ImportColumnMappingAction>;
+  mappingSummary?: Record<string, string[]>;
+  summary?: {
+    totalCsvRows: number;
+    validRows: number;
+    rowsToCreate: number;
+    rowsToUpdate: number;
+    duplicateOrConflictRows: number;
+    invalidRows: number;
+    aliasesToAdd: number;
+    rowsWithVisibleDetails: number;
+    rowsWithHiddenInternalDetails: number;
+    ignoredColumns: number;
+    existingRecordsChecked: number;
+  };
+  rowPreviews?: Array<{
+    rowNumber: number;
+    classification: string;
+    displayName: string;
+    normalizedName: string;
+    existingEntity: any | null;
+    proposed: {
+      displayName: string;
+      aliases: string[];
+      notes: string;
+      active: boolean | null;
+      source: string;
+      detailsVisible: Record<string, string>;
+      detailsHidden: Record<string, string>;
+    };
+    ignored: Record<string, string>;
+    invalidReasons: string[];
+  }>;
+  safety?: any;
+};
+
 const DEFAULT_TYPES: ReferenceTypeOption[] = [
   { value: "individual", label: "Individuals" },
   { value: "adversary_attorney", label: "Adversary Attorneys" },
@@ -75,6 +128,101 @@ function parseJsonInput(value: string): any {
   }
 }
 
+function parseCsvHeaderClient(value: string): string[] {
+  const input = String(value || "").replace(/^\uFEFF/, "");
+  let cell = "";
+  let inQuotes = false;
+  const headers: string[] = [];
+
+  for (let i = 0; i < input.length; i += 1) {
+    const char = input[i];
+    const next = input[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        cell += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      headers.push(text(cell));
+      cell = "";
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !inQuotes) {
+      headers.push(text(cell));
+      return headers.filter(Boolean);
+    }
+
+    cell += char;
+  }
+
+  headers.push(text(cell));
+  return headers.filter(Boolean);
+}
+
+function autoMapImportHeader(header: string): ImportColumnMappingAction {
+  const normalized = text(header).toLowerCase().replace(/[’']/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+
+  if (
+    [
+      "display_name",
+      "displayname",
+      "canonical_name",
+      "canonical",
+      "name",
+      "entity_name",
+      "reference_name",
+      "company_name",
+      "person_name",
+      "provider_name",
+      "patient_name",
+      "insurer_name",
+      "court_name",
+    ].includes(normalized)
+  ) {
+    return "displayName";
+  }
+
+  if (["alias", "aliases", "aka", "also_known_as", "search_terms", "search_term"].includes(normalized)) {
+    return "aliases";
+  }
+
+  if (["note", "notes", "memo", "comment", "comments"].includes(normalized)) {
+    return "notes";
+  }
+
+  if (["active", "status", "enabled", "inactive"].includes(normalized)) {
+    return "active";
+  }
+
+  if (["source", "origin", "data_source"].includes(normalized)) {
+    return "source";
+  }
+
+  return "details_show";
+}
+
+function importMappingLabel(action: ImportColumnMappingAction): string {
+  const labels: Record<ImportColumnMappingAction, string> = {
+    ignore: "Ignore",
+    displayName: "Use as Display Name",
+    aliases: "Use as Aliases",
+    notes: "Use as Notes",
+    active: "Use as Active",
+    source: "Use as Source",
+    details_show: "Store in Details and Show",
+    details_hidden: "Store in Details but Hide/Internal",
+  };
+
+  return labels[action];
+}
+
 function activeLabel(value: boolean): string {
   return value ? "Active" : "Inactive";
 }
@@ -115,6 +263,11 @@ export default function AdminReferenceDataPage() {
   const [editDetailsJson, setEditDetailsJson] = useState("");
   const [newAlias, setNewAlias] = useState("");
 
+  const [importCsvText, setImportCsvText] = useState("");
+  const [importMappings, setImportMappings] = useState<Record<string, ImportColumnMappingAction>>({});
+  const [importPreview, setImportPreview] = useState<ImportPreviewResponse | null>(null);
+  const [importLoading, setImportLoading] = useState(false);
+
   const selectedTypeLabel = useMemo(
     () => typeOptions.find((option) => option.value === selectedType)?.label || selectedType,
     [selectedType, typeOptions]
@@ -124,6 +277,16 @@ export default function AdminReferenceDataPage() {
     () => rows.find((row) => row.id === selectedRowId) || null,
     [rows, selectedRowId]
   );
+
+  const importHeaders = useMemo(() => parseCsvHeaderClient(importCsvText), [importCsvText]);
+
+  const effectiveImportMappings = useMemo(() => {
+    const next: Record<string, ImportColumnMappingAction> = {};
+    for (const header of importHeaders) {
+      next[header] = importMappings[header] || autoMapImportHeader(header);
+    }
+    return next;
+  }, [importHeaders, importMappings]);
 
   function resetMessages() {
     setStatusMessage("");
@@ -185,6 +348,48 @@ export default function AdminReferenceDataPage() {
     setEditDetailsJson(prettyJson(selectedRow.details));
     setNewAlias("");
   }, [selectedRow]);
+
+  async function previewImport() {
+    try {
+      setImportLoading(true);
+      resetMessages();
+
+      if (!text(importCsvText)) {
+        throw new Error("Paste CSV text before previewing import.");
+      }
+
+      const res = await fetch("/api/reference-data/import-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: selectedType,
+          csvText: importCsvText,
+          columnMappings: effectiveImportMappings,
+        }),
+      });
+
+      const json = await res.json();
+      setImportPreview(json);
+
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Could not preview CSV import.");
+      }
+
+      setStatusMessage("Generated CSV import preview only.  No database records or Clio records were changed.");
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Could not preview CSV import.");
+    } finally {
+      setImportLoading(false);
+    }
+  }
+
+  function updateImportMapping(header: string, action: ImportColumnMappingAction) {
+    setImportMappings((current) => ({
+      ...current,
+      [header]: action,
+    }));
+    setImportPreview(null);
+  }
 
   async function createRecord() {
     try {
@@ -397,6 +602,285 @@ export default function AdminReferenceDataPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        <section
+          style={{
+            border: "1px solid #bfdbfe",
+            background: "#ffffff",
+            borderRadius: 22,
+            padding: 18,
+            marginBottom: 18,
+            boxShadow: "0 18px 42px rgba(15, 23, 42, 0.10)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 18,
+              alignItems: "flex-start",
+              marginBottom: 14,
+            }}
+          >
+            <div>
+              <h2 style={{ margin: "0 0 6px", fontSize: 22 }}>CSV Import Preview</h2>
+              <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.45 }}>
+                Preview CSV rows for the selected list before writing anything.  This first pass is preview-only:
+                no reference records, Clio records, documents, or print-queue records are changed.
+              </p>
+            </div>
+            <div
+              style={{
+                border: "1px solid #bbf7d0",
+                background: "#f0fdf4",
+                color: "#166534",
+                borderRadius: 999,
+                padding: "8px 12px",
+                fontSize: 12,
+                fontWeight: 900,
+                whiteSpace: "nowrap",
+              }}
+            >
+              Preview Only
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 360px", gap: 16, alignItems: "start" }}>
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#334155", marginBottom: 6 }}>
+                Paste CSV Text
+              </label>
+              <textarea
+                value={importCsvText}
+                onChange={(event) => {
+                  setImportCsvText(event.target.value);
+                  setImportPreview(null);
+                }}
+                placeholder={'displayName,aliases,notes,phone,internalCode\nTest Individual,"Test Alias; T. Individual",Local note,555-555-5555,ABC123'}
+                rows={8}
+                style={{
+                  width: "100%",
+                  padding: "11px 12px",
+                  borderRadius: 12,
+                  border: "1px solid #cbd5e1",
+                  resize: "vertical",
+                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                  fontSize: 12,
+                }}
+              />
+
+              {importHeaders.length ? (
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: "#334155", marginBottom: 8 }}>
+                    Column Mapping
+                  </div>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {importHeaders.map((header) => (
+                      <div
+                        key={header}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "minmax(0, 1fr) 260px",
+                          gap: 10,
+                          alignItems: "center",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 12,
+                          padding: 10,
+                          background: "#f8fafc",
+                        }}
+                      >
+                        <div style={{ fontWeight: 900, color: "#0f172a", wordBreak: "break-word" }}>{header}</div>
+                        <select
+                          value={effectiveImportMappings[header]}
+                          onChange={(event) => updateImportMapping(header, event.target.value as ImportColumnMappingAction)}
+                          style={{
+                            width: "100%",
+                            padding: "9px 10px",
+                            borderRadius: 10,
+                            border: "1px solid #cbd5e1",
+                            fontWeight: 800,
+                            background: "#ffffff",
+                          }}
+                        >
+                          {[
+                            "ignore",
+                            "displayName",
+                            "aliases",
+                            "notes",
+                            "active",
+                            "source",
+                            "details_show",
+                            "details_hidden",
+                          ].map((action) => (
+                            <option key={action} value={action}>
+                              {importMappingLabel(action as ImportColumnMappingAction)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div
+              style={{
+                border: "1px solid #e2e8f0",
+                background: "#f8fafc",
+                borderRadius: 18,
+                padding: 14,
+              }}
+            >
+              <div style={{ fontSize: 12, fontWeight: 900, color: "#334155", marginBottom: 8 }}>
+                Import Target
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 12 }}>{selectedTypeLabel}</div>
+
+              <button
+                onClick={previewImport}
+                disabled={importLoading || !text(importCsvText)}
+                style={{
+                  width: "100%",
+                  border: 0,
+                  background: importLoading || !text(importCsvText) ? "#94a3b8" : "#7c3aed",
+                  color: "#ffffff",
+                  borderRadius: 14,
+                  padding: "12px 14px",
+                  fontWeight: 900,
+                  cursor: importLoading || !text(importCsvText) ? "default" : "pointer",
+                  marginBottom: 12,
+                }}
+              >
+                {importLoading ? "Previewing..." : "Preview CSV Import"}
+              </button>
+
+              <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.45 }}>
+                Confirmed import/write is intentionally not included in this pass.  After preview works reliably,
+                the next pass can add a separate confirmation step.
+              </div>
+
+              {importPreview?.summary ? (
+                <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {[
+                    ["Rows", importPreview.summary.totalCsvRows],
+                    ["Create", importPreview.summary.rowsToCreate],
+                    ["Update", importPreview.summary.rowsToUpdate],
+                    ["Invalid", importPreview.summary.invalidRows],
+                    ["Conflicts", importPreview.summary.duplicateOrConflictRows],
+                    ["Aliases", importPreview.summary.aliasesToAdd],
+                    ["Shown Details", importPreview.summary.rowsWithVisibleDetails],
+                    ["Hidden Details", importPreview.summary.rowsWithHiddenInternalDetails],
+                  ].map(([label, value]) => (
+                    <div
+                      key={label}
+                      style={{
+                        background: "#ffffff",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 12,
+                        padding: 10,
+                      }}
+                    >
+                      <div style={{ fontSize: 11, color: "#64748b", fontWeight: 900 }}>{label}</div>
+                      <div style={{ fontSize: 20, fontWeight: 900 }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          {importPreview?.rowPreviews?.length ? (
+            <div style={{ marginTop: 18, overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: "#eff6ff" }}>
+                    {["Row", "Result", "Display Name", "Aliases", "Visible Details", "Hidden/Internal", "Issues"].map((header) => (
+                      <th
+                        key={header}
+                        style={{
+                          textAlign: "left",
+                          padding: "10px 8px",
+                          borderBottom: "1px solid #bfdbfe",
+                          color: "#1e3a8a",
+                          fontSize: 12,
+                          fontWeight: 900,
+                        }}
+                      >
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {importPreview.rowPreviews.slice(0, 50).map((row) => (
+                    <tr key={`${row.rowNumber}-${row.displayName}`} style={{ borderBottom: "1px solid #e2e8f0" }}>
+                      <td style={{ padding: "10px 8px", fontWeight: 900 }}>{row.rowNumber}</td>
+                      <td style={{ padding: "10px 8px" }}>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            borderRadius: 999,
+                            padding: "4px 9px",
+                            fontSize: 11,
+                            fontWeight: 900,
+                            background:
+                              row.classification === "create"
+                                ? "#dcfce7"
+                                : row.classification === "update"
+                                  ? "#dbeafe"
+                                  : row.classification === "invalid"
+                                    ? "#fee2e2"
+                                    : "#fef3c7",
+                            color:
+                              row.classification === "create"
+                                ? "#166534"
+                                : row.classification === "update"
+                                  ? "#1d4ed8"
+                                  : row.classification === "invalid"
+                                    ? "#991b1b"
+                                    : "#92400e",
+                          }}
+                        >
+                          {row.classification.toUpperCase()}
+                        </span>
+                      </td>
+                      <td style={{ padding: "10px 8px", fontWeight: 800 }}>
+                        {row.displayName || "—"}
+                        {row.existingEntity ? (
+                          <div style={{ color: "#64748b", fontSize: 11, marginTop: 3 }}>
+                            Existing: {row.existingEntity.displayName}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td style={{ padding: "10px 8px" }}>
+                        {row.proposed.aliases?.length ? row.proposed.aliases.join(", ") : "—"}
+                      </td>
+                      <td style={{ padding: "10px 8px" }}>
+                        {Object.keys(row.proposed.detailsVisible || {}).length
+                          ? Object.keys(row.proposed.detailsVisible).join(", ")
+                          : "—"}
+                      </td>
+                      <td style={{ padding: "10px 8px" }}>
+                        {Object.keys(row.proposed.detailsHidden || {}).length
+                          ? Object.keys(row.proposed.detailsHidden).join(", ")
+                          : "—"}
+                      </td>
+                      <td style={{ padding: "10px 8px", color: row.invalidReasons?.length ? "#991b1b" : "#64748b" }}>
+                        {row.invalidReasons?.length ? row.invalidReasons.join("; ") : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {importPreview.rowPreviews.length > 50 ? (
+                <div style={{ marginTop: 10, color: "#64748b", fontSize: 12 }}>
+                  Showing first 50 preview rows.  Total preview rows: {importPreview.rowPreviews.length}.
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         <section

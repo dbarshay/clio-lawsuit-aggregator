@@ -26,7 +26,8 @@
     "verify:claimindex-ingest-field-coverage-safety": "node scripts/verify-claimindex-ingest-field-coverage-safety.mjs",
     "verify:audit-log-safety": "node scripts/verify-audit-log-safety.mjs",
     "verify:local-first-payment-safety": "node scripts/verify-local-first-payment-safety.mjs",
-    "verify:reference-data-safety": "node scripts/verify-reference-data-safety.mjs"
+    "verify:reference-data-safety": "node scripts/verify-reference-data-safety.mjs",
+    "verify:reference-import-preview-safety": "node scripts/verify-reference-import-preview-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

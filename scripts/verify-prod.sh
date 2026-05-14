@@ -81,4 +81,5 @@ npm run smoke:workflow:prod
 echo "=== VERIFY LOCAL-FIRST INDIVIDUAL PAYMENT SAFETY ==="
 npm run verify:reference-data-safety
 npm run verify:reference-import-preview-safety
+npm run verify:reference-import-confirm-safety
 npm run verify:local-first-payment-safety

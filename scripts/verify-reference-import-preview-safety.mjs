@@ -10,31 +10,46 @@ function read(path) {
   return fs.readFileSync(path, "utf8");
 }
 
+const helperPath = "lib/referenceImport.ts";
 const routePath = "app/api/reference-data/import-preview/route.ts";
 const pagePath = "app/admin/reference-data/page.tsx";
+
+const helper = read(helperPath);
 const route = read(routePath);
 const page = read(pagePath);
 const pkg = JSON.parse(read("package.json"));
 const verifyProd = read("scripts/verify-prod.sh");
 
+if (!helper.includes("safetyImportPreview")) {
+  fail("Shared import helper must define preview safety.");
+}
+
+if (!helper.includes("previewOnly: true")) {
+  fail("Shared import helper must mark previewOnly true.");
+}
+
+if (!helper.includes("noDatabaseRecordsChanged: true")) {
+  fail("Shared import helper must explicitly state no database records changed for preview.");
+}
+
+if (!helper.includes("confirmedImportSupported: false")) {
+  fail("Shared import helper must explicitly state confirmed import is not supported by preview safety.");
+}
+
+if (!helper.includes("buildReferenceImportPreview")) {
+  fail("Shared import helper must build the preview.");
+}
+
+if (!helper.includes("prisma.referenceEntity.findMany")) {
+  fail("Preview helper should read existing reference entities for create/update preview classification.");
+}
+
 if (!route.includes('action: "reference-import-preview"')) {
   fail("Import preview route must identify reference-import-preview action.");
 }
 
-if (!route.includes("previewOnly: true")) {
-  fail("Import preview route must mark previewOnly true.");
-}
-
-if (!route.includes("noDatabaseRecordsChanged: true")) {
-  fail("Import preview route must explicitly state no database records changed.");
-}
-
-if (!route.includes("confirmedImportSupported: false")) {
-  fail("Import preview route must explicitly state confirmed import is not supported in this pass.");
-}
-
-if (!route.includes("prisma.referenceEntity.findMany")) {
-  fail("Import preview route should read existing reference entities for create/update preview classification.");
+if (!route.includes("safetyImportPreview")) {
+  fail("Import preview route must use preview safety.");
 }
 
 for (const forbidden of [
@@ -61,7 +76,7 @@ if (!page.includes("/api/reference-data/import-preview")) {
 }
 
 if (!page.includes("Preview Only")) {
-  fail("Admin Reference Data page must visibly identify import as Preview Only.");
+  fail("Admin Reference Data page must visibly identify preview status.");
 }
 
 if (!page.includes("Store in Details but Hide/Internal")) {
@@ -70,10 +85,6 @@ if (!page.includes("Store in Details but Hide/Internal")) {
 
 if (!page.includes("Store in Details and Show")) {
   fail("Column mapping must include visible details option.");
-}
-
-if (page.includes("Confirm Import") || page.includes("confirmed import/write")) {
-  fail("First pass must not add a Confirm Import button or confirmed write flow.");
 }
 
 if (pkg.scripts?.["verify:reference-import-preview-safety"] !== "node scripts/verify-reference-import-preview-safety.mjs") {

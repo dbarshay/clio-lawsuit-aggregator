@@ -266,7 +266,9 @@ export default function AdminReferenceDataPage() {
   const [importCsvText, setImportCsvText] = useState("");
   const [importMappings, setImportMappings] = useState<Record<string, ImportColumnMappingAction>>({});
   const [importPreview, setImportPreview] = useState<ImportPreviewResponse | null>(null);
+  const [importConfirmResult, setImportConfirmResult] = useState<any | null>(null);
   const [importLoading, setImportLoading] = useState(false);
+  const [importConfirming, setImportConfirming] = useState(false);
 
   const selectedTypeLabel = useMemo(
     () => typeOptions.find((option) => option.value === selectedType)?.label || selectedType,
@@ -370,6 +372,7 @@ export default function AdminReferenceDataPage() {
 
       const json = await res.json();
       setImportPreview(json);
+      setImportConfirmResult(null);
 
       if (!res.ok || !json?.ok) {
         throw new Error(json?.error || "Could not preview CSV import.");
@@ -389,6 +392,51 @@ export default function AdminReferenceDataPage() {
       [header]: action,
     }));
     setImportPreview(null);
+    setImportConfirmResult(null);
+  }
+
+  async function confirmImport() {
+    try {
+      setImportConfirming(true);
+      resetMessages();
+
+      if (!importPreview?.ok || !importPreview?.summary) {
+        throw new Error("Preview the CSV import before confirming.");
+      }
+
+      if ((importPreview.summary.invalidRows || 0) > 0 || (importPreview.summary.duplicateOrConflictRows || 0) > 0) {
+        throw new Error("Resolve invalid or duplicate/conflict rows before confirming import.");
+      }
+
+      const res = await fetch("/api/reference-data/import-confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: selectedType,
+          csvText: importCsvText,
+          columnMappings: effectiveImportMappings,
+          confirm: true,
+          actorName: "Barsh Matters User",
+        }),
+      });
+
+      const json = await res.json();
+      setImportConfirmResult(json);
+
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Could not confirm CSV import.");
+      }
+
+      setStatusMessage(
+        `Confirmed CSV import.  Created ${json.summary?.created ?? 0}, updated ${json.summary?.updated ?? 0}, aliases added ${json.summary?.aliasesCreated ?? 0}.  No Clio data was changed.`
+      );
+
+      await loadRows(selectedType, query, activeFilter);
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Could not confirm CSV import.");
+    } finally {
+      setImportConfirming(false);
+    }
   }
 
   async function createRecord() {
@@ -656,6 +704,7 @@ export default function AdminReferenceDataPage() {
                 onChange={(event) => {
                   setImportCsvText(event.target.value);
                   setImportPreview(null);
+                  setImportConfirmResult(null);
                 }}
                 placeholder={'displayName,aliases,notes,phone,internalCode\nTest Individual,"Test Alias; T. Individual",Local note,555-555-5555,ABC123'}
                 rows={8}
@@ -750,16 +799,74 @@ export default function AdminReferenceDataPage() {
                   padding: "12px 14px",
                   fontWeight: 900,
                   cursor: importLoading || !text(importCsvText) ? "default" : "pointer",
-                  marginBottom: 12,
+                  marginBottom: 10,
                 }}
               >
                 {importLoading ? "Previewing..." : "Preview CSV Import"}
               </button>
 
+              <button
+                onClick={confirmImport}
+                disabled={
+                  importConfirming ||
+                  !importPreview?.ok ||
+                  !importPreview?.summary ||
+                  (importPreview.summary.invalidRows || 0) > 0 ||
+                  (importPreview.summary.duplicateOrConflictRows || 0) > 0
+                }
+                style={{
+                  width: "100%",
+                  border: 0,
+                  background:
+                    importConfirming ||
+                    !importPreview?.ok ||
+                    !importPreview?.summary ||
+                    (importPreview.summary.invalidRows || 0) > 0 ||
+                    (importPreview.summary.duplicateOrConflictRows || 0) > 0
+                      ? "#94a3b8"
+                      : "#16a34a",
+                  color: "#ffffff",
+                  borderRadius: 14,
+                  padding: "12px 14px",
+                  fontWeight: 900,
+                  cursor:
+                    importConfirming ||
+                    !importPreview?.ok ||
+                    !importPreview?.summary ||
+                    (importPreview.summary.invalidRows || 0) > 0 ||
+                    (importPreview.summary.duplicateOrConflictRows || 0) > 0
+                      ? "default"
+                      : "pointer",
+                  marginBottom: 12,
+                }}
+              >
+                {importConfirming ? "Importing..." : "Confirm Import to Local Reference Data"}
+              </button>
+
               <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.45 }}>
-                Confirmed import/write is intentionally not included in this pass.  After preview works reliably,
-                the next pass can add a separate confirmation step.
+                Confirmation writes only to local Barsh Matters reference-data tables and aliases.  It does not
+                write to Clio, generate documents, change the print queue, or hard-delete records.
               </div>
+
+              {importConfirmResult?.ok ? (
+                <div
+                  style={{
+                    marginTop: 12,
+                    border: "1px solid #bbf7d0",
+                    background: "#f0fdf4",
+                    color: "#166534",
+                    borderRadius: 14,
+                    padding: 12,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Import confirmed: created {importConfirmResult.summary?.created ?? 0}, updated{" "}
+                  {importConfirmResult.summary?.updated ?? 0}, aliases added{" "}
+                  {importConfirmResult.summary?.aliasesCreated ?? 0}.
+                </div>
+              ) : null}
 
               {importPreview?.summary ? (
                 <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>

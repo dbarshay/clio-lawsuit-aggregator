@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 
 type ReferenceTypeOption = {
   value: string;
@@ -254,6 +255,10 @@ function parseCsvHeaderClient(value: string): string[] {
 function autoMapImportHeader(header: string): ImportColumnMappingAction {
   const normalized = text(header).toLowerCase().replace(/[’']/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 
+  if (normalized.startsWith("hidden_") || normalized.startsWith("internal_")) {
+    return "details_hidden";
+  }
+
   if (
     [
       "display_name",
@@ -326,6 +331,36 @@ function pillStyle(active: boolean): React.CSSProperties {
   };
 }
 
+function asPlainObject(value: unknown): Record<string, any> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, any>) : {};
+}
+
+function detailLabel(key: string): string {
+  return text(key)
+    .replace(/^hidden[_\s-]+/i, "")
+    .replace(/^internal[_\s-]+/i, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase()) || key;
+}
+
+function visibleDetailEntries(details: unknown): Array<[string, any]> {
+  const obj = asPlainObject(details);
+  return Object.entries(obj).filter(([key, value]) => key !== "_hiddenImportFields" && text(value));
+}
+
+function hiddenDetailEntries(details: unknown): Array<[string, any]> {
+  return Object.entries(asPlainObject(asPlainObject(details)._hiddenImportFields)).filter(([, value]) => text(value));
+}
+
+function allReferenceDetailEntries(details: unknown): Array<[string, any, "visible" | "hidden"]> {
+  return [
+    ...visibleDetailEntries(details).map(([key, value]) => [key, value, "visible"] as [string, any, "visible"]),
+    ...hiddenDetailEntries(details).map(([key, value]) => [key, value, "hidden"] as [string, any, "hidden"]),
+  ];
+}
+
 export default function AdminReferenceDataPage() {
   const [typeOptions, setTypeOptions] = useState<ReferenceTypeOption[]>(DEFAULT_TYPES);
   const [selectedType, setSelectedType] = useState("individual");
@@ -349,6 +384,9 @@ export default function AdminReferenceDataPage() {
   const [newAlias, setNewAlias] = useState("");
 
   const [importCsvText, setImportCsvText] = useState("");
+  const [importFileName, setImportFileName] = useState("");
+  const [importFileError, setImportFileError] = useState("");
+  const [importDragActive, setImportDragActive] = useState(false);
   const [importMappings, setImportMappings] = useState<Record<string, ImportColumnMappingAction>>({});
   const [importPreview, setImportPreview] = useState<ImportPreviewResponse | null>(null);
   const [importConfirmResult, setImportConfirmResult] = useState<any | null>(null);
@@ -359,6 +397,7 @@ export default function AdminReferenceDataPage() {
   const [importHistoryLoading, setImportHistoryLoading] = useState(false);
   const [selectedImportHistoryItem, setSelectedImportHistoryItem] =
     useState<NonNullable<ImportHistoryResponse["imports"]>[number] | null>(null);
+  const [selectedReferenceDetailRow, setSelectedReferenceDetailRow] = useState<ReferenceEntity | null>(null);
 
   const [importPreviewPanelOpen, setImportPreviewPanelOpen] = useState(true);
   const [importHistoryPanelOpen, setImportHistoryPanelOpen] = useState(true);
@@ -378,6 +417,21 @@ export default function AdminReferenceDataPage() {
   const selectedRow = useMemo(
     () => rows.find((row) => row.id === selectedRowId) || null,
     [rows, selectedRowId]
+  );
+
+  const selectedVisibleDetailCount = useMemo(
+    () => visibleDetailEntries(selectedRow?.details).length,
+    [selectedRow]
+  );
+
+  const selectedHiddenDetailCount = useMemo(
+    () => hiddenDetailEntries(selectedRow?.details).length,
+    [selectedRow]
+  );
+
+  const selectedReferenceDetailEntries = useMemo(
+    () => allReferenceDetailEntries(selectedReferenceDetailRow?.details),
+    [selectedReferenceDetailRow]
   );
 
   const importHeaders = useMemo(() => parseCsvHeaderClient(importCsvText), [importCsvText]);
@@ -570,6 +624,59 @@ export default function AdminReferenceDataPage() {
       });
     } finally {
       setImportHistoryLoading(false);
+    }
+  }
+
+  function resetImportPreviewState() {
+    setImportPreview(null);
+    setImportConfirmResult(null);
+  }
+
+  async function loadReferenceImportFile(file: File | null) {
+    try {
+      setImportFileError("");
+      setImportFileName("");
+
+      if (!file) return;
+
+      const fileName = file.name || "selected file";
+      const lowerName = fileName.toLowerCase();
+
+      if (!lowerName.endsWith(".xlsx") && !lowerName.endsWith(".xls") && !lowerName.endsWith(".csv")) {
+        throw new Error("Use an .xlsx, .xls, or .csv file.");
+      }
+
+      let csvText = "";
+
+      if (lowerName.endsWith(".csv")) {
+        csvText = await file.text();
+      } else {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+
+        if (!sheetName) {
+          throw new Error("The spreadsheet does not contain a worksheet.");
+        }
+
+        const worksheet = workbook.Sheets[sheetName];
+        csvText = XLSX.utils.sheet_to_csv(worksheet, { blankrows: false });
+      }
+
+      if (!text(csvText)) {
+        throw new Error("The selected file did not contain importable text.");
+      }
+
+      setImportCsvText(csvText);
+      setImportFileName(fileName);
+      setImportMappings({});
+      resetImportPreviewState();
+      setStatusMessage(`Loaded ${fileName} into the import preview box.  No records were changed.`);
+    } catch (err: any) {
+      setImportFileError(err?.message || "Could not read spreadsheet file.");
+      setImportCsvText("");
+      setImportFileName("");
+      resetImportPreviewState();
     }
   }
 
@@ -939,16 +1046,99 @@ export default function AdminReferenceDataPage() {
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 360px", gap: 16, alignItems: "start" }}>
             <div>
               <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#334155", marginBottom: 6 }}>
-                Paste CSV Text
+                Drop Spreadsheet or Paste CSV Text
               </label>
+
+              <div
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setImportDragActive(true);
+                }}
+                onDragLeave={() => setImportDragActive(false)}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setImportDragActive(false);
+                  void loadReferenceImportFile(event.dataTransfer.files?.[0] || null);
+                }}
+                style={{
+                  border: `2px dashed ${importDragActive ? "#2563eb" : "#bfdbfe"}`,
+                  background: importDragActive ? "#eff6ff" : "#f8fafc",
+                  borderRadius: 16,
+                  padding: 14,
+                  marginBottom: 10,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 900, color: "#1e3a8a", marginBottom: 3 }}>
+                    Drop .xlsx, .xls, or .csv file here
+                  </div>
+                  <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.4 }}>
+                    The first worksheet will be converted to CSV for preview.  Loading a file does not import records.
+                    {importFileName ? (
+                      <span style={{ display: "block", marginTop: 4, color: "#166534", fontWeight: 900 }}>
+                        Loaded: {importFileName}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+
+                <label
+                  htmlFor="reference-import-file"
+                  style={{
+                    border: "1px solid #bfdbfe",
+                    background: "#ffffff",
+                    color: "#1d4ed8",
+                    borderRadius: 12,
+                    padding: "9px 12px",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Choose File
+                </label>
+                <input
+                  id="reference-import-file"
+                  type="file"
+                  accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                  onChange={(event) => {
+                    void loadReferenceImportFile(event.target.files?.[0] || null);
+                    event.currentTarget.value = "";
+                  }}
+                  style={{ display: "none" }}
+                />
+              </div>
+
+              {importFileError ? (
+                <div
+                  style={{
+                    border: "1px solid #fecaca",
+                    background: "#fef2f2",
+                    color: "#991b1b",
+                    borderRadius: 12,
+                    padding: 10,
+                    marginBottom: 10,
+                    fontSize: 12,
+                    fontWeight: 800,
+                  }}
+                >
+                  {importFileError}
+                </div>
+              ) : null}
+
               <textarea
                 value={importCsvText}
                 onChange={(event) => {
                   setImportCsvText(event.target.value);
-                  setImportPreview(null);
-                  setImportConfirmResult(null);
+                  setImportFileName("");
+                  setImportFileError("");
+                  resetImportPreviewState();
                 }}
-                placeholder={'displayName,aliases,notes,phone,internalCode\nTest Individual,"Test Alias; T. Individual",Local note,555-555-5555,ABC123'}
+                placeholder={'insurer_name,hidden_street,hidden_city,hidden_state,hidden_zipcode,hidden_phone,hidden_email,hidden_group_name,hidden_website,hidden_naic_number,hidden_domicile\nExample Insurance Company,123 Main St,Albany,NY,12207,555-555-5555,claims@example.com,Example Group,https://example.com,12345,NY'}
                 rows={8}
                 style={{
                   width: "100%",
@@ -1088,6 +1278,8 @@ export default function AdminReferenceDataPage() {
               <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.45 }}>
                 Confirmation writes only to local Barsh Matters reference-data tables and aliases.  It does not
                 write to Clio, generate documents, change the print queue, or hard-delete records.
+                CSV columns beginning with <strong>hidden_</strong> or <strong>internal_</strong> are stored for
+                detail/document use but are not shown as ordinary visible detail fields.
               </div>
 
               {importConfirmResult?.ok ? (
@@ -1394,6 +1586,193 @@ export default function AdminReferenceDataPage() {
             </div>
           ) : null}
         </section>
+
+        {selectedRow ? (
+          <section
+            style={{
+              border: "1px solid #dbeafe",
+              background: "#ffffff",
+              borderRadius: 22,
+              padding: 18,
+              marginBottom: 18,
+              boxShadow: "0 18px 42px rgba(15, 23, 42, 0.10)",
+            }}
+          >
+            <h2 style={{ margin: "0 0 6px", fontSize: 20 }}>Selected Reference Details</h2>
+            <p style={{ margin: "0 0 12px", color: "#64748b", fontSize: 13, lineHeight: 1.45 }}>
+              Visible detail fields: {selectedVisibleDetailCount}.  Hidden/internal fields available for detail view
+              and document generation: {selectedHiddenDetailCount}.
+            </p>
+            <button
+              type="button"
+              onClick={() => setSelectedReferenceDetailRow(selectedRow)}
+              disabled={selectedVisibleDetailCount + selectedHiddenDetailCount === 0}
+              style={{
+                border: "1px solid #bfdbfe",
+                background: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "#e2e8f0" : "#eff6ff",
+                color: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "#64748b" : "#1d4ed8",
+                borderRadius: 10,
+                padding: "8px 11px",
+                fontWeight: 900,
+                cursor: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "default" : "pointer",
+              }}
+            >
+              View Stored Details
+            </button>
+          </section>
+        ) : null}
+
+        {selectedReferenceDetailRow ? (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Reference record stored details"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 1000,
+              background: "rgba(15, 23, 42, 0.42)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 24,
+            }}
+          >
+            <div
+              style={{
+                width: "min(860px, calc(100vw - 48px))",
+                maxHeight: "calc(100vh - 48px)",
+                overflow: "auto",
+                background: "#ffffff",
+                border: "1px solid #bfdbfe",
+                borderRadius: 22,
+                boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
+                padding: 20,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  alignItems: "flex-start",
+                  marginBottom: 16,
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: "#1d4ed8", letterSpacing: 1.2 }}>
+                    LOCAL REFERENCE DETAIL
+                  </div>
+                  <h2 style={{ margin: "4px 0 6px", fontSize: 24 }}>{selectedReferenceDetailRow.displayName}</h2>
+                  <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.45 }}>
+                    These details are stored in Barsh Matters local reference data.  Hidden/internal fields are not
+                    shown as ordinary UI fields but remain available for later document-generation code.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSelectedReferenceDetailRow(null)}
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    background: "#f8fafc",
+                    color: "#0f172a",
+                    borderRadius: 12,
+                    padding: "10px 12px",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10, marginBottom: 16 }}>
+                {[
+                  ["Type", selectedTypeLabel],
+                  ["Status", activeLabel(selectedReferenceDetailRow.active)],
+                  ["Source", selectedReferenceDetailRow.source || "—"],
+                ].map(([label, value]) => (
+                  <div
+                    key={String(label)}
+                    style={{
+                      border: "1px solid #e2e8f0",
+                      background: "#f8fafc",
+                      borderRadius: 14,
+                      padding: 12,
+                    }}
+                  >
+                    <div style={{ fontSize: 11, color: "#64748b", fontWeight: 900 }}>{label}</div>
+                    <div style={{ fontSize: 15, fontWeight: 900, marginTop: 4 }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {selectedReferenceDetailEntries.length ? (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: "#eff6ff" }}>
+                        {["Field", "Value", "Visibility"].map((header) => (
+                          <th
+                            key={header}
+                            style={{
+                              textAlign: "left",
+                              padding: "10px 8px",
+                              borderBottom: "1px solid #bfdbfe",
+                              color: "#1e3a8a",
+                              fontSize: 12,
+                              fontWeight: 900,
+                            }}
+                          >
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedReferenceDetailEntries.map(([key, value, visibility]) => (
+                        <tr key={`${visibility}-${key}`} style={{ borderBottom: "1px solid #e2e8f0" }}>
+                          <td style={{ padding: "10px 8px", fontWeight: 900 }}>{detailLabel(key)}</td>
+                          <td style={{ padding: "10px 8px", color: "#334155", whiteSpace: "pre-wrap" }}>
+                            {text(value) || "—"}
+                          </td>
+                          <td style={{ padding: "10px 8px" }}>
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                borderRadius: 999,
+                                padding: "4px 9px",
+                                fontSize: 11,
+                                fontWeight: 900,
+                                background: visibility === "hidden" ? "#fef3c7" : "#dcfce7",
+                                color: visibility === "hidden" ? "#92400e" : "#166534",
+                              }}
+                            >
+                              {visibility === "hidden" ? "Hidden / Internal" : "Visible Detail"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    border: "1px solid #e2e8f0",
+                    background: "#f8fafc",
+                    borderRadius: 14,
+                    padding: 14,
+                    color: "#64748b",
+                    fontWeight: 800,
+                  }}
+                >
+                  No stored details found for this reference record.
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
 
         {selectedImportHistoryItem ? (
           <div
@@ -2227,6 +2606,40 @@ export default function AdminReferenceDataPage() {
                         marginBottom: 12,
                       }}
                     />
+
+                    <div
+                      style={{
+                        border: "1px solid #dbeafe",
+                        background: "#eff6ff",
+                        borderRadius: 14,
+                        padding: 12,
+                        marginBottom: 12,
+                      }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 900, color: "#1e3a8a", marginBottom: 4 }}>
+                        Stored Reference Details
+                      </div>
+                      <div style={{ color: "#475569", fontSize: 12, lineHeight: 1.45, marginBottom: 8 }}>
+                        Visible detail fields: {selectedVisibleDetailCount}.  Hidden/internal fields available for detail view
+                        and document generation: {selectedHiddenDetailCount}.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedReferenceDetailRow(selectedRow)}
+                        disabled={selectedVisibleDetailCount + selectedHiddenDetailCount === 0}
+                        style={{
+                          border: "1px solid #bfdbfe",
+                          background: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "#e2e8f0" : "#ffffff",
+                          color: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "#64748b" : "#1d4ed8",
+                          borderRadius: 10,
+                          padding: "7px 10px",
+                          fontWeight: 900,
+                          cursor: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "default" : "pointer",
+                        }}
+                      >
+                        View Stored Details
+                      </button>
+                    </div>
 
                     <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#334155", marginBottom: 6 }}>
                       Additional Details JSON

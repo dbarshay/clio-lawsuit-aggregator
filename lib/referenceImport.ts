@@ -115,6 +115,10 @@ export function parseCsv(text: string): string[][] {
 export function autoMapHeader(header: string): ColumnMappingAction {
   const normalized = normalizeReferenceText(header).replace(/\s+/g, "_");
 
+  if (normalized.startsWith("hidden_") || normalized.startsWith("internal_")) {
+    return "details_hidden";
+  }
+
   if (
     [
       "display_name",

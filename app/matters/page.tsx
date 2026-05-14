@@ -371,6 +371,10 @@ export default function FilteredMattersPage() {
   const [masterNoteDraft, setMasterNoteDraft] = useState("");
   const [masterNoteEditingId, setMasterNoteEditingId] = useState<string | null>(null);
   const [masterNoteDeleteTarget, setMasterNoteDeleteTarget] = useState<null | { id: string; note: string }>(null);
+  const [masterAuditHistoryOpen, setMasterAuditHistoryOpen] = useState(false);
+  const [masterAuditHistoryLoading, setMasterAuditHistoryLoading] = useState(false);
+  const [masterAuditHistoryError, setMasterAuditHistoryError] = useState("");
+  const [masterAuditHistoryEntries, setMasterAuditHistoryEntries] = useState<any[]>([]);
   const masterNoteTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const masterNoteDeleteConfirmButtonRef = useRef<HTMLButtonElement | null>(null);
   const [masterNotes, setMasterNotes] = useState<Array<{
@@ -537,16 +541,19 @@ export default function FilteredMattersPage() {
       after = formatted ? `$${formatted}` : "—";
     }
 
+    const field = masterInfoEditDialog.field;
+    const label = masterInfoEditDialog.label;
+
     setMasterInfoOverrides((prev) => ({
       ...prev,
-      [masterInfoEditDialog.field]: after,
+      [field]: after,
     }));
 
     setMasterInfoAuditEntries((prev) => [
       {
-        id: `${Date.now()}-${masterInfoEditDialog.field}`,
-        field: masterInfoEditDialog.field,
-        label: masterInfoEditDialog.label,
+        id: `${Date.now()}-${field}`,
+        field,
+        label,
         before,
         after,
         timestamp: new Date().toLocaleString(),
@@ -554,11 +561,155 @@ export default function FilteredMattersPage() {
       ...prev,
     ]);
 
+    void writeMasterAuditEntry({
+      action: "master_info_updated",
+      summary: `${label} changed from ${before} to ${after}`,
+      entityType: "master_lawsuit_info",
+      fieldName: field,
+      priorValue: before,
+      newValue: after,
+      details: {
+        label,
+        fieldKind: kind,
+        selectedContactId: masterInfoSelectedContact?.id || null,
+        selectedContactName: masterInfoSelectedContact?.name || null,
+      },
+    });
+
     closeMasterInfoEditDialog();
   }
 
   function masterNoteUserName(): string {
     return "Dave";
+  }
+
+  function masterAuditMatterRows() {
+    return rows
+      .map((row: any) => {
+        const id = Number(row?.id ?? row?.matterId);
+        const displayNumber = clean(row?.displayNumber ?? row?.display_number);
+        return {
+          matterId: Number.isFinite(id) && id > 0 ? id : null,
+          displayNumber: displayNumber || null,
+          isMaster: !!(row?.isMaster || row?.is_master),
+        };
+      })
+      .filter((row) => row.matterId || row.displayNumber);
+  }
+
+  function masterAuditMasterMatterRow() {
+    const matterRows = masterAuditMatterRows();
+    return matterRows.find((row) => row.isMaster) || matterRows[0] || null;
+  }
+
+  function formatMasterAuditValue(value: any): string {
+    if (value === null || value === undefined || value === "") return "—";
+    if (typeof value === "string") return value;
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+
+  function formatMasterAuditTimestamp(value: any): string {
+    const date = new Date(String(value || ""));
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleString();
+  }
+
+  async function loadMasterAuditHistory() {
+    const masterLawsuitId = clean(value);
+    if (kind !== "master" || !masterLawsuitId) return;
+
+    try {
+      setMasterAuditHistoryLoading(true);
+      setMasterAuditHistoryError("");
+
+      const response = await fetch(
+        `/api/audit-log?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}&limit=100`,
+        { cache: "no-store" }
+      );
+
+      const json = await response.json();
+
+      if (!response.ok || !json?.ok) {
+        throw new Error(json?.error || "Audit history lookup failed.");
+      }
+
+      setMasterAuditHistoryEntries(Array.isArray(json.entries) ? json.entries : []);
+    } catch (err: any) {
+      setMasterAuditHistoryEntries([]);
+      setMasterAuditHistoryError(err?.message || "Audit history lookup failed.");
+    } finally {
+      setMasterAuditHistoryLoading(false);
+    }
+  }
+
+  function openMasterAuditHistoryPopup() {
+    setMasterAuditHistoryOpen(true);
+    void loadMasterAuditHistory();
+  }
+
+  function closeMasterAuditHistoryPopup() {
+    setMasterAuditHistoryOpen(false);
+    setMasterAuditHistoryError("");
+  }
+
+  async function writeMasterAuditEntry(input: {
+    action: string;
+    summary: string;
+    entityType: string;
+    fieldName?: string | null;
+    priorValue?: any;
+    newValue?: any;
+    details?: any;
+  }) {
+    try {
+      if (kind !== "master") return;
+
+      const masterLawsuitId = clean(value);
+      if (!masterLawsuitId) return;
+
+      const matterRows = masterAuditMatterRows();
+      const masterMatter = masterAuditMasterMatterRow();
+
+      const response = await fetch("/api/audit-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({
+          action: input.action,
+          summary: input.summary,
+          entityType: input.entityType,
+          fieldName: input.fieldName || null,
+          priorValue: input.priorValue ?? null,
+          newValue: input.newValue ?? null,
+          details: {
+            ...(input.details || {}),
+            matterRows,
+          },
+          affectedMatterIds: matterRows
+            .map((row) => row.matterId)
+            .filter((id): id is number => Number.isFinite(Number(id)) && Number(id) > 0),
+          matterId: masterMatter?.matterId || null,
+          matterDisplayNumber: masterMatter?.displayNumber || null,
+          masterMatterId: masterMatter?.matterId || null,
+          masterMatterDisplayNumber: masterMatter?.displayNumber || null,
+          masterLawsuitId,
+          sourcePage: "master-lawsuit-page",
+          workflow: "master-local-ui",
+          actorName: masterNoteUserName(),
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        console.warn("Audit log write failed", response.status, body);
+      }
+    } catch (err) {
+      console.warn("Audit log write failed", err);
+    }
   }
 
   function openMasterNoteDialog(noteEntry?: { id: string; note: string }) {
@@ -578,6 +729,9 @@ export default function FilteredMattersPage() {
     if (!note) return;
 
     if (masterNoteEditingId) {
+      const existingNote = masterNotes.find((entry) => entry.id === masterNoteEditingId);
+      const before = existingNote?.note || "";
+
       setMasterNotes((prev) =>
         prev.map((entry) =>
           entry.id === masterNoteEditingId
@@ -591,19 +745,45 @@ export default function FilteredMattersPage() {
         )
       );
 
+      void writeMasterAuditEntry({
+        action: "master_note_edited",
+        summary: "Master lawsuit note edited",
+        entityType: "master_lawsuit_note",
+        fieldName: "note",
+        priorValue: before,
+        newValue: note,
+        details: {
+          noteId: masterNoteEditingId,
+        },
+      });
+
       closeMasterNoteDialog();
       return;
     }
 
+    const noteId = `${Date.now()}-note`;
+
     setMasterNotes((prev) => [
       {
-        id: `${Date.now()}-note`,
+        id: noteId,
         note,
         timestamp: new Date().toLocaleString(),
         user: masterNoteUserName(),
       },
       ...prev,
     ]);
+
+    void writeMasterAuditEntry({
+      action: "master_note_added",
+      summary: "Master lawsuit note added",
+      entityType: "master_lawsuit_note",
+      fieldName: "note",
+      priorValue: null,
+      newValue: note,
+      details: {
+        noteId,
+      },
+    });
 
     closeMasterNoteDialog();
   }
@@ -622,7 +802,22 @@ export default function FilteredMattersPage() {
   function confirmDeleteMasterNote() {
     if (!masterNoteDeleteTarget?.id) return;
 
+    const deletedNote = masterNoteDeleteTarget.note || "";
+
     setMasterNotes((prev) => prev.filter((entry) => entry.id !== masterNoteDeleteTarget.id));
+
+    void writeMasterAuditEntry({
+      action: "master_note_deleted",
+      summary: "Master lawsuit note deleted",
+      entityType: "master_lawsuit_note",
+      fieldName: "note",
+      priorValue: deletedNote,
+      newValue: null,
+      details: {
+        noteId: masterNoteDeleteTarget.id,
+      },
+    });
+
     setMasterNoteDeleteTarget(null);
   }
 
@@ -1109,12 +1304,15 @@ export default function FilteredMattersPage() {
             <div style={printButtonRowStyle}>
               <button
                 type="button"
-                disabled
-                aria-disabled="true"
-                title="Audit / History access is locked."
-                style={lockedPrintQueueButtonStyle}
+                onClick={openMasterAuditHistoryPopup}
+                title="Open matter-specific Audit / History log."
+                style={{
+                  ...lockedPrintQueueButtonStyle,
+                  cursor: "pointer",
+                  opacity: 1,
+                }}
               >
-                <span aria-hidden="true">🔒</span>
+                <span aria-hidden="true">📜</span>
                 <span>Audit / History</span>
               </button>
 
@@ -3708,6 +3906,251 @@ export default function FilteredMattersPage() {
               </div>
             )}
 
+
+
+            {masterAuditHistoryOpen && kind === "master" && (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Master Lawsuit Audit History"
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  zIndex: 50000,
+                  display: "block",
+                  padding: 0,
+                  overflow: "hidden",
+                  background: "rgba(15, 23, 42, 0.58)",
+                }}
+                onClick={closeMasterAuditHistoryPopup}
+              >
+                <div
+                  onClick={(event) => event.stopPropagation()}
+                  style={{
+                    position: "fixed",
+                    top: 104,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: "min(1120px, 96vw)",
+                    maxHeight: "calc(100vh - 178px)",
+                    overflowY: "auto",
+                    border: "1px solid #bfdbfe",
+                    borderRadius: 22,
+                    background: "#ffffff",
+                    boxShadow: "0 30px 90px rgba(15, 23, 42, 0.38)",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "sticky",
+                      top: 0,
+                      zIndex: 1,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      padding: "16px 18px",
+                      borderBottom: "1px solid #dbe4f0",
+                      background: "#eff6ff",
+                      borderTopLeftRadius: 22,
+                      borderTopRightRadius: 22,
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 18,
+                          fontWeight: 950,
+                          color: "#1d4ed8",
+                        }}
+                      >
+                        Matter-Specific Audit / History
+                      </div>
+                      <div
+                        style={{
+                          marginTop: 3,
+                          fontSize: 12,
+                          fontWeight: 800,
+                          color: "#1e40af",
+                        }}
+                      >
+                        Master Lawsuit {clean(value) || "—"} · Local database audit log.
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <button
+                        type="button"
+                        onClick={loadMasterAuditHistory}
+                        disabled={masterAuditHistoryLoading}
+                        style={{
+                          minWidth: 98,
+                          height: 38,
+                          border: "1px solid #bfdbfe",
+                          borderRadius: 999,
+                          background: "#ffffff",
+                          color: "#1d4ed8",
+                          fontWeight: 900,
+                          cursor: masterAuditHistoryLoading ? "default" : "pointer",
+                        }}
+                      >
+                        {masterAuditHistoryLoading ? "Loading..." : "Refresh"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={closeMasterAuditHistoryPopup}
+                        style={{
+                          width: 38,
+                          height: 38,
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 999,
+                          background: "#ffffff",
+                          color: "#64748b",
+                          fontSize: 26,
+                          fontWeight: 900,
+                          cursor: "pointer",
+                          lineHeight: 1,
+                        }}
+                        aria-label="Close audit history popup"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: 18 }}>
+                    {masterAuditHistoryError && (
+                      <div
+                        style={{
+                          marginBottom: 14,
+                          padding: 12,
+                          borderRadius: 14,
+                          border: "1px solid #fecaca",
+                          background: "#fef2f2",
+                          color: "#991b1b",
+                          fontWeight: 800,
+                        }}
+                      >
+                        {masterAuditHistoryError}
+                      </div>
+                    )}
+
+                    {masterAuditHistoryLoading && masterAuditHistoryEntries.length === 0 ? (
+                      <div
+                        style={{
+                          padding: 18,
+                          borderRadius: 16,
+                          border: "1px solid #dbe4f0",
+                          background: "#f8fafc",
+                          color: "#475569",
+                          fontWeight: 800,
+                        }}
+                      >
+                        Loading audit history...
+                      </div>
+                    ) : masterAuditHistoryEntries.length === 0 ? (
+                      <div
+                        style={{
+                          padding: 18,
+                          borderRadius: 16,
+                          border: "1px solid #dbe4f0",
+                          background: "#f8fafc",
+                          color: "#475569",
+                          fontWeight: 800,
+                        }}
+                      >
+                        No audit history entries found for this master lawsuit yet.
+                      </div>
+                    ) : (
+                      <div style={{ display: "grid", gap: 12 }}>
+                        {masterAuditHistoryEntries.map((entry) => (
+                          <article
+                            key={entry.id}
+                            style={{
+                              display: "grid",
+                              gap: 10,
+                              padding: 14,
+                              borderRadius: 18,
+                              border: "1px solid #dbe4f0",
+                              background: "#ffffff",
+                              boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                gap: 12,
+                                alignItems: "flex-start",
+                              }}
+                            >
+                              <div>
+                                <div style={{ fontSize: 15, fontWeight: 950, color: "#0f172a" }}>
+                                  {entry.summary || entry.action || "Audit entry"}
+                                </div>
+                                <div style={{ marginTop: 4, fontSize: 12, color: "#64748b", fontWeight: 750 }}>
+                                  {formatMasterAuditTimestamp(entry.createdAt)} · {entry.actorName || entry.actorEmail || "Unknown user"} · {entry.sourcePage || "unknown source"}
+                                </div>
+                              </div>
+
+                              <div
+                                style={{
+                                  padding: "5px 9px",
+                                  borderRadius: 999,
+                                  border: "1px solid #bfdbfe",
+                                  background: "#eff6ff",
+                                  color: "#1d4ed8",
+                                  fontSize: 12,
+                                  fontWeight: 900,
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {entry.action || "audit"}
+                              </div>
+                            </div>
+
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                                gap: 10,
+                              }}
+                            >
+                              <div style={{ display: "grid", gap: 3 }}>
+                                <span style={{ fontSize: 11, color: "#64748b", fontWeight: 900, textTransform: "uppercase" }}>Field</span>
+                                <strong style={{ fontSize: 13, color: "#0f172a" }}>{entry.fieldName || "—"}</strong>
+                              </div>
+
+                              <div style={{ display: "grid", gap: 3 }}>
+                                <span style={{ fontSize: 11, color: "#64748b", fontWeight: 900, textTransform: "uppercase" }}>Prior Value</span>
+                                <strong style={{ fontSize: 13, color: "#0f172a", overflowWrap: "anywhere" }}>{formatMasterAuditValue(entry.priorValue)}</strong>
+                              </div>
+
+                              <div style={{ display: "grid", gap: 3 }}>
+                                <span style={{ fontSize: 11, color: "#64748b", fontWeight: 900, textTransform: "uppercase" }}>New Value</span>
+                                <strong style={{ fontSize: 13, color: "#0f172a", overflowWrap: "anywhere" }}>{formatMasterAuditValue(entry.newValue)}</strong>
+                              </div>
+
+                              <div style={{ display: "grid", gap: 3 }}>
+                                <span style={{ fontSize: 11, color: "#64748b", fontWeight: 900, textTransform: "uppercase" }}>Matter</span>
+                                <strong style={{ fontSize: 13, color: "#0f172a" }}>{entry.masterMatterDisplayNumber || entry.matterDisplayNumber || "—"}</strong>
+                              </div>
+                            </div>
+
+                            {Array.isArray(entry.affectedMatterIds) && entry.affectedMatterIds.length > 0 && (
+                              <div style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>
+                                Affected matter IDs: {entry.affectedMatterIds.join(", ")}
+                              </div>
+                            )}
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {masterPaymentFormOpen && activeMasterWorkspaceTab === "payments" && (
               <div

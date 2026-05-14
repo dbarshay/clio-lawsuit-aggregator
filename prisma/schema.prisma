@@ -280,3 +280,39 @@ model ClaimIndexRebuildState {
   @@index([status])
   @@index([updatedAt])
 }
+
+model AuditLog {
+  id                        String   @id @default(cuid())
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  action                    String
+  summary                   String
+  entityType                String
+  fieldName                 String?
+
+  priorValue                Json?
+  newValue                  Json?
+  details                   Json?
+  affectedMatterIds         Json?
+
+  matterId                  Int?
+  matterDisplayNumber       String?
+  masterMatterId            Int?
+  masterMatterDisplayNumber String?
+  masterLawsuitId           String?
+
+  sourcePage                String?
+  workflow                  String?
+
+  actorName                 String?
+  actorEmail                String?
+
+  @@index([matterId])
+  @@index([matterDisplayNumber])
+  @@index([masterMatterId])
+  @@index([masterMatterDisplayNumber])
+  @@index([masterLawsuitId])
+  @@index([createdAt])
+  @@index([action])
+}

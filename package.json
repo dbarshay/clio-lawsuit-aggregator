@@ -23,7 +23,8 @@
     "verify:attorney-fee-docx-safety": "node scripts/verify-attorney-fee-docx-safety.mjs",
     "verify:settlement-workflow-status-ui-safety": "node scripts/verify-settlement-workflow-status-ui-safety.mjs",
     "verify:claimindex-rebuild-status-safety": "node scripts/verify-claimindex-rebuild-status-safety.mjs",
-    "verify:claimindex-ingest-field-coverage-safety": "node scripts/verify-claimindex-ingest-field-coverage-safety.mjs"
+    "verify:claimindex-ingest-field-coverage-safety": "node scripts/verify-claimindex-ingest-field-coverage-safety.mjs",
+    "verify:audit-log-safety": "node scripts/verify-audit-log-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

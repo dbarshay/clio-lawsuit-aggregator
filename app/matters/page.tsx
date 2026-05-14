@@ -28,7 +28,7 @@ const colors = {
   subtle: "#64748b",
   line: "#d7dee9",
   lineSoft: "#e5e7eb",
-  page: "#eef2f7",
+  page: "#f8fafc",
   panel: "#ffffff",
   blue: "#3157d5",
   blueDark: "#1e3a8a",
@@ -1245,10 +1245,10 @@ export default function FilteredMattersPage() {
                   alignSelf: "center",
                   display: "grid",
                   justifyItems: "center",
-                  gap: 9,
+                  gap: 8,
                   textAlign: "center",
                   minWidth: 320,
-                  paddingTop: 48,
+                  paddingTop: 24,
                 }}
               >
                 <div
@@ -1304,6 +1304,29 @@ export default function FilteredMattersPage() {
                     }}
                   >
                     Open
+                  </span>
+
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "7px 11px",
+                      border: "1px solid transparent",
+                      borderRadius: 999,
+                      background: "transparent",
+                      color: "transparent",
+                      fontSize: 12,
+                      fontWeight: 900,
+                      whiteSpace: "nowrap",
+                      textDecoration: "none",
+                      visibility: "hidden",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <span>MASTER LAWSUIT ID:</span>
+                    <span>0000.00.00000</span>
                   </span>
                 </div>
 
@@ -1974,9 +1997,12 @@ export default function FilteredMattersPage() {
                       display: "grid",
                       gap: 10,
                       padding: 12,
-                      border: "1px solid #dbe4f0",
-                      borderRadius: 18,
-                      background: "rgba(255, 255, 255, 0.74)",
+                      borderTop: "1px solid #cbd5e1",
+                      borderBottom: "1px solid #cbd5e1",
+                      borderLeft: "none",
+                      borderRight: "none",
+                      borderRadius: 0,
+                      background: "#f8fafc",
                     }}
                   >
                     <div
@@ -2149,9 +2175,12 @@ export default function FilteredMattersPage() {
                       display: "grid",
                       gap: 10,
                       padding: 12,
-                      border: "1px solid #dbe4f0",
-                      borderRadius: 18,
-                      background: "rgba(255, 255, 255, 0.74)",
+                      borderTop: "1px solid #cbd5e1",
+                      borderBottom: "1px solid #cbd5e1",
+                      borderLeft: "none",
+                      borderRight: "none",
+                      borderRadius: 0,
+                      background: "#f8fafc",
                     }}
                   >
                     <div
@@ -2295,9 +2324,12 @@ export default function FilteredMattersPage() {
                       display: "grid",
                       gap: 10,
                       padding: 12,
-                      border: "1px solid #dbe4f0",
-                      borderRadius: 18,
-                      background: "rgba(255, 255, 255, 0.74)",
+                      borderTop: "1px solid #cbd5e1",
+                      borderBottom: "1px solid #cbd5e1",
+                      borderLeft: "none",
+                      borderRight: "none",
+                      borderRadius: 0,
+                      background: "#f8fafc",
                     }}
                   >
                     <div
@@ -2436,11 +2468,11 @@ export default function FilteredMattersPage() {
 
                 <div
                   style={{
-                    border: "1px solid #dbe4f0",
-                    borderRadius: 18,
-                    background: "#ffffff",
+                    border: "1px solid rgba(49, 87, 213, 0.22)",
+                    borderRadius: 12,
+                    background: "#f8fafc",
                     padding: 18,
-                    boxShadow: "0 14px 34px rgba(15, 23, 42, 0.08)",
+                    boxShadow: "0 10px 26px rgba(49, 87, 213, 0.065)",
                   }}
                 >
                   <div
@@ -4879,7 +4911,7 @@ export default function FilteredMattersPage() {
 }
 
 const pageStyle: React.CSSProperties = {
-  padding: "18px 16px 40px",
+  padding: "12px 14px 30px",
   width: "100vw",
   maxWidth: "none",
   marginLeft: "calc(50% - 50vw)",
@@ -4887,8 +4919,7 @@ const pageStyle: React.CSSProperties = {
   fontFamily:
     'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   color: colors.ink,
-  background:
-    "radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 30%), #f8fafc",
+  background: "#f8fafc",
   minHeight: "100vh",
 };
 
@@ -4907,11 +4938,12 @@ const topBarStyle: React.CSSProperties = {
   gridTemplateColumns: "500px minmax(0, 1fr) 330px",
   alignItems: "start",
   gap: 16,
-  marginBottom: 14,
-  padding: "8px 0 10px",
+  marginBottom: 10,
+  padding: "4px 0 12px",
   background: "#f8fafc",
-  boxShadow: "0 8px 24px rgba(15, 23, 42, 0.10)",
-  borderBottom: "1px solid rgba(203, 213, 225, 0.9)",
+  backdropFilter: "blur(10px)",
+  boxShadow: "none",
+  borderBottom: "1px solid rgba(203, 213, 225, 0.45)",
 };
 
 const leftLogoWrapStyle: React.CSSProperties = {
@@ -4935,7 +4967,7 @@ const rightTopWrapStyle: React.CSSProperties = {
 const printButtonRowStyle: React.CSSProperties = {
   position: "absolute",
   top: 0,
-  right: 248,
+  right: 218,
   display: "flex",
   justifyContent: "flex-end",
   alignItems: "center",
@@ -4951,8 +4983,8 @@ const bmLogoLinkStyle: React.CSSProperties = {
 };
 
 const brlLogoStyle: React.CSSProperties = {
-  width: 216,
-  height: 144,
+  width: 190,
+  height: 126,
   objectFit: "contain",
   display: "block",
 };
@@ -4988,9 +5020,9 @@ const summaryPanelStyle: React.CSSProperties = {
   gap: 16,
   alignItems: "center",
   padding: 24,
-  border: "1px solid " + colors.line,
+  border: "none",
   borderRadius: 28,
-  background: colors.panel,
+  background: "#f8fafc",
   boxShadow: "0 10px 26px rgba(15, 23, 42, 0.05)",
   marginBottom: 18,
 };
@@ -5197,25 +5229,29 @@ const masterSummaryGridStyle: React.CSSProperties = {
 const masterSummaryItemStyle: React.CSSProperties = {
   display: "grid",
   gap: 5,
-  border: "1px solid #e2e8f0",
-  borderRadius: 12,
-  background: "#f8fafc",
-  padding: 12,
+  border: "1px solid rgba(203, 213, 225, 0.58)",
+  borderRadius: 14,
+  background: "#ffffff",
+  padding: 14,
   color: "#334155",
   fontSize: 12,
+  boxShadow: "0 6px 16px rgba(15, 23, 42, 0.055)",
 };
 
 const masterSummaryCardTitleStyle: React.CSSProperties = {
-  fontSize: 14,
+  fontSize: 13,
   lineHeight: 1.15,
   fontWeight: 950,
-  color: "#334155",
+  color: "#64748b",
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
 };
 
 const masterSummaryCardValueStyle: React.CSSProperties = {
-  fontSize: 13,
+  marginTop: 6,
+  fontSize: 14,
   lineHeight: 1.25,
-  fontWeight: 800,
+  fontWeight: 850,
   color: "#0f172a",
 };
 
@@ -5223,7 +5259,7 @@ const masterInfoCardStyle: React.CSSProperties = {
   ...masterSummaryItemStyle,
   position: "relative",
   paddingRight: 72,
-  minHeight: 82,
+  minHeight: 78,
 };
 
 const masterInfoCardEditButtonStyle: React.CSSProperties = {
@@ -5280,12 +5316,12 @@ const masterWorkflowActiveButtonStyle: React.CSSProperties = {
 };
 
 const masterWorkspacePanelStyle: React.CSSProperties = {
-  background: "#ffffff",
-  border: "1px solid #d7dee9",
-  borderRadius: 20,
-  padding: 18,
-  marginBottom: 18,
-  boxShadow: "0 16px 36px rgba(15, 23, 42, 0.08)",
+  background: "#f8fafc",
+  border: "none",
+  borderRadius: 0,
+  padding: "12px 18px 14px",
+  marginBottom: 10,
+  boxShadow: "none",
 };
 
 const masterWorkspacePanelHeaderStyle: React.CSSProperties = {
@@ -5359,9 +5395,9 @@ const masterWorkspaceCardTextStyle: React.CSSProperties = {
 };
 
 const masterSettlementPanelStyle: React.CSSProperties = {
-  background: "#ffffff",
-  border: "1px solid #d7dee9",
-  borderRadius: 18,
+  background: "#f8fafc",
+  border: "none",
+  borderRadius: 0,
   padding: 0,
   marginBottom: 18,
   overflow: "hidden",
@@ -5498,7 +5534,7 @@ const masterSettlementDetailsBoxStyle: React.CSSProperties = {
 };
 
 const masterSettlementSummaryPanelStyle: React.CSSProperties = {
-  border: "1px solid #d7dee9",
+  border: "none",
   background: "#f8fafc",
   borderRadius: 10,
   padding: 12,

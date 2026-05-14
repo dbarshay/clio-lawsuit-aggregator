@@ -3571,8 +3571,7 @@ const activeGroupKey =
         fontFamily:
           'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         color: bmColors.ink,
-        background:
-          "radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 30%), #f8fafc",
+        background: "#f8fafc",
         minHeight: "100vh",
        }}
     >

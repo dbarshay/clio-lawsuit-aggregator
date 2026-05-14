@@ -2035,11 +2035,14 @@ export default function Home() {
         <section style={compactLandingLookupPanelStyle}>
           <div
             style={{
-              padding: "20px 22px 22px",
-              border: "2px solid #cbd5e1",
-              borderRadius: 22,
-              background: "#ffffff",
-              boxShadow: "0 10px 26px rgba(15, 23, 42, 0.07)",
+              padding: "16px 18px 18px",
+              borderTop: "1px solid #cbd5e1",
+              borderBottom: "1px solid #cbd5e1",
+              borderLeft: "none",
+              borderRight: "none",
+              borderRadius: 0,
+              background: "#f8fafc",
+              boxShadow: "none",
             }}
           >
             <div
@@ -2093,9 +2096,9 @@ export default function Home() {
 
             <div
               style={{
-                height: 3,
-                margin: "28px 0 26px",
-                background: "#d5dfec",
+                height: 2,
+                margin: "26px 0 24px",
+                background: "#cbd5e1",
                 borderRadius: 999,
               }}
             />
@@ -2600,7 +2603,7 @@ export default function Home() {
 const pageStyle: React.CSSProperties = {
   minHeight: "100vh",
   padding: "12px 20px 32px",
-  background: colors.page,
+  background: "#f8fafc",
   color: colors.ink,
   fontFamily:
     'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
@@ -3276,14 +3279,14 @@ const compactLandingTopBarStyle: React.CSSProperties = {
   padding: "6px 0 4px",
   marginBottom: 6,
   alignItems: "start",
-  background: "transparent",
+  background: "#f8fafc",
   boxShadow: "none",
   borderBottom: "none",
 };
 
 const compactLandingLookupPanelStyle: React.CSSProperties = {
   ...lookupPanelStyle,
-  marginTop: 4,
+  marginTop: 0,
 };
 
 const mainPageSectionLabelStyle: React.CSSProperties = {

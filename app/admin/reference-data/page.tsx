@@ -366,6 +366,7 @@ export default function AdminReferenceDataPage() {
   const [cleanupQuery, setCleanupQuery] = useState("Import");
   const [cleanupPreview, setCleanupPreview] = useState<ImportCleanupPreviewResponse | null>(null);
   const [cleanupConfirmResult, setCleanupConfirmResult] = useState<ImportCleanupConfirmResponse | null>(null);
+  const [cleanupConfirmText, setCleanupConfirmText] = useState("");
   const [cleanupPreviewLoading, setCleanupPreviewLoading] = useState(false);
   const [cleanupConfirming, setCleanupConfirming] = useState(false);
 
@@ -474,6 +475,7 @@ export default function AdminReferenceDataPage() {
       const json = await res.json();
       setCleanupPreview(json);
       setCleanupConfirmResult(null);
+      setCleanupConfirmText("");
 
       if (!res.ok || !json?.ok) {
         throw new Error(json?.error || "Could not load import cleanup preview.");
@@ -503,6 +505,10 @@ export default function AdminReferenceDataPage() {
         throw new Error("Run cleanup preview before confirming deactivate cleanup.");
       }
 
+      if (cleanupConfirmText.trim() !== "DEACTIVATE") {
+        throw new Error('Type DEACTIVATE before confirming deactivate cleanup.');
+      }
+
       const res = await fetch("/api/reference-data/import-cleanup-confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -526,6 +532,7 @@ export default function AdminReferenceDataPage() {
         `Confirmed cleanup deactivated ${json.summary?.deactivated ?? 0} imported reference records.  No records were hard-deleted, and no Clio data was changed.`
       );
 
+      setCleanupConfirmText("");
       await loadRows(selectedType, query, activeFilter);
       await loadCleanupPreview(selectedType, cleanupQuery);
       await loadImportHistory(selectedType);
@@ -1689,19 +1696,43 @@ export default function AdminReferenceDataPage() {
                     {cleanupPreviewLoading ? "Previewing..." : "Preview Cleanup"}
                   </button>
 
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#334155" }}>
+                    Type DEACTIVATE to enable cleanup
+                  </label>
+                  <input
+                    value={cleanupConfirmText}
+                    onChange={(event) => setCleanupConfirmText(event.target.value)}
+                    placeholder="DEACTIVATE"
+                    disabled={!cleanupPreview?.ok || !cleanupPreview?.eligibleCount || cleanupConfirming}
+                    style={{
+                      width: "100%",
+                      padding: "10px 11px",
+                      borderRadius: 12,
+                      border: "1px solid #cbd5e1",
+                      fontWeight: 900,
+                      letterSpacing: 0.5,
+                      background:
+                        !cleanupPreview?.ok || !cleanupPreview?.eligibleCount || cleanupConfirming
+                          ? "#f1f5f9"
+                          : "#ffffff",
+                    }}
+                  />
+
                   <button
                     onClick={confirmCleanupDeactivate}
                     disabled={
                       cleanupConfirming ||
                       !cleanupPreview?.ok ||
-                      !cleanupPreview?.eligibleCount
+                      !cleanupPreview?.eligibleCount ||
+                      cleanupConfirmText.trim() !== "DEACTIVATE"
                     }
                     style={{
                       border: 0,
                       background:
                         cleanupConfirming ||
                         !cleanupPreview?.ok ||
-                        !cleanupPreview?.eligibleCount
+                        !cleanupPreview?.eligibleCount ||
+                        cleanupConfirmText.trim() !== "DEACTIVATE"
                           ? "#94a3b8"
                           : "#dc2626",
                       color: "#ffffff",
@@ -1711,7 +1742,8 @@ export default function AdminReferenceDataPage() {
                       cursor:
                         cleanupConfirming ||
                         !cleanupPreview?.ok ||
-                        !cleanupPreview?.eligibleCount
+                        !cleanupPreview?.eligibleCount ||
+                        cleanupConfirmText.trim() !== "DEACTIVATE"
                           ? "default"
                           : "pointer",
                     }}

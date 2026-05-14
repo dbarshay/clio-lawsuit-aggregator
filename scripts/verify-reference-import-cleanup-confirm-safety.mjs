@@ -71,6 +71,18 @@ if (!page.includes("Confirm Deactivate Cleanup")) {
   fail("Admin page must include Confirm Deactivate Cleanup button.");
 }
 
+if (!page.includes("Type DEACTIVATE to enable cleanup")) {
+  fail("Admin page must require typed DEACTIVATE confirmation before cleanup.");
+}
+
+if (!page.includes('cleanupConfirmText.trim() !== "DEACTIVATE"')) {
+  fail("Confirm cleanup button must be disabled unless DEACTIVATE is typed.");
+}
+
+if (!page.includes('Type DEACTIVATE before confirming deactivate cleanup.')) {
+  fail("Confirm cleanup handler must validate typed DEACTIVATE.");
+}
+
 if (!page.includes("No records were hard-deleted")) {
   fail("Admin page must state cleanup does not hard-delete records.");
 }

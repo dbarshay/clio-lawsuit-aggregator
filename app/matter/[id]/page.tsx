@@ -775,7 +775,7 @@ const activeGroupKey =
     setTreatingProviderOptionsLoading(true);
 
     try {
-      const json = await fetch("/api/matters/local-field/treating-provider-options", {
+      const json = await fetch("/api/reference-data/options?type=treating_provider", {
         cache: "no-store",
       }).then((result) => result.json());
 

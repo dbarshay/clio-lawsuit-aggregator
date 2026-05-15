@@ -1209,18 +1209,17 @@ const activeGroupKey =
         return;
       }
 
-      const refreshed = await fetch(
-        `/api/clio/matter-context?matterId=${encodeURIComponent(matterId)}`,
-        { cache: "no-store" }
-      ).then((result) => result.json());
-
-      if (refreshed?.ok && refreshed?.matter) {
-        setMatter(refreshed.matter);
+      if (json?.matter) {
+        setMatter((current: any) => ({
+          ...(current || {}),
+          ...json.matter,
+        }));
       }
 
       setDirectFieldEditResult({
         ok: true,
-        message: "Date of Service updated.",
+        message: "Date of Service updated locally.",
+        safety: json.safety,
       });
       setDirectFieldEditModal(null);
     } catch (error: any) {
@@ -1266,7 +1265,54 @@ const activeGroupKey =
     setDirectFieldPicklistsLoading(true);
 
     try {
-      const json = await fetch("/api/advanced-search/picklists", { cache: "no-store" }).then((result) => result.json());
+      const [denialJson, closedJson] = await Promise.all([
+        fetch("/api/reference-data/options?type=denial_reason", { cache: "no-store" })
+          .then((result) => result.json())
+          .catch(() => null),
+        fetch("/api/reference-data/options?type=closed_reason", { cache: "no-store" })
+          .then((result) => result.json())
+          .catch(() => null),
+      ]);
+
+      const currentStatus = textValue(matter?.matterStage?.name || matter?.matter_stage_name || matter?.status);
+      const statusOptions = Array.from(
+        new Set(
+          [
+            currentStatus,
+            "INTAKE - NEW BILLING TO REVIEW",
+            "VERIFICATION - 1st RESPONSE SENT",
+            "READY FOR ARBITRATION/LITIGATION",
+            "Open",
+            "Pending",
+            "Closed",
+          ].filter(Boolean)
+        )
+      ).map((label) => ({
+        id: label,
+        value: label,
+        label,
+        name: label,
+      }));
+
+      const json = {
+        ok: true,
+        source: "reference-data-options",
+        noClioWrite: true,
+        noClioRead: true,
+        denialReason: {
+          options: Array.isArray(denialJson?.options) ? denialJson.options : [],
+        },
+        denialReasons: Array.isArray(denialJson?.options) ? denialJson.options : [],
+        closeReason: {
+          options: Array.isArray(closedJson?.options) ? closedJson.options : [],
+        },
+        closeReasons: Array.isArray(closedJson?.options) ? closedJson.options : [],
+        status: {
+          options: statusOptions,
+        },
+        matterStages: statusOptions,
+      };
+
       setDirectFieldPicklists(json);
       return json;
     } finally {
@@ -1334,9 +1380,23 @@ const activeGroupKey =
         field,
       };
 
-      if (field === "denialReason") body.denialReasonValue = value;
-      if (field === "status") body.statusValue = value;
-      if (field === "finalStatus") body.finalStatusValue = value;
+      const selectedOption = picklistOptionsForDirectField(field).find((option: any) => optionValue(option) === value);
+      const selectedLabel = optionLabel(selectedOption || { label: value, value });
+
+      if (field === "denialReason") {
+        body.denialReasonValue = value;
+        body.denialReasonLabel = selectedLabel;
+      }
+
+      if (field === "status") {
+        body.statusValue = selectedLabel || value;
+        body.statusLabel = selectedLabel || value;
+      }
+
+      if (field === "finalStatus") {
+        body.finalStatusValue = value;
+        body.finalStatusLabel = selectedLabel;
+      }
 
       const response = await fetch("/api/matters/update-direct-field", {
         method: "PATCH",
@@ -1357,18 +1417,17 @@ const activeGroupKey =
         return;
       }
 
-      const refreshed = await fetch(
-        `/api/clio/matter-context?matterId=${encodeURIComponent(matterId)}`,
-        { cache: "no-store" }
-      ).then((result) => result.json());
-
-      if (refreshed?.ok && refreshed?.matter) {
-        setMatter(refreshed.matter);
+      if (json?.matter) {
+        setMatter((current: any) => ({
+          ...(current || {}),
+          ...json.matter,
+        }));
       }
 
       setDirectFieldEditResult({
         ok: true,
-        message: `${directPicklistFieldLabel(field)} updated.`,
+        message: `${directPicklistFieldLabel(field)} updated locally.`,
+        safety: json.safety,
       });
       setDirectFieldEditModal(null);
     } catch (error: any) {
@@ -4345,7 +4404,7 @@ const activeGroupKey =
           >
             <h2 style={{ marginTop: 0, marginBottom: 8 }}>Edit Date of Service</h2>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#475569", marginBottom: 16 }}>
-              This updates DOS Start and DOS End.
+              This updates DOS Start and DOS End locally.
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
@@ -4425,7 +4484,7 @@ const activeGroupKey =
                   cursor: directFieldEditLoading ? "not-allowed" : "pointer",
                 }}
               >
-                {directFieldEditLoading ? "Saving..." : "Save to Clio"}
+                {directFieldEditLoading ? "Saving..." : "Save"}
               </button>
             </div>
           </div>
@@ -4538,7 +4597,7 @@ const activeGroupKey =
                   cursor: directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal) ? "not-allowed" : "pointer",
                 }}
               >
-                {directFieldEditLoading ? "Saving..." : "Save to Clio"}
+                {directFieldEditLoading ? "Saving..." : "Save"}
               </button>
             </div>
           </div>

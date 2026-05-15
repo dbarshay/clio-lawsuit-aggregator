@@ -90,6 +90,7 @@ model ClaimIndex {
   patient_insurer        String?
   patient_provider       String?
   provider_name          String?
+  treating_provider      String?
 
   @@index([claim_number_normalized])
   @@index([patient_name])
@@ -104,6 +105,7 @@ model ClaimIndex {
   @@index([status])
   @@index([denial_reason])
   @@index([service_type])
+  @@index([treating_provider])
 }
 
 model ClaimClusterCache {

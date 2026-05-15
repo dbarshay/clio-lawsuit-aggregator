@@ -1207,7 +1207,7 @@ export default function FilteredMattersPage() {
             : filter.kind === "provider"
               ? `/api/claim-index/search?provider=${encodeURIComponent(filter.value)}`
               : filter.kind === "treatingProvider"
-                ? `/api/matters/local-field/search?fieldName=treating_provider&value=${encodeURIComponent(filter.value)}`
+                ? `/api/matters/identity-field/search?fieldName=treating_provider&value=${encodeURIComponent(filter.value)}`
                 : filter.kind === "insurer"
                   ? `/api/claim-index/search?insurer=${encodeURIComponent(filter.value)}`
                   : filter.kind === "master"

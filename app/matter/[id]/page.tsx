@@ -639,6 +639,10 @@ const activeGroupKey =
   const [directFieldEditResult, setDirectFieldEditResult] = useState<any>(null);
   const [directFieldPicklistsLoading, setDirectFieldPicklistsLoading] = useState(false);
   const [directFieldPicklists, setDirectFieldPicklists] = useState<any>(null);
+  const [identityFieldEditModal, setIdentityFieldEditModal] = useState<"patient_name" | "client_name" | "insurer_name" | "claim_number_raw" | null>(null);
+  const [identityFieldEditInput, setIdentityFieldEditInput] = useState("");
+  const [identityFieldEditLoading, setIdentityFieldEditLoading] = useState(false);
+  const [identityFieldEditResult, setIdentityFieldEditResult] = useState<any>(null);
   const [dosStartInput, setDosStartInput] = useState("");
   const [dosEndInput, setDosEndInput] = useState("");
   const [denialReasonInput, setDenialReasonInput] = useState("");
@@ -646,7 +650,7 @@ const activeGroupKey =
   const [finalStatusInput, setFinalStatusInput] = useState("");
   const [treatingProviderOptions, setTreatingProviderOptions] = useState<any[]>([]);
   const [treatingProviderOptionsLoading, setTreatingProviderOptionsLoading] = useState(false);
-  const [localTreatingProviderField, setLocalTreatingProviderField] = useState<any>(null);
+  const [claimIndexTreatingProviderField, setClaimIndexTreatingProviderField] = useState<any>(null);
   const [treatingProviderInput, setTreatingProviderInput] = useState("");
   const [treatingProviderSaving, setTreatingProviderSaving] = useState(false);
   const [treatingProviderResult, setTreatingProviderResult] = useState<any>(null);
@@ -746,25 +750,25 @@ const activeGroupKey =
   }
 
   function localTreatingProviderName(): string {
-    return textValue(localTreatingProviderField?.fieldValue);
+    return textValue(claimIndexTreatingProviderField?.fieldValue);
   }
 
-  function localTreatingProviderSaved(): boolean {
+  function claimIndexTreatingProviderSaved(): boolean {
     return !!localTreatingProviderName();
   }
 
-  async function openLocalTreatingProviderEditDialog() {
+  async function openTreatingProviderEditDialog() {
     setTreatingProviderResult(null);
-    setTreatingProviderInput(textValue(localTreatingProviderField?.fieldValueId));
+    setTreatingProviderInput(textValue(claimIndexTreatingProviderField?.fieldValueId));
     setTreatingProviderEditOpen(true);
     await loadTreatingProviderOptions();
   }
 
-  function closeLocalTreatingProviderEditDialog() {
+  function closeTreatingProviderEditDialog() {
     if (treatingProviderSaving) return;
     setTreatingProviderEditOpen(false);
     setTreatingProviderResult(null);
-    setTreatingProviderInput(textValue(localTreatingProviderField?.fieldValueId));
+    setTreatingProviderInput(textValue(claimIndexTreatingProviderField?.fieldValueId));
   }
 
   async function loadTreatingProviderOptions() {
@@ -790,7 +794,7 @@ const activeGroupKey =
     }
   }
 
-  async function loadLocalTreatingProviderField() {
+  async function loadClaimIndexTreatingProviderField() {
     if (!matterId) return;
 
     setTreatingProviderResult(null);
@@ -798,17 +802,17 @@ const activeGroupKey =
     const [optionsJson, fieldJson] = await Promise.all([
       loadTreatingProviderOptions(),
       fetch(
-        `/api/matters/local-field?matterId=${encodeURIComponent(String(matterId))}&fieldName=treating_provider`,
+        `/api/matters/identity-field?matterId=${encodeURIComponent(String(matterId))}&fieldName=treating_provider`,
         { cache: "no-store" }
       ).then((result) => result.json()).catch(() => null),
     ]);
 
     if (fieldJson?.ok) {
       const field = fieldJson.field || null;
-      setLocalTreatingProviderField(field);
+      setClaimIndexTreatingProviderField(field);
       setTreatingProviderInput(textValue(field?.fieldValueId));
     } else {
-      setLocalTreatingProviderField(null);
+      setClaimIndexTreatingProviderField(null);
       setTreatingProviderInput("");
     }
 
@@ -817,7 +821,7 @@ const activeGroupKey =
     }
   }
 
-  async function saveLocalTreatingProvider() {
+  async function saveClaimIndexTreatingProvider() {
     if (!matterId) {
       setTreatingProviderResult({ ok: false, error: "No matter ID is available." });
       return;
@@ -834,7 +838,7 @@ const activeGroupKey =
       setTreatingProviderSaving(true);
       setTreatingProviderResult(null);
 
-      const response = await fetch("/api/matters/local-field", {
+      const response = await fetch("/api/matters/identity-field", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -854,13 +858,13 @@ const activeGroupKey =
       if (!response.ok || !json?.ok) {
         setTreatingProviderResult({
           ok: false,
-          error: json?.error || "Treating Provider could not be saved locally.",
+          error: json?.error || "Treating Provider could not be saved.",
           details: json,
         });
         return;
       }
 
-      setLocalTreatingProviderField(json.field || null);
+      setClaimIndexTreatingProviderField(json.field || null);
       setTreatingProviderInput(textValue(json.field?.fieldValueId || option.id));
       setTreatingProviderResult({
         ok: true,
@@ -871,7 +875,7 @@ const activeGroupKey =
     } catch (err: any) {
       setTreatingProviderResult({
         ok: false,
-        error: err?.message || "Treating Provider could not be saved locally.",
+        error: err?.message || "Treating Provider could not be saved.",
       });
     } finally {
       setTreatingProviderSaving(false);
@@ -880,7 +884,7 @@ const activeGroupKey =
 
   useEffect(() => {
     if (!matterId) return;
-    void loadLocalTreatingProviderField();
+    void loadClaimIndexTreatingProviderField();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matterId]);
 
@@ -997,6 +1001,166 @@ const activeGroupKey =
 
     return "";
   }
+
+  function identityFieldEditLabel(field: "patient_name" | "client_name" | "insurer_name" | "claim_number_raw" | null): string {
+    if (field === "patient_name") return "Patient";
+    if (field === "client_name") return "Provider";
+    if (field === "insurer_name") return "Insurer";
+    if (field === "claim_number_raw") return "Claim Number";
+    return "Identity Field";
+  }
+
+  function identityFieldCurrentValue(field: "patient_name" | "client_name" | "insurer_name" | "claim_number_raw" | null): string {
+    if (field === "patient_name") return textValue(matter?.patient?.name || matter?.patient);
+    if (field === "client_name") return providerValue(matter);
+    if (field === "insurer_name") return insurerValue(matter);
+    if (field === "claim_number_raw") return textValue(matter?.claimNumber);
+    return "";
+  }
+
+  function openIdentityFieldEditDialog(field: "patient_name" | "client_name" | "insurer_name" | "claim_number_raw") {
+    setIdentityFieldEditResult(null);
+    setIdentityFieldEditInput(identityFieldCurrentValue(field));
+    setIdentityFieldEditModal(field);
+  }
+
+  function closeIdentityFieldEditDialog() {
+    if (identityFieldEditLoading) return;
+    setIdentityFieldEditModal(null);
+    setIdentityFieldEditResult(null);
+    setIdentityFieldEditInput("");
+  }
+
+  function applyIdentityFieldToMatterState(field: "patient_name" | "client_name" | "insurer_name" | "claim_number_raw", value: string) {
+    setMatter((current: any) => {
+      if (!current) return current;
+
+      if (field === "patient_name") {
+        const existingPatient = current.patient && typeof current.patient === "object" ? current.patient : {};
+        return {
+          ...current,
+          patient: {
+            ...existingPatient,
+            name: value,
+          },
+          patientName: value,
+          patient_name: value,
+        };
+      }
+
+      if (field === "client_name") {
+        const existingClient = current.client && typeof current.client === "object" ? current.client : {};
+        return {
+          ...current,
+          client: {
+            ...existingClient,
+            name: value,
+          },
+          clientName: value,
+          client_name: value,
+          provider: value,
+          providerName: value,
+          provider_name: value,
+        };
+      }
+
+      if (field === "insurer_name") {
+        return {
+          ...current,
+          insurer: value,
+          insurerName: value,
+          insurer_name: value,
+          insuranceCompany: value,
+          insurance_company: value,
+        };
+      }
+
+      if (field === "claim_number_raw") {
+        return {
+          ...current,
+          claimNumber: value,
+          claim_number: value,
+          claimNumberRaw: value,
+          claim_number_raw: value,
+        };
+      }
+
+      return current;
+    });
+  }
+
+  async function saveIdentityFieldEditDialog() {
+    if (!identityFieldEditModal) return;
+
+    const value = textValue(identityFieldEditInput);
+
+    if (!value) {
+      setIdentityFieldEditResult({
+        ok: false,
+        error: identityFieldEditLabel(identityFieldEditModal) + " is required.",
+      });
+      return;
+    }
+
+    try {
+      setIdentityFieldEditLoading(true);
+      setIdentityFieldEditResult(null);
+
+      const response = await fetch("/api/matters/identity-field", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          matterId: Number(matterId),
+          matterDisplayNumber: textValue(matter?.displayNumber || matter?.display_number),
+          fieldName: identityFieldEditModal,
+          fieldValue: value,
+          actorName: "Barsh Matters User",
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json?.ok) {
+        setIdentityFieldEditResult({
+          ok: false,
+          error: json?.error || identityFieldEditLabel(identityFieldEditModal) + " could not be saved.",
+          details: json,
+        });
+        return;
+      }
+
+      applyIdentityFieldToMatterState(identityFieldEditModal, json?.field?.fieldValue || value);
+
+      setIdentityFieldEditResult({
+        ok: true,
+        message: identityFieldEditLabel(identityFieldEditModal) + " saved.",
+        safety: json.safety,
+      });
+
+      setIdentityFieldEditModal(null);
+      setIdentityFieldEditInput("");
+    } catch (error: any) {
+      setIdentityFieldEditResult({
+        ok: false,
+        error: error?.message || String(error),
+      });
+    } finally {
+      setIdentityFieldEditLoading(false);
+    }
+  }
+
+  const identityEditButtonStyle = {
+    border: "1px solid #93c5fd",
+    borderRadius: 999,
+    background: "#eff6ff",
+    color: "#1d4ed8",
+    fontSize: 11,
+    fontWeight: 900,
+    padding: "3px 8px",
+    cursor: identityFieldEditLoading ? "not-allowed" : "pointer",
+  };
 
   function openDosEditDialog() {
     setDirectFieldEditResult(null);
@@ -4381,6 +4545,156 @@ const activeGroupKey =
         </div>
       )}
 
+      {identityFieldEditModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={"Edit " + identityFieldEditLabel(identityFieldEditModal)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            background: "rgba(15, 23, 42, 0.42)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+        >
+          <div
+            style={{
+              width: "min(560px, calc(100vw - 48px))",
+              maxHeight: "calc(100vh - 48px)",
+              overflow: "auto",
+              background: "#ffffff",
+              border: "1px solid #bfdbfe",
+              borderRadius: 22,
+              boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
+              padding: 20,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 16,
+                alignItems: "flex-start",
+                marginBottom: 16,
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 900, color: "#1d4ed8", letterSpacing: 1.2 }}>
+                  CLAIMINDEX IDENTITY FIELD
+                </div>
+                <h2 style={{ margin: "4px 0 6px", fontSize: 24 }}>
+                  Edit {identityFieldEditLabel(identityFieldEditModal)}
+                </h2>
+                <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.45 }}>
+                  Matter: {textValue(matter?.displayNumber || matter?.display_number) || matterId || "—"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeIdentityFieldEditDialog}
+                disabled={identityFieldEditLoading}
+                style={{
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#0f172a",
+                  borderRadius: 12,
+                  padding: "10px 12px",
+                  fontWeight: 900,
+                  cursor: identityFieldEditLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                Close
+              </button>
+            </div>
+
+            <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#334155", marginBottom: 6 }}>
+              {identityFieldEditLabel(identityFieldEditModal)}
+            </label>
+
+            <input
+              value={identityFieldEditInput}
+              onChange={(event) => {
+                setIdentityFieldEditInput(event.target.value);
+                setIdentityFieldEditResult(null);
+              }}
+              disabled={identityFieldEditLoading}
+              style={{
+                width: "100%",
+                minWidth: 0,
+                border: "1px solid #cbd5e1",
+                borderRadius: 12,
+                background: "#ffffff",
+                color: "#0f172a",
+                padding: "11px 12px",
+                fontSize: 14,
+                fontWeight: 800,
+                marginBottom: 12,
+              }}
+            />
+
+            {identityFieldEditResult && !identityFieldEditResult.ok ? (
+              <div
+                style={{
+                  border: "1px solid #fecaca",
+                  background: "#fef2f2",
+                  color: "#991b1b",
+                  borderRadius: 12,
+                  padding: 10,
+                  marginBottom: 12,
+                  fontSize: 13,
+                  fontWeight: 800,
+                }}
+              >
+                {textValue(identityFieldEditResult.error) || "Identity field could not be saved."}
+              </div>
+            ) : null}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                onClick={closeIdentityFieldEditDialog}
+                disabled={identityFieldEditLoading}
+                style={{
+                  minWidth: 96,
+                  height: 38,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 10,
+                  background: "#f8fafc",
+                  color: "#334155",
+                  fontWeight: 900,
+                  cursor: identityFieldEditLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={saveIdentityFieldEditDialog}
+                disabled={identityFieldEditLoading || !textValue(identityFieldEditInput)}
+                style={{
+                  minWidth: 118,
+                  height: 38,
+                  border: "1px solid #16a34a",
+                  borderRadius: 10,
+                  background: identityFieldEditLoading || !textValue(identityFieldEditInput) ? "#bbf7d0" : "#16a34a",
+                  color: "#ffffff",
+                  fontWeight: 900,
+                  cursor: identityFieldEditLoading || !textValue(identityFieldEditInput) ? "not-allowed" : "pointer",
+                }}
+              >
+                {identityFieldEditLoading ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {treatingProviderEditOpen && (
         <div
           role="dialog"
@@ -4420,7 +4734,7 @@ const activeGroupKey =
             >
               <div>
                 <div style={{ fontSize: 12, fontWeight: 900, color: "#1d4ed8", letterSpacing: 1.2 }}>
-                  LOCAL MATTER FIELD
+                  CLAIMINDEX IDENTITY FIELD
                 </div>
                 <h2 style={{ margin: "4px 0 6px", fontSize: 24 }}>Edit Treating Provider</h2>
                 <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.45 }}>
@@ -4430,7 +4744,7 @@ const activeGroupKey =
 
               <button
                 type="button"
-                onClick={closeLocalTreatingProviderEditDialog}
+                onClick={closeTreatingProviderEditDialog}
                 disabled={treatingProviderSaving}
                 style={{
                   border: "1px solid #cbd5e1",
@@ -4500,7 +4814,7 @@ const activeGroupKey =
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button
                 type="button"
-                onClick={closeLocalTreatingProviderEditDialog}
+                onClick={closeTreatingProviderEditDialog}
                 disabled={treatingProviderSaving}
                 style={{
                   minWidth: 96,
@@ -4518,7 +4832,7 @@ const activeGroupKey =
 
               <button
                 type="button"
-                onClick={saveLocalTreatingProvider}
+                onClick={saveClaimIndexTreatingProvider}
                 disabled={treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput}
                 style={{
                   minWidth: 118,
@@ -4571,7 +4885,25 @@ const activeGroupKey =
                   href={`/matters?patient=${encodeURIComponent(textValue(matter?.patient?.name || matter?.patient))}`}
                   title="Open all matters for this patient"
                 >
-                  <div className="barsh-direct-summary-label">Patient</div>
+                  <div
+                    className="barsh-direct-summary-label"
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
+                  >
+                    <span>Patient</span>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openIdentityFieldEditDialog("patient_name");
+                      }}
+                      disabled={identityFieldEditLoading}
+                      title="Edit Patient."
+                      style={identityEditButtonStyle}
+                    >
+                      Edit
+                    </button>
+                  </div>
                   <div className="barsh-direct-summary-value">
                     {textValue(matter?.patient?.name || matter?.patient) || "—"}
                   </div>
@@ -4582,7 +4914,25 @@ const activeGroupKey =
                   href={`/matters?provider=${encodeURIComponent(providerValue(matter))}`}
                   title="Open all matters for this provider"
                 >
-                  <div className="barsh-direct-summary-label">Provider</div>
+                  <div
+                    className="barsh-direct-summary-label"
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
+                  >
+                    <span>Provider</span>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openIdentityFieldEditDialog("client_name");
+                      }}
+                      disabled={identityFieldEditLoading}
+                      title="Edit Provider."
+                      style={identityEditButtonStyle}
+                    >
+                      Edit
+                    </button>
+                  </div>
                   <div className="barsh-direct-summary-value">
                     {providerValue(matter) || "—"}
                   </div>
@@ -4596,7 +4946,7 @@ const activeGroupKey =
                     <span>Treating Provider</span>
                     <button
                       type="button"
-                      onClick={openLocalTreatingProviderEditDialog}
+                      onClick={openTreatingProviderEditDialog}
                       disabled={treatingProviderOptionsLoading || treatingProviderSaving}
                       title="Edit Treating Provider."
                       style={{
@@ -4638,7 +4988,25 @@ const activeGroupKey =
                   href={`/matters?insurer=${encodeURIComponent(insurerValue(matter))}`}
                   title="Open all matters for this insurer"
                 >
-                  <div className="barsh-direct-summary-label">Insurer</div>
+                  <div
+                    className="barsh-direct-summary-label"
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
+                  >
+                    <span>Insurer</span>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openIdentityFieldEditDialog("insurer_name");
+                      }}
+                      disabled={identityFieldEditLoading}
+                      title="Edit Insurer."
+                      style={identityEditButtonStyle}
+                    >
+                      Edit
+                    </button>
+                  </div>
                   <div className="barsh-direct-summary-value">
                     {insurerValue(matter) || "—"}
                   </div>
@@ -4649,7 +5017,25 @@ const activeGroupKey =
                   href={`/matters?claim=${encodeURIComponent(textValue(matter?.claimNumber))}`}
                   title="Open all matters for this claim number"
                 >
-                  <div className="barsh-direct-summary-label">Claim Number</div>
+                  <div
+                    className="barsh-direct-summary-label"
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
+                  >
+                    <span>Claim Number</span>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openIdentityFieldEditDialog("claim_number_raw");
+                      }}
+                      disabled={identityFieldEditLoading}
+                      title="Edit Claim Number."
+                      style={identityEditButtonStyle}
+                    >
+                      Edit
+                    </button>
+                  </div>
                   <div className="barsh-direct-summary-value barsh-direct-summary-value-strong">
                     {textValue(matter?.claimNumber) || "—"}
                   </div>

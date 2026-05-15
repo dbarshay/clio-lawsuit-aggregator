@@ -116,34 +116,7 @@ model ClaimClusterCache {
   @@index([updated_at])
 }
 
-model WebhookEvent {
-  id            String    @id @default(cuid())
-  webhookId     String?
-  matterId      Int?
-  payload       Json
-  status        String    @default("pending")
-  attempts      Int       @default(0)
-  lastError     String?
-  createdAt     DateTime  @default(now())
-  processedAt   DateTime?
-  nextAttemptAt DateTime?
-  eventKey      String    @unique
 
-  @@index([status])
-  @@index([nextAttemptAt])
-  @@index([matterId])
-  @@index([webhookId])
-}
-
-model WorkerLock {
-  name        String   @id
-  lockedBy    String
-  lockedUntil DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([lockedUntil])
-}
 
 model DocumentFinalization {
   id                    Int      @id @default(autoincrement())

@@ -1031,6 +1031,101 @@ const activeGroupKey =
     setIdentityFieldEditInput("");
   }
 
+  function normalizeClaimIndexMatter(row: any): any {
+    if (!row) return null;
+
+    const matterIdValue = Number(row.matterId ?? row.matter_id ?? row.id ?? 0);
+    const displayNumber = textValue(row.displayNumber || row.display_number);
+
+    const patientName = textValue(row.patientName || row.patient_name || row.patient?.name || row.patient);
+    const clientName = textValue(row.clientName || row.client_name || row.provider || row.providerName || row.provider_name || row.client?.name);
+    const providerName = textValue(row.providerName || row.provider_name || clientName);
+    const insurerName = textValue(row.insurerName || row.insurer_name || row.insurer || row.insuranceCompany || row.insurance_company);
+    const claimNumber = textValue(row.claimNumber || row.claim_number || row.claimNumberRaw || row.claim_number_raw || row.claim_number_normalized);
+    const matterStageName = textValue(row.matterStageName || row.matter_stage_name || row.matterStage?.name || row.status);
+
+    return {
+      ...(row || {}),
+      id: matterIdValue,
+      matterId: matterIdValue,
+      matter_id: matterIdValue,
+
+      displayNumber,
+      display_number: displayNumber,
+
+      description: textValue(row.description),
+
+      patient: patientName ? { name: patientName } : "",
+      patientName,
+      patient_name: patientName,
+
+      client: clientName ? { name: clientName } : "",
+      clientName,
+      client_name: clientName,
+
+      provider: clientName,
+      providerName,
+      provider_name: providerName,
+
+      insurer: insurerName,
+      insurerName,
+      insurer_name: insurerName,
+      insuranceCompany: insurerName,
+      insurance_company: insurerName,
+
+      claimNumber,
+      claim_number: claimNumber,
+      claimNumberRaw: textValue(row.claimNumberRaw || row.claim_number_raw || claimNumber),
+      claim_number_raw: textValue(row.claimNumberRaw || row.claim_number_raw || claimNumber),
+      claimNumberNormalized: textValue(row.claimNumberNormalized || row.claim_number_normalized || claimNumber),
+      claim_number_normalized: textValue(row.claimNumberNormalized || row.claim_number_normalized || claimNumber),
+
+      claimAmount: num(row.claimAmount ?? row.claim_amount),
+      claim_amount: num(row.claimAmount ?? row.claim_amount),
+      paymentVoluntary: num(row.paymentVoluntary ?? row.payment_voluntary),
+      payment_voluntary: num(row.paymentVoluntary ?? row.payment_voluntary),
+      balancePresuit: num(row.balancePresuit ?? row.balance_presuit),
+      balance_presuit: num(row.balancePresuit ?? row.balance_presuit),
+
+      billNumber: textValue(row.billNumber || row.bill_number),
+      bill_number: textValue(row.billNumber || row.bill_number),
+
+      dosStart: textValue(row.dosStart || row.dos_start),
+      dos_start: textValue(row.dosStart || row.dos_start),
+      dosEnd: textValue(row.dosEnd || row.dos_end),
+      dos_end: textValue(row.dosEnd || row.dos_end),
+
+      denialReason: textValue(row.denialReason || row.denial_reason),
+      denial_reason: textValue(row.denialReason || row.denial_reason),
+
+      serviceType: textValue(row.serviceType || row.service_type),
+      service_type: textValue(row.serviceType || row.service_type),
+      policyNumber: textValue(row.policyNumber || row.policy_number),
+      policy_number: textValue(row.policyNumber || row.policy_number),
+      dateOfLoss: textValue(row.dateOfLoss || row.date_of_loss),
+      date_of_loss: textValue(row.dateOfLoss || row.date_of_loss),
+
+      masterLawsuitId: textValue(row.masterLawsuitId || row.master_lawsuit_id),
+      master_lawsuit_id: textValue(row.masterLawsuitId || row.master_lawsuit_id),
+
+      matterStage: matterStageName ? { name: matterStageName } : null,
+      matterStageName,
+      matter_stage_name: matterStageName,
+
+      status: textValue(row.status || matterStageName),
+      closeReason: textValue(row.closeReason || row.close_reason),
+      close_reason: textValue(row.closeReason || row.close_reason),
+
+      indexAaaNumber: textValue(row.indexAaaNumber || row.index_aaa_number),
+      index_aaa_number: textValue(row.indexAaaNumber || row.index_aaa_number),
+
+      treatingProvider: textValue(row.treatingProvider || row.treating_provider),
+      treating_provider: textValue(row.treatingProvider || row.treating_provider),
+
+      localClaimIndexHydration: true,
+    };
+  }
+
   function applyIdentityFieldToMatterState(field: "patient_name" | "client_name" | "insurer_name" | "claim_number_raw", value: string) {
     setMatter((current: any) => {
       if (!current) return current;
@@ -1694,106 +1789,102 @@ const activeGroupKey =
   useEffect(() => {
     if (!matterId) return;
 
+    let cancelled = false;
+
     async function load() {
       setMatterHydrationLoading(true);
       setMatterHydrationError("");
 
       try {
-        const baseResponse = await fetch(
-          `/api/clio/matter-context?matterId=${matterId}`,
-          { cache: "no-store" }
-        ).then((r) => r.json());
+        const localParams = new URLSearchParams();
+        const numericMatterId = Number(matterId);
 
-        const siblingsResponse = await fetch(
-          `/api/aggregation/find-siblings?matterId=${matterId}`,
-          { cache: "no-store" }
-        ).then((r) => r.json());
-
-        if (!baseResponse?.ok) {
-          throw new Error(baseResponse?.error || "Matter context refresh from Clio failed.");
+        if (Number.isFinite(numericMatterId) && numericMatterId > 0) {
+          localParams.set("matterId", String(numericMatterId));
+        } else {
+          localParams.set("displayNumber", String(matterId));
         }
 
-        const base = baseResponse?.matter || null;
-        const siblings = Array.isArray(siblingsResponse?.siblings)
-          ? siblingsResponse.siblings
-          : [];
+        const baseResponse = await fetch(`/api/claim-index/by-matter?${localParams.toString()}`, {
+          cache: "no-store",
+        }).then((result) => result.json());
 
-      const all: any[] = [];
-      const seen = new Set<number>();
+        if (!baseResponse?.ok || !baseResponse?.overlay) {
+          throw new Error(baseResponse?.error || "Matter was not found in local ClaimIndex.");
+        }
 
-      if (base?.id) {
-        all.push(base);
-        seen.add(Number(base.id));
-      }
+        const base = normalizeClaimIndexMatter(baseResponse.overlay);
+        const claimNumber = textValue(base?.claimNumber || base?.claim_number);
 
-      for (const sib of siblings) {
-        const idNum = Number(sib.id ?? sib.matterId);
-        if (!idNum || seen.has(idNum)) continue;
+        let relatedRows: any[] = [];
 
-        all.push({
-          id: idNum,
-          displayNumber: sib.displayNumber,
-          patient: sib.patient,
-          clientName: sib.clientName,
-          insuranceCompany: sib.insuranceCompany,
-          claimAmount: sib.claimAmount,
-          paymentVoluntary: sib.paymentVoluntary,
-          balancePresuit: sib.balancePresuit,
-          dosStart: sib.dosStart,
-          dosEnd: sib.dosEnd,
-          denialReason: sib.denialReason,
-          status: sib.status,
-          closeReason: sib.closeReason,
-          masterLawsuitId: sib.masterLawsuitId,
-          matterStage: sib.matterStage || sib.stage || null,
-          stage: sib.stage || sib.matterStage || null,
-          selectableForSettlement: !!sib.selectableForSettlement,
-          isMaster: !!(sib.isMaster || sib.is_master),
+        if (claimNumber) {
+          const searchResponse = await fetch(
+            `/api/claim-index/search?claim=${encodeURIComponent(claimNumber)}`,
+            { cache: "no-store" }
+          ).then((result) => result.json()).catch(() => null);
+
+          if (searchResponse?.ok && Array.isArray(searchResponse.rows)) {
+            relatedRows = searchResponse.rows.map(normalizeClaimIndexMatter).filter(Boolean);
+          }
+        }
+
+        if (!relatedRows.some((row) => Number(row?.id) === Number(base?.id))) {
+          relatedRows.unshift(base);
+        }
+
+        const deduped = Array.from(
+          new Map(relatedRows.map((row) => [Number(row?.id), row])).values()
+        ).filter((row) => Number(row?.id));
+
+        const sortedAll = deduped.sort((a, b) => {
+          const aIsBase = Number(a?.id) === Number(base?.id);
+          const bIsBase = Number(b?.id) === Number(base?.id);
+
+          if (aIsBase && !bIsBase) return -1;
+          if (!aIsBase && bIsBase) return 1;
+
+          const aMaster = String(a?.masterLawsuitId || "").trim();
+          const bMaster = String(b?.masterLawsuitId || "").trim();
+
+          if (aMaster && bMaster) {
+            const cmp = aMaster.localeCompare(bMaster);
+            if (cmp !== 0) return cmp;
+          } else if (aMaster && !bMaster) {
+            return -1;
+          } else if (!aMaster && bMaster) {
+            return 1;
+          }
+
+          return String(a?.displayNumber || "").localeCompare(String(b?.displayNumber || ""));
         });
 
-        seen.add(idNum);
-      }
+        if (cancelled) return;
 
-      const sortedAll = [...all].sort((a, b) => {
-        const aIsBase = Number(a?.id) === Number(base?.id);
-        const bIsBase = Number(b?.id) === Number(base?.id);
-
-        if (aIsBase && !bIsBase) return -1;
-        if (!aIsBase && bIsBase) return 1;
-
-        const aMaster = String(a?.masterLawsuitId || "").trim();
-        const bMaster = String(b?.masterLawsuitId || "").trim();
-
-        if (aMaster && bMaster) {
-          const cmp = aMaster.localeCompare(bMaster);
-          if (cmp !== 0) return cmp;
-        } else if (aMaster && !bMaster) {
-          return -1;
-        } else if (!aMaster && bMaster) {
-          return 1;
-        }
-
-        return String(a?.displayNumber || "").localeCompare(
-          String(b?.displayNumber || "")
+        setMatter(base);
+        setRows(sortedAll);
+        setSelected((prev) =>
+          prev.filter((id) => {
+            const row = sortedAll.find((r) => Number(r.id) === id);
+            return row && !isAggregated(row) && isSelectable(row);
+          })
         );
-      });
-
-      setMatter(base || null);
-      setRows(sortedAll);
-      setSelected((prev) =>
-        prev.filter((id) => {
-          const row = all.find((r) => Number(r.id) === id);
-          return row && !isAggregated(row) && isSelectable(row);
-        })
-      );
       } catch (err: any) {
-        setMatterHydrationError(err?.message || "Matter workspace refresh from Clio failed.");
+        if (!cancelled) {
+          setMatterHydrationError(err?.message || "Matter workspace refresh from local ClaimIndex failed.");
+        }
       } finally {
-        setMatterHydrationLoading(false);
+        if (!cancelled) {
+          setMatterHydrationLoading(false);
+        }
       }
     }
 
     load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [matterId]);
 
   function toggle(id: number) {

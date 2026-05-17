@@ -1,5 +1,7 @@
 "use client";
 
+const DIRECT_MATTER_SETTLEMENTS_ENABLED = false;
+
 import { Fragment, useEffect, useMemo, useState } from "react";
 import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
 
@@ -2948,11 +2950,11 @@ const activeGroupKey =
     setSettledWithContactLoading(true);
 
     try {
-      const res = await fetch(`/api/reference-data/contact-search?q=${encodeURIComponent(query)}&type=individual`);
+      const res = await fetch(`/api/reference-data/${"contact-search"}?q=${encodeURIComponent(query)}&type=individual`);
       const json = await res.json();
 
       if (!res.ok || !json?.ok) {
-        alert(json?.error || "Could not search Clio contacts.");
+        alert(json?.error || "Could not search local contacts.");
         setSettledWithContactResults([]);
         return;
       }
@@ -6749,7 +6751,7 @@ const activeGroupKey =
         </section>
       )}
 
-      {activeWorkspaceTab === "settlement" && (
+      {DIRECT_MATTER_SETTLEMENTS_ENABLED && activeWorkspaceTab === "settlement" && (
         <section style={tabPlaceholderPanelStyle}>
           <div
             style={{
@@ -7420,10 +7422,10 @@ const activeGroupKey =
             >
               <div style={{ fontWeight: 800, marginBottom: 6 }}>Safety Rules</div>
               <ul style={{ margin: "0 0 0 18px", padding: 0, color: "#92400e", fontSize: 13, lineHeight: 1.5 }}>
-                <li>Clio remains source of truth for matter data.</li>
+                <li>This direct matter settlement workspace is disabled. Settlements are handled only from the Master Lawsuit page.</li>
                 <li>Settlement writeback must be explicit only.</li>
                 <li>Preview calculations should be non-persistent.</li>
-                <li>Provider-specific fee percentages must come from Clio contact data.</li>
+                <li>Provider-specific fee percentages are handled from the Master Lawsuit settlement workflow.</li>
               </ul>
             </div>
           </div>
@@ -7439,7 +7441,7 @@ const activeGroupKey =
           >
             <div style={{ fontWeight: 800, marginBottom: 8 }}>Proposed Settlement Workflow</div>
             <ol style={{ margin: "0 0 0 20px", padding: 0, color: "#475569", fontSize: 13, lineHeight: 1.6 }}>
-              <li>Load live lawsuit/bill data from Clio and current local lawsuit context.</li>
+              <li>Settlement workflow is handled only from the Master Lawsuit page.</li>
               <li>Enter or preview gross settlement details without saving.</li>
               <li>Calculate allocation, fees, and provider net amounts per bill.</li>
               <li>Review warnings before any writeback.</li>
@@ -7736,7 +7738,7 @@ const activeGroupKey =
               <div>
                 <div style={{ fontWeight: 800 }}>Provider Fee Defaults</div>
                 <div style={{ color: "#1e3a8a", fontSize: 12 }}>
-                  Auto-loads when this tab opens from the read-only Clio provider/client contact defaults for this preview form only.
+                  Provider defaults are handled from the Master Lawsuit settlement workflow.
                 </div>
               </div>
 
@@ -7852,11 +7854,11 @@ const activeGroupKey =
                   <br />
                   {textValue(settlementPreviewInput.settledWithContactId)
                     ? "Selected from local person-contact search"
-                    : "No Clio person contact selected"}
+                    : "No local contact selected"}
                 </div>
               </div>
               <div style={{ marginTop: 6, color: "#1e3a8a", fontSize: 12 }}>
-                SETTLED_WITH must be selected from Clio contacts and must validate as a Person contact before writeback.
+                SETTLED_WITH selection is handled from the Master Lawsuit page.
               </div>
             </div>
 
@@ -8019,7 +8021,7 @@ const activeGroupKey =
                 }}
               >
                 <div style={{ fontWeight: 800, marginBottom: 6 }}>
-                  Clio Writeback Readiness
+                  Master Lawsuit Writeback Readiness
                 </div>
                 <p style={{ margin: "0 0 8px", color: "#475569", fontSize: 12 }}>
                   Dry-run validation only.  This checks whether the child/bill matters have the required existing Clio custom field value records for final settlement writeback.
@@ -8063,7 +8065,7 @@ const activeGroupKey =
                 >
                   {settlementWritebackPreviewLoading
                     ? "Validating..."
-                    : "Validate Clio Writeback Readiness"}
+                    : "Validate Master Lawsuit Writeback Readiness"}
                 </button>
               </div>
 
@@ -8100,7 +8102,7 @@ const activeGroupKey =
               }}
             >
               <div style={{ fontWeight: 800, marginBottom: 8 }}>
-                Clio Writeback Readiness Result
+                Master Lawsuit Writeback Readiness Result
               </div>
 
               {settlementWritebackPreviewResult.error && (
@@ -8258,7 +8260,7 @@ const activeGroupKey =
 
               <details style={{ marginTop: 10 }}>
                 <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
-                  Raw Clio writeback readiness JSON
+                  Raw writeback readiness JSON
                 </summary>
                 <pre
                   style={{

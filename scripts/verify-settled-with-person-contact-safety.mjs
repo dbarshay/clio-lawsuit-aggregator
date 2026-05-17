@@ -61,7 +61,7 @@ function main() {
   mustNotContain("local contact search route", localContactSearchRoute, "method: \"POST\"");
   mustNotContain("local contact search route", localContactSearchRoute, "method: \"DELETE\"");
 
-  mustContain("direct matter page", directMatterPage, "/api/reference-data/contact-search");
+  mustNotContain("direct matter page", directMatterPage, "/api/reference-data/contact-search");
   mustContain("master lawsuit page", masterPage, "/api/reference-data/contact-search");
   mustContain("master lawsuit page", masterPage, "Search Local Contact");
 

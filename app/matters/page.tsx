@@ -3490,7 +3490,7 @@ export default function FilteredMattersPage() {
                           color: "#1e40af",
                         }}
                       >
-                        Master Lawsuit Settlement · Preview only, no Clio writeback.
+                        Master Lawsuit Settlement · Local preview only, no Clio writeback.
                       </div>
                     </div>
 
@@ -3567,7 +3567,7 @@ export default function FilteredMattersPage() {
                       <input
                         value={masterSettlementWithInput}
                         onChange={(event) => setMasterSettlementWithInput(event.target.value)}
-                        placeholder="Person contact search will be wired later"
+                        placeholder="Search Local Contact"
                         style={{
                           width: "100%",
                           border: "1px solid #cbd5e1",
@@ -3624,7 +3624,7 @@ export default function FilteredMattersPage() {
                       <input
                         value={masterSettlementPrincipalFeePercentInput}
                         onChange={(event) => setMasterSettlementPrincipalFeePercentInput(event.target.value)}
-                        placeholder="Provider default will be wired later"
+                        placeholder="Provider default pending"
                         inputMode="decimal"
                         style={{
                           width: "100%",
@@ -3680,7 +3680,7 @@ export default function FilteredMattersPage() {
                       <input
                         value={masterSettlementInterestFeePercentInput}
                         onChange={(event) => setMasterSettlementInterestFeePercentInput(event.target.value)}
-                        placeholder="Provider default will be wired later"
+                        placeholder="Provider default pending"
                         inputMode="decimal"
                         style={{
                           width: "100%",

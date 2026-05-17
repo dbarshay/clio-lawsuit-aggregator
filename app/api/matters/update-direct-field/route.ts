@@ -1,207 +1,178 @@
 import { NextResponse } from "next/server";
-import { getValidClioAccessToken } from "@/lib/clioTokenStore";
-import { upsertClaimIndexFromMatter } from "@/lib/claimIndexUpsert";
+import { prisma } from "@/lib/prisma";
 
-const BASE = process.env.CLIO_API_BASE || "https://app.clio.com/api/v4";
-
-const MATTER_CF = {
-  DOS_START: 22145960,
-  DOS_END: 22145975,
-  DENIAL_REASON: 22146035,
-  CLOSE_REASON: 22145660,
-};
-
-async function clioFetch(path: string, options: RequestInit = {}) {
-  const token = await getValidClioAccessToken();
-
-  const response = await fetch(`${BASE}${path}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
-
-  const text = await response.text();
-
-  if (!response.ok) {
-    throw new Error(`Clio API error ${response.status}: ${text}`);
-  }
-
-  return text ? JSON.parse(text) : null;
+function cleanText(value: unknown): string {
+  return String(value ?? "").trim();
 }
 
-function customFieldId(row: any): number | null {
-  const raw = row?.custom_field?.id ?? row?.custom_field_id ?? row?.custom_field;
-  const id = Number(raw);
-  return Number.isFinite(id) ? id : null;
+function normalizeClaimNumber(value: unknown): string {
+  return cleanText(value).replace(/\s+/g, "").toUpperCase();
 }
 
-function findCustomFieldValue(matter: any, fieldId: number) {
-  const rows = Array.isArray(matter?.custom_field_values) ? matter.custom_field_values : [];
-  return rows.find((row: any) => customFieldId(row) === fieldId) || null;
-}
-
-function cleanText(value: any): string {
-  return String(value || "").trim();
-}
-
-function payloadForExistingCustomFieldValue(row: any, fieldId: number, value: string) {
-  if (!row?.id) {
-    throw new Error(`Cannot update custom field ${fieldId}; existing custom_field_value id was not found.`);
-  }
-
-  return {
-    id: row.id,
-    custom_field: { id: fieldId },
-    value,
-  };
-}
-
-function picklistValue(value: any): string {
+function parseMatterId(value: unknown): number | null {
   const cleaned = cleanText(value);
-  if (!cleaned) throw new Error("Picklist value is required.");
+  if (!cleaned) return null;
+
+  const withoutPrefix = cleaned.replace(/^BRL/i, "").trim();
+  const parsed = Number(withoutPrefix);
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function requiredText(value: unknown, label: string): string {
+  const cleaned = cleanText(value);
+  if (!cleaned) throw new Error(`${label} is required.`);
   return cleaned;
+}
+
+function updateRawJson(rawJson: string | null | undefined, updates: Record<string, any>): string {
+  let parsed: any = {};
+
+  const raw = cleanText(rawJson);
+  if (raw) {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = {};
+    }
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    parsed = {};
+  }
+
+  const next = {
+    ...parsed,
+    ...updates,
+  };
+
+  return JSON.stringify(next);
 }
 
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
 
-    const matterId = Number(body?.matterId || "");
+    const matterId = parseMatterId(body?.matterId);
     const field = cleanText(body?.field);
 
-    if (!Number.isFinite(matterId) || matterId <= 0) {
+    if (!matterId) {
       return NextResponse.json(
         { ok: false, error: "Valid matterId is required." },
         { status: 400 }
       );
     }
 
-    const supported = ["dos", "denialReason", "status", "finalStatus"];
-    if (!supported.includes(field)) {
+    const existing = await prisma.claimIndex.findUnique({
+      where: { matter_id: matterId },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { ok: false, error: `Matter BRL${matterId} was not found in ClaimIndex.` },
+        { status: 404 }
+      );
+    }
+
+    const data: any = {};
+    const rawUpdates: Record<string, any> = {};
+
+    if (field === "dos") {
+      const dosStart = requiredText(body?.dosStart, "DOS Start");
+      const dosEnd = requiredText(body?.dosEnd, "DOS End");
+
+      data.dos_start = dosStart;
+      data.dos_end = dosEnd;
+      rawUpdates.dosStart = dosStart;
+      rawUpdates.dosEnd = dosEnd;
+      rawUpdates.dos_start = dosStart;
+      rawUpdates.dos_end = dosEnd;
+    } else if (field === "denialReason") {
+      const denialReason = requiredText(
+        body?.denialReasonLabel || body?.label || body?.denialReasonValue || body?.value,
+        "Denial Reason"
+      );
+
+      data.denial_reason = denialReason;
+      rawUpdates.denialReason = denialReason;
+      rawUpdates.denial_reason = denialReason;
+    } else if (field === "status") {
+      const status = requiredText(
+        body?.statusLabel || body?.label || body?.statusValue || body?.matterStageName || body?.value,
+        "Status"
+      );
+
+      data.status = status;
+      data.matter_stage_name = status;
+      rawUpdates.status = status;
+      rawUpdates.matterStage = { name: status };
+      rawUpdates.matter_stage = { name: status };
+    } else if (field === "finalStatus") {
+      const closeReason = requiredText(
+        body?.finalStatusLabel || body?.label || body?.finalStatusValue || body?.closeReason || body?.value,
+        "Closed Reason"
+      );
+
+      data.close_reason = closeReason;
+      rawUpdates.closeReason = closeReason;
+      rawUpdates.close_reason = closeReason;
+    } else if (field === "patient") {
+      const patientName = requiredText(body?.patientName || body?.value, "Patient");
+      data.patient_name = patientName;
+      data.patient_provider = [patientName, existing.provider_name || existing.client_name || ""].filter(Boolean).join(" | ");
+      data.patient_insurer = [patientName, existing.insurer_name || ""].filter(Boolean).join(" | ");
+      rawUpdates.patient = { name: patientName };
+      rawUpdates.patientName = patientName;
+    } else if (field === "provider") {
+      const providerName = requiredText(body?.providerName || body?.value, "Provider");
+      data.provider_name = providerName;
+      data.client_name = providerName;
+      data.patient_provider = [existing.patient_name || "", providerName].filter(Boolean).join(" | ");
+      rawUpdates.provider = { name: providerName };
+      rawUpdates.client = { name: providerName };
+      rawUpdates.providerName = providerName;
+      rawUpdates.clientName = providerName;
+    } else if (field === "insurer") {
+      const insurerName = requiredText(body?.insurerName || body?.value, "Insurer");
+      data.insurer_name = insurerName;
+      data.patient_insurer = [existing.patient_name || "", insurerName].filter(Boolean).join(" | ");
+      rawUpdates.insurer = { name: insurerName };
+      rawUpdates.insuranceCompany = { name: insurerName };
+      rawUpdates.insurerName = insurerName;
+    } else if (field === "claimNumber") {
+      const claimNumber = requiredText(body?.claimNumber || body?.value, "Claim Number");
+      data.claim_number_raw = claimNumber;
+      data.claim_number_normalized = normalizeClaimNumber(claimNumber);
+      rawUpdates.claimNumber = claimNumber;
+      rawUpdates.claim_number = claimNumber;
+    } else {
       return NextResponse.json(
         { ok: false, error: "Unsupported direct matter field." },
         { status: 400 }
       );
     }
 
-    const readFields = encodeURIComponent(
-      "id,display_number,description,status,matter_stage{id,name},client,custom_field_values{id,value,custom_field}"
-    );
+    data.raw_json = updateRawJson(existing.raw_json, rawUpdates);
+    data.indexed_at = new Date();
 
-    const beforeJson = await clioFetch(`/matters/${matterId}.json?fields=${readFields}`);
-    const beforeMatter = beforeJson?.data;
-
-    if (!beforeMatter?.id) {
-      return NextResponse.json(
-        { ok: false, error: "Matter was not returned from Clio." },
-        { status: 502 }
-      );
-    }
-
-    let patchData: any = {};
-
-    if (field === "dos") {
-      const dosStart = cleanText(body?.dosStart);
-      const dosEnd = cleanText(body?.dosEnd);
-
-      if (!dosStart || !dosEnd) {
-        return NextResponse.json(
-          { ok: false, error: "DOS Start and DOS End are required." },
-          { status: 400 }
-        );
-      }
-
-      const dosStartRow = findCustomFieldValue(beforeMatter, MATTER_CF.DOS_START);
-      const dosEndRow = findCustomFieldValue(beforeMatter, MATTER_CF.DOS_END);
-
-      patchData = {
-        custom_field_values: [
-          payloadForExistingCustomFieldValue(dosStartRow, MATTER_CF.DOS_START, dosStart),
-          payloadForExistingCustomFieldValue(dosEndRow, MATTER_CF.DOS_END, dosEnd),
-        ],
-      };
-    }
-
-    if (field === "denialReason") {
-      const denialReasonValue = picklistValue(body?.denialReasonValue);
-      const denialReasonRow = findCustomFieldValue(beforeMatter, MATTER_CF.DENIAL_REASON);
-
-      patchData = {
-        custom_field_values: [
-          payloadForExistingCustomFieldValue(
-            denialReasonRow,
-            MATTER_CF.DENIAL_REASON,
-            denialReasonValue
-          ),
-        ],
-      };
-    }
-
-    if (field === "finalStatus") {
-      const finalStatusValue = picklistValue(body?.finalStatusValue);
-      const closeReasonRow = findCustomFieldValue(beforeMatter, MATTER_CF.CLOSE_REASON);
-
-      patchData = {
-        custom_field_values: [
-          payloadForExistingCustomFieldValue(
-            closeReasonRow,
-            MATTER_CF.CLOSE_REASON,
-            finalStatusValue
-          ),
-        ],
-      };
-    }
-
-    if (field === "status") {
-      const statusValue = Number(body?.statusValue || body?.matterStageId || "");
-      if (!Number.isFinite(statusValue) || statusValue <= 0) {
-        return NextResponse.json(
-          { ok: false, error: "Valid matter stage/status option is required." },
-          { status: 400 }
-        );
-      }
-
-      patchData = {
-        matter_stage: {
-          id: statusValue,
-        },
-      };
-    }
-
-    await clioFetch(`/matters/${matterId}.json`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        data: patchData,
-      }),
+    const row = await prisma.claimIndex.update({
+      where: { matter_id: matterId },
+      data,
     });
-
-    const afterJson = await clioFetch(`/matters/${matterId}.json?fields=${readFields}`);
-    const afterMatter = afterJson?.data;
-
-    if (!afterMatter?.id) {
-      return NextResponse.json(
-        { ok: false, error: "Matter was not returned from Clio after writeback." },
-        { status: 502 }
-      );
-    }
-
-    await upsertClaimIndexFromMatter(afterMatter);
 
     return NextResponse.json({
       ok: true,
-      action: "update-direct-matter-field",
+      action: "update-direct-matter-field-local",
       field,
       matterId,
-      displayNumber: afterMatter.display_number || "",
-      matter: afterMatter,
+      displayNumber: row.display_number || `BRL${matterId}`,
+      row,
       safety: {
-        clioWriteback: true,
-        customFieldValueCreation: "blocked",
-        claimIndexRefreshed: true,
+        clioWriteback: false,
+        clioHydration: false,
+        customFieldValueCreation: "not-applicable-local-only",
+        claimIndexUpdated: true,
+        sourceOfTruth: "ClaimIndex/local Barsh Matters data",
       },
     });
   } catch (error: any) {

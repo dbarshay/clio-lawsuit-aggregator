@@ -16,10 +16,27 @@ function money(v: any) {
 }
 
 function formatDate(v?: string) {
-  if (!v) return "";
-  const d = new Date(v);
-  if (isNaN(d.getTime())) return v;
-  return d.toLocaleDateString("en-US");
+  const raw = String(v || "").trim();
+  if (!raw) return "";
+
+  const ymd = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/);
+  if (ymd) return `${ymd[2]}/${ymd[3]}/${ymd[1]}`;
+
+  const mdy = raw.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})$/);
+  if (mdy) {
+    const mm = mdy[1].padStart(2, "0");
+    const dd = mdy[2].padStart(2, "0");
+    return `${mm}/${dd}/${mdy[3]}`;
+  }
+
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return raw;
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+
+  return `${mm}/${dd}/${yyyy}`;
 }
 
 function formatDOS(start?: string, end?: string) {
@@ -632,6 +649,8 @@ const activeGroupKey =
   const [expandedPaymentReceiptId, setExpandedPaymentReceiptId] = useState<number | null>(null);
   const [paymentClosePromptOpen, setPaymentClosePromptOpen] = useState(false);
   const [directFieldEditModal, setDirectFieldEditModal] = useState<"dos" | "denialReason" | "status" | "finalStatus" | null>(null);
+  const [identityFieldEditModal, setIdentityFieldEditModal] = useState<"patient" | "provider" | "insurer" | "claimNumber" | null>(null);
+  const [identityFieldInput, setIdentityFieldInput] = useState("");
   const [directFieldEditLoading, setDirectFieldEditLoading] = useState(false);
   const [directFieldEditResult, setDirectFieldEditResult] = useState<any>(null);
   const [directFieldPicklistsLoading, setDirectFieldPicklistsLoading] = useState(false);
@@ -883,7 +902,7 @@ const activeGroupKey =
       }
 
       const refreshed = await fetch(
-        `/api/clio/matter-context?matterId=${encodeURIComponent(matterId)}`,
+        `/api/claim-index/by-matter?matterId=${encodeURIComponent(matterId)}`,
         { cache: "no-store" }
       ).then((result) => result.json());
 
@@ -923,7 +942,7 @@ const activeGroupKey =
   }
 
   function optionValue(option: any): string {
-    return textValue(option?.value || option?.id || option?.label || option?.name);
+    return textValue(option?.label || option?.name || option?.value || option?.id);
   }
 
   function findOptionValueByLabel(options: any[], label: string): string {
@@ -987,6 +1006,91 @@ const activeGroupKey =
     if (field === "finalStatus") setFinalStatusInput(value);
   }
 
+  function identityFieldLabel(field: "patient" | "provider" | "insurer" | "claimNumber"): string {
+    if (field === "patient") return "Patient";
+    if (field === "provider") return "Provider";
+    if (field === "insurer") return "Insurer";
+    return "Claim Number";
+  }
+
+  function identityFieldCurrentValue(field: "patient" | "provider" | "insurer" | "claimNumber"): string {
+    if (field === "patient") return textValue(matter?.patient?.name || matter?.patient);
+    if (field === "provider") return providerValue(matter);
+    if (field === "insurer") return insurerValue(matter);
+    return textValue(matter?.claimNumber);
+  }
+
+  function openIdentityFieldEditDialog(field: "patient" | "provider" | "insurer" | "claimNumber") {
+    setDirectFieldEditResult(null);
+    setIdentityFieldInput(identityFieldCurrentValue(field));
+    setIdentityFieldEditModal(field);
+  }
+
+  async function saveIdentityFieldEditDialog() {
+    if (!identityFieldEditModal) return;
+
+    const value = textValue(identityFieldInput);
+
+    if (!value) {
+      setDirectFieldEditResult({
+        ok: false,
+        error: `${identityFieldLabel(identityFieldEditModal)} is required.`,
+      });
+      return;
+    }
+
+    try {
+      setDirectFieldEditLoading(true);
+      setDirectFieldEditResult(null);
+
+      const response = await fetch("/api/matters/update-direct-field", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          matterId,
+          field: identityFieldEditModal,
+          value,
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json?.ok) {
+        setDirectFieldEditResult({
+          ok: false,
+          error: json?.error || `${identityFieldLabel(identityFieldEditModal)} could not be updated.`,
+          details: json,
+        });
+        return;
+      }
+
+      const refreshed = await fetch(
+        `/api/claim-index/by-matter?matterId=${encodeURIComponent(matterId)}`,
+        { cache: "no-store" }
+      ).then((result) => result.json());
+
+      if (refreshed?.ok && refreshed?.matter) {
+        setMatter(refreshed.matter);
+      }
+
+      setIdentityFieldEditModal(null);
+      setDirectFieldEditResult({
+        ok: true,
+        message: `${identityFieldLabel(identityFieldEditModal)} updated.`,
+      });
+    } catch (error: any) {
+      setDirectFieldEditResult({
+        ok: false,
+        error: error?.message || String(error),
+      });
+    } finally {
+      setDirectFieldEditLoading(false);
+    }
+  }
+
+
   async function savePicklistEditDialog(field: "denialReason" | "status" | "finalStatus") {
     const value = directPicklistInputValue(field);
 
@@ -1031,7 +1135,7 @@ const activeGroupKey =
       }
 
       const refreshed = await fetch(
-        `/api/clio/matter-context?matterId=${encodeURIComponent(matterId)}`,
+        `/api/claim-index/by-matter?matterId=${encodeURIComponent(matterId)}`,
         { cache: "no-store" }
       ).then((result) => result.json());
 
@@ -1314,7 +1418,7 @@ const activeGroupKey =
 
       try {
         const baseResponse = await fetch(
-          `/api/clio/matter-context?matterId=${matterId}`,
+          `/api/claim-index/by-matter?matterId=${encodeURIComponent(matterId)}`,
           { cache: "no-store" }
         ).then((r) => r.json());
 
@@ -3954,7 +4058,125 @@ const activeGroupKey =
         </div>
       )}
 
-{directFieldEditModal === "dos" && (
+{identityFieldEditModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Edit ${identityFieldLabel(identityFieldEditModal)}`}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 12000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+            background: "rgba(15, 23, 42, 0.45)",
+          }}
+        >
+          <div
+            style={{
+              width: "min(520px, calc(100vw - 48px))",
+              border: "1px solid #cbd5e1",
+              borderRadius: 18,
+              background: "#fff",
+              boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
+              padding: 20,
+            }}
+          >
+            <h2 style={{ marginTop: 0, marginBottom: 8 }}>
+              Edit {identityFieldLabel(identityFieldEditModal)}
+            </h2>
+
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#475569", marginBottom: 16 }}>
+              This updates the local ClaimIndex value used by the direct matter page.
+            </div>
+
+            <label style={{ display: "grid", gap: 6, fontWeight: 900, marginBottom: 16 }}>
+              <span>{identityFieldLabel(identityFieldEditModal)}</span>
+              <input
+                type="text"
+                value={identityFieldInput}
+                onChange={(event) => setIdentityFieldInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void saveIdentityFieldEditDialog();
+                  }
+
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    setIdentityFieldEditModal(null);
+                    setDirectFieldEditResult(null);
+                  }
+                }}
+                autoFocus
+                disabled={directFieldEditLoading}
+                style={{
+                  height: 42,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 10,
+                  padding: "0 10px",
+                  fontWeight: 800,
+                }}
+              />
+            </label>
+
+            {directFieldEditResult && !directFieldEditResult.ok && (
+              <div style={{ color: "#991b1b", fontWeight: 800, marginBottom: 12 }}>
+                {textValue(directFieldEditResult.error) ||
+                  `${identityFieldLabel(identityFieldEditModal)} could not be updated.`}
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIdentityFieldEditModal(null);
+                  setDirectFieldEditResult(null);
+                }}
+                disabled={directFieldEditLoading}
+                style={{
+                  minWidth: 96,
+                  height: 38,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 10,
+                  background: "#f8fafc",
+                  color: "#334155",
+                  fontWeight: 900,
+                  cursor: directFieldEditLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={saveIdentityFieldEditDialog}
+                disabled={directFieldEditLoading || !textValue(identityFieldInput)}
+                style={{
+                  minWidth: 118,
+                  height: 38,
+                  border: "1px solid #16a34a",
+                  borderRadius: 10,
+                  background: directFieldEditLoading ? "#bbf7d0" : "#16a34a",
+                  color: "#fff",
+                  fontWeight: 900,
+                  cursor:
+                    directFieldEditLoading || !textValue(identityFieldInput)
+                      ? "not-allowed"
+                      : "pointer",
+                }}
+              >
+                {directFieldEditLoading ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {directFieldEditModal === "dos" && (
         <div
           role="dialog"
           aria-modal="true"
@@ -4062,7 +4284,7 @@ const activeGroupKey =
                   cursor: directFieldEditLoading ? "not-allowed" : "pointer",
                 }}
               >
-                {directFieldEditLoading ? "Saving..." : "Save to Clio"}
+                {directFieldEditLoading ? "Saving..." : "Save"}
               </button>
             </div>
           </div>
@@ -4175,7 +4397,7 @@ const activeGroupKey =
                   cursor: directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal) ? "not-allowed" : "pointer",
                 }}
               >
-                {directFieldEditLoading ? "Saving..." : "Save to Clio"}
+                {directFieldEditLoading ? "Saving..." : "Save"}
               </button>
             </div>
           </div>
@@ -4195,7 +4417,7 @@ const activeGroupKey =
             fontWeight: 650,
           }}
         >
-          {matterHydrationError || "Refreshing matter workspace from Clio..."}
+          {matterHydrationError || "Refreshing matter workspace from ClaimIndex..."}
         </div>
       )}
 
@@ -4204,49 +4426,145 @@ const activeGroupKey =
           <div className="barsh-direct-matter-main">
 <div className="barsh-direct-matter-detail-grid">
               <div className="barsh-direct-summary-column">
-                <a
-                  className="barsh-direct-summary-card barsh-direct-summary-link-card"
-                  href={`/matters?patient=${encodeURIComponent(textValue(matter?.patient?.name || matter?.patient))}`}
-                  title="Open all matters for this patient"
-                >
-                  <div className="barsh-direct-summary-label">Patient</div>
-                  <div className="barsh-direct-summary-value">
+                <div className="barsh-direct-summary-card">
+                  <div
+                    className="barsh-direct-summary-label"
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <span>Patient</span>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openIdentityFieldEditDialog("patient");
+                      }}
+                      disabled={directFieldEditLoading}
+                      title="Edit Patient."
+                      style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                  <a
+                    className="barsh-direct-summary-value"
+                    href={`/matters?patient=${encodeURIComponent(textValue(matter?.patient?.name || matter?.patient))}`}
+                    title="Open all matters for this patient"
+                    style={{ display: "block", color: "inherit", textDecoration: "none" }}
+                  >
                     {textValue(matter?.patient?.name || matter?.patient) || "—"}
-                  </div>
-                </a>
+                  </a>
+                </div>
 
-                <a
-                  className="barsh-direct-summary-card barsh-direct-summary-link-card"
-                  href={`/matters?provider=${encodeURIComponent(providerValue(matter))}`}
-                  title="Open all matters for this provider"
-                >
-                  <div className="barsh-direct-summary-label">Provider</div>
-                  <div className="barsh-direct-summary-value">
+                <div className="barsh-direct-summary-card">
+                  <div
+                    className="barsh-direct-summary-label"
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <span>Provider</span>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openIdentityFieldEditDialog("provider");
+                      }}
+                      disabled={directFieldEditLoading}
+                      title="Edit Provider."
+                      style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                  <a
+                    className="barsh-direct-summary-value"
+                    href={`/matters?provider=${encodeURIComponent(providerValue(matter))}`}
+                    title="Open all matters for this provider"
+                    style={{ display: "block", color: "inherit", textDecoration: "none" }}
+                  >
                     {providerValue(matter) || "—"}
-                  </div>
-                </a>
+                  </a>
+                </div>
 
-                <a
-                  className="barsh-direct-summary-card barsh-direct-summary-link-card"
-                  href={`/matters?insurer=${encodeURIComponent(insurerValue(matter))}`}
-                  title="Open all matters for this insurer"
-                >
-                  <div className="barsh-direct-summary-label">Insurer</div>
-                  <div className="barsh-direct-summary-value">
+                <div className="barsh-direct-summary-card">
+                  <div
+                    className="barsh-direct-summary-label"
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <span>Insurer</span>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openIdentityFieldEditDialog("insurer");
+                      }}
+                      disabled={directFieldEditLoading}
+                      title="Edit Insurer."
+                      style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                  <a
+                    className="barsh-direct-summary-value"
+                    href={`/matters?insurer=${encodeURIComponent(insurerValue(matter))}`}
+                    title="Open all matters for this insurer"
+                    style={{ display: "block", color: "inherit", textDecoration: "none" }}
+                  >
                     {insurerValue(matter) || "—"}
-                  </div>
-                </a>
+                  </a>
+                </div>
 
-                <a
-                  className="barsh-direct-summary-card barsh-direct-summary-link-card"
-                  href={`/matters?claim=${encodeURIComponent(textValue(matter?.claimNumber))}`}
-                  title="Open all matters for this claim number"
-                >
-                  <div className="barsh-direct-summary-label">Claim Number</div>
-                  <div className="barsh-direct-summary-value barsh-direct-summary-value-strong">
-                    {textValue(matter?.claimNumber) || "—"}
+                <div className="barsh-direct-summary-card">
+                  <div
+                    className="barsh-direct-summary-label"
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <span>Claim Number</span>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openIdentityFieldEditDialog("claimNumber");
+                      }}
+                      disabled={directFieldEditLoading}
+                      title="Edit Claim Number."
+                      style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
+                    >
+                      Edit
+                    </button>
                   </div>
-                </a>
+                  <a
+                    className="barsh-direct-summary-value barsh-direct-summary-value-strong"
+                    href={`/matters?claim=${encodeURIComponent(textValue(matter?.claimNumber))}`}
+                    title="Open all matters for this claim number"
+                    style={{ display: "block", color: "inherit", textDecoration: "none" }}
+                  >
+                    {textValue(matter?.claimNumber) || "—"}
+                  </a>
+                </div>
               </div>
 
               <div className="barsh-direct-summary-column">

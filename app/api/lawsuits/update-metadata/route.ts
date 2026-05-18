@@ -332,6 +332,61 @@ async function writePostFilingFieldsToClioLawsuit(params: {
   };
 }
 
+
+export async function GET(req: NextRequest) {
+  try {
+    const masterLawsuitId = text(req.nextUrl.searchParams.get("masterLawsuitId"));
+
+    if (!masterLawsuitId) {
+      return NextResponse.json(
+        { ok: false, error: "masterLawsuitId is required." },
+        { status: 400 }
+      );
+    }
+
+    const lawsuit = await prisma.lawsuit.findUnique({
+      where: { masterLawsuitId },
+      select: {
+        id: true,
+        masterLawsuitId: true,
+        venue: true,
+        venueSelection: true,
+        venueOther: true,
+        indexAaaNumber: true,
+        lawsuitNotes: true,
+        lawsuitOptions: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!lawsuit) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `No local Lawsuit row found for MASTER_LAWSUIT_ID ${masterLawsuitId}.`,
+        },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      ok: true,
+      lawsuit,
+      sourceOfTruth: "Barsh Matters local Lawsuit table",
+      clioReadAttempted: false,
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: err?.message || "Failed to read lawsuit metadata.",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -380,19 +435,44 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const clioPostFilingWrite = await writePostFilingFieldsToClioLawsuit({
-      masterLawsuitId,
-      lawsuitMatters: existing.lawsuitMatters,
-      indexAaaNumber,
-    });
-
     const existingOptions =
       existing.lawsuitOptions && typeof existing.lawsuitOptions === "object"
         ? (existing.lawsuitOptions as Record<string, unknown>)
         : {};
 
+    let clioPostFilingWrite: any = {
+      ok: true,
+      skipped: true,
+      reason: "local-lawsuit-metadata-save-first-no-clio-required",
+      liveMatters: [],
+      masterWrite: null,
+      matterWrites: [],
+      writtenCount: 0,
+      indexAaaNumber,
+      lawsuitMatterDisplayNumbers: [],
+      wroteLawsuitMatterDisplayNumbersCount: 0,
+      missingLawsuitMatterDisplayNumbersFieldMatterIds: [],
+      clioWriteAttempted: false,
+    };
+
+    try {
+      clioPostFilingWrite = await writePostFilingFieldsToClioLawsuit({
+        masterLawsuitId,
+        lawsuitMatters: existing.lawsuitMatters,
+        indexAaaNumber,
+      });
+    } catch (error: any) {
+      clioPostFilingWrite = {
+        ...clioPostFilingWrite,
+        ok: false,
+        skipped: true,
+        reason: error?.message || "Post-filing Clio write skipped after local metadata save.",
+        clioWriteAttempted: false,
+      };
+    }
+
     const amountSought = computeAmountSought({
-      liveMatters: clioPostFilingWrite.liveMatters,
+      liveMatters: Array.isArray(clioPostFilingWrite.liveMatters) ? clioPostFilingWrite.liveMatters : [],
       amountSoughtMode,
       customAmountSought,
     });
@@ -402,25 +482,29 @@ export async function POST(req: NextRequest) {
       venue,
       venueSelection,
       venueOther,
+      selectedCourtDetails: body?.selectedCourtDetails || null,
       amountSoughtMode,
       customAmountSought,
-      indexAaaNumber: clioPostFilingWrite.indexAaaNumber,
+      indexAaaNumber: clioPostFilingWrite.indexAaaNumber || indexAaaNumber,
       notes: lawsuitNotes,
-      lawsuitMatterDisplayNumbers: clioPostFilingWrite.lawsuitMatterDisplayNumbers,
-      updatedPostFiling: true,
+      lawsuitMatterDisplayNumbers: clioPostFilingWrite.lawsuitMatterDisplayNumbers || [],
+      updatedPostFiling: !!clioPostFilingWrite?.ok && !clioPostFilingWrite?.skipped,
       updatedPostFilingAt: new Date().toISOString(),
-      indexAaaNumberWrittenToClio: true,
+      indexAaaNumberWrittenToClio: !!clioPostFilingWrite?.ok && !clioPostFilingWrite?.skipped,
       indexAaaNumberClioMasterMatterId:
         clioPostFilingWrite.masterWrite?.matterId || null,
-      indexAaaNumberClioMatterIds: clioPostFilingWrite.matterWrites.map(
-        (item) => item.matterId
-      ),
-      indexAaaNumberClioWriteCount: clioPostFilingWrite.writtenCount,
-      lawsuitMatterDisplayNumbersWrittenToClio: true,
+      indexAaaNumberClioMatterIds: Array.isArray(clioPostFilingWrite.matterWrites)
+        ? clioPostFilingWrite.matterWrites.map((item: any) => item.matterId)
+        : [],
+      indexAaaNumberClioWriteCount: clioPostFilingWrite.writtenCount || 0,
+      lawsuitMatterDisplayNumbersWrittenToClio: !!clioPostFilingWrite?.ok && !clioPostFilingWrite?.skipped,
       lawsuitMatterDisplayNumbersWriteCount:
-        clioPostFilingWrite.wroteLawsuitMatterDisplayNumbersCount,
+        clioPostFilingWrite.wroteLawsuitMatterDisplayNumbersCount || 0,
       lawsuitMatterDisplayNumbersMissingFieldMatterIds:
-        clioPostFilingWrite.missingLawsuitMatterDisplayNumbersFieldMatterIds,
+        clioPostFilingWrite.missingLawsuitMatterDisplayNumbersFieldMatterIds || [],
+      localLawsuitMetadataSaved: true,
+      clioPostFilingWriteSkipped: !!clioPostFilingWrite?.skipped,
+      clioPostFilingWriteSkipReason: clioPostFilingWrite?.reason || null,
     };
 
     const lawsuit = await prisma.lawsuit.update({
@@ -429,7 +513,7 @@ export async function POST(req: NextRequest) {
         venue: venue || null,
         venueSelection: venueSelection || null,
         venueOther: venueOther || null,
-        indexAaaNumber: clioPostFilingWrite.indexAaaNumber || null,
+        indexAaaNumber: (clioPostFilingWrite.indexAaaNumber || indexAaaNumber) || null,
         lawsuitNotes: lawsuitNotes || null,
         lawsuitOptions,
         amountSoughtMode: amountSought.mode,
@@ -444,6 +528,7 @@ export async function POST(req: NextRequest) {
       lawsuit,
       amountSought,
       clioPostFilingWrite,
+      localLawsuitMetadataSaved: true,
     });
   } catch (err: any) {
     return NextResponse.json(

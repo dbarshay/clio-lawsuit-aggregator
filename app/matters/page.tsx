@@ -305,6 +305,7 @@ export default function FilteredMattersPage() {
   const [workflowKind, setWorkflowKind] = useState<WorkflowKind>("");
   const [value, setValue] = useState("");
   const [rows, setRows] = useState<MatterRow[]>([]);
+  const [masterLawsuitMetadata, setMasterLawsuitMetadata] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeMasterWorkspaceTab, setActiveMasterWorkspaceTab] = useState<MasterWorkspaceTab>("payments");
@@ -594,6 +595,20 @@ export default function FilteredMattersPage() {
     return clean(fallback) || "—";
   }
 
+  function masterCourtDisplayValue(): string {
+    const local = masterLawsuitMetadata || {};
+    const options = local?.lawsuitOptions && typeof local.lawsuitOptions === "object" ? local.lawsuitOptions : {};
+
+    return masterInfoDisplayValue(
+      "court",
+      clean(local?.venueSelection) ||
+        clean(local?.venue) ||
+        clean(options?.venueSelection) ||
+        clean(options?.venue) ||
+        "—"
+    );
+  }
+
   function masterInfoMoneyNumber(field: string, fallback: any): number {
     const raw = masterInfoDisplayValue(field, fallback);
     const cleaned = String(raw || "").replace(/[^0-9.-]/g, "");
@@ -610,9 +625,10 @@ export default function FilteredMattersPage() {
     return "text";
   }
 
-  function masterInfoContactType(field: string): "person" | "company" | "all" {
+  function masterInfoContactType(field: string): "person" | "company" | "provider_client" | "all" {
     if (field === "patient") return "person";
     if (field === "insurer") return "company";
+    if (field === "provider") return "provider_client";
 
     return "all";
   }
@@ -690,6 +706,36 @@ export default function FilteredMattersPage() {
     };
   }, [masterInfoEditDialog]);
 
+  async function loadMasterLawsuitMetadata() {
+    const masterLawsuitId = clean(value);
+
+    if (kind !== "master" || !masterLawsuitId) {
+      setMasterLawsuitMetadata(null);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/lawsuits/update-metadata?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`,
+        { cache: "no-store" }
+      );
+      const json = await response.json();
+
+      if (!response.ok || !json?.ok) {
+        setMasterLawsuitMetadata(null);
+        return;
+      }
+
+      setMasterLawsuitMetadata(json.lawsuit || null);
+    } catch {
+      setMasterLawsuitMetadata(null);
+    }
+  }
+
+  useEffect(() => {
+    void loadMasterLawsuitMetadata();
+  }, [kind, value]);
+
   async function loadMasterCourtOptions() {
     try {
       setMasterCourtOptionsLoading(true);
@@ -764,7 +810,7 @@ export default function FilteredMattersPage() {
     }, 0);
   }
 
-  function confirmMasterInfoEditDialog() {
+  async function confirmMasterInfoEditDialog() {
     if (!masterInfoEditDialog) return;
 
     const before = masterInfoEditDialog.currentValue || "—";
@@ -801,6 +847,37 @@ export default function FilteredMattersPage() {
       ...prev,
     ]);
 
+    if (kind === "court") {
+      const masterLawsuitId = clean(value);
+
+      if (!masterLawsuitId) {
+        window.alert("Cannot save Court because no Master Lawsuit ID is available.");
+        return;
+      }
+
+      const response = await fetch("/api/lawsuits/update-metadata", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({
+          masterLawsuitId,
+          venue: after,
+          venueSelection: after,
+          venueOther: "",
+          selectedCourtDetails,
+        }),
+      });
+
+      const json = await response.json().catch(() => null);
+
+      if (!response.ok || !json?.ok) {
+        window.alert(json?.error || "Court could not be saved locally.");
+        return;
+      }
+
+      setMasterLawsuitMetadata(json.lawsuit || null);
+    }
+
     void writeMasterAuditEntry({
       action: "master_info_updated",
       summary: `${label} changed from ${before} to ${after}`,
@@ -814,6 +891,8 @@ export default function FilteredMattersPage() {
         selectedContactId: masterInfoSelectedContact?.id || null,
         selectedContactName: masterInfoSelectedContact?.name || null,
         selectedCourtDetails,
+        localLawsuitPersisted: kind === "court",
+        clioWriteAttempted: false,
       },
     });
 
@@ -1375,6 +1454,21 @@ export default function FilteredMattersPage() {
     return `${serviceTypes[0]} + ${serviceTypes.length - 1} more`;
   }, [rows]);
 
+  const masterProviderClientSummary = useMemo(() => {
+    const providers = Array.from(
+      new Set(
+        rows
+          .map((row: any) => clean(row.provider || providerName(row)))
+          .filter(Boolean)
+      )
+    );
+
+    if (providers.length === 0) return "—";
+    if (providers.length === 1) return providers[0];
+
+    return `${providers[0]} + ${providers.length - 1} more`;
+  }, [rows]);
+
   const masterTreatingProviderSummary = useMemo(() => {
     const treatingProviders = Array.from(
       new Set(rows.map((row: any) => clean(row.treatingProvider || row.treating_provider)).filter(Boolean))
@@ -1699,8 +1793,8 @@ export default function FilteredMattersPage() {
                   <strong>{masterServiceTypeSummary}</strong>
                 </div>
                 <div style={masterSummaryItemStyle}>
-                  <span>Treating Provider</span>
-                  <strong>{masterInfoDisplayValue("provider", masterTreatingProviderSummary)}</strong>
+                  <span>Provider</span>
+                  <strong>{masterInfoDisplayValue("provider", masterProviderClientSummary)}</strong>
                 </div>
                 <div style={masterSummaryItemStyle}>
                   <span>Date of Loss</span>
@@ -2280,13 +2374,13 @@ export default function FilteredMattersPage() {
                       <div style={masterInfoCardStyle}>
                         <span style={masterSummaryCardTitleStyle}>Provider</span>
                         <strong style={masterSummaryCardValueStyle}>
-                          {clean(masterInfoDisplayValue("provider", masterTreatingProviderSummary)) && masterInfoDisplayValue("provider", masterTreatingProviderSummary) !== "—" ? (
+                          {clean(masterInfoDisplayValue("provider", masterProviderClientSummary)) && masterInfoDisplayValue("provider", masterProviderClientSummary) !== "—" ? (
                             <a
-                              href={filteredUrl("provider", masterInfoDisplayValue("provider", masterTreatingProviderSummary))}
+                              href={filteredUrl("provider", masterInfoDisplayValue("provider", masterProviderClientSummary))}
                               className="barsh-filter-field-link"
                               style={fieldLinkStyle}
                             >
-                              {masterTreatingProviderSummary}
+                              {masterInfoDisplayValue("provider", masterProviderClientSummary)}
                             </a>
                           ) : (
                             "—"
@@ -2294,7 +2388,7 @@ export default function FilteredMattersPage() {
                         </strong>
                         <button
                           type="button"
-                          onClick={() => openMasterInfoEditDialog("provider", "Provider", masterInfoDisplayValue("provider", masterTreatingProviderSummary))}
+                          onClick={() => openMasterInfoEditDialog("provider", "Provider", masterInfoDisplayValue("provider", masterProviderClientSummary))}
                           title="Open Provider edit preview dialog."
                           style={{
                             ...masterInfoCardEditButtonStyle,
@@ -2476,10 +2570,10 @@ export default function FilteredMattersPage() {
 
                       <div style={masterInfoCardStyle}>
                         <span style={masterSummaryCardTitleStyle}>Court</span>
-                        <strong style={masterSummaryCardValueStyle}>{masterInfoDisplayValue("court", "—")}</strong>
+                        <strong style={masterSummaryCardValueStyle}>{masterCourtDisplayValue()}</strong>
                         <button
                           type="button"
-                          onClick={() => openMasterInfoEditDialog("court", "Court", masterInfoDisplayValue("court", "—"))}
+                          onClick={() => openMasterInfoEditDialog("court", "Court", masterCourtDisplayValue())}
                           title="Open Court edit dialog."
                           style={{
                             ...masterInfoCardEditButtonStyle,
@@ -3517,7 +3611,7 @@ export default function FilteredMattersPage() {
                           color: "#1e40af",
                         }}
                       >
-                        Master Lawsuit field edit · Preview only, no Clio writeback.
+                        Master Lawsuit field edit · Local save, no Clio writeback.
                       </div>
                     </div>
 
@@ -3554,7 +3648,7 @@ export default function FilteredMattersPage() {
                         return;
                       }
 
-                      confirmMasterInfoEditDialog();
+                      void confirmMasterInfoEditDialog();
                     }}
                     style={{
                       display: "grid",

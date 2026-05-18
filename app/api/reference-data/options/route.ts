@@ -69,6 +69,41 @@ function normalizeType(value: unknown): string {
   return TYPE_ALIASES[raw] || "";
 }
 
+function courtDistrictNumber(name: string): number {
+  const match = String(name || "").match(/\((\d+)(?:st|nd|rd|th)\)/i);
+  return match ? Number(match[1]) : 999;
+}
+
+function courtSortGroup(name: string): number {
+  const normalized = String(name || "").toLowerCase();
+
+  if (normalized.includes("suffolk")) return 0;
+  if (normalized.includes("ny city civil") || normalized.includes("civil court of the city of new york")) return 1;
+  if (normalized.includes("nassau")) return 2;
+
+  return 3;
+}
+
+function sortReferenceOptions(type: string, options: any[]): any[] {
+  if (type !== "court_venue") return options;
+
+  return [...options].sort((a, b) => {
+    const aName = String(a?.displayName || a?.label || "");
+    const bName = String(b?.displayName || b?.label || "");
+    const aGroup = courtSortGroup(aName);
+    const bGroup = courtSortGroup(bName);
+
+    if (aGroup !== bGroup) return aGroup - bGroup;
+
+    if (aGroup === 0 || aGroup === 2) {
+      const numberDelta = courtDistrictNumber(aName) - courtDistrictNumber(bName);
+      if (numberDelta !== 0) return numberDelta;
+    }
+
+    return aName.localeCompare(bName);
+  });
+}
+
 function jsonError(message: string, status = 400, details: Record<string, unknown> = {}) {
   return NextResponse.json(
     {
@@ -131,17 +166,20 @@ export async function GET(request: Request) {
       label: TYPE_LABELS[type] || type,
       activeOnly,
       count: entities.length,
-      options: entities.map((entity) => ({
-        id: entity.id,
-        type: entity.type,
-        displayName: entity.displayName,
-        normalizedName: entity.normalizedName,
-        active: entity.active,
-        notes: entity.notes || "",
-        details: entity.details || null,
-        value: entity.id,
-        label: entity.displayName,
-      })),
+      options: sortReferenceOptions(
+        type,
+        entities.map((entity) => ({
+          id: entity.id,
+          type: entity.type,
+          displayName: entity.displayName,
+          normalizedName: entity.normalizedName,
+          active: entity.active,
+          notes: entity.notes || "",
+          details: entity.details || null,
+          value: entity.id,
+          label: entity.displayName,
+        }))
+      ),
       safety: {
         clioWrite: false,
         clioRead: false,

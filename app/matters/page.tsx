@@ -329,6 +329,7 @@ export default function FilteredMattersPage() {
   const [masterPaymentReceiptsLoading, setMasterPaymentReceiptsLoading] = useState(false);
   const [masterPaymentReceipts, setMasterPaymentReceipts] = useState<any[]>([]);
   const [masterPaymentReceiptsError, setMasterPaymentReceiptsError] = useState("");
+  const [masterPaymentShowVoided, setMasterPaymentShowVoided] = useState(false);
 
   function masterPaymentPreviewAmountValue(): number {
     const cleaned = String(masterPaymentAmountInput || "").replace(/[$,\s]/g, "");
@@ -1288,6 +1289,12 @@ export default function FilteredMattersPage() {
     void loadMasterPaymentReceipts();
   }, [kind, activeMasterWorkspaceTab, masterSettlementDetailRows]);
 
+
+  const masterPaymentVisibleReceipts = masterPaymentShowVoided
+    ? masterPaymentReceipts
+    : masterPaymentReceipts.filter((receipt: any) => !receipt?.voided);
+
+  const masterPaymentActiveReceiptCount = masterPaymentReceipts.filter((receipt: any) => !receipt?.voided).length;
 
   const masterInsurerSummary = useMemo(() => {
     const insurers = Array.from(
@@ -2985,9 +2992,32 @@ export default function FilteredMattersPage() {
                         Recent Receipts
                       </span>
                       <span style={{ fontSize: 12, fontWeight: 800, color: "#64748b" }}>
-                        {masterPaymentReceiptsLoading ? "Loading..." : `${masterPaymentReceipts.length} shown`}
+                        {masterPaymentReceiptsLoading
+                          ? "Loading..."
+                          : `${masterPaymentVisibleReceipts.length} shown / ${masterPaymentReceipts.length} total`}
                       </span>
                     </div>
+
+                    <label
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        marginBottom: 8,
+                        fontSize: 11,
+                        fontWeight: 900,
+                        color: "#475569",
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={masterPaymentShowVoided}
+                        onChange={(event) => setMasterPaymentShowVoided(event.target.checked)}
+                      />
+                      Show Voided
+                    </label>
 
                     {masterPaymentReceiptsError && (
                       <div style={{ fontSize: 13, fontWeight: 750, color: "#991b1b" }}>
@@ -2995,13 +3025,13 @@ export default function FilteredMattersPage() {
                       </div>
                     )}
 
-                    {!masterPaymentReceiptsError && masterPaymentReceipts.length === 0 && (
+                    {!masterPaymentReceiptsError && masterPaymentVisibleReceipts.length === 0 && (
                       <div style={{ fontSize: 13, fontWeight: 750, color: "#64748b" }}>
-                        No child bill payment receipts are currently active or historical for this lawsuit.
+                        No child bill payment receipts are currently shown for this lawsuit.
                       </div>
                     )}
 
-                    {!masterPaymentReceiptsError && masterPaymentReceipts.length > 0 && (
+                    {!masterPaymentReceiptsError && masterPaymentVisibleReceipts.length > 0 && (
                       <div
                         style={{
                           display: "grid",
@@ -3011,7 +3041,7 @@ export default function FilteredMattersPage() {
                           paddingRight: 2,
                         }}
                       >
-                        {masterPaymentReceipts.slice(0, 8).map((receipt: any) => (
+                        {masterPaymentVisibleReceipts.slice(0, 8).map((receipt: any) => (
                           <div
                             key={`master-payment-receipt-${receipt.sourceDisplayNumber || receipt.displayNumber}-${receipt.id}`}
                             style={{

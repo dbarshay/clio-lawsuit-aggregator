@@ -552,6 +552,9 @@ export default function FilteredMattersPage() {
     currentValue: string;
   }>(null);
   const [masterInfoEditValue, setMasterInfoEditValue] = useState("");
+  const [masterCourtOptions, setMasterCourtOptions] = useState<any[]>([]);
+  const [masterCourtOptionsLoading, setMasterCourtOptionsLoading] = useState(false);
+  const [masterCourtOptionsError, setMasterCourtOptionsError] = useState("");
   const [masterInfoContactSearch, setMasterInfoContactSearch] = useState("");
   const [masterInfoContactResults, setMasterInfoContactResults] = useState<any[]>([]);
   const [masterInfoContactLoading, setMasterInfoContactLoading] = useState(false);
@@ -565,6 +568,7 @@ export default function FilteredMattersPage() {
     before: string;
     after: string;
     timestamp: string;
+    details?: any;
   }>>([]);
   const [masterNoteDialogOpen, setMasterNoteDialogOpen] = useState(false);
   const [masterNoteDraft, setMasterNoteDraft] = useState("");
@@ -597,8 +601,9 @@ export default function FilteredMattersPage() {
     return Number.isFinite(n) ? n : 0;
   }
 
-  function masterInfoFieldKind(field: string): "contact" | "date" | "money" | "text" {
+  function masterInfoFieldKind(field: string): "contact" | "date" | "money" | "court" | "text" {
     if (["provider", "patient", "insurer"].includes(field)) return "contact";
+    if (["court", "venue", "venueSelection"].includes(field)) return "court";
     if (["dateOfLoss", "dateFiled"].includes(field)) return "date";
     if (["filingFee", "serviceFee", "otherCourtCosts"].includes(field)) return "money";
 
@@ -651,6 +656,7 @@ export default function FilteredMattersPage() {
     setMasterInfoContactSearch("");
     setMasterInfoContactResults([]);
     setMasterInfoSelectedContact(null);
+    setMasterCourtOptionsError("");
   }
 
   function closeMasterInfoEditDialog() {
@@ -659,6 +665,7 @@ export default function FilteredMattersPage() {
     setMasterInfoContactSearch("");
     setMasterInfoContactResults([]);
     setMasterInfoSelectedContact(null);
+    setMasterCourtOptionsError("");
   }
 
   useEffect(() => {
@@ -681,6 +688,35 @@ export default function FilteredMattersPage() {
       window.clearTimeout(focusHandle);
       window.removeEventListener("keydown", handleEscape);
     };
+  }, [masterInfoEditDialog]);
+
+  async function loadMasterCourtOptions() {
+    try {
+      setMasterCourtOptionsLoading(true);
+      setMasterCourtOptionsError("");
+
+      const response = await fetch("/api/reference-data/options?type=court", {
+        cache: "no-store",
+      });
+      const json = await response.json();
+
+      if (!response.ok || !json?.ok) {
+        throw new Error(json?.error || "Court options failed to load.");
+      }
+
+      setMasterCourtOptions(Array.isArray(json.options) ? json.options : []);
+    } catch (error: any) {
+      setMasterCourtOptions([]);
+      setMasterCourtOptionsError(error?.message || String(error));
+    } finally {
+      setMasterCourtOptionsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!masterInfoEditDialog) return;
+    if (masterInfoFieldKind(masterInfoEditDialog.field) !== "court") return;
+    void loadMasterCourtOptions();
   }, [masterInfoEditDialog]);
 
   async function loadMasterInfoContactSuggestions(queryOverride?: string) {
@@ -742,6 +778,10 @@ export default function FilteredMattersPage() {
 
     const field = masterInfoEditDialog.field;
     const label = masterInfoEditDialog.label;
+    const selectedCourtDetails =
+      kind === "court"
+        ? masterCourtOptions.find((option: any) => String(option?.displayName || option?.label || option?.value || "") === after)?.details || null
+        : null;
 
     setMasterInfoOverrides((prev) => ({
       ...prev,
@@ -756,6 +796,7 @@ export default function FilteredMattersPage() {
         before,
         after,
         timestamp: new Date().toLocaleString(),
+        details: selectedCourtDetails,
       },
       ...prev,
     ]);
@@ -772,6 +813,7 @@ export default function FilteredMattersPage() {
         fieldKind: kind,
         selectedContactId: masterInfoSelectedContact?.id || null,
         selectedContactName: masterInfoSelectedContact?.name || null,
+        selectedCourtDetails,
       },
     });
 
@@ -3546,7 +3588,89 @@ export default function FilteredMattersPage() {
                       </strong>
                     </div>
 
-                    {masterInfoFieldKind(masterInfoEditDialog.field) === "contact" ? (
+                    {masterInfoFieldKind(masterInfoEditDialog.field) === "court" ? (
+                      <div style={{ display: "grid", gap: 10 }}>
+                        <label
+                          style={{
+                            display: "grid",
+                            gap: 7,
+                            fontSize: 12,
+                            fontWeight: 950,
+                            color: "#334155",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          Court / Venue
+                          <select
+                            value={masterInfoEditValue}
+                            onChange={(event) => setMasterInfoEditValue(event.target.value)}
+                            style={{
+                              width: "100%",
+                              border: "1px solid #cbd5e1",
+                              borderRadius: 12,
+                              padding: "11px 12px",
+                              background: "#fff",
+                              color: "#0f172a",
+                              fontSize: 15,
+                              fontWeight: 850,
+                              outline: "none",
+                              textTransform: "none",
+                              letterSpacing: 0,
+                            }}
+                          >
+                            <option value="">Select court / venue...</option>
+                            {masterCourtOptions.map((option: any) => {
+                              const value = String(option?.displayName || option?.label || option?.value || "");
+                              return (
+                                <option key={String(option?.id || value)} value={value}>
+                                  {value}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </label>
+
+                        {masterCourtOptionsLoading && (
+                          <div style={{ fontSize: 12, fontWeight: 800, color: "#64748b" }}>
+                            Loading court list...
+                          </div>
+                        )}
+
+                        {masterCourtOptionsError && (
+                          <div style={{ fontSize: 12, fontWeight: 800, color: "#991b1b" }}>
+                            {masterCourtOptionsError}
+                          </div>
+                        )}
+
+                        {(() => {
+                          const selected = masterCourtOptions.find((option: any) => String(option?.displayName || option?.label || option?.value || "") === masterInfoEditValue);
+                          const details = selected?.details || null;
+                          if (!details) return null;
+
+                          return (
+                            <div
+                              style={{
+                                padding: "10px 12px",
+                                border: "1px solid #dbe4f0",
+                                borderRadius: 12,
+                                background: "#f8fafc",
+                                color: "#334155",
+                                fontSize: 12,
+                                fontWeight: 750,
+                                lineHeight: 1.45,
+                              }}
+                            >
+                              <div><strong>Hidden details stored:</strong></div>
+                              <div>{details.longName1 || "—"}</div>
+                              {details.longName2 && <div>{details.longName2}</div>}
+                              <div>{details.addressStreet || "—"}</div>
+                              <div>{[details.city, details.state].filter(Boolean).join(", ") || "—"}</div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    ) : masterInfoFieldKind(masterInfoEditDialog.field) === "contact" ? (
                       <div style={{ display: "grid", gap: 10 }}>
                         <label
                           style={{

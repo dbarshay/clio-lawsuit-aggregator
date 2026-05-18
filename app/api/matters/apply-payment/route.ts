@@ -136,6 +136,40 @@ async function paymentTotalsForMatter(matterId: number, claimAmount: number) {
   };
 }
 
+async function mirrorLocalPaymentTotalsToClaimIndex(params: {
+  matterId: number;
+  claimAmount: number;
+}) {
+  const matterId = Number(params.matterId);
+  const claimAmount = num(params.claimAmount);
+
+  if (!Number.isFinite(matterId) || matterId <= 0) {
+    return {
+      attempted: false,
+      updatedCount: 0,
+      reason: "invalid-matter-id",
+    };
+  }
+
+  const totals = await paymentTotalsForMatter(matterId, claimAmount);
+
+  const result = await prisma.claimIndex.updateMany({
+    where: { matter_id: matterId },
+    data: {
+      payment_voluntary: totals.after.paymentVoluntary,
+      balance_presuit: totals.after.balancePresuit,
+    },
+  });
+
+  return {
+    attempted: true,
+    updatedCount: result.count,
+    paymentVoluntary: totals.after.paymentVoluntary,
+    balancePresuit: totals.after.balancePresuit,
+    sourceOfTruth: "Barsh Matters local payment records",
+  };
+}
+
 function receiptIdentityGuard(params: {
   receipt: any;
   expectedMatterId?: number;
@@ -352,6 +386,8 @@ export async function POST(request: Request) {
       },
     });
 
+    const claimIndexMirror = await mirrorLocalPaymentTotalsToClaimIndex({ matterId, claimAmount });
+
     await writePaymentAudit({
       action: "payment.add",
       summary: `Added local payment receipt #${receipt.id} for ${money(paymentAmount)}.`,
@@ -388,6 +424,7 @@ export async function POST(request: Request) {
         skipped: true,
         reason: "local-first-payment-posting-no-clio-refresh",
       },
+      claimIndexMirror,
       safety: {
         sourceOfPaymentIntent: "Barsh Matters UI",
         systemOfRecordAfterPosting: "Barsh Matters local DB",
@@ -593,6 +630,8 @@ export async function PATCH(request: Request) {
       },
     });
 
+    const claimIndexMirror = await mirrorLocalPaymentTotalsToClaimIndex({ matterId, claimAmount });
+
     await writePaymentAudit({
       action: "payment.edit",
       summary: `Edited local payment receipt #${editedReceipt.id}.`,
@@ -639,6 +678,7 @@ export async function PATCH(request: Request) {
         skipped: true,
         reason: "local-first-payment-edit-no-clio-refresh",
       },
+      claimIndexMirror,
       safety: {
         sourceOfEditIntent: "Barsh Matters UI",
         systemOfRecordAfterEdit: "Barsh Matters local DB",
@@ -764,6 +804,8 @@ export async function DELETE(request: Request) {
       },
     });
 
+    const claimIndexMirror = await mirrorLocalPaymentTotalsToClaimIndex({ matterId, claimAmount });
+
     await writePaymentAudit({
       action: "payment.void",
       summary: `Voided local payment receipt #${voidedReceipt.id} for ${money(paymentAmount)}.`,
@@ -804,6 +846,7 @@ export async function DELETE(request: Request) {
         skipped: true,
         reason: "local-first-payment-void-no-clio-refresh",
       },
+      claimIndexMirror,
       safety: {
         sourceOfVoidIntent: "Barsh Matters UI",
         systemOfRecordAfterVoid: "Barsh Matters local DB",

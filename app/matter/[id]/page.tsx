@@ -1549,7 +1549,7 @@ const activeGroupKey =
 
     try {
       const json = await fetch(
-        `/api/matters/apply-payment?matterId=${encodeURIComponent(targetMatterId)}&claimAmount=${encodeURIComponent(String(num(matter?.claimAmount)))}`,
+        `/api/matters/apply-payment?matterId=${encodeURIComponent(String(Number(matter?.matterId || matter?.matter_id || matter?.id || targetMatterId)))}&claimAmount=${encodeURIComponent(String(num(matter?.claimAmount)))}`,
         { cache: "no-store" }
       ).then((r) => r.json());
 
@@ -1739,7 +1739,7 @@ const activeGroupKey =
         },
         body: JSON.stringify({
           receiptId: editingReceipt?.id,
-          matterId,
+          matterId: Number(matter?.matterId || matter?.matter_id || matter?.id || matterId),
           expectedDisplayNumber: textValue(matter?.displayNumber),
           paymentAmount,
           paymentDate,

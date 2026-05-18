@@ -324,6 +324,8 @@ export default function FilteredMattersPage() {
   const [masterPaymentTransactionStatusInput, setMasterPaymentTransactionStatusInput] = useState("Show on Remittance");
   const [masterPaymentCheckDateInput, setMasterPaymentCheckDateInput] = useState("");
   const [masterPaymentCheckNumberInput, setMasterPaymentCheckNumberInput] = useState("");
+  const [masterPaymentPosting, setMasterPaymentPosting] = useState(false);
+  const [masterPaymentPostResult, setMasterPaymentPostResult] = useState<any>(null);
 
   function masterPaymentPreviewAmountValue(): number {
     const cleaned = String(masterPaymentAmountInput || "").replace(/[$,\s]/g, "");
@@ -345,6 +347,130 @@ export default function FilteredMattersPage() {
     setMasterPaymentTransactionStatusInput("Show on Remittance");
     setMasterPaymentCheckDateInput("");
     setMasterPaymentCheckNumberInput("");
+  }
+
+  function masterPaymentAllocationRows(): any[] {
+    const amount = masterPaymentPreviewAmountValue();
+    const billRows = masterWorkspaceBillRows(masterSettlementDetailRows);
+    const billTotal = masterWorkspaceBillTotal(masterSettlementDetailRows);
+    let remaining = amount;
+
+    return billRows.map((row: any) => {
+      const rowId = Number(row?.matterId || row?.matter_id || row?.id || 0);
+      const displayNumber = clean(row?.displayNumber || row?.display_number);
+      const billAmount = masterWorkspaceBillAmount(row);
+      const currentPayments = Number(row?.paymentVoluntary ?? row?.payment_voluntary ?? 0) || 0;
+      const currentBalance = Math.max(billAmount - currentPayments, 0);
+      const proportionalAllocation =
+        billTotal > 0
+          ? Math.min(amount * (billAmount / billTotal), currentBalance)
+          : 0;
+      const paymentToPost = Math.max(Math.min(proportionalAllocation, remaining), 0);
+      remaining = Math.max(remaining - paymentToPost, 0);
+
+      return {
+        row,
+        rowId,
+        matterId: rowId,
+        displayNumber,
+        billAmount,
+        currentPayments,
+        currentBalance,
+        paymentToPost,
+        expectedBalance: Math.max(currentBalance - paymentToPost, 0),
+      };
+    });
+  }
+
+  async function postMasterPaymentLocally() {
+    setMasterPaymentPostResult(null);
+
+    const amount = masterPaymentPreviewAmountValue();
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setMasterPaymentPostResult({ ok: false, error: "Enter a valid lawsuit payment amount greater than $0.00." });
+      return;
+    }
+
+    const allocations = masterPaymentAllocationRows().filter((item) => item.paymentToPost > 0.005);
+    if (allocations.length === 0) {
+      setMasterPaymentPostResult({ ok: false, error: "No eligible bill balance was found for this lawsuit payment." });
+      return;
+    }
+
+    setMasterPaymentPosting(true);
+
+    try {
+      const results: any[] = [];
+
+      for (const item of allocations) {
+        if (!item.matterId || !item.displayNumber) {
+          throw new Error(`Missing bill matter identity for lawsuit payment allocation.`);
+        }
+
+        const response = await fetch("/api/matters/apply-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            matterId: item.matterId,
+            expectedDisplayNumber: item.displayNumber,
+            claimAmount: item.billAmount,
+            paymentAmount: item.paymentToPost,
+            paymentDate: masterPaymentDateInput,
+            transactionType: masterPaymentTransactionTypeInput,
+            transactionStatus: masterPaymentTransactionStatusInput,
+            checkDate: masterPaymentCheckDateInput,
+            checkNumber: masterPaymentCheckNumberInput,
+            description: "Lawsuit Payment",
+          }),
+        });
+
+        const json = await response.json().catch(() => null);
+        if (!response.ok || !json?.ok) {
+          throw new Error(json?.error || `Payment posting failed for ${item.displayNumber}.`);
+        }
+
+        results.push({
+          ...json,
+          displayNumber: item.displayNumber,
+          matterId: item.matterId,
+          paymentToPost: item.paymentToPost,
+        });
+      }
+
+      setRows((currentRows: any[]) =>
+        currentRows.map((row: any) => {
+          const matterId = Number(row?.matterId || row?.matter_id || row?.id || 0);
+          const result = results.find((item) => Number(item.matterId) === matterId);
+          if (!result?.after) return row;
+
+          return {
+            ...row,
+            paymentVoluntary: result.after.paymentVoluntary,
+            payment_voluntary: result.after.paymentVoluntary,
+            balancePresuit: result.after.balancePresuit,
+            balance_presuit: result.after.balancePresuit,
+          };
+        })
+      );
+
+      setMasterPaymentPostResult({
+        ok: true,
+        totalPayment: amount,
+        count: results.length,
+        message: `Posted ${money(amount)} across ${results.length} bill matter(s).`,
+        results,
+      });
+
+      resetMasterPaymentPreviewForm();
+      setMasterPaymentFormOpen(false);
+    } catch (error: any) {
+      setMasterPaymentPostResult({
+        ok: false,
+        error: error?.message || String(error),
+      });
+    } finally {
+      setMasterPaymentPosting(false);
+    }
   }
 
   const [masterSettlementFormOpen, setMasterSettlementFormOpen] = useState(false);
@@ -1082,19 +1208,15 @@ export default function FilteredMattersPage() {
     const billRows = masterWorkspaceBillRows(masterSettlementDetailRows);
     const lawsuitAmount = masterWorkspaceBillTotal(masterSettlementDetailRows);
 
-    /*
-      Lawsuit-level payment receipts are not wired yet.  Do not infer posted
-      lawsuit payments from child claim/balance differences.  Until a dedicated
-      lawsuit-payment receipt/readback source exists, this preview must show
-      no lawsuit-level payments posted and preserve the child bill total as the
-      preview Balance Presuit.
-    */
-    const paymentsPosted = 0;
+    const paymentsPosted = billRows.reduce(
+      (sum: number, row: any) => sum + (Number(row?.paymentVoluntary ?? row?.payment_voluntary ?? 0) || 0),
+      0
+    );
 
     return {
       lawsuitAmount,
       paymentsPosted,
-      balancePresuit: lawsuitAmount,
+      balancePresuit: Math.max(lawsuitAmount - paymentsPosted, 0),
       billCount: billRows.length,
     };
   }, [masterSettlementDetailRows]);
@@ -1835,7 +1957,7 @@ export default function FilteredMattersPage() {
                       return (
                         <tr key={rowId}>
                           <td style={masterSettlementTdStyle}>
-                            <a href={`/matter/${rowId}`} style={matterLinkStyle}>
+                            <a href={`/matter/${encodeURIComponent(clean(row.displayNumber) || clean(row.display_number) || rowId)}`} style={matterLinkStyle}>
                               {clean(row.displayNumber) || rowId}
                             </a>
                           </td>
@@ -2763,7 +2885,7 @@ export default function FilteredMattersPage() {
                     </div>
 
                     <div style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>
-                      Last activity: lawsuit payment receipts are not wired yet.
+                      Last activity: lawsuit payments post locally to child bill receipts.
                     </div>
                   </div>
 
@@ -2800,7 +2922,7 @@ export default function FilteredMattersPage() {
                     </div>
 
                     <div style={{ fontSize: 13, fontWeight: 750, color: "#64748b" }}>
-                      No lawsuit-level payment receipts posted yet.
+                      Posted lawsuit payments appear on child bill payment receipts.
                     </div>
                   </div>
                 </div>
@@ -2808,6 +2930,25 @@ export default function FilteredMattersPage() {
             )}
 
 
+
+            {masterPaymentPostResult && activeMasterWorkspaceTab === "payments" && (
+              <div
+                style={{
+                  margin: "0 0 14px",
+                  padding: "10px 12px",
+                  border: masterPaymentPostResult.ok ? "1px solid #bbf7d0" : "1px solid #fecaca",
+                  borderRadius: 14,
+                  background: masterPaymentPostResult.ok ? "#f0fdf4" : "#fef2f2",
+                  color: masterPaymentPostResult.ok ? "#14532d" : "#991b1b",
+                  fontSize: 13,
+                  fontWeight: 750,
+                }}
+              >
+                {masterPaymentPostResult.ok
+                  ? masterPaymentPostResult.message || "Lawsuit payment posted locally."
+                  : masterPaymentPostResult.error || "Lawsuit payment could not be posted."}
+              </div>
+            )}
 
             {masterNoteDeleteTarget && activeMasterWorkspaceTab === "payments" && (
               <div
@@ -4286,7 +4427,7 @@ export default function FilteredMattersPage() {
                           color: "#166534",
                         }}
                       >
-                        Master Lawsuit Payment · Preview only, no Clio writeback.
+                        Master Lawsuit Payment · Local child-bill receipts, no Clio writeback.
                       </div>
                     </div>
 
@@ -4490,7 +4631,7 @@ export default function FilteredMattersPage() {
                         fontWeight: 900,
                       }}
                     >
-                      This is a local allocation preview only.  It does not write to Clio, create receipts, or change child matters.
+                      This posts local Barsh Matters payment receipts to the child bill matters.  No Clio writeback occurs.
                     </div>
                   </div>
 
@@ -4540,21 +4681,15 @@ export default function FilteredMattersPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {masterWorkspaceBillRows(masterSettlementDetailRows).map((row: any) => {
-                            const rowId = clean(row.id);
-                            const billAmount = masterWorkspaceBillAmount(row);
+                          {masterPaymentAllocationRows().map((item: any) => {
+                            const row = item.row;
                             const billTotal = masterWorkspaceBillTotal(masterSettlementDetailRows);
-                            const allocationPercent = billTotal > 0 ? (billAmount / billTotal) * 100 : 0;
-                            const paymentToPost =
-                              billTotal > 0
-                                ? Math.min(masterPaymentPreviewAmountValue() * (billAmount / billTotal), billAmount)
-                                : 0;
-                            const expectedBalance = Math.max(billAmount - paymentToPost, 0);
+                            const allocationPercent = billTotal > 0 ? (item.billAmount / billTotal) * 100 : 0;
 
                             return (
-                              <tr key={`master-payment-popup-${rowId}`}>
+                              <tr key={`master-payment-popup-${item.displayNumber || item.rowId}`}>
                                 <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb", fontWeight: 900 }}>
-                                  {clean(row.displayNumber) || rowId}
+                                  {item.displayNumber || item.rowId}
                                 </td>
                                 <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb" }}>
                                   {clean(row.provider) || "—"}
@@ -4563,16 +4698,16 @@ export default function FilteredMattersPage() {
                                   {clean(row.patient) || "—"}
                                 </td>
                                 <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 900 }}>
-                                  {money(billAmount)}
+                                  {money(item.billAmount)}
                                 </td>
                                 <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb", textAlign: "right" }}>
                                   {allocationPercent.toFixed(2)}%
                                 </td>
                                 <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950, color: "#166534" }}>
-                                  {money(paymentToPost)}
+                                  {money(item.paymentToPost)}
                                 </td>
                                 <td style={{ padding: "8px 10px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950 }}>
-                                  {money(expectedBalance)}
+                                  {money(item.expectedBalance)}
                                 </td>
                               </tr>
                             );
@@ -4636,21 +4771,22 @@ export default function FilteredMattersPage() {
 
                     <button
                       type="button"
-                      disabled
-                      title="Preview only.  Writeback will be wired after UI/allocation behavior is confirmed."
+                      disabled={masterPaymentPosting}
+                      onClick={postMasterPaymentLocally}
+                      title="Post local Barsh Matters payment receipts to the child bill matters.  No Clio writeback will occur."
                       style={{
                         minWidth: 190,
                         height: 44,
-                        border: "1px solid #86efac",
+                        border: "1px solid #16a34a",
                         borderRadius: 12,
-                        background: "#bbf7d0",
-                        color: "#166534",
+                        background: masterPaymentPosting ? "#bbf7d0" : "#16a34a",
+                        color: masterPaymentPosting ? "#166534" : "#ffffff",
                         fontWeight: 950,
                         fontSize: 15,
-                        cursor: "not-allowed",
+                        cursor: masterPaymentPosting ? "not-allowed" : "pointer",
                       }}
                     >
-                      Preview Only — No Writeback
+                      {masterPaymentPosting ? "Posting..." : "Post Payment"}
                     </button>
                   </div>
                 </div>
@@ -4702,7 +4838,7 @@ export default function FilteredMattersPage() {
                       return (
                         <tr key={rowId}>
                           <td style={masterSettlementTdStyle}>
-                            <a href={`/matter/${rowId}`} style={matterLinkStyle}>
+                            <a href={`/matter/${encodeURIComponent(clean(row.displayNumber) || clean(row.display_number) || rowId)}`} style={matterLinkStyle}>
                               {clean(row.displayNumber) || rowId}
                             </a>
                           </td>
@@ -4828,7 +4964,7 @@ export default function FilteredMattersPage() {
                 {rows.map((row) => (
                   <tr key={row.id} className="barsh-filter-row">
                     <td style={tdStyle}>
-                      <a href={`/matter/${row.id}`} style={matterLinkStyle}>
+                      <a href={`/matter/${encodeURIComponent(displayNumber(row) || String(row.id))}`} style={matterLinkStyle}>
                         {row.displayNumber || row.id}
                       </a>
                     </td>
@@ -4889,7 +5025,7 @@ export default function FilteredMattersPage() {
                     <td style={rightTdStyle}>{money(row.balancePresuit)}</td>
                     <td style={tdStyle}>
                       <div style={actionStackStyle}>
-                        <a href={`/matter/${row.id}`} className="barsh-filter-open-link" style={openLinkStyle}>
+                        <a href={`/matter/${encodeURIComponent(displayNumber(row) || String(row.id))}`} className="barsh-filter-open-link" style={openLinkStyle}>
                           Open Matter
                         </a>
 

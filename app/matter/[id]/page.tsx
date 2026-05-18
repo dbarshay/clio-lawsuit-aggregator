@@ -5492,12 +5492,12 @@ const activeGroupKey =
                 </div>
 
                 <div className="barsh-direct-financial-row">
-                  <span>Barsh Matters Payments</span>
+                  <span>Payments</span>
                   <strong>{money(num(matter?.paymentVoluntary))}</strong>
                 </div>
 
                 <div className="barsh-direct-financial-row total">
-                  <span>Barsh Matters Balance</span>
+                  <span>Balance</span>
                   <strong>{money(currentDirectMatterBalancePresuit(matter))}</strong>
                 </div>
 
@@ -5524,27 +5524,6 @@ const activeGroupKey =
                     <span>
                       Payment controls: {matterIsClosedForPayment() ? "Locked because matter status is Closed" : "Active"}
                     </span>
-                    <a
-                      href={clioMatterUrl(matter?.id)}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        padding: "4px 8px",
-                        border: "1px solid #93c5fd",
-                        borderRadius: 999,
-                        background: "#eff6ff",
-                        color: "#1d4ed8",
-                        textDecoration: "none",
-                        fontSize: 11,
-                        fontWeight: 900,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Open in Clio
-                    </a>
                   </div>
 
                   {latestPaymentReceipt() && (

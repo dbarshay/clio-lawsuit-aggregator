@@ -3,6 +3,67 @@
 import React, { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 
+type EmailAutomationStatusLog = {
+  id: string;
+  source: string | null;
+  action: string | null;
+  status: string | null;
+  targetId: string | null;
+  matterId?: string | null;
+  masterLawsuitId?: string | null;
+  graphConversationId?: string | null;
+  createdAt: string;
+  details?: unknown;
+  error?: string | null;
+};
+
+type EmailAutomationStatus = {
+  ok: boolean;
+  generatedAt: string;
+  knownThreadSync: {
+    latestRun: EmailAutomationStatusLog | null;
+    recentCount: number;
+    statusCounts: Record<string, number>;
+    recentLogs: EmailAutomationStatusLog[];
+  };
+  maildropDiscovery: {
+    latestRun: EmailAutomationStatusLog | null;
+    recentCount: number;
+    statusCounts: Record<string, number>;
+    recentLogs: EmailAutomationStatusLog[];
+  };
+  maildropRegistry: {
+    activeCount: number;
+    sourceBreakdown: Record<string, number>;
+    recentAddresses: Array<{
+      id: string;
+      address: string;
+      normalizedAddress?: string | null;
+      label?: string | null;
+      source?: string | null;
+      matterId?: string | null;
+      masterLawsuitId?: string | null;
+      clioMatterId?: string | null;
+      clioDisplayNumber?: string | null;
+      createdAt: string;
+      updatedAt: string;
+      active: boolean;
+    }>;
+  };
+  recentEmailAutomationLogs: EmailAutomationStatusLog[];
+  recentFailures: EmailAutomationStatusLog[];
+  safety: {
+    readOnly: boolean;
+    createsDrafts: boolean;
+    sendsEmail: boolean;
+    writesClio: boolean;
+    uploadsDocuments: boolean;
+    usesLocalOutlookAutomation: boolean;
+    callsGraph: boolean;
+    callsClio: boolean;
+  };
+};
+
 type ReferenceTypeOption = {
   value: string;
   label: string;
@@ -189,6 +250,32 @@ function text(value: unknown): string {
   return String(value ?? "").trim();
 }
 
+function formatStatusDate(value: unknown): string {
+  const raw = text(value);
+  if (!raw) return "—";
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return raw;
+  return d.toLocaleString();
+}
+
+function renderEmailAutomationLogRow(log: EmailAutomationStatusLog) {
+  return (
+    <tr key={log.id}>
+      <td style={{ padding: "8px", borderBottom: "1px solid #e5e7eb", verticalAlign: "top" }}>{formatStatusDate(log.createdAt)}</td>
+      <td style={{ padding: "8px", borderBottom: "1px solid #e5e7eb", verticalAlign: "top" }}>{log.source || "—"}</td>
+      <td style={{ padding: "8px", borderBottom: "1px solid #e5e7eb", verticalAlign: "top" }}>{log.action || "—"}</td>
+      <td style={{ padding: "8px", borderBottom: "1px solid #e5e7eb", verticalAlign: "top" }}>{log.status || "—"}</td>
+      <td style={{ padding: "8px", borderBottom: "1px solid #e5e7eb", verticalAlign: "top" }}>{log.targetId || log.matterId || log.masterLawsuitId || log.graphConversationId || "—"}</td>
+    </tr>
+  );
+}
+
+function renderSourceBreakdown(sourceBreakdown: Record<string, number>) {
+  const entries = Object.entries(sourceBreakdown || {});
+  if (!entries.length) return "—";
+  return entries.map(([source, count]) => `${source}: ${count}`).join(", ");
+}
+
 function formatDate(value: unknown): string {
   const raw = text(value);
   if (!raw) return "—";
@@ -369,6 +456,39 @@ function allReferenceDetailEntries(details: unknown): Array<[string, any, "visib
 }
 
 export default function AdminReferenceDataPage() {
+
+  const [emailAutomationStatus, setEmailAutomationStatus] = useState<EmailAutomationStatus | null>(null);
+  const [emailAutomationStatusLoading, setEmailAutomationStatusLoading] = useState(false);
+  const [emailAutomationStatusError, setEmailAutomationStatusError] = useState<string | null>(null);
+
+  async function loadEmailAutomationStatus() {
+    setEmailAutomationStatusLoading(true);
+    setEmailAutomationStatusError(null);
+
+    try {
+      const response = await fetch("/api/admin/email-automation-status", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error || `Status request failed with HTTP ${response.status}`);
+      }
+
+      setEmailAutomationStatus(payload);
+    } catch (error: any) {
+      setEmailAutomationStatusError(error?.message || "Unable to load email automation status.");
+    } finally {
+      setEmailAutomationStatusLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadEmailAutomationStatus();
+  }, []);
+
   const [typeOptions, setTypeOptions] = useState<ReferenceTypeOption[]>(DEFAULT_TYPES);
   const [selectedType, setSelectedType] = useState("individual");
   const [query, setQuery] = useState("");
@@ -904,8 +1024,169 @@ export default function AdminReferenceDataPage() {
     }
   }
 
-  return (
+  
+  function renderEmailAutomationStatusPanel() {
+    return (
+      <section
+        data-email-automation-status-panel="true"
+        style={{
+          border: "1px solid #bfdbfe",
+          borderRadius: 16,
+          padding: 18,
+          marginBottom: 20,
+          background: "#eff6ff",
+          boxShadow: "0 10px 30px rgba(30, 64, 175, 0.08)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", marginBottom: 14 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 22, color: "#1e3a8a" }}>Email Automation Status</h2>
+            <p style={{ margin: "6px 0 0", color: "#1e40af", fontSize: 14 }}>
+              Read-only local observability for Graph background sync, MailDrop discovery, and the MailDrop registry.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={loadEmailAutomationStatus}
+            disabled={emailAutomationStatusLoading}
+            style={{
+              border: "1px solid #2563eb",
+              background: emailAutomationStatusLoading ? "#dbeafe" : "#2563eb",
+              color: emailAutomationStatusLoading ? "#1e40af" : "white",
+              borderRadius: 999,
+              padding: "9px 14px",
+              fontWeight: 700,
+              cursor: emailAutomationStatusLoading ? "default" : "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {emailAutomationStatusLoading ? "Refreshing..." : "Refresh Status"}
+          </button>
+        </div>
+
+        {emailAutomationStatusError && (
+          <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 12, padding: 12, marginBottom: 12 }}>
+            {emailAutomationStatusError}
+          </div>
+        )}
+
+        {!emailAutomationStatus && !emailAutomationStatusError && (
+          <div style={{ color: "#1e40af", fontSize: 14 }}>
+            {emailAutomationStatusLoading ? "Loading email automation status..." : "No status loaded yet."}
+          </div>
+        )}
+
+        {emailAutomationStatus && (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 14 }}>
+              <div style={{ background: "white", border: "1px solid #dbeafe", borderRadius: 14, padding: 14 }}>
+                <div style={{ fontSize: 12, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>Known-thread sync</div>
+                <div style={{ marginTop: 8, fontSize: 14 }}><strong>Last run:</strong> {formatStatusDate(emailAutomationStatus.knownThreadSync.latestRun?.createdAt)}</div>
+                <div style={{ marginTop: 4, fontSize: 14 }}><strong>Status:</strong> {emailAutomationStatus.knownThreadSync.latestRun?.status || "—"}</div>
+                <div style={{ marginTop: 4, fontSize: 14 }}><strong>Recent logs:</strong> {emailAutomationStatus.knownThreadSync.recentCount}</div>
+              </div>
+
+              <div style={{ background: "white", border: "1px solid #dbeafe", borderRadius: 14, padding: 14 }}>
+                <div style={{ fontSize: 12, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>MailDrop discovery</div>
+                <div style={{ marginTop: 8, fontSize: 14 }}><strong>Last run:</strong> {formatStatusDate(emailAutomationStatus.maildropDiscovery.latestRun?.createdAt)}</div>
+                <div style={{ marginTop: 4, fontSize: 14 }}><strong>Status:</strong> {emailAutomationStatus.maildropDiscovery.latestRun?.status || "—"}</div>
+                <div style={{ marginTop: 4, fontSize: 14 }}><strong>Recent logs:</strong> {emailAutomationStatus.maildropDiscovery.recentCount}</div>
+              </div>
+
+              <div style={{ background: "white", border: "1px solid #dbeafe", borderRadius: 14, padding: 14 }}>
+                <div style={{ fontSize: 12, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>MailDrop registry</div>
+                <div style={{ marginTop: 8, fontSize: 14 }}><strong>Active addresses:</strong> {emailAutomationStatus.maildropRegistry.activeCount}</div>
+                <div style={{ marginTop: 4, fontSize: 14 }}><strong>Sources:</strong> {renderSourceBreakdown(emailAutomationStatus.maildropRegistry.sourceBreakdown)}</div>
+              </div>
+
+              <div style={{ background: "white", border: "1px solid #dbeafe", borderRadius: 14, padding: 14 }}>
+                <div style={{ fontSize: 12, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>Safety flags</div>
+                <div style={{ marginTop: 8, fontSize: 14 }}><strong>Read-only:</strong> {String(emailAutomationStatus.safety.readOnly)}</div>
+                <div style={{ marginTop: 4, fontSize: 14 }}><strong>No drafts / sends / Clio writes:</strong> {String(!emailAutomationStatus.safety.createsDrafts && !emailAutomationStatus.safety.sendsEmail && !emailAutomationStatus.safety.writesClio)}</div>
+                <div style={{ marginTop: 4, fontSize: 14 }}><strong>No document upload:</strong> {String(!emailAutomationStatus.safety.uploadsDocuments)}</div>
+              </div>
+            </div>
+
+            <details style={{ background: "white", border: "1px solid #dbeafe", borderRadius: 14, padding: 14, marginBottom: 12 }}>
+              <summary style={{ cursor: "pointer", fontWeight: 800, color: "#1e3a8a" }}>Recent MailDrop registry addresses</summary>
+              <div style={{ overflowX: "auto", marginTop: 12 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: "#f8fafc", textAlign: "left" }}>
+                      <th style={{ padding: "8px", borderBottom: "1px solid #e5e7eb" }}>Updated</th>
+                      <th style={{ padding: "8px", borderBottom: "1px solid #e5e7eb" }}>Address</th>
+                      <th style={{ padding: "8px", borderBottom: "1px solid #e5e7eb" }}>Label</th>
+                      <th style={{ padding: "8px", borderBottom: "1px solid #e5e7eb" }}>Source</th>
+                      <th style={{ padding: "8px", borderBottom: "1px solid #e5e7eb" }}>Target</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {emailAutomationStatus.maildropRegistry.recentAddresses.length ? (
+                      emailAutomationStatus.maildropRegistry.recentAddresses.map((row) => (
+                        <tr key={row.id}>
+                          <td style={{ padding: "8px", borderBottom: "1px solid #e5e7eb" }}>{formatStatusDate(row.updatedAt)}</td>
+                          <td style={{ padding: "8px", borderBottom: "1px solid #e5e7eb" }}>{row.address}</td>
+                          <td style={{ padding: "8px", borderBottom: "1px solid #e5e7eb" }}>{row.label || "—"}</td>
+                          <td style={{ padding: "8px", borderBottom: "1px solid #e5e7eb" }}>{row.source || "—"}</td>
+                          <td style={{ padding: "8px", borderBottom: "1px solid #e5e7eb" }}>{row.matterId || row.masterLawsuitId || row.clioDisplayNumber || row.clioMatterId || "—"}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} style={{ padding: "10px", color: "#64748b" }}>No active MailDrop addresses found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+
+            <details style={{ background: "white", border: "1px solid #dbeafe", borderRadius: 14, padding: 14 }}>
+              <summary style={{ cursor: "pointer", fontWeight: 800, color: "#1e3a8a" }}>Recent email automation logs</summary>
+              <div style={{ overflowX: "auto", marginTop: 12 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: "#f8fafc", textAlign: "left" }}>
+                      <th style={{ padding: "8px", borderBottom: "1px solid #e5e7eb" }}>Created</th>
+                      <th style={{ padding: "8px", borderBottom: "1px solid #e5e7eb" }}>Source</th>
+                      <th style={{ padding: "8px", borderBottom: "1px solid #e5e7eb" }}>Action</th>
+                      <th style={{ padding: "8px", borderBottom: "1px solid #e5e7eb" }}>Status</th>
+                      <th style={{ padding: "8px", borderBottom: "1px solid #e5e7eb" }}>Target</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {emailAutomationStatus.recentEmailAutomationLogs.length ? (
+                      emailAutomationStatus.recentEmailAutomationLogs.map(renderEmailAutomationLogRow)
+                    ) : (
+                      <tr>
+                        <td colSpan={5} style={{ padding: "10px", color: "#64748b" }}>No recent automation logs found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+
+            {emailAutomationStatus.recentFailures.length > 0 && (
+              <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 12, padding: 12, marginTop: 12 }}>
+                <strong>Recent failures:</strong> {emailAutomationStatus.recentFailures.length}. Expand recent logs for details.
+              </div>
+            )}
+
+            <div style={{ color: "#64748b", fontSize: 12, marginTop: 10 }}>
+              Generated: {formatStatusDate(emailAutomationStatus.generatedAt)}
+            </div>
+          </>
+        )}
+      </section>
+    );
+  }
+
+return (
     <main
+
+      
+
       style={{
         minHeight: "100vh",
         background: "linear-gradient(135deg, #dbeafe 0%, #f8fafc 42%, #eff6ff 100%)",
@@ -913,6 +1194,7 @@ export default function AdminReferenceDataPage() {
         color: "#0f172a",
       }}
     >
+      {renderEmailAutomationStatusPanel()}
       <div style={{ maxWidth: 1320, margin: "0 auto" }}>
         <header
           style={{

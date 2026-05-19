@@ -66,6 +66,8 @@ console.log("\\n=== VERIFY MASTER UI MARKERS ===");
   'target="_blank"',
   'rel="noopener noreferrer"',
   'clean(message.webLink)',
+  'anyMasterMessageOutlookLinkAvailable',
+  'Outlook link available',
 ].forEach((marker) => mustContain(pagePath, page, marker));
 
 console.log("\\n=== VERIFY SUPPORTING ROUTES HAVE EXPECTED SAFETY MARKERS ===");

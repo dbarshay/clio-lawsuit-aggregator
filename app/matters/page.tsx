@@ -1340,7 +1340,6 @@ export default function FilteredMattersPage() {
     };
   }, [masterNoteDeleteTarget]);
 
-
   function masterSettlementMoneyValue(value: string): number {
     const cleaned = String(value || "").replace(/[$,\s]/g, "");
     const n = Number(cleaned);
@@ -1554,7 +1553,6 @@ export default function FilteredMattersPage() {
     if (kind !== "master" || activeMasterWorkspaceTab !== "payments") return;
     void loadMasterPaymentReceipts();
   }, [kind, activeMasterWorkspaceTab, masterSettlementDetailRows]);
-
 
   const masterPaymentVisibleReceipts = masterPaymentShowVoided
     ? masterPaymentReceipts
@@ -1790,7 +1788,6 @@ export default function FilteredMattersPage() {
     await loadMasterDocumentDataPreview();
   }
 
-
   function buildMasterDocumentDeliveryContext(selectedTemplate: { key: string; label: string; description: string } | null): DocumentDeliveryContext {
     const documentData = masterDocumentDataPreview?.packet?.metadata?.documentData;
     const templateFields = documentData?.templateFields || {};
@@ -1877,7 +1874,6 @@ export default function FilteredMattersPage() {
     const context = buildMasterDocumentDeliveryContext(selectedTemplate);
     alert(`${documentDeliverySafetyNote()}\n\nSend to Print Queue will be connected to the generalized finalized-document queue backend.\n\nDocument: ${context.documentLabel}`);
   }
-
 
   function formatMasterEmailThreadTimestamp(value: any): string {
     const raw = clean(value);
@@ -2309,6 +2305,8 @@ export default function FilteredMattersPage() {
               const threadKey = clean(thread.id || thread.conversationId);
               const threadExpanded = expandedMasterEmailThreadId === threadKey;
               const messages = Array.isArray(thread.messages) ? thread.messages : [];
+              const anyMasterMessageOutlookLinkAvailable = messages.some((message: any) => Boolean(clean(message.webLink)));
+              
 
               return (
                 <article key={threadKey} style={{ display: "grid", gap: 10, padding: 14, borderRadius: 16, border: "1px solid #e2e8f0", background: "#ffffff", boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)" }}>
@@ -2318,6 +2316,25 @@ export default function FilteredMattersPage() {
                       <div style={{ marginTop: 4, fontSize: 12, color: colors.subtle, fontWeight: 750 }}>
                         {formatMasterEmailThreadTimestamp(thread.latestMessageAt)} · {messages.length} message{messages.length === 1 ? "" : "s"} · {clean(thread.clioMaildropLabel) || "No MailDrop label"}
                       </div>
+                      {anyMasterMessageOutlookLinkAvailable && (
+                        <div
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            marginTop: 7,
+                            padding: "3px 8px",
+                            border: "1px solid #0f766e",
+                            borderRadius: 999,
+                            background: "#ecfeff",
+                            color: "#0f766e",
+                            fontSize: 11,
+                            fontWeight: 950,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Outlook link available
+                        </div>
+                      )}
                     </div>
 
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -3024,7 +3041,6 @@ export default function FilteredMattersPage() {
               </section>
             )}
 
-
             {masterDocumentWorkflowStage === "delivery" && (
               <section
                 style={{
@@ -3254,7 +3270,6 @@ export default function FilteredMattersPage() {
       </section>
     );
   }
-
 
   return (
     <main style={pageStyle}>
@@ -4210,7 +4225,6 @@ export default function FilteredMattersPage() {
                     </div>
                   </section>
 
-
                   <section
                     style={{
                       display: "grid",
@@ -4945,7 +4959,6 @@ export default function FilteredMattersPage() {
             )}
 
 
-
             {masterPaymentPostResult && activeMasterWorkspaceTab === "payments" && (
               <div
                 style={{
@@ -5058,7 +5071,6 @@ export default function FilteredMattersPage() {
                 </form>
               </div>
             )}
-
 
 
             {masterNoteDialogOpen && activeMasterWorkspaceTab === "payments" && (
@@ -5271,7 +5283,6 @@ export default function FilteredMattersPage() {
                 </div>
               </div>
             )}
-
 
 
             {masterInfoEditDialog && activeMasterWorkspaceTab === "payments" && (
@@ -5728,7 +5739,6 @@ export default function FilteredMattersPage() {
                 </div>
               </div>
             )}
-
 
 
             {masterSettlementFormOpen && activeMasterWorkspaceTab === "payments" && (
@@ -6212,7 +6222,6 @@ export default function FilteredMattersPage() {
                 </div>
               </div>
             )}
-
 
 
             {masterAuditHistoryOpen && kind === "master" && (
@@ -6890,7 +6899,6 @@ export default function FilteredMattersPage() {
               </div>
             )}
 
-
             <div style={masterWorkspaceBillListStyle}>
               <div style={masterSettlementDetailsTitleStyle}>
                 {activeMasterWorkspaceTab === "documents"
@@ -7437,7 +7445,6 @@ const fieldLinkStyle: React.CSSProperties = {
   textUnderlineOffset: 3,
 };
 
-
 const masterHeroStyle: React.CSSProperties = {
   display: "flex",
   justifyContent: "center",
@@ -7521,7 +7528,6 @@ const masterInfoCardEditButtonStyle: React.CSSProperties = {
   padding: "4px 10px",
   cursor: "not-allowed",
 };
-
 
 
 const masterWorkflowRowStyle: React.CSSProperties = {

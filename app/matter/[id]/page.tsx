@@ -138,7 +138,6 @@ function isDisabledByGroup(r: any, activeGroupKey?: string | null) {
   return rowGroup !== activeGroupKey;
 }
 
-
 function isAggregated(r: any) {
   return !!(r?.masterLawsuitId && String(r.masterLawsuitId).trim());
 }
@@ -1596,7 +1595,6 @@ const activeGroupKey =
   }
 
 
-
   function resetPaymentFormInputs() {
     setPaymentAmountInput("");
     setPaymentDateInput(formatPaymentDateYYYYMMDD(new Date()));
@@ -1804,7 +1802,6 @@ const activeGroupKey =
       setPaymentApplyLoading(false);
     }
   }
-
 
   useEffect(() => {
     if (!matterId) return;
@@ -2136,7 +2133,6 @@ const activeGroupKey =
       alert(err?.message || "De-aggregation failed");
     }
   }
-
 
   async function expandClaim() {
     if (expanding) return;
@@ -2597,7 +2593,6 @@ const activeGroupKey =
     }
   }
 
-
   async function changePrintQueueStatusFilter(
     nextStatusFilter: "" | "queued" | "printed" | "hold" | "skipped"
   ) {
@@ -2611,7 +2606,6 @@ const activeGroupKey =
       await loadPrintQueueList(masterLawsuitId, nextStatusFilter);
     }
   }
-
 
   async function addVerifiedCandidatesToPrintQueue(masterLawsuitIdInput?: string) {
     const masterLawsuitId =
@@ -2656,7 +2650,6 @@ const activeGroupKey =
       setPrintQueueAddLoading(false);
     }
   }
-
 
   async function updatePrintQueueStatus(row: any, status: "queued" | "printed" | "hold" | "skipped") {
     const id = Number(row?.id);
@@ -2725,7 +2718,6 @@ const activeGroupKey =
     }
   }
 
-
   async function loadFinalizePreview() {
     const masterLawsuitId =
       textValue(packetPreview?.packet?.masterLawsuitId) ||
@@ -2762,7 +2754,6 @@ const activeGroupKey =
       setDocumentPreviewLoading(false);
     }
   }
-
 
   async function uploadFinalDocumentsToClio() {
     if (finalizeUploadLoading) return;
@@ -2901,7 +2892,6 @@ const activeGroupKey =
       "noopener,noreferrer"
     );
   }
-
 
   async function openMetadataModalForMaster(masterLawsuitIdInput?: string) {
     const masterLawsuitId =
@@ -3395,7 +3385,6 @@ const activeGroupKey =
     await loadMatterDocumentDataPreview();
   }
 
-
   function buildMatterDocumentDeliveryContext(selectedTemplate: { key: string; label: string; description: string } | null): DocumentDeliveryContext {
     const documentData = matterDocumentDataPreview?.packet?.metadata?.documentData;
     const templateFields = documentData?.templateFields || {};
@@ -3477,7 +3466,6 @@ const activeGroupKey =
     const context = buildMatterDocumentDeliveryContext(selectedTemplate);
     alert(`${documentDeliverySafetyNote()}\n\nSend to Print Queue will be connected to the generalized finalized-document queue backend.\n\nDocument: ${context.documentLabel}`);
   }
-
 
   function formatEmailThreadTimestamp(value: any): string {
     const raw = textValue(value);
@@ -3997,6 +3985,8 @@ const activeGroupKey =
               const threadKey = textValue(thread.id || thread.conversationId);
               const threadExpanded = expandedEmailThreadId === threadKey;
               const messages = Array.isArray(thread.messages) ? thread.messages : [];
+              const anyMessageOutlookLinkAvailable = messages.some((message: any) => Boolean(textValue(message.webLink)));
+              
 
               return (
                 <article
@@ -4026,6 +4016,25 @@ const activeGroupKey =
                       <div style={{ marginTop: 4, fontSize: 12, color: bmColors.subtle, fontWeight: 750 }}>
                         {formatEmailThreadTimestamp(thread.latestMessageAt)} · {messages.length} message{messages.length === 1 ? "" : "s"} · {textValue(thread.clioMaildropLabel) || "No MailDrop label"}
                       </div>
+                      {anyMessageOutlookLinkAvailable && (
+                        <div
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            marginTop: 7,
+                            padding: "3px 8px",
+                            border: "1px solid #0f766e",
+                            borderRadius: 999,
+                            background: "#ecfeff",
+                            color: "#0f766e",
+                            fontSize: 11,
+                            fontWeight: 950,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Outlook link available
+                        </div>
+                      )}
                     </div>
 
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -4832,7 +4841,6 @@ const activeGroupKey =
               </section>
             )}
 
-
             {matterDocumentWorkflowStage === "delivery" && (
               <section
                 style={{
@@ -5506,7 +5514,6 @@ const activeGroupKey =
     );
   }
 
-
   const tdStyle: React.CSSProperties = {
     border: "1px solid #bfbfbf",
     padding: "8px 8px",
@@ -5732,7 +5739,6 @@ const activeGroupKey =
     void loadCurrentSettlementValues(tabMasterLawsuitId);
   }, [activeWorkspaceTab, tabMasterLawsuitId, currentSettlementValuesLoadedMasterId]);
 
-
   return (
     <>
 
@@ -5902,7 +5908,6 @@ const activeGroupKey =
           </a>
         </div>
       </div>
-
 
 
 {matterAuditHistoryPopupOpen && (
@@ -7232,7 +7237,6 @@ const activeGroupKey =
                 </div>
 
 
-
                 <div
                   style={{
                     marginTop: 10,
@@ -7750,7 +7754,6 @@ const activeGroupKey =
                           : `Payment: ${money(paymentApplyResult.paymentApplied)}.  Payments Posted: ${money(paymentApplyResult.after?.paymentVoluntary)}.  Balance Presuit: ${money(paymentApplyResult.after?.balancePresuit)}.`}
                     </div>
 
-
                   </div>
                 )}
 
@@ -7834,7 +7837,6 @@ const activeGroupKey =
                     </div>
                   </div>
                 )}
-
 
               </div>
             </div>
@@ -8096,7 +8098,6 @@ const activeGroupKey =
                 <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb", minWidth: 180 }}>
                   {textValue(receipt.description) || "—"}
                 </td>
-
 
                 <td style={{ padding: "7px 8px", border: "1px solid #e5e7eb" }}>
                   {textValue(receipt.postedBy) || "—"}
@@ -11304,7 +11305,6 @@ const activeGroupKey =
             )}
         </section>
       )}
-
 
       {activeWorkspaceTab !== "settlement" && (
         <>

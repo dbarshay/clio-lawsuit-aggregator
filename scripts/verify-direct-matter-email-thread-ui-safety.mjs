@@ -42,6 +42,8 @@ const requiredPageMarkers = [
   'target="_blank"',
   'rel="noopener noreferrer"',
   'textValue(message.webLink)',
+  'anyMessageOutlookLinkAvailable',
+  'Outlook link available',
 ];
 
 const requiredRouteMarkers = [

@@ -28,14 +28,18 @@ console.log("=== DIRECT DOCUMENT GENERATION ACTION BUTTON SAFETY VERIFICATION ==
 
 mustContain("Document Generation action label", "Document Generation");
 mustContain("document generation launcher", "launchMatterDocumentGenerationDialog");
-mustContain("documents workspace switch", 'setActiveWorkspaceTab("documents")');
-mustContain("documents workspace preview renderer", "renderMatterDocumentDataPreviewPanel");
+mustContain("document generation popup state", "matterDocumentGenerationPopupOpen");
+mustContain("document generation popup renderer", "renderMatterDocumentGenerationPopup");
+mustContain("direct popup title", "Direct Matter Document Generation Preview");
+mustContain("direct popup action title", "Open the Direct Matter document generation preview popup.");
+mustContain("direct preview loader", "loadMatterDocumentDataPreview");
+mustContain("direct preview panel reuse", "renderMatterDocumentDataPreviewPanel");
 mustContain("Preview Matter Data button", "Preview Matter Data");
 mustContain("Direct matter packet endpoint", "/api/documents/matter-packet");
-mustContain("direct preview scroll target", 'id="matter-document-data-preview-panel"');
-mustContain("direct generation preview title", "Launch the Direct Matter document generation preview.");
+mustContain("direct no-generation language", "No documents are generated from this popup.");
 
 mustNotContain("old direct placeholder title", "View Documents action will be wired later.");
+mustNotContain("old direct action title", "Launch the Direct Matter document generation preview.");
 mustNotContain("matter-context dependency", "matter-context");
 mustNotContain("direct Clio write action", "loadMatterDocumentDataPreviewToClio");
 

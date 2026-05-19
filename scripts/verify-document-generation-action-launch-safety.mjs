@@ -26,30 +26,38 @@ function mustNotContain(source, sourceName, label, needle) {
   else fail(`${sourceName}: contains forbidden ${label}`);
 }
 
-console.log("=== DOCUMENT GENERATION ACTION LAUNCH SAFETY VERIFICATION ===");
+console.log("=== DOCUMENT GENERATION ACTION POPUP SAFETY VERIFICATION ===");
 
 mustContain(direct, directPath, "direct launcher", "launchMatterDocumentGenerationDialog");
-mustContain(direct, directPath, "direct action title", "Launch the Direct Matter document generation preview.");
-mustContain(direct, directPath, "direct scroll target", 'id="matter-document-data-preview-panel"');
+mustContain(direct, directPath, "direct popup state", "matterDocumentGenerationPopupOpen");
+mustContain(direct, directPath, "direct popup renderer", "renderMatterDocumentGenerationPopup");
+mustContain(direct, directPath, "direct popup title", "Direct Matter Document Generation Preview");
+mustContain(direct, directPath, "direct action title", "Open the Direct Matter document generation preview popup.");
 mustContain(direct, directPath, "direct preview loader", "loadMatterDocumentDataPreview");
-mustContain(direct, directPath, "direct workspace switch", 'setActiveWorkspaceTab("documents")');
+mustContain(direct, directPath, "direct preview panel reuse", "renderMatterDocumentDataPreviewPanel");
+mustContain(direct, directPath, "direct no-generation language", "No documents are generated from this popup.");
 mustContain(direct, directPath, "Document Generation label", "Document Generation");
 
 mustContain(master, masterPath, "master launcher", "launchMasterDocumentGenerationDialog");
-mustContain(master, masterPath, "master action title", "Launch the Master Lawsuit document generation preview.");
-mustContain(master, masterPath, "master scroll target", 'id="master-document-data-preview-panel"');
+mustContain(master, masterPath, "master popup state", "masterDocumentGenerationPopupOpen");
+mustContain(master, masterPath, "master popup renderer", "renderMasterDocumentGenerationPopup");
+mustContain(master, masterPath, "master popup title", "Master Lawsuit Document Generation Preview");
+mustContain(master, masterPath, "master action title", "Open the Master Lawsuit document generation preview popup.");
 mustContain(master, masterPath, "master preview loader", "loadMasterDocumentDataPreview");
-mustContain(master, masterPath, "master workspace switch", 'setActiveMasterWorkspaceTab("documents")');
+mustContain(master, masterPath, "master preview panel reuse", "renderMasterDocumentDataPreviewPanel");
+mustContain(master, masterPath, "master no-generation language", "No documents are generated from this popup.");
 mustContain(master, masterPath, "Document Generation label", "Document Generation");
 
-mustNotContain(direct, directPath, "old direct placeholder title", "View Documents action will be wired later.");
-mustNotContain(master, masterPath, "old master placeholder title", "Document controls remain in the Documents workflow.");
+mustNotContain(direct, directPath, "old direct popup title", "Launch the Direct Matter document generation preview.");
+mustNotContain(master, masterPath, "old master popup title", "Launch the Master Lawsuit document generation preview.");
 mustNotContain(direct, directPath, "matter-context dependency", "matter-context");
 mustNotContain(master, masterPath, "matter-context dependency", "matter-context");
+mustNotContain(direct, directPath, "direct Clio write action", "loadMatterDocumentDataPreviewToClio");
+mustNotContain(master, masterPath, "master Clio write action", "loadMasterDocumentDataPreviewToClio");
 
 if (failures > 0) {
-  console.error(`=== DOCUMENT GENERATION ACTION LAUNCH SAFETY VERIFICATION FAILED: ${failures} failure(s) ===`);
+  console.error(`=== DOCUMENT GENERATION ACTION POPUP SAFETY VERIFICATION FAILED: ${failures} failure(s) ===`);
   process.exit(1);
 }
 
-console.log("=== DOCUMENT GENERATION ACTION LAUNCH SAFETY VERIFICATION PASSED ===");
+console.log("=== DOCUMENT GENERATION ACTION POPUP SAFETY VERIFICATION PASSED ===");

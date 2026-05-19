@@ -559,6 +559,7 @@ const activeGroupKey =
   const [documentPreviewLoading, setDocumentPreviewLoading] = useState(false);
   const [matterDocumentDataPreviewLoading, setMatterDocumentDataPreviewLoading] = useState(false);
   const [matterDocumentDataPreview, setMatterDocumentDataPreview] = useState<any>(null);
+  const [matterDocumentGenerationPopupOpen, setMatterDocumentGenerationPopupOpen] = useState(false);
   const [finalizeUploadLoading, setFinalizeUploadLoading] = useState(false);
   const [finalizeUploadResult, setFinalizeUploadResult] = useState<any>(null);
   const [finalizationHistory, setFinalizationHistory] = useState<any>(null);
@@ -3370,17 +3371,71 @@ const activeGroupKey =
   }
 
   async function launchMatterDocumentGenerationDialog() {
-    setActiveWorkspaceTab("documents");
+    setMatterDocumentGenerationPopupOpen(true);
     await loadMatterDocumentDataPreview();
+  }
 
-    if (typeof window !== "undefined") {
-      window.setTimeout(() => {
-        document.getElementById("matter-document-data-preview-panel")?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, 150);
-    }
+  function renderMatterDocumentGenerationPopup() {
+    if (!matterDocumentGenerationPopupOpen) return null;
+
+    return (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Direct Matter Document Generation Preview"
+        style={{
+          position: "fixed",
+          left: 24,
+          right: 24,
+          top: 150,
+          bottom: 24,
+          zIndex: 2400,
+          background: "rgba(15, 23, 42, 0.18)",
+          borderRadius: 24,
+          padding: 18,
+          overflow: "auto",
+          boxShadow: "0 28px 80px rgba(15, 23, 42, 0.28)",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1500,
+            margin: "0 auto",
+            background: "#ffffff",
+            borderRadius: 22,
+            border: "1px solid #cbd5e1",
+            padding: 18,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 12 }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 20 }}>Document Generation Preview</h2>
+              <div style={{ marginTop: 4, color: "#64748b", fontWeight: 800, fontSize: 12 }}>
+                Direct Matter local packet data only.  No documents are generated from this popup.
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setMatterDocumentGenerationPopupOpen(false)}
+              style={{
+                border: "1px solid #cbd5e1",
+                borderRadius: 999,
+                padding: "9px 14px",
+                background: "#fff",
+                color: "#0f172a",
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+            >
+              Close
+            </button>
+          </div>
+
+          {renderMatterDocumentDataPreviewPanel()}
+        </div>
+      </div>
+    );
   }
 
   function renderMatterDocumentDataPreviewPanel() {
@@ -5638,7 +5693,7 @@ const activeGroupKey =
                     <button
                         onClick={launchMatterDocumentGenerationDialog}
                       type="button"
-                      title="Launch the Direct Matter document generation preview."
+                      title="Open the Direct Matter document generation preview popup."
                       style={{
                         width: "100%",
                         minWidth: 0,
@@ -6906,6 +6961,7 @@ const activeGroupKey =
         </section>
       )}
 
+      {renderMatterDocumentGenerationPopup()}
       {activeWorkspaceTab === "documents" && !alreadyAggregated && (
         <section style={tabPlaceholderPanelStyle}>
           <h2 style={{ marginTop: 0 }}>Documents</h2>

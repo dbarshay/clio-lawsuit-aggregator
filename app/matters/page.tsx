@@ -580,6 +580,7 @@ export default function FilteredMattersPage() {
   const [masterAuditHistoryError, setMasterAuditHistoryError] = useState("");
   const [masterDocumentDataPreviewLoading, setMasterDocumentDataPreviewLoading] = useState(false);
   const [masterDocumentDataPreview, setMasterDocumentDataPreview] = useState<any>(null);
+  const [masterDocumentGenerationPopupOpen, setMasterDocumentGenerationPopupOpen] = useState(false);
   const [masterAuditHistoryEntries, setMasterAuditHistoryEntries] = useState<any[]>([]);
   const masterNoteTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const masterNoteDeleteConfirmButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -1766,17 +1767,71 @@ export default function FilteredMattersPage() {
   }
 
   async function launchMasterDocumentGenerationDialog() {
-    setActiveMasterWorkspaceTab("documents");
+    setMasterDocumentGenerationPopupOpen(true);
     await loadMasterDocumentDataPreview();
+  }
 
-    if (typeof window !== "undefined") {
-      window.setTimeout(() => {
-        document.getElementById("master-document-data-preview-panel")?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, 150);
-    }
+  function renderMasterDocumentGenerationPopup() {
+    if (!masterDocumentGenerationPopupOpen) return null;
+
+    return (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Master Lawsuit Document Generation Preview"
+        style={{
+          position: "fixed",
+          left: 24,
+          right: 24,
+          top: 150,
+          bottom: 24,
+          zIndex: 2400,
+          background: "rgba(15, 23, 42, 0.18)",
+          borderRadius: 24,
+          padding: 18,
+          overflow: "auto",
+          boxShadow: "0 28px 80px rgba(15, 23, 42, 0.28)",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1500,
+            margin: "0 auto",
+            background: "#ffffff",
+            borderRadius: 22,
+            border: "1px solid #cbd5e1",
+            padding: 18,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 12 }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 20 }}>Document Generation Preview</h2>
+              <div style={{ marginTop: 4, color: "#64748b", fontWeight: 800, fontSize: 12 }}>
+                Master Lawsuit local packet data only.  No documents are generated from this popup.
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setMasterDocumentGenerationPopupOpen(false)}
+              style={{
+                border: "1px solid #cbd5e1",
+                borderRadius: 999,
+                padding: "9px 14px",
+                background: "#fff",
+                color: "#0f172a",
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+            >
+              Close
+            </button>
+          </div>
+
+          {renderMasterDocumentDataPreviewPanel()}
+        </div>
+      </div>
+    );
   }
 
   function renderMasterDocumentDataPreviewPanel() {
@@ -2678,7 +2733,8 @@ export default function FilteredMattersPage() {
                   <div style={masterWorkspaceCardStyle}>
                     <div style={masterWorkspaceCardLabelStyle}>Next UI Step</div>
                     <div style={masterWorkspaceCardTextStyle}>
-                      {activeMasterWorkspaceTab === "documents" ? (
+                      {renderMasterDocumentGenerationPopup()}
+              {activeMasterWorkspaceTab === "documents" ? (
                         <>
                           <div>
                             Move the existing read-only packet preview shell into this Documents workspace.
@@ -3302,7 +3358,7 @@ export default function FilteredMattersPage() {
                       <button
                           onClick={launchMasterDocumentGenerationDialog}
                         type="button"
-                        title="Launch the Master Lawsuit document generation preview."
+                        title="Open the Master Lawsuit document generation preview popup."
                         style={{
                           width: "100%",
                           minWidth: 0,

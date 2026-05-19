@@ -28,14 +28,18 @@ console.log("=== MASTER DOCUMENT GENERATION ACTION BUTTON SAFETY VERIFICATION ==
 
 mustContain("Document Generation action label", "Document Generation");
 mustContain("document generation launcher", "launchMasterDocumentGenerationDialog");
-mustContain("documents workspace switch", 'setActiveMasterWorkspaceTab("documents")');
-mustContain("documents workspace preview renderer", "renderMasterDocumentDataPreviewPanel");
+mustContain("document generation popup state", "masterDocumentGenerationPopupOpen");
+mustContain("document generation popup renderer", "renderMasterDocumentGenerationPopup");
+mustContain("master popup title", "Master Lawsuit Document Generation Preview");
+mustContain("master popup action title", "Open the Master Lawsuit document generation preview popup.");
+mustContain("master preview loader", "loadMasterDocumentDataPreview");
+mustContain("master preview panel reuse", "renderMasterDocumentDataPreviewPanel");
 mustContain("Preview Lawsuit Data button", "Preview Lawsuit Data");
 mustContain("Master packet endpoint", "/api/documents/packet?masterLawsuitId=");
-mustContain("master preview scroll target", 'id="master-document-data-preview-panel"');
-mustContain("master generation preview title", "Launch the Master Lawsuit document generation preview.");
+mustContain("master no-generation language", "No documents are generated from this popup.");
 
 mustNotContain("old master placeholder title", "Document controls remain in the Documents workflow.");
+mustNotContain("old master action title", "Launch the Master Lawsuit document generation preview.");
 mustNotContain("matter-context dependency", "matter-context");
 mustNotContain("master Clio write action", "loadMasterDocumentDataPreviewToClio");
 

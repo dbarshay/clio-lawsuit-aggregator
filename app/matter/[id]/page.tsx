@@ -5621,9 +5621,9 @@ const activeGroupKey =
                     </button>
 
                     <button
+                        onClick={() => setActiveWorkspaceTab("documents")}
                       type="button"
-                      disabled
-                      title="View Documents action will be wired later."
+                      title="Open the Direct Matter Documents workspace."
                       style={{
                         width: "100%",
                         minWidth: 0,

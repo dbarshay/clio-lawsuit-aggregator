@@ -3285,9 +3285,9 @@ export default function FilteredMattersPage() {
                       </button>
 
                       <button
+                          onClick={() => setActiveMasterWorkspaceTab("documents")}
                         type="button"
-                        disabled
-                        title="Document controls remain in the Documents workflow."
+                        title="Open the Master Lawsuit Documents workspace."
                         style={{
                           width: "100%",
                           minWidth: 0,

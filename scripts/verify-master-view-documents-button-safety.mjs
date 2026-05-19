@@ -20,25 +20,28 @@ function mustContain(label, needle) {
 }
 
 function mustNotContain(label, needle) {
-  if (!page.includes(needle)) pass(`${pagePath}: does not contain ${label}`);
+  if (!page.includes(needle)) pass(`${pagePath}: contains no ${label}`);
   else fail(`${pagePath}: contains forbidden ${label}`);
 }
 
-console.log("=== MASTER VIEW DOCUMENTS BUTTON SAFETY VERIFICATION ===");
+console.log("=== MASTER DOCUMENT GENERATION ACTION BUTTON SAFETY VERIFICATION ===");
 
-mustContain("View Documents button label", "View Documents");
-mustContain("documents workspace onClick", 'setActiveMasterWorkspaceTab("documents")');
+mustContain("Document Generation action label", "Document Generation");
+mustContain("document generation launcher", "launchMasterDocumentGenerationDialog");
+mustContain("documents workspace switch", 'setActiveMasterWorkspaceTab("documents")');
 mustContain("documents workspace preview renderer", "renderMasterDocumentDataPreviewPanel");
 mustContain("Preview Lawsuit Data button", "Preview Lawsuit Data");
 mustContain("Master packet endpoint", "/api/documents/packet?masterLawsuitId=");
-mustContain("updated documents title", "Open the Master Lawsuit Documents workspace.");
+mustContain("master preview scroll target", 'id="master-document-data-preview-panel"');
+mustContain("master generation preview title", "Launch the Master Lawsuit document generation preview.");
 
-mustNotContain("preview route using matter-context", "matter-context");
-mustNotContain("preview action writing to Clio", "loadMasterDocumentDataPreviewToClio");
+mustNotContain("old master placeholder title", "Document controls remain in the Documents workflow.");
+mustNotContain("matter-context dependency", "matter-context");
+mustNotContain("master Clio write action", "loadMasterDocumentDataPreviewToClio");
 
 if (failures > 0) {
-  console.error(`=== MASTER VIEW DOCUMENTS BUTTON SAFETY VERIFICATION FAILED: ${failures} failure(s) ===`);
+  console.error(`=== MASTER DOCUMENT GENERATION ACTION BUTTON SAFETY VERIFICATION FAILED: ${failures} failure(s) ===`);
   process.exit(1);
 }
 
-console.log("=== MASTER VIEW DOCUMENTS BUTTON SAFETY VERIFICATION PASSED ===");
+console.log("=== MASTER DOCUMENT GENERATION ACTION BUTTON SAFETY VERIFICATION PASSED ===");

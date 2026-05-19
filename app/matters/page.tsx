@@ -1765,6 +1765,20 @@ export default function FilteredMattersPage() {
     }
   }
 
+  async function launchMasterDocumentGenerationDialog() {
+    setActiveMasterWorkspaceTab("documents");
+    await loadMasterDocumentDataPreview();
+
+    if (typeof window !== "undefined") {
+      window.setTimeout(() => {
+        document.getElementById("master-document-data-preview-panel")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 150);
+    }
+  }
+
   function renderMasterDocumentDataPreviewPanel() {
     const documentData = masterDocumentDataPreview?.packet?.metadata?.documentData;
     const templateFields = documentData?.templateFields || {};
@@ -1776,6 +1790,7 @@ export default function FilteredMattersPage() {
 
     return (
       <section
+        id="master-document-data-preview-panel"
         style={{
           border: "1px solid #cbd5e1",
           borderRadius: 18,
@@ -3285,9 +3300,9 @@ export default function FilteredMattersPage() {
                       </button>
 
                       <button
-                          onClick={() => setActiveMasterWorkspaceTab("documents")}
+                          onClick={launchMasterDocumentGenerationDialog}
                         type="button"
-                        title="Open the Master Lawsuit Documents workspace."
+                        title="Launch the Master Lawsuit document generation preview."
                         style={{
                           width: "100%",
                           minWidth: 0,
@@ -3302,7 +3317,7 @@ export default function FilteredMattersPage() {
                           opacity: 0.82,
                         }}
                       >
-                        View Documents
+                        Document Generation
                       </button>
 
                       <button

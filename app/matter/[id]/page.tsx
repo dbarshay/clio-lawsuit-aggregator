@@ -3369,6 +3369,20 @@ const activeGroupKey =
     }
   }
 
+  async function launchMatterDocumentGenerationDialog() {
+    setActiveWorkspaceTab("documents");
+    await loadMatterDocumentDataPreview();
+
+    if (typeof window !== "undefined") {
+      window.setTimeout(() => {
+        document.getElementById("matter-document-data-preview-panel")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 150);
+    }
+  }
+
   function renderMatterDocumentDataPreviewPanel() {
     const documentData = matterDocumentDataPreview?.packet?.metadata?.documentData;
     const templateFields = documentData?.templateFields || {};
@@ -3377,6 +3391,7 @@ const activeGroupKey =
 
     return (
       <section
+        id="matter-document-data-preview-panel"
         style={{
           border: "1px solid #cbd5e1",
           borderRadius: 18,
@@ -5621,9 +5636,9 @@ const activeGroupKey =
                     </button>
 
                     <button
-                        onClick={() => setActiveWorkspaceTab("documents")}
+                        onClick={launchMatterDocumentGenerationDialog}
                       type="button"
-                      title="Open the Direct Matter Documents workspace."
+                      title="Launch the Direct Matter document generation preview."
                       style={{
                         width: "100%",
                         minWidth: 0,
@@ -5638,7 +5653,7 @@ const activeGroupKey =
                         opacity: 0.82,
                       }}
                     >
-                      View Documents
+                      Document Generation
                     </button>
 
                     <div style={{ display: "grid", alignContent: "start" }}>

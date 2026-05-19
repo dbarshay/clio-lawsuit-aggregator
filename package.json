@@ -38,7 +38,8 @@
     "verify:direct-matter-document-preview-ui-safety": "node scripts/verify-direct-matter-document-preview-ui-safety.mjs",
     "verify:master-document-preview-ui-safety": "node scripts/verify-master-document-preview-ui-safety.mjs",
     "verify:direct-view-documents-button-safety": "node scripts/verify-direct-view-documents-button-safety.mjs",
-    "verify:master-view-documents-button-safety": "node scripts/verify-master-view-documents-button-safety.mjs"
+    "verify:master-view-documents-button-safety": "node scripts/verify-master-view-documents-button-safety.mjs",
+    "verify:document-generation-action-launch-safety": "node scripts/verify-document-generation-action-launch-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

@@ -20,6 +20,17 @@ const requiredPageMarkers = [
   'sendsEmail',
   'readsMailbox',
   'databaseRecordsChanged',
+  'const [graphThreadSyncPreviewLoading, setGraphThreadSyncPreviewLoading] = useState(false);',
+  'const [graphThreadSyncLoading, setGraphThreadSyncLoading] = useState(false);',
+  'function firstMatterEmailConversationId()',
+  'async function previewGraphThreadUpdates()',
+  'async function syncGraphThreadToBarshMatters()',
+  '/api/graph/thread-sync-preview?${params.toString()}',
+  '/api/graph/thread-sync?confirm=sync-graph-thread',
+  'Preview Graph Updates',
+  'Sync Thread to Barsh Matters',
+  'Run Preview Graph Updates before syncing this thread to Barsh Matters.',
+  'It will not create a draft, send email, write Clio, upload documents, or use local Outlook automation.',
 ];
 
 const requiredRouteMarkers = [
@@ -39,6 +50,8 @@ const forbiddenPageMarkers = [
   'fetch(`/api/graph/create-draft',
   'fetch("/api/graph/create-draft',
   "fetch('/api/graph/create-draft",
+  'sendMail',
+  '/sendMail',
   'window.location.href = buildMailtoHref(context);\\n  }\\n\\n  function renderMatterEmailThreadsPanel',
 ];
 

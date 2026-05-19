@@ -587,6 +587,10 @@ const activeGroupKey =
   const [printQueueStatusResult, setPrintQueueStatusResult] = useState<any>(null);
   const [emailThreadPreviewLoading, setEmailThreadPreviewLoading] = useState(false);
   const [emailThreadPreviewResult, setEmailThreadPreviewResult] = useState<any>(null);
+  const [graphThreadSyncPreviewLoading, setGraphThreadSyncPreviewLoading] = useState(false);
+  const [graphThreadSyncPreviewResult, setGraphThreadSyncPreviewResult] = useState<any>(null);
+  const [graphThreadSyncLoading, setGraphThreadSyncLoading] = useState(false);
+  const [graphThreadSyncResult, setGraphThreadSyncResult] = useState<any>(null);
   const [expandedEmailThreadId, setExpandedEmailThreadId] = useState<string | null>(null);
   const [expandedEmailMessageId, setExpandedEmailMessageId] = useState<string | null>(null);
   const [activeWorkspaceTab, setActiveWorkspaceTab] =
@@ -3527,10 +3531,127 @@ const activeGroupKey =
     }
   }
 
+  function firstMatterEmailConversationId(): string {
+    const threads = Array.isArray(emailThreadPreviewResult?.threads) ? emailThreadPreviewResult.threads : [];
+    return textValue(threads[0]?.conversationId);
+  }
+
+  function matterEmailSyncContext(conversationId: string) {
+    const displayNumber = textValue(matter?.displayNumber || matter?.display_number || matterId);
+    const threads = Array.isArray(emailThreadPreviewResult?.threads) ? emailThreadPreviewResult.threads : [];
+    const matchingThread =
+      threads.find((thread: any) => textValue(thread?.conversationId) === conversationId) ||
+      threads[0] ||
+      {};
+
+    return {
+      conversationId,
+      matterId: Number(matterId),
+      matterDisplayNumber: displayNumber,
+      masterLawsuitId: textValue(matter?.masterLawsuitId || matter?.master_lawsuit_id || matchingThread?.masterLawsuitId),
+      clioMatterId: Number(matterId),
+      clioDisplayNumber: displayNumber,
+      clioMaildropLabel: textValue(matchingThread?.clioMaildropLabel),
+      limit: 25,
+    };
+  }
+
+  async function previewGraphThreadUpdates() {
+    const conversationId = firstMatterEmailConversationId();
+
+    if (!conversationId) {
+      setGraphThreadSyncPreviewResult({
+        ok: false,
+        error: "Load local Email / Threads first so Barsh Matters can identify the stored Microsoft Graph conversationId.",
+      });
+      return;
+    }
+
+    setGraphThreadSyncPreviewLoading(true);
+    setGraphThreadSyncPreviewResult(null);
+    setGraphThreadSyncResult(null);
+
+    try {
+      const params = new URLSearchParams();
+      params.set("confirm", "preview-graph-thread-sync");
+      params.set("conversationId", conversationId);
+      params.set("limit", "25");
+
+      const response = await fetch(`/api/graph/thread-sync-preview?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const json = await response.json().catch(() => ({}));
+      setGraphThreadSyncPreviewResult(json);
+    } catch (err: any) {
+      setGraphThreadSyncPreviewResult({
+        ok: false,
+        error: err?.message || "Graph thread sync preview failed.",
+      });
+    } finally {
+      setGraphThreadSyncPreviewLoading(false);
+    }
+  }
+
+  async function syncGraphThreadToBarshMatters() {
+    const conversationId = firstMatterEmailConversationId();
+
+    if (!conversationId) {
+      setGraphThreadSyncResult({
+        ok: false,
+        error: "Load local Email / Threads first so Barsh Matters can identify the stored Microsoft Graph conversationId.",
+      });
+      return;
+    }
+
+    if (!graphThreadSyncPreviewResult || graphThreadSyncPreviewResult.action !== "graph-thread-sync-preview") {
+      setGraphThreadSyncResult({
+        ok: false,
+        error: "Run Preview Graph Updates before syncing this thread to Barsh Matters.",
+      });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Sync this Microsoft Graph thread to Barsh Matters local email records?\n\nThis will read Microsoft Graph and update local EmailThread / EmailMessage metadata only.  It will not create a draft, send email, write Clio, upload documents, or use local Outlook automation."
+    );
+
+    if (!confirmed) return;
+
+    setGraphThreadSyncLoading(true);
+    setGraphThreadSyncResult(null);
+
+    try {
+      const response = await fetch("/api/graph/thread-sync?confirm=sync-graph-thread", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(matterEmailSyncContext(conversationId)),
+      });
+
+      const json = await response.json().catch(() => ({}));
+      setGraphThreadSyncResult(json);
+
+      if (response.ok && json?.action === "graph-thread-sync" && json?.databaseRecordsChanged === true) {
+        await loadMatterEmailThreadPreview();
+      }
+    } catch (err: any) {
+      setGraphThreadSyncResult({
+        ok: false,
+        error: err?.message || "Graph thread sync failed.",
+      });
+    } finally {
+      setGraphThreadSyncLoading(false);
+    }
+  }
+
   function renderMatterEmailThreadsPanel() {
     const threads = Array.isArray(emailThreadPreviewResult?.threads) ? emailThreadPreviewResult.threads : [];
     const counts = emailThreadPreviewResult?.counts || {};
     const displayNumber = textValue(matter?.displayNumber || matter?.display_number || matterId);
+    const hasConversationId = Boolean(firstMatterEmailConversationId());
+    const syncPreviewCounts = graphThreadSyncPreviewResult?.counts || {};
+    const syncCounts = graphThreadSyncResult?.counts || {};
 
     return (
       <section id="matter-email-threads-section" style={tabPlaceholderPanelStyle}>
@@ -3550,23 +3671,89 @@ const activeGroupKey =
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={loadMatterEmailThreadPreview}
-            disabled={emailThreadPreviewLoading}
-            style={{
-              padding: "7px 10px",
-              border: "1px solid #2563eb",
-              background: emailThreadPreviewLoading ? "#f3f4f6" : "#2563eb",
-              color: emailThreadPreviewLoading ? "#666" : "#fff",
-              borderRadius: 4,
-              cursor: emailThreadPreviewLoading ? "not-allowed" : "pointer",
-              fontWeight: 700,
-              whiteSpace: "nowrap",
-            }}
-          >
-            {emailThreadPreviewLoading ? "Loading..." : "Refresh Email Threads"}
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={loadMatterEmailThreadPreview}
+              disabled={emailThreadPreviewLoading || graphThreadSyncPreviewLoading || graphThreadSyncLoading}
+              style={{
+                padding: "7px 10px",
+                border: "1px solid #2563eb",
+                background: emailThreadPreviewLoading ? "#f3f4f6" : "#2563eb",
+                color: emailThreadPreviewLoading ? "#666" : "#fff",
+                borderRadius: 4,
+                cursor: emailThreadPreviewLoading ? "not-allowed" : "pointer",
+                fontWeight: 700,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {emailThreadPreviewLoading ? "Loading..." : "Refresh Email Threads"}
+            </button>
+
+            <button
+              type="button"
+              onClick={previewGraphThreadUpdates}
+              disabled={!hasConversationId || emailThreadPreviewLoading || graphThreadSyncPreviewLoading || graphThreadSyncLoading}
+              title={!hasConversationId ? "Load local Email / Threads first." : "Preview Microsoft Graph messages for this stored conversationId without persisting changes."}
+              style={{
+                padding: "7px 10px",
+                border: "1px solid #0f766e",
+                background:
+                  !hasConversationId || graphThreadSyncPreviewLoading || graphThreadSyncLoading ? "#f3f4f6" : "#0f766e",
+                color:
+                  !hasConversationId || graphThreadSyncPreviewLoading || graphThreadSyncLoading ? "#666" : "#fff",
+                borderRadius: 4,
+                cursor:
+                  !hasConversationId || graphThreadSyncPreviewLoading || graphThreadSyncLoading ? "not-allowed" : "pointer",
+                fontWeight: 700,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {graphThreadSyncPreviewLoading ? "Previewing..." : "Preview Graph Updates"}
+            </button>
+
+            <button
+              type="button"
+              onClick={syncGraphThreadToBarshMatters}
+              disabled={
+                !hasConversationId ||
+                !graphThreadSyncPreviewResult ||
+                graphThreadSyncPreviewLoading ||
+                graphThreadSyncLoading
+              }
+              title="Run only after Preview Graph Updates.  Persists local EmailThread / EmailMessage metadata only."
+              style={{
+                padding: "7px 10px",
+                border: "1px solid #7c3aed",
+                background:
+                  !hasConversationId ||
+                  !graphThreadSyncPreviewResult ||
+                  graphThreadSyncPreviewLoading ||
+                  graphThreadSyncLoading
+                    ? "#f3f4f6"
+                    : "#7c3aed",
+                color:
+                  !hasConversationId ||
+                  !graphThreadSyncPreviewResult ||
+                  graphThreadSyncPreviewLoading ||
+                  graphThreadSyncLoading
+                    ? "#666"
+                    : "#fff",
+                borderRadius: 4,
+                cursor:
+                  !hasConversationId ||
+                  !graphThreadSyncPreviewResult ||
+                  graphThreadSyncPreviewLoading ||
+                  graphThreadSyncLoading
+                    ? "not-allowed"
+                    : "pointer",
+                fontWeight: 700,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {graphThreadSyncLoading ? "Syncing..." : "Sync Thread to Barsh Matters"}
+            </button>
+          </div>
         </div>
 
         <div
@@ -3649,6 +3836,110 @@ const activeGroupKey =
               </div>
             ))}
           </div>
+        )}
+
+        {graphThreadSyncPreviewResult && (
+          <section
+            style={{
+              border: "1px solid #99f6e4",
+              borderRadius: 16,
+              padding: 14,
+              background: "#f0fdfa",
+              marginBottom: 14,
+            }}
+          >
+            <div style={{ fontWeight: 950, color: "#0f766e", marginBottom: 8 }}>
+              Graph Update Preview
+            </div>
+            {graphThreadSyncPreviewResult.error ? (
+              <div style={{ color: bmColors.red, fontWeight: 850 }}>
+                {textValue(graphThreadSyncPreviewResult.error)}
+              </div>
+            ) : (
+              <>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+                    gap: 8,
+                    fontSize: 12,
+                  }}
+                >
+                  {[
+                    ["Graph calls", graphThreadSyncPreviewResult.graphCallsMade ? "YES" : "No"],
+                    ["Reads mailbox", graphThreadSyncPreviewResult.readsMailbox ? "YES" : "No"],
+                    ["Creates draft", graphThreadSyncPreviewResult.createsOutlookDraft ? "YES" : "No"],
+                    ["Sends email", graphThreadSyncPreviewResult.sendsEmail ? "YES" : "No"],
+                    ["Syncs mailbox", graphThreadSyncPreviewResult.syncsMailbox ? "YES" : "No"],
+                    ["DB changed", graphThreadSyncPreviewResult.databaseRecordsChanged ? "YES" : "No"],
+                  ].map(([label, value]) => (
+                    <div key={label} style={{ border: "1px solid #ccfbf1", borderRadius: 12, padding: 10, background: "#fff" }}>
+                      <div style={{ fontSize: 10, fontWeight: 950, color: bmColors.subtle, textTransform: "uppercase" }}>{label}</div>
+                      <div style={{ marginTop: 3, fontWeight: 950, color: value === "YES" ? bmColors.red : bmColors.green }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 10, color: bmColors.ink, fontSize: 13, fontWeight: 800 }}>
+                  Graph messages found: {num(syncPreviewCounts.graphMessages)} · Drafts: {num(syncPreviewCounts.drafts)} · Sent/received: {num(syncPreviewCounts.sentOrReceived)} · With attachments: {num(syncPreviewCounts.withAttachments)}
+                </div>
+                <div style={{ marginTop: 6, color: bmColors.muted, fontSize: 12 }}>
+                  Preview only.  No Barsh Matters records were updated.
+                </div>
+              </>
+            )}
+          </section>
+        )}
+
+        {graphThreadSyncResult && (
+          <section
+            style={{
+              border: "1px solid #ddd6fe",
+              borderRadius: 16,
+              padding: 14,
+              background: "#f5f3ff",
+              marginBottom: 14,
+            }}
+          >
+            <div style={{ fontWeight: 950, color: "#6d28d9", marginBottom: 8 }}>
+              Graph Thread Sync Result
+            </div>
+            {graphThreadSyncResult.error ? (
+              <div style={{ color: bmColors.red, fontWeight: 850 }}>
+                {textValue(graphThreadSyncResult.error)}
+              </div>
+            ) : (
+              <>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+                    gap: 8,
+                    fontSize: 12,
+                  }}
+                >
+                  {[
+                    ["Graph calls", graphThreadSyncResult.graphCallsMade ? "YES" : "No"],
+                    ["Reads mailbox", graphThreadSyncResult.readsMailbox ? "YES" : "No"],
+                    ["Creates draft", graphThreadSyncResult.createsOutlookDraft ? "YES" : "No"],
+                    ["Sends email", graphThreadSyncResult.sendsEmail ? "YES" : "No"],
+                    ["Syncs mailbox", graphThreadSyncResult.syncsMailbox ? "YES" : "No"],
+                    ["DB changed", graphThreadSyncResult.databaseRecordsChanged ? "YES" : "No"],
+                  ].map(([label, value]) => (
+                    <div key={label} style={{ border: "1px solid #ede9fe", borderRadius: 12, padding: 10, background: "#fff" }}>
+                      <div style={{ fontSize: 10, fontWeight: 950, color: bmColors.subtle, textTransform: "uppercase" }}>{label}</div>
+                      <div style={{ marginTop: 3, fontWeight: 950, color: value === "YES" ? bmColors.red : bmColors.green }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 10, color: bmColors.ink, fontSize: 13, fontWeight: 800 }}>
+                  Graph messages: {num(syncCounts.graphMessages)} · Messages upserted: {num(graphThreadSyncResult.persisted?.messagesUpserted)} · Matter links created: {num(graphThreadSyncResult.persisted?.matterLinksCreated)}
+                </div>
+                <div style={{ marginTop: 6, color: bmColors.muted, fontSize: 12 }}>
+                  Confirmed sync persists local Barsh Matters email metadata only.  It does not send email, create drafts, write Clio, upload documents, or use local Outlook automation.
+                </div>
+              </>
+            )}
+          </section>
         )}
 
         {emailThreadPreviewResult?.error && (

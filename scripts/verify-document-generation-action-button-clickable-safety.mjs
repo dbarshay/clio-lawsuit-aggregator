@@ -42,17 +42,26 @@ for (const check of checks) {
 
   const button = matching.find((candidate) => candidate.includes("Document Generation")) || matching[0];
 
-  if (button.includes("Document Generation")) pass(`${check.pagePath}: ${check.label} button label is Document Generation`);
-  else fail(`${check.pagePath}: ${check.label} button label is not Document Generation`);
+  const required = [
+    ["Document Generation label", "Document Generation"],
+    ["popup title", check.title],
+    ["indigo background", 'background: "#4f46e5"'],
+    ["white text", 'color: "#ffffff"'],
+    ["indigo border", 'border: "1px solid #4338ca"'],
+    ["button shadow", 'boxShadow: "0 10px 22px rgba(79, 70, 229, 0.28)"'],
+    ["pointer cursor", 'cursor: "pointer"'],
+  ];
 
-  if (button.includes(check.title)) pass(`${check.pagePath}: ${check.label} button title opens popup`);
-  else fail(`${check.pagePath}: ${check.label} button missing popup title`);
+  for (const [label, needle] of required) {
+    if (button.includes(needle)) pass(`${check.pagePath}: ${check.label} button has ${label}`);
+    else fail(`${check.pagePath}: ${check.label} button missing ${label}`);
+  }
 
-  if (!button.includes("disabled")) pass(`${check.pagePath}: ${check.label} button is not disabled`);
-  else fail(`${check.pagePath}: ${check.label} button contains disabled`);
-
-  if (!button.includes("not-allowed")) pass(`${check.pagePath}: ${check.label} button does not use not-allowed cursor`);
-  else fail(`${check.pagePath}: ${check.label} button still uses not-allowed cursor`);
+  const forbiddenInButton = ["not-allowed", "disabled", 'pointerEvents: "none"'];
+  for (const needle of forbiddenInButton) {
+    if (!button.includes(needle)) pass(`${check.pagePath}: ${check.label} button does not contain ${needle}`);
+    else fail(`${check.pagePath}: ${check.label} button contains forbidden ${needle}`);
+  }
 
   if (page.includes(check.popup)) pass(`${check.pagePath}: found ${check.label} popup renderer`);
   else fail(`${check.pagePath}: missing ${check.label} popup renderer`);

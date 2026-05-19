@@ -5697,13 +5697,14 @@ const activeGroupKey =
                         onClick={launchMatterDocumentGenerationDialog}
                       type="button"
                       style={{
+                            boxShadow: "0 10px 22px rgba(79, 70, 229, 0.28)",
                         width: "100%",
                         minWidth: 0,
                         height: 44,
-                        border: "1px solid #cbd5e1",
+                        border: "1px solid #4338ca",
                         borderRadius: 999,
-                        background: "#f8fafc",
-                        color: "#334155",
+                        background: "#4f46e5",
+                        color: "#ffffff",
                         fontSize: 12,
                         fontWeight: 950,
                         cursor: "pointer",

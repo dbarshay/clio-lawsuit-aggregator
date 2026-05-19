@@ -1768,6 +1768,7 @@ export default function FilteredMattersPage() {
 
   async function launchMasterDocumentGenerationDialog() {
     setMasterDocumentGenerationPopupOpen(true);
+    setActiveMasterWorkspaceTab("documents");
     await loadMasterDocumentDataPreview();
   }
 
@@ -3358,17 +3359,27 @@ export default function FilteredMattersPage() {
                       </button>
 
                       <button
+                          data-docgen-action="master"
                           title="Open the Master Lawsuit document generation preview popup."
-                          onClick={launchMasterDocumentGenerationDialog}
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            launchMasterDocumentGenerationDialog();
+                          }}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            launchMasterDocumentGenerationDialog();
+                          }}
                         type="button"
                         style={{
+                            boxShadow: "0 10px 22px rgba(79, 70, 229, 0.28)",
+                            pointerEvents: "auto",
                           width: "100%",
                           minWidth: 0,
                           height: 44,
-                          border: "1px solid #cbd5e1",
+                          border: "1px solid #4338ca",
                           borderRadius: 999,
-                          background: "#f8fafc",
-                          color: "#334155",
+                          background: "#4f46e5",
+                          color: "#ffffff",
                           fontSize: 12,
                           fontWeight: 950,
                           cursor: "pointer",

@@ -4205,8 +4205,39 @@ const activeGroupKey =
                             </div>
 
                             {message.webLinkPresent && (
-                              <div style={{ marginTop: 8, fontSize: 12, fontWeight: 850, color: bmColors.green }}>
-                                Outlook web link is stored locally.
+                              <div
+                                style={{
+                                  marginTop: 8,
+                                  display: "flex",
+                                  gap: 8,
+                                  alignItems: "center",
+                                  flexWrap: "wrap",
+                                  fontSize: 12,
+                                  fontWeight: 850,
+                                  color: bmColors.green,
+                                }}
+                              >
+                                <span>Outlook web link is stored locally.</span>
+                                {textValue(message.webLink) && (
+                                  <a
+                                    href={textValue(message.webLink)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      border: "1px solid #0f766e",
+                                      borderRadius: 999,
+                                      padding: "4px 8px",
+                                      color: "#0f766e",
+                                      background: "#ecfeff",
+                                      textDecoration: "none",
+                                      fontWeight: 950,
+                                    }}
+                                  >
+                                    Open in Outlook
+                                  </a>
+                                )}
                               </div>
                             )}
 

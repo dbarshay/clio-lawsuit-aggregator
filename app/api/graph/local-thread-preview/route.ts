@@ -152,6 +152,7 @@ export async function GET(req: NextRequest) {
         isSent: message.isSent,
         hasAttachments: message.hasAttachments,
         bodyPreview: message.bodyPreview,
+        webLink: message.webLink,
         webLinkPresent: Boolean(message.webLink),
         attachments: message.attachments.map((attachment) => ({
           id: attachment.id,

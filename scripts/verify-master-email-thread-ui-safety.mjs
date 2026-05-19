@@ -62,6 +62,10 @@ console.log("\\n=== VERIFY MASTER UI MARKERS ===");
   'Preview This Thread',
   'Sync This Thread',
   'Preview Graph Updates must be run for this specific master thread before syncing it.',
+  'Open in Outlook',
+  'target="_blank"',
+  'rel="noopener noreferrer"',
+  'clean(message.webLink)',
 ].forEach((marker) => mustContain(pagePath, page, marker));
 
 console.log("\\n=== VERIFY SUPPORTING ROUTES HAVE EXPECTED SAFETY MARKERS ===");
@@ -72,6 +76,7 @@ console.log("\\n=== VERIFY SUPPORTING ROUTES HAVE EXPECTED SAFETY MARKERS ===");
   'graphCallsMade: false',
   'databaseRecordsChanged: false',
   'masterLawsuitId',
+  'webLink: message.webLink',
 ].forEach((marker) => mustContain(localRoutePath, localRoute, marker));
 
 [

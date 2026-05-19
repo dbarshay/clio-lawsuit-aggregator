@@ -38,6 +38,10 @@ const requiredPageMarkers = [
   'Preview This Thread',
   'Sync This Thread',
   'Preview Graph Updates must be run for this specific thread before syncing it.',
+  'Open in Outlook',
+  'target="_blank"',
+  'rel="noopener noreferrer"',
+  'textValue(message.webLink)',
 ];
 
 const requiredRouteMarkers = [
@@ -51,6 +55,7 @@ const requiredRouteMarkers = [
   'attachesDocument: false',
   'clioRecordsChanged: false',
   'databaseRecordsChanged: false',
+  'webLink: message.webLink',
 ];
 
 const forbiddenPageMarkers = [

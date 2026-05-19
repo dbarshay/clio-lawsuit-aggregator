@@ -5,6 +5,7 @@ import {
   type DocumentDeliveryContext,
   type DocumentDeliverySource,
 } from "@/lib/documents/delivery";
+import { buildGraphDraftPayloadPreview } from "@/lib/graph/draft";
 
 function clean(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -105,6 +106,27 @@ export async function POST(req: NextRequest) {
         : null,
     ].filter(Boolean);
 
+    const graphContext = context as any;
+
+    const graphDraftPayloadPreview = buildGraphDraftPayloadPreview({
+      subject,
+      bodyText: emailBody,
+      to: to as any[],
+      cc: cc as any[],
+      bcc: bcc as any[],
+      attachments: attachmentCandidates as any[],
+      matterContext: {
+        source: context.source,
+        matterId: graphContext.matterId,
+        matterDisplayNumber: graphContext.matterDisplayNumber || graphContext.clioDisplayNumber,
+        masterLawsuitId: graphContext.masterLawsuitId,
+        clioMatterId: graphContext.clioMatterId,
+        clioDisplayNumber: graphContext.clioDisplayNumber,
+        clioMaildropEmail: graphContext.clioMaildropEmail,
+        clioMaildropLabel: graphContext.clioMaildropLabel,
+      },
+    });
+
     return NextResponse.json({
       ok: true,
       action: "document-delivery-draft-preview",
@@ -124,6 +146,7 @@ export async function POST(req: NextRequest) {
         body: emailBody,
         attachments: attachmentCandidates,
       },
+      graphDraftPayloadPreview,
       context,
       requirements: {
         settledWithEmailRequiredForTo: true,

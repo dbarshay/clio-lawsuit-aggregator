@@ -27,7 +27,9 @@ function mustNotContain(path, text, marker) {
 console.log("=== GRAPH MAILDROP DISCOVERY SAFETY VERIFICATION ===");
 
 const routePath = "app/api/graph/maildrop-discovery/route.ts";
+const registryPath = "lib/graph/maildropRegistry.ts";
 const route = read(routePath);
+const registry = read(registryPath);
 const packagePath = "package.json";
 const pkg = read(packagePath);
 
@@ -44,8 +46,7 @@ console.log("\n=== VERIFY ROUTE IS FAIL-CLOSED / CONFIRMED ===");
 
 console.log("\n=== VERIFY ROUTE SCANS RECENT GRAPH MESSAGES AND MATCHES LOCAL MAILDROPS ===");
 [
-  "prisma.emailThread.findMany",
-  "clioMaildropEmail: { not: null }",
+  "loadKnownMaildropAddresses",
   "graphFetchJson",
   "graphRecentMessagesUrl",
   "receivedDateTime desc",
@@ -54,6 +55,15 @@ console.log("\n=== VERIFY ROUTE SCANS RECENT GRAPH MESSAGES AND MATCHES LOCAL MA
   "matchedMaildropEmail",
   "MailDrop discovery scans recent Microsoft Graph mailbox messages",
 ].forEach((marker) => mustContain(routePath, route, marker));
+
+
+console.log("\n=== VERIFY MAILDROP REGISTRY HELPER LOADS REGISTRY AND EMAIL THREAD FALLBACK ===");
+[
+  "prisma.maildropAddress.findMany",
+  "prisma.emailThread.findMany",
+  "clioMaildropEmail: { not: null }",
+  "email_thread_fallback",
+].forEach((marker) => mustContain(registryPath, registry, marker));
 
 console.log("\n=== VERIFY PREVIEW MODE IS READ-ONLY ===");
 [

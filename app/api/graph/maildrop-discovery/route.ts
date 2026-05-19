@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { graphApiBase, graphFetchJson } from "@/lib/graph/client";
 import { getGraphAuthConfig, getGraphAuthReadiness } from "@/lib/graph/config";
 import { persistGraphThreadSyncMessages } from "@/lib/graph/emailPersistence";
+import { loadKnownMaildropAddresses } from "@/lib/graph/maildropRegistry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -140,36 +141,7 @@ function confirmMode(req: NextRequest): "preview" | "sync" | null {
 }
 
 async function loadKnownMaildrops(limit: number) {
-  const threads = await prisma.emailThread.findMany({
-    where: {
-      provider: PROVIDER,
-      clioMaildropEmail: { not: null },
-    },
-    orderBy: [{ updatedAt: "desc" }],
-    take: limit,
-    select: {
-      id: true,
-      conversationId: true,
-      subject: true,
-      matterId: true,
-      matterDisplayNumber: true,
-      masterLawsuitId: true,
-      clioMatterId: true,
-      clioDisplayNumber: true,
-      clioMaildropEmail: true,
-      clioMaildropLabel: true,
-      updatedAt: true,
-    },
-  });
-
-  const byEmail = new Map<string, any>();
-  for (const thread of threads) {
-    const email = lowerEmail(thread.clioMaildropEmail);
-    if (!email || byEmail.has(email)) continue;
-    byEmail.set(email, thread);
-  }
-
-  return Array.from(byEmail.values());
+  return loadKnownMaildropAddresses(limit);
 }
 
 function contextFromMaildropRecord(record: any) {

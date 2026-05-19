@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clioFetch } from "@/lib/clio";
 import { prisma } from "@/lib/prisma";
+import { upsertMaildropAddress } from "@/lib/graph/maildropRegistry";
 
 function clean(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -126,6 +127,21 @@ export async function GET(req: NextRequest) {
     if (!maildropEmail) {
       throw new Error(`Resolved Clio matter ${displayNumber} did not include maildrop_address.`);
     }
+
+    await upsertMaildropAddress({
+      source: "clio_maildrop_resolve",
+      matterId: source === "direct_matter" ? Number(clean(url.searchParams.get("matterId")) || 0) || null : null,
+      masterLawsuitId: source === "master_lawsuit" ? clean(url.searchParams.get("masterLawsuitId")) || null : null,
+      clioMatterId: Number(matter?.id || 0) || null,
+      clioDisplayNumber: displayNumber,
+      clioMaildropEmail: maildropEmail,
+      clioMaildropLabel: `MailDrop- ${displayNumber}`,
+      metadata: {
+        route: "/api/documents/clio-maildrop-resolve",
+        source,
+        maildropField: "maildrop_address",
+      },
+    });
 
     return NextResponse.json({
       ok: true,

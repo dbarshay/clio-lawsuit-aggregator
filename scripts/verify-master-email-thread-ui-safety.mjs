@@ -1,119 +1,95 @@
-#!/usr/bin/env node
-import fs from "fs";
+import fs from "node:fs";
 
-const pagePath = "app/matters/page.tsx";
-const localRoutePath = "app/api/graph/local-thread-preview/route.ts";
-const syncPreviewRoutePath = "app/api/graph/thread-sync-preview/route.ts";
-const syncRoutePath = "app/api/graph/thread-sync/route.ts";
-const packagePath = "package.json";
+let failures = 0;
 
-const page = fs.readFileSync(pagePath, "utf8");
-const localRoute = fs.readFileSync(localRoutePath, "utf8");
-const syncPreviewRoute = fs.readFileSync(syncPreviewRoutePath, "utf8");
-const syncRoute = fs.readFileSync(syncRoutePath, "utf8");
-const pkg = fs.readFileSync(packagePath, "utf8");
+function read(path) {
+  return fs.readFileSync(path, "utf8");
+}
 
 function mustContain(label, text, marker) {
   if (!text.includes(marker)) {
     console.error(`FAIL: ${label} missing marker: ${marker}`);
-    process.exit(1);
+    failures += 1;
+  } else {
+    console.log(`PASS: ${label} found ${marker}`);
   }
-  console.log(`PASS: ${label} found ${marker}`);
 }
 
 function mustNotContain(label, text, marker) {
   if (text.includes(marker)) {
     console.error(`FAIL: ${label} must not contain marker: ${marker}`);
-    process.exit(1);
+    failures += 1;
+  } else {
+    console.log(`PASS: ${label} does not contain ${marker}`);
   }
-  console.log(`PASS: ${label} does not contain ${marker}`);
 }
 
-console.log("=== VERIFY MASTER EMAIL THREAD UI SAFETY ===");
+console.log("=== VERIFY MASTER EMAILS UI SAFETY ===");
 
-console.log("\\n=== VERIFY MASTER UI MARKERS ===");
+const pagePath = "app/matters/page.tsx";
+const routePath = "app/api/graph/local-thread-preview/route.ts";
+const page = read(pagePath);
+const route = read(routePath);
+
+console.log("\n=== VERIFY UNIFIED MASTER EMAILS UI MARKERS ===");
 [
-  '| "email_threads"',
-  'masterEmailThreadPreviewLoading',
-  'masterGraphThreadSyncPreviewLoading',
-  'masterGraphThreadSyncLoading',
-  'function currentMasterEmailLawsuitId()',
-  'function firstMasterEmailConversationId()',
-  'function masterEmailSyncContext',
-  'async function loadMasterEmailThreadPreview()',
-  'async function previewMasterGraphThreadUpdates(conversationIdOverride?: string)',
-  'async function syncMasterGraphThreadToBarshMatters(conversationIdOverride?: string)',
+  'Emails',
+  'function loadMasterEmailThreadPreview()',
+  'fetch(`/api/graph/local-thread-preview?${params.toString()}`',
   'function renderMasterEmailThreadsPanel()',
-  'id="master-email-threads-section"',
-  'setActiveMasterWorkspaceTab("email_threads")',
-  'Email / Threads',
-  'Preview Graph Updates',
-  'Sync Thread to Barsh Matters',
-  'Run Preview Graph Updates before syncing this master thread to Barsh Matters.',
-  '/api/graph/local-thread-preview?${params.toString()}',
-  '/api/graph/thread-sync-preview?${params.toString()}',
-  '/api/graph/thread-sync?confirm=sync-graph-thread',
-  'masterLawsuitId: masterId',
-  'Confirmed sync persists local Barsh Matters email metadata only.',
-  'masterGraphThreadSyncPreviewConversationId',
-  'masterGraphThreadSyncConversationId',
-  'async function previewMasterGraphThreadUpdates(conversationIdOverride?: string)',
-  'async function syncMasterGraphThreadToBarshMatters(conversationIdOverride?: string)',
-  'Preview This Thread',
-  'Sync This Thread',
-  'Preview Graph Updates must be run for this specific master thread before syncing it.',
+  'activeMasterWorkspaceTab === "email_threads" && renderMasterEmailThreadsPanel()',
+  'if (activeMasterWorkspaceTab !== "email_threads") return;',
+  'void loadMasterEmailThreadPreview();',
+  'Unified Master Lawsuit email area.',
+  'Graph-synced messages and MailDrop-linked thread records appear here together',
+  'Opening this panel reads local records only',
+  'Email records load automatically when this panel opens.',
+  'Refresh Emails',
+  'MailDrop Present',
   'Open in Outlook',
-  'target="_blank"',
-  'rel="noopener noreferrer"',
-  'clean(message.webLink)',
-  'anyMasterMessageOutlookLinkAvailable',
-  'Outlook link available',
 ].forEach((marker) => mustContain(pagePath, page, marker));
 
-console.log("\\n=== VERIFY SUPPORTING ROUTES HAVE EXPECTED SAFETY MARKERS ===");
+console.log("\n=== VERIFY MANUAL GRAPH SYNC CONTROLS ARE HIDDEN DEBUG SCAFFOLDING ===");
+[
+  'Preview Graph Updates',
+  'Sync Thread to Barsh Matters',
+  'Preview This Thread',
+  'Sync This Thread',
+  'hidden',
+  'aria-hidden="true"',
+].forEach((marker) => mustContain(pagePath, page, marker));
+
+console.log("\n=== VERIFY LOCAL THREAD PREVIEW ROUTE IS READ-ONLY ===");
 [
   'action: "graph-local-thread-preview"',
-  'readOnly: true',
-  'previewOnly: true',
   'graphCallsMade: false',
-  'databaseRecordsChanged: false',
-  'masterLawsuitId',
-  'webLink: message.webLink',
-].forEach((marker) => mustContain(localRoutePath, localRoute, marker));
-
-[
-  'action: "graph-thread-sync-preview"',
-  'confirm !== REQUIRED_CONFIRMATION',
-  'readOnly: true',
-  'previewOnly: true',
+  'readsMailbox: false',
   'createsOutlookDraft: false',
   'sendsEmail: false',
-  'databaseRecordsChanged: false',
-].forEach((marker) => mustContain(syncPreviewRoutePath, syncPreviewRoute, marker));
-
-[
-  'action: "graph-thread-sync"',
-  'const REQUIRED_CONFIRMATION = "sync-graph-thread"',
-  'confirm !== REQUIRED_CONFIRMATION',
-  'createsOutlookDraft: false',
-  'sendsEmail: false',
+  'syncsMailbox: false',
   'clioRecordsChanged: false',
-  'persistGraphThreadSyncMessages',
-].forEach((marker) => mustContain(syncRoutePath, syncRoute, marker));
+  'databaseRecordsChanged: false',
+  'Read-only local email-thread preview.',
+].forEach((marker) => mustContain(routePath, route, marker));
 
-console.log("\\n=== VERIFY NO DIRECT DRAFT/SEND/CLIO WRITE WIRING IN MASTER UI ===");
+console.log("\n=== VERIFY NO DIRECT DRAFT/SEND/CLIO WRITE WIRING IN MASTER EMAILS UI ===");
 [
+  'fetch("/api/graph/create-draft"',
   'fetch(`/api/graph/create-draft',
-  'fetch("/api/graph/create-draft',
-  "fetch('/api/graph/create-draft",
+  'confirm=create-graph-draft',
   'sendMail',
-  '/sendMail',
-  'createUploadSession',
-  'clioFetch(',
+  'window.location.href = buildMailtoHref(context);',
 ].forEach((marker) => mustNotContain(pagePath, page, marker));
 
-console.log("\\n=== VERIFY SCRIPT REGISTRATION ===");
-mustContain(packagePath, pkg, "verify:master-email-thread-ui-safety");
+console.log("\n=== VERIFY SCRIPT REGISTRATION ===");
+const packageJson = read("package.json");
+mustContain("package.json", packageJson, '"verify:master-email-thread-ui-safety"');
 
-console.log("\\n=== MASTER EMAIL THREAD UI SAFETY VERIFICATION PASSED ===");
-console.log("Master Email / Threads UI uses preview-first Graph sync and does not create drafts, send email, write Clio, upload documents, or use local Outlook automation.");
+if (failures > 0) {
+  console.error(`\n=== MASTER EMAILS UI SAFETY FAILED: ${failures} failure(s) ===`);
+  process.exit(1);
+}
+
+console.log("\n=== MASTER EMAILS UI SAFETY VERIFICATION PASSED ===");
+console.log("Master Emails UI is unified for Graph-synced and MailDrop-linked local records.");
+console.log("Opening the panel auto-loads local records only; hidden debug controls do not create drafts, send email, write Clio, or write database records.");

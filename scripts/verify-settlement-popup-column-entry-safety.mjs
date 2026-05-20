@@ -34,6 +34,7 @@ console.log("=== SETTLEMENT POPUP COLUMN ENTRY SAFETY VERIFICATION ===");
   "Payment Due Date",
   "Retainer Principal",
   "Retainer Interest",
+  "masterSettlementWholePercentLabel",
   "Fee defaults source:",
   "repeat(2, minmax(240px, 1fr))",
   "formattedMoney ? `$${formattedMoney}`",

@@ -570,6 +570,8 @@ export default function FilteredMattersPage() {
   const [masterSettlementRecordSaveLoading, setMasterSettlementRecordSaveLoading] = useState(false);
   const [masterSettlementProviderFeeDefaults, setMasterSettlementProviderFeeDefaults] = useState<any>(null);
   const [masterSettlementProviderFeeDefaultsLoading, setMasterSettlementProviderFeeDefaultsLoading] = useState(false);
+  const [masterSettlementPopupPosition, setMasterSettlementPopupPosition] = useState({ x: 0, y: 72 });
+  const [masterSettlementPopupDragging, setMasterSettlementPopupDragging] = useState(false);
 
   const [masterInfoEditDialog, setMasterInfoEditDialog] = useState<null | {
     field: string;
@@ -1357,6 +1359,66 @@ export default function FilteredMattersPage() {
     };
   }, [masterNoteDeleteTarget]);
 
+  function resetMasterSettlementPopupPosition() {
+    setMasterSettlementPopupPosition({ x: 0, y: 72 });
+
+    const popup = document.querySelector<HTMLElement>("[data-barsh-draggable-settlement-popup-shell='true']");
+    if (popup) {
+      popup.style.top = "72px";
+      popup.style.left = "calc(50% + 0px)";
+      popup.style.transform = "translateX(-50%)";
+    }
+  }
+
+  function beginMasterSettlementPopupDrag(event: React.PointerEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest?.("button, input, textarea, select, a")) return;
+
+    const popupElement = document.querySelector<HTMLElement>("[data-barsh-draggable-settlement-popup-shell='true']");
+    if (!popupElement) return;
+    const popup = popupElement;
+
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+
+    const rect = popup.getBoundingClientRect();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startLeft = rect.left;
+    const startTop = rect.top;
+    const priorUserSelect = document.body.style.userSelect;
+
+    document.body.style.userSelect = "none";
+    setMasterSettlementPopupDragging(true);
+
+    popup.style.left = `${startLeft}px`;
+    popup.style.top = `${startTop}px`;
+    popup.style.transform = "none";
+
+    function handleMove(moveEvent: PointerEvent) {
+      moveEvent.preventDefault();
+
+      const nextLeft = startLeft + moveEvent.clientX - startX;
+      const nextTop = Math.max(8, startTop + moveEvent.clientY - startY);
+
+      popup.style.left = `${nextLeft}px`;
+      popup.style.top = `${nextTop}px`;
+      popup.style.transform = "none";
+    }
+
+    function handleUp() {
+      document.body.style.userSelect = priorUserSelect;
+      setMasterSettlementPopupDragging(false);
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+    }
+
+    window.addEventListener("pointermove", handleMove, { passive: false });
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleUp);
+  }
+
   function masterSettlementMoneyValue(value: string): number {
     const cleaned = String(value || "").replace(/[$,\s]/g, "");
     const n = Number(cleaned);
@@ -1375,6 +1437,11 @@ export default function FilteredMattersPage() {
     const cleaned = String(value || "").replace(/[%\s]/g, "");
     const n = Number(cleaned);
     return Number.isFinite(n) ? n : 0;
+  }
+
+  function masterSettlementWholePercentLabel(value: string): string {
+    const n = masterSettlementPercentValue(value);
+    return `${Math.round(n)}%`;
   }
 
   function addDaysToDateInput(dateInput: string, days: number): string {
@@ -1510,6 +1577,7 @@ export default function FilteredMattersPage() {
     setMasterSettlementRecordSaveLoading(false);
     setMasterSettlementProviderFeeDefaults(null);
     setMasterSettlementProviderFeeDefaultsLoading(false);
+    resetMasterSettlementPopupPosition();
   }
 
   async function runMasterSettlementLocalPreview() {
@@ -5568,8 +5636,8 @@ export default function FilteredMattersPage() {
                   onClick={(event) => event.stopPropagation()}
                   style={{
                     position: "fixed",
-                    top: 154,
-                    left: "50%",
+                    top: masterSettlementPopupPosition.y,
+                    left: `calc(50% + ${masterSettlementPopupPosition.x}px)`,
                     transform: "translateX(-50%)",
                     width: "min(360px, 94vw)",
                     display: "grid",
@@ -5672,6 +5740,9 @@ export default function FilteredMattersPage() {
                   }}
                 >
                   <div
+                    data-barsh-draggable-settlement-popup-header="true"
+                    onPointerDown={beginMasterSettlementPopupDrag}
+                    title="Drag to move this settlement popup."
                     style={{
                       position: "sticky",
                       top: 0,
@@ -5685,6 +5756,9 @@ export default function FilteredMattersPage() {
                       background: "#eff6ff",
                       borderTopLeftRadius: 22,
                       borderTopRightRadius: 22,
+                      cursor: masterSettlementPopupDragging ? "grabbing" : "grab",
+                      userSelect: "none",
+                      touchAction: "none",
                     }}
                   >
                     <div>
@@ -6321,18 +6395,23 @@ export default function FilteredMattersPage() {
                   overflow: "hidden",
                   background: "rgba(15, 23, 42, 0.58)",
                 }}
-                onClick={() => setMasterSettlementFormOpen(false)}
+                onClick={(event) => event.stopPropagation()}
               >
                 <div
+                  data-barsh-draggable-settlement-popup-shell="true"
                   onClick={(event) => event.stopPropagation()}
                   style={{
                     position: "fixed",
-                    top: 154,
-                    left: "50%",
+                    top: masterSettlementPopupPosition.y,
+                    left: `calc(50% + ${masterSettlementPopupPosition.x}px)`,
                     transform: "translateX(-50%)",
                     width: "min(1080px, 94vw)",
-                    maxHeight: "calc(100vh - 178px)",
-                    overflowY: "auto",
+                    minWidth: 720,
+                    minHeight: 420,
+                    maxWidth: "98vw",
+                    maxHeight: "calc(100vh - 24px)",
+                    overflow: "auto",
+                    resize: "both",
                     border: "1px solid #bfdbfe",
                     borderRadius: 22,
                     background: "#ffffff",
@@ -6340,6 +6419,9 @@ export default function FilteredMattersPage() {
                   }}
                 >
                   <div
+                    data-barsh-draggable-settlement-popup-header="true"
+                    onPointerDown={beginMasterSettlementPopupDrag}
+                    title="Drag this blue header to move the settlement popup."
                     style={{
                       position: "sticky",
                       top: 0,
@@ -6353,6 +6435,9 @@ export default function FilteredMattersPage() {
                       background: "#eff6ff",
                       borderTopLeftRadius: 22,
                       borderTopRightRadius: 22,
+                      cursor: masterSettlementPopupDragging ? "grabbing" : "grab",
+                      userSelect: "none",
+                      touchAction: "none",
                     }}
                   >
                     <div>
@@ -6373,32 +6458,10 @@ export default function FilteredMattersPage() {
                           color: "#1e40af",
                         }}
                       >
-                        Master Lawsuit Settlement · Local-first workflow.
+                        Master Lawsuit Settlement · Local-first workflow.  Drag this blue header to move the popup.
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        resetMasterSettlementPreviewForm();
-                        setMasterSettlementFormOpen(false);
-                      }}
-                      style={{
-                        width: 38,
-                        height: 38,
-                        border: "1px solid #cbd5e1",
-                        borderRadius: 999,
-                        background: "#ffffff",
-                        color: "#64748b",
-                        fontSize: 26,
-                        fontWeight: 900,
-                        cursor: "pointer",
-                        lineHeight: 1,
-                      }}
-                      aria-label="Close settlement preview popup"
-                    >
-                      ×
-                    </button>
                   </div>
 
                   <div
@@ -6558,13 +6621,13 @@ export default function FilteredMattersPage() {
                     <div>
                       <div>Principal: {money(masterSettlementGrossValue())}</div>
                       <div style={{ marginTop: 4, color: "#475569" }}>
-                        Retainer Principal: {masterSettlementProviderFeeDefaultsLoading ? "Loading..." : `${masterSettlementPercentValue(masterSettlementPrincipalFeePercentInput).toFixed(2)}%`}
+                        Retainer Principal: {masterSettlementProviderFeeDefaultsLoading ? "Loading..." : masterSettlementWholePercentLabel(masterSettlementPrincipalFeePercentInput)}
                       </div>
                     </div>
                     <div>
                       <div>Interest: {money(masterSettlementInterestValue())}</div>
                       <div style={{ marginTop: 4, color: "#475569" }}>
-                        Retainer Interest: {masterSettlementProviderFeeDefaultsLoading ? "Loading..." : `${masterSettlementPercentValue(masterSettlementInterestFeePercentInput).toFixed(2)}%`}
+                        Retainer Interest: {masterSettlementProviderFeeDefaultsLoading ? "Loading..." : masterSettlementWholePercentLabel(masterSettlementInterestFeePercentInput)}
                       </div>
                     </div>
                     <div style={{ gridColumn: "1 / -1", color: "#475569" }}>

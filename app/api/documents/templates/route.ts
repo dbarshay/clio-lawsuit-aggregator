@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import {
   BarshDocumentTemplateCategory,
+  mergeFieldsForTemplate,
   templateRepositoryRecords,
 } from "@/lib/documents/templateRegistry";
 
@@ -29,7 +31,7 @@ function safetyDocumentTemplateRepository() {
   return {
     action: "document-template-repository-preview",
     localFirst: true,
-    sourceOfTruth: "barsh-matters-local-template-registry",
+    sourceOfTruth: "barsh-matters-local-template-repository",
     dryRun: true,
     previewOnly: true,
     readOnly: true,
@@ -44,24 +46,126 @@ function safetyDocumentTemplateRepository() {
   };
 }
 
+function readOnlyDbTemplateToRepositoryRecord(row: any) {
+  const currentVersion =
+    Array.isArray(row?.versions) && row.versions.length > 0
+      ? row.versions[0]
+      : null;
+
+  return {
+    id: row.id,
+    key: row.key,
+    label: row.label,
+    category: row.category,
+    description: row.description || "",
+    defaultFilenameSuffix: row.defaultFilenameSuffix || "",
+    generationEndpoint: row.generationEndpoint || "",
+    outputFormat: row.outputFormat || "docx",
+    sourceOfTruth: row.sourceOfTruth || "barsh-matters-local",
+    enabled: row.enabled !== false,
+    editableInRepository: row.editableInRepository !== false,
+    versioningPlanned: true,
+    currentVersionId: row.currentVersionId || currentVersion?.id || null,
+    currentVersion: currentVersion
+      ? {
+          id: currentVersion.id,
+          versionNumber: currentVersion.versionNumber,
+          status: currentVersion.status,
+          bodyFormat: currentVersion.bodyFormat,
+          storageKind: currentVersion.storageKind,
+          mergeFieldSet: currentVersion.mergeFieldSet || "",
+        }
+      : null,
+    repositorySource: "barsh-matters-db",
+    repositoryStatus: "database-template",
+    editableNow: false,
+    editableLater: row.editableInRepository !== false,
+    mergeFieldSet: currentVersion?.mergeFieldSet || row?.metadata?.mergeFieldSet || "",
+    mergeFields: Array.isArray(row?.mergeFields)
+      ? row.mergeFields.map((field: any) => ({
+          key: field.key,
+          label: field.label,
+          description: field.description || "",
+          source: field.source,
+          required: Boolean(field.required),
+          exampleValue: field.exampleValue || "",
+          metadata: field.metadata || null,
+        }))
+      : [],
+    metadata: row.metadata || null,
+  };
+}
+
+async function readDatabaseTemplates(category: BarshDocumentTemplateCategory | "all") {
+  const where =
+    category === "all"
+      ? { enabled: true }
+      : { enabled: true, category };
+
+  const rows = await prisma.documentTemplate.findMany({
+    where,
+    orderBy: [
+      { category: "asc" },
+      { label: "asc" },
+      { key: "asc" },
+    ],
+    include: {
+      versions: {
+        orderBy: {
+          versionNumber: "desc",
+        },
+        take: 1,
+      },
+      mergeFields: {
+        orderBy: {
+          key: "asc",
+        },
+      },
+    },
+  });
+
+  return rows.map(readOnlyDbTemplateToRepositoryRecord);
+}
+
+function fallbackRegistryTemplates(category: BarshDocumentTemplateCategory | "all") {
+  return templateRepositoryRecords(category).map((template: any) => ({
+    ...template,
+    repositorySource: "barsh-matters-code-registry",
+    repositoryStatus: "seed-template-fallback",
+    editableNow: false,
+    editableLater: Boolean(template.editableLater),
+    mergeFields: Array.isArray(template.mergeFields)
+      ? template.mergeFields
+      : mergeFieldsForTemplate(template),
+  }));
+}
+
 export async function GET(req: NextRequest) {
   try {
     const category = normalizeCategory(req.nextUrl.searchParams.get("category") || "all");
-    const templates = templateRepositoryRecords(category);
+
+    let repositorySource = "barsh-matters-db";
+    let templates = await readDatabaseTemplates(category);
+
+    if (templates.length === 0) {
+      repositorySource = "barsh-matters-code-registry-fallback";
+      templates = fallbackRegistryTemplates(category);
+    }
 
     return NextResponse.json({
       ok: true,
       action: "document-template-repository-preview",
       localFirst: true,
-      sourceOfTruth: "barsh-matters-local-template-registry",
-      repositoryMode: "code-registry-foundation",
-      repositoryFuture: "database-backed editable document-template repository with versioning and merge fields",
+      sourceOfTruth: "barsh-matters-local-template-repository",
+      repositoryMode: "database-ready-read-only",
+      repositorySource,
+      repositoryFuture: "editable document-template repository with versioning, merge fields, uploaded Word templates, and finalized document vault integration",
       category,
       count: templates.length,
       templates,
       safety: safetyDocumentTemplateRepository(),
       note:
-        "Read-only document-template repository foundation.  This route exposes seeded template definitions and merge-field metadata only.  It does not edit templates, generate documents, upload to Clio, create drafts, send email, print, or queue documents.",
+        "Read-only document-template repository endpoint.  It reads local Barsh Matters DocumentTemplate tables when records exist and falls back to seeded code-registry templates when the database repository is empty.  It does not edit templates, seed templates, generate documents, upload to Clio, create drafts, send email, print, or queue documents.",
     });
   } catch (error: any) {
     return NextResponse.json(
@@ -69,7 +173,7 @@ export async function GET(req: NextRequest) {
         ok: false,
         action: "document-template-repository-preview",
         localFirst: true,
-        sourceOfTruth: "barsh-matters-local-template-registry",
+        sourceOfTruth: "barsh-matters-local-template-repository",
         error: error?.message || "Document template repository preview failed.",
         safety: safetyDocumentTemplateRepository(),
       },

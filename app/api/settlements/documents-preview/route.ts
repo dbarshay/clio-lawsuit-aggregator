@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { buildSettlementPlannedDocuments } from "@/lib/documents/templateRegistry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -128,41 +129,10 @@ export async function GET(req: NextRequest) {
     const baseName = `${safeFilePart(effectiveMasterLawsuitId)} - ${safeFilePart(provider)} aao ${safeFilePart(patient)} v ${safeFilePart(insurer)} - Claim ${safeFilePart(claimNumber)}`;
     const folderPath = `Settlements/${todayPathPart()}/${safeFilePart(effectiveMasterLawsuitId)}`;
 
-    const plannedDocuments = [
-      {
-        key: "settlement-summary",
-        label: "Settlement Summary",
-        filename: `${baseName} - Settlement Summary.docx`,
-        status: blockingErrors.length === 0 ? "ready-local-settlement-route-docx" : "blocked",
-        availableNow: blockingErrors.length === 0,
-        generationEndpoint: "/api/settlements/settlement-summary",
-        routeOnly: true,
-        sourceOfTruth: "barsh-matters-local",
-        requiresFinalizationBeforeDelivery: true,
-      },
-      {
-        key: "provider-remittance-breakdown",
-        label: "Provider Remittance Breakdown",
-        filename: `${baseName} - Provider Remittance Breakdown.docx`,
-        status: blockingErrors.length === 0 ? "ready-local-settlement-route-docx" : "blocked",
-        availableNow: blockingErrors.length === 0,
-        generationEndpoint: "/api/settlements/provider-remittance-breakdown",
-        routeOnly: true,
-        sourceOfTruth: "barsh-matters-local",
-        requiresFinalizationBeforeDelivery: true,
-      },
-      {
-        key: "attorney-fee-breakdown",
-        label: "Attorney Fee Breakdown",
-        filename: `${baseName} - Attorney Fee Breakdown.docx`,
-        status: blockingErrors.length === 0 ? "ready-local-settlement-route-docx" : "blocked",
-        availableNow: blockingErrors.length === 0,
-        generationEndpoint: "/api/settlements/attorney-fee-breakdown",
-        routeOnly: true,
-        sourceOfTruth: "barsh-matters-local",
-        requiresFinalizationBeforeDelivery: true,
-      },
-    ];
+    const plannedDocuments = buildSettlementPlannedDocuments({
+      baseName,
+      blockingErrors,
+    });
 
     return NextResponse.json({
       ok: blockingErrors.length === 0,

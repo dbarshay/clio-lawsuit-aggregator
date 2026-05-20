@@ -73,7 +73,8 @@
     "verify:master-email-strict-display-filter-safety": "node scripts/verify-master-email-strict-display-filter-safety.mjs",
     "verify:local-first-settlement-preview-safety": "node scripts/verify-local-first-settlement-preview-safety.mjs",
     "verify:local-first-settlement-preview-ui-safety": "node scripts/verify-local-first-settlement-preview-ui-safety.mjs",
-    "verify:local-settlement-persistence-schema-safety": "node scripts/verify-local-settlement-persistence-schema-safety.mjs"
+    "verify:local-settlement-persistence-schema-safety": "node scripts/verify-local-settlement-persistence-schema-safety.mjs",
+    "verify:local-settlement-record-preview-safety": "node scripts/verify-local-settlement-record-preview-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

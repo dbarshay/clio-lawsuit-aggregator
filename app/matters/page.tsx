@@ -566,6 +566,8 @@ export default function FilteredMattersPage() {
   const [masterSettlementNotesInput, setMasterSettlementNotesInput] = useState("");
   const [masterSettlementLocalPreview, setMasterSettlementLocalPreview] = useState<any>(null);
   const [masterSettlementLocalPreviewLoading, setMasterSettlementLocalPreviewLoading] = useState(false);
+  const [masterSettlementRecordPreview, setMasterSettlementRecordPreview] = useState<any>(null);
+  const [masterSettlementRecordPreviewLoading, setMasterSettlementRecordPreviewLoading] = useState(false);
 
   const [masterInfoEditDialog, setMasterInfoEditDialog] = useState<null | {
     field: string;
@@ -1391,11 +1393,14 @@ export default function FilteredMattersPage() {
     setMasterSettlementNotesInput("");
     setMasterSettlementLocalPreview(null);
     setMasterSettlementLocalPreviewLoading(false);
+    setMasterSettlementRecordPreview(null);
+    setMasterSettlementRecordPreviewLoading(false);
   }
 
   async function runMasterSettlementLocalPreview() {
     setMasterSettlementLocalPreviewLoading(true);
     setMasterSettlementLocalPreview(null);
+    setMasterSettlementRecordPreview(null);
 
     try {
       const response = await fetch("/api/settlements/local-preview", {
@@ -1431,6 +1436,38 @@ export default function FilteredMattersPage() {
       });
     } finally {
       setMasterSettlementLocalPreviewLoading(false);
+    }
+  }
+
+  async function runMasterSettlementRecordPreview() {
+    const settlementRecordPayload = masterSettlementLocalPreview?.settlementRecordPayload;
+
+    setMasterSettlementRecordPreviewLoading(true);
+    setMasterSettlementRecordPreview(null);
+
+    try {
+      const response = await fetch("/api/settlements/local-record-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settlementRecordPayload }),
+      });
+
+      const json = await response.json().catch(() => null);
+      setMasterSettlementRecordPreview({
+        ...(json || {}),
+        ok: Boolean(response.ok && json?.ok),
+        responseStatus: response.status,
+      });
+    } catch (error: any) {
+      setMasterSettlementRecordPreview({
+        ok: false,
+        action: "local-settlement-record-preview",
+        previewOnly: true,
+        localFirst: true,
+        error: error?.message || "Local settlement record preview failed.",
+      });
+    } finally {
+      setMasterSettlementRecordPreviewLoading(false);
     }
   }
 
@@ -6622,6 +6659,46 @@ export default function FilteredMattersPage() {
                         </div>
                       )}
 
+                      {masterSettlementRecordPreview && (
+                        <div
+                          data-barsh-local-settlement-save-preview-panel="true"
+                          style={{
+                            border: masterSettlementRecordPreview.ok ? "1px solid #93c5fd" : "1px solid #fecaca",
+                            borderRadius: 12,
+                            background: masterSettlementRecordPreview.ok ? "#eff6ff" : "#fef2f2",
+                            padding: "10px 12px",
+                            display: "grid",
+                            gap: 6,
+                          }}
+                        >
+                          <div style={{ fontWeight: 950, color: masterSettlementRecordPreview.ok ? "#1d4ed8" : "#991b1b" }}>
+                            Local Settlement Save Preview
+                          </div>
+                          <div style={{ color: "#475569", lineHeight: 1.45 }}>
+                            Preview only.  This validates what would save to LocalSettlementRecord and LocalSettlementRow, but does not write the database.
+                          </div>
+                          {masterSettlementRecordPreview.error && (
+                            <div style={{ color: "#991b1b", fontWeight: 900 }}>
+                              Error: {masterSettlementRecordPreview.error}
+                            </div>
+                          )}
+                          {masterSettlementRecordPreview.wouldSaveRecord && (
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 8 }}>
+                              <div><strong>Target:</strong> {masterSettlementRecordPreview.wouldSaveRecord.targetModel || "—"}</div>
+                              <div><strong>Rows:</strong> {Array.isArray(masterSettlementRecordPreview.wouldSaveRecord.rowValues) ? masterSettlementRecordPreview.wouldSaveRecord.rowValues.length : "—"}</div>
+                              <div><strong>Total Fee:</strong> {money(masterSettlementRecordPreview.wouldSaveRecord.recordValues?.totalFee)}</div>
+                              <div><strong>Provider Net:</strong> {money(masterSettlementRecordPreview.wouldSaveRecord.recordValues?.providerNetTotal)}</div>
+                              <div><strong>DB Changed:</strong> {masterSettlementRecordPreview.wouldSaveRecord.databaseRecordsChanged ? "Yes" : "No"}</div>
+                            </div>
+                          )}
+                          {Array.isArray(masterSettlementRecordPreview?.validation?.blockingErrors) && masterSettlementRecordPreview.validation.blockingErrors.length > 0 && (
+                            <div style={{ color: "#991b1b", fontWeight: 900 }}>
+                              Save Preview Blocking: {masterSettlementRecordPreview.validation.blockingErrors.join(" ")}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {Array.isArray(masterSettlementLocalPreview?.validation?.blockingErrors) && masterSettlementLocalPreview.validation.blockingErrors.length > 0 && (
                         <div style={{ color: "#991b1b", fontWeight: 900 }}>
                           Blocking: {masterSettlementLocalPreview.validation.blockingErrors.join(" ")}
@@ -6711,22 +6788,52 @@ export default function FilteredMattersPage() {
                     <button
                       type="button"
                       data-barsh-record-local-settlement-guarded-button="true"
-                      disabled
-                      title="Local settlement persistence schema is ready, but the save route is not wired yet.  This button is intentionally disabled to prevent accidental settlement recording."
+                      onClick={runMasterSettlementRecordPreview}
+                      disabled={
+                        masterSettlementRecordPreviewLoading ||
+                        !masterSettlementLocalPreview?.ok ||
+                        !masterSettlementLocalPreview?.settlementRecordPayload
+                      }
+                      title="Preview what would save to the local settlement tables.  This is still preview-only and does not write the database."
                       style={{
                         minWidth: 230,
                         height: 44,
-                        border: "1px solid #bbf7d0",
+                        border:
+                          masterSettlementRecordPreviewLoading ||
+                          !masterSettlementLocalPreview?.ok ||
+                          !masterSettlementLocalPreview?.settlementRecordPayload
+                            ? "1px solid #bbf7d0"
+                            : "1px solid #16a34a",
                         borderRadius: 12,
-                        background: "#dcfce7",
-                        color: "#166534",
+                        background:
+                          masterSettlementRecordPreviewLoading ||
+                          !masterSettlementLocalPreview?.ok ||
+                          !masterSettlementLocalPreview?.settlementRecordPayload
+                            ? "#dcfce7"
+                            : "#16a34a",
+                        color:
+                          masterSettlementRecordPreviewLoading ||
+                          !masterSettlementLocalPreview?.ok ||
+                          !masterSettlementLocalPreview?.settlementRecordPayload
+                            ? "#166534"
+                            : "#ffffff",
                         fontWeight: 950,
                         fontSize: 15,
-                        cursor: "not-allowed",
-                        opacity: 0.78,
+                        cursor:
+                          masterSettlementRecordPreviewLoading ||
+                          !masterSettlementLocalPreview?.ok ||
+                          !masterSettlementLocalPreview?.settlementRecordPayload
+                            ? "not-allowed"
+                            : "pointer",
+                        opacity:
+                          masterSettlementRecordPreviewLoading ||
+                          !masterSettlementLocalPreview?.ok ||
+                          !masterSettlementLocalPreview?.settlementRecordPayload
+                            ? 0.78
+                            : 1,
                       }}
                     >
-                      Record Local Settlement
+                      {masterSettlementRecordPreviewLoading ? "Checking Save..." : "Record Local Settlement"}
                     </button>
                   </div>
                 </div>

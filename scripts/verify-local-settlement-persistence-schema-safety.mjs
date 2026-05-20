@@ -81,7 +81,7 @@ console.log("=== LOCAL SETTLEMENT PERSISTENCE SCHEMA SAFETY VERIFICATION ===");
 [
   "Record Local Settlement",
   "data-barsh-record-local-settlement-guarded-button",
-  "Local settlement persistence schema is ready, but the save route is not wired yet",
+  "Preview what would save to the local settlement tables",
 ].forEach((needle) => mustContain(pagePath, page, needle));
 
 [

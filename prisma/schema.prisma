@@ -653,3 +653,36 @@ model EmailFilingLog {
   @@index([status])
   @@index([createdAt])
 }
+
+model LocalWorkflowTickler {
+  id                 String   @id @default(cuid())
+  kind               String
+  source             String   @default("barsh-matters-local")
+  status             String   @default("open")
+  priority           String   @default("normal")
+  title              String
+  description        String?
+  masterLawsuitId    String?
+  matterId           Int?
+  displayNumber      String?
+  settlementRecordId String?
+  dueDate            String?
+  completedAt        DateTime?
+  completedBy        String?
+  completedNote      String?
+  metadata           Json?
+  createdBy          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([kind])
+  @@index([status])
+  @@index([priority])
+  @@index([masterLawsuitId])
+  @@index([matterId])
+  @@index([displayNumber])
+  @@index([settlementRecordId])
+  @@index([dueDate])
+  @@index([createdAt])
+}
+

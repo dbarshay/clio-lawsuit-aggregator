@@ -301,6 +301,30 @@ async function runMaildropDiscovery(req: NextRequest) {
   }
 
   const rows = Array.isArray(graphResult.json?.value) ? graphResult.json.value : [];
+
+  const scannedMessageSamples = rows.slice(0, 10).map((row: any) => ({
+    graphMessageId: clean(row?.id),
+    conversationId: clean(row?.conversationId),
+    subject: clean(row?.subject),
+    fromEmail: graphRecipientEmail(row?.from),
+    receivedAt: clean(row?.receivedDateTime),
+    sentAt: clean(row?.sentDateTime),
+    to: graphRecipientList(row?.toRecipients).slice(0, 10),
+    cc: graphRecipientList(row?.ccRecipients).slice(0, 10),
+    bcc: graphRecipientList(row?.bccRecipients).slice(0, 10),
+    recipientCount: allRecipientEmails(row).length,
+  }));
+
+  const knownMaildropSamples = Array.from(knownByEmail.entries()).slice(0, 25).map(([email, record]) => ({
+    clioMaildropEmail: email,
+    clioMaildropLabel: clean(record?.clioMaildropLabel),
+    matterId: record?.matterId ?? null,
+    matterDisplayNumber: clean(record?.matterDisplayNumber),
+    masterLawsuitId: clean(record?.masterLawsuitId),
+    clioMatterId: record?.clioMatterId ?? null,
+    clioDisplayNumber: clean(record?.clioDisplayNumber),
+  }));
+
   const matchesByConversation = new Map<string, { maildrop: any; messages: any[]; matchedMaildropEmail: string }>();
 
   for (const row of rows) {
@@ -339,6 +363,19 @@ async function runMaildropDiscovery(req: NextRequest) {
     subjects: Array.from(new Set(match.messages.map((message) => clean(message.subject)).filter(Boolean))).slice(0, 5),
   }));
 
+  const matchedMaildropSamples = matches.map((match) => ({
+    conversationId: match.conversationId,
+    matchedMaildropEmail: match.matchedMaildropEmail,
+    clioMaildropLabel: match.clioMaildropLabel,
+    matterId: match.matterId ?? null,
+    matterDisplayNumber: match.matterDisplayNumber,
+    masterLawsuitId: match.masterLawsuitId,
+    clioMatterId: match.clioMatterId ?? null,
+    clioDisplayNumber: match.clioDisplayNumber,
+    messageCount: match.messageCount,
+    subjects: match.subjects,
+  }));
+
   if (mode !== "sync") {
     return NextResponse.json({
       ...base,
@@ -358,6 +395,11 @@ async function runMaildropDiscovery(req: NextRequest) {
       },
       matches,
       nextLinkPresent: Boolean(clean(graphResult.json?.["@odata.nextLink"])),
+      diagnostics: {
+        knownMaildropSamples,
+        scannedMessageSamples,
+        matchedMaildropSamples,
+      },
       message:
         "Preview-only MailDrop discovery completed.  This read recent Microsoft Graph messages and matched locally known MailDrop recipients, but did not persist local records.",
     });
@@ -408,6 +450,9 @@ async function runMaildropDiscovery(req: NextRequest) {
       matterLinksCreated,
       filingLogsCreated,
       nextLinkPresent: Boolean(clean(graphResult.json?.["@odata.nextLink"])),
+      knownMaildropSamples,
+      scannedMessageSamples,
+      matchedMaildropSamples,
     },
   });
 
@@ -430,6 +475,11 @@ async function runMaildropDiscovery(req: NextRequest) {
     matches,
     persistedResults,
     nextLinkPresent: Boolean(clean(graphResult.json?.["@odata.nextLink"])),
+    diagnostics: {
+      knownMaildropSamples,
+      scannedMessageSamples,
+      matchedMaildropSamples,
+    },
     message:
       "Confirmed MailDrop discovery completed.  This route read recent Microsoft Graph messages, matched locally known MailDrop recipients, and persisted local Barsh Matters email metadata only.  It did not create drafts, send email, write Clio, upload documents, or use local Outlook automation.",
   });

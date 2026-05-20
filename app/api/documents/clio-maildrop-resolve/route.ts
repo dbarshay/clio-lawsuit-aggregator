@@ -20,6 +20,19 @@ function normalizeBrl(value: unknown): string {
   return raw;
 }
 
+function resolveMaildropSource(url: URL): "direct_matter" | "master_lawsuit" {
+  const source = clean(url.searchParams.get("source")).toLowerCase();
+  const scope = clean(url.searchParams.get("scope")).toLowerCase();
+
+  const value = source || scope;
+
+  if (value === "master" || value === "master_lawsuit" || value === "master-lawsuit") {
+    return "master_lawsuit";
+  }
+
+  return "direct_matter";
+}
+
 async function searchMatterByDisplayNumber(displayNumber: string) {
   const normalized = normalizeBrl(displayNumber);
   if (!normalized) return null;
@@ -111,7 +124,7 @@ async function resolveMasterMatter(url: URL) {
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
-    const source = clean(url.searchParams.get("source")) || "direct_matter";
+    const source = resolveMaildropSource(url);
 
     const matter = source === "master_lawsuit"
       ? await resolveMasterMatter(url)

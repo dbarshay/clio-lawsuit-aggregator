@@ -282,6 +282,79 @@ function renderEmailAutomationLogRow(log: EmailAutomationStatusLog) {
   );
 }
 
+
+function asStatusRecord(value: unknown): Record<string, any> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {};
+}
+
+function renderSmallJson(value: unknown) {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function renderMaildropDiscoveryDiagnostics(log: EmailAutomationStatusLog | null | undefined) {
+  const details = asStatusRecord(log?.details);
+  const duplicateKnownMaildropSamples = Array.isArray(details.duplicateKnownMaildropSamples) ? details.duplicateKnownMaildropSamples : [];
+  const knownMaildropSamples = Array.isArray(details.knownMaildropSamples) ? details.knownMaildropSamples : [];
+  const scannedMessageSamples = Array.isArray(details.scannedMessageSamples) ? details.scannedMessageSamples : [];
+  const matchedMaildropSamples = Array.isArray(details.matchedMaildropSamples) ? details.matchedMaildropSamples : [];
+
+  const diagnosticRows = [
+    ["Known MailDrops", details.knownMaildrops],
+    ["Duplicate MailDrop addresses", details.duplicateKnownMaildropAddressCount],
+    ["Scanned Graph messages", details.scannedGraphMessages],
+    ["Matched messages", details.matchedMessages],
+    ["Discovered threads", details.discoveredThreads],
+    ["Messages upserted", details.messagesUpserted],
+    ["Matter links created", details.matterLinksCreated],
+    ["Filing logs created", details.filingLogsCreated],
+    ["Next link present", details.nextLinkPresent],
+  ];
+
+  return (
+    <details style={{ marginTop: 12, border: "1px solid #bfdbfe", borderRadius: 12, background: "#eff6ff", padding: 12 }}>
+      <summary style={{ cursor: "pointer", fontWeight: 850, color: "#1e3a8a" }}>Latest MailDrop discovery diagnostics</summary>
+
+      <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+        {diagnosticRows.map(([label, value]) => (
+          <div key={String(label)} style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "white", padding: 10 }}>
+            <div style={{ fontSize: 11, color: "#64748b", fontWeight: 850, textTransform: "uppercase" }}>{label}</div>
+            <div style={{ marginTop: 4, fontSize: 16, color: "#0f172a", fontWeight: 850 }}>{renderSmallJson(value)}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
+        <div style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "white", padding: 10 }}>
+          <div style={{ fontSize: 12, color: "#1e3a8a", fontWeight: 900, textTransform: "uppercase" }}>Known MailDrop samples</div>
+          <pre style={{ margin: "8px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 11, color: "#334155" }}>{renderSmallJson(knownMaildropSamples.slice(0, 10))}</pre>
+        </div>
+
+        <div style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "white", padding: 10 }}>
+          <div style={{ fontSize: 12, color: "#1e3a8a", fontWeight: 900, textTransform: "uppercase" }}>Duplicate MailDrop address samples</div>
+          <pre style={{ margin: "8px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 11, color: "#334155" }}>{renderSmallJson(duplicateKnownMaildropSamples.slice(0, 10))}</pre>
+        </div>
+
+        <div style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "white", padding: 10 }}>
+          <div style={{ fontSize: 12, color: "#1e3a8a", fontWeight: 900, textTransform: "uppercase" }}>Scanned Graph message samples</div>
+          <pre style={{ margin: "8px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 11, color: "#334155" }}>{renderSmallJson(scannedMessageSamples.slice(0, 10))}</pre>
+        </div>
+
+        <div style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "white", padding: 10 }}>
+          <div style={{ fontSize: 12, color: "#1e3a8a", fontWeight: 900, textTransform: "uppercase" }}>Matched MailDrop samples</div>
+          <pre style={{ margin: "8px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 11, color: "#334155" }}>{renderSmallJson(matchedMaildropSamples.slice(0, 10))}</pre>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+
 function renderSourceBreakdown(sourceBreakdown: Record<string, number>) {
   const entries = Object.entries(sourceBreakdown || {});
   if (!entries.length) return "—";
@@ -1105,6 +1178,7 @@ export default function AdminReferenceDataPage() {
                 <div style={{ marginTop: 4, fontSize: 14 }}><strong>Status:</strong> {emailAutomationStatus.maildropDiscovery.latestRun?.status || "—"}</div>
                 <div style={{ marginTop: 4, fontSize: 14 }}><strong>Health:</strong> <span style={{ color: emailAutomationStatus.maildropDiscovery.health?.stale ? "#991b1b" : "#166534", fontWeight: 850 }}>{emailAutomationStatus.maildropDiscovery.health?.label || "—"}</span></div>
                 <div style={{ marginTop: 4, fontSize: 14 }}><strong>Recent logs:</strong> {emailAutomationStatus.maildropDiscovery.recentCount}</div>
+                {renderMaildropDiscoveryDiagnostics(emailAutomationStatus.maildropDiscovery.latestRun)}
               </div>
 
               <div style={{ background: "white", border: "1px solid #dbeafe", borderRadius: 14, padding: 14 }}>

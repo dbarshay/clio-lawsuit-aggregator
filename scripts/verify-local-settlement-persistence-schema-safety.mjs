@@ -81,7 +81,7 @@ console.log("=== LOCAL SETTLEMENT PERSISTENCE SCHEMA SAFETY VERIFICATION ===");
 [
   "Record Local Settlement",
   "data-barsh-record-local-settlement-guarded-button",
-  "Preview what would save to the local settlement tables",
+  "Save the settlement to Barsh Matters local settlement tables only",
 ].forEach((needle) => mustContain(pagePath, page, needle));
 
 [

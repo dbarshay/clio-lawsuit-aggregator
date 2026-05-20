@@ -566,8 +566,8 @@ export default function FilteredMattersPage() {
   const [masterSettlementNotesInput, setMasterSettlementNotesInput] = useState("");
   const [masterSettlementLocalPreview, setMasterSettlementLocalPreview] = useState<any>(null);
   const [masterSettlementLocalPreviewLoading, setMasterSettlementLocalPreviewLoading] = useState(false);
-  const [masterSettlementRecordPreview, setMasterSettlementRecordPreview] = useState<any>(null);
-  const [masterSettlementRecordPreviewLoading, setMasterSettlementRecordPreviewLoading] = useState(false);
+  const [masterSettlementRecordSave, setMasterSettlementRecordSave] = useState<any>(null);
+  const [masterSettlementRecordSaveLoading, setMasterSettlementRecordSaveLoading] = useState(false);
 
   const [masterInfoEditDialog, setMasterInfoEditDialog] = useState<null | {
     field: string;
@@ -1393,14 +1393,14 @@ export default function FilteredMattersPage() {
     setMasterSettlementNotesInput("");
     setMasterSettlementLocalPreview(null);
     setMasterSettlementLocalPreviewLoading(false);
-    setMasterSettlementRecordPreview(null);
-    setMasterSettlementRecordPreviewLoading(false);
+    setMasterSettlementRecordSave(null);
+    setMasterSettlementRecordSaveLoading(false);
   }
 
   async function runMasterSettlementLocalPreview() {
     setMasterSettlementLocalPreviewLoading(true);
     setMasterSettlementLocalPreview(null);
-    setMasterSettlementRecordPreview(null);
+    setMasterSettlementRecordSave(null);
 
     try {
       const response = await fetch("/api/settlements/local-preview", {
@@ -1439,35 +1439,35 @@ export default function FilteredMattersPage() {
     }
   }
 
-  async function runMasterSettlementRecordPreview() {
+  async function runMasterSettlementRecordSave() {
     const settlementRecordPayload = masterSettlementLocalPreview?.settlementRecordPayload;
 
-    setMasterSettlementRecordPreviewLoading(true);
-    setMasterSettlementRecordPreview(null);
+    setMasterSettlementRecordSaveLoading(true);
+    setMasterSettlementRecordSave(null);
 
     try {
-      const response = await fetch("/api/settlements/local-record-preview", {
+      const response = await fetch("/api/settlements/local-record", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ settlementRecordPayload }),
       });
 
       const json = await response.json().catch(() => null);
-      setMasterSettlementRecordPreview({
+      setMasterSettlementRecordSave({
         ...(json || {}),
         ok: Boolean(response.ok && json?.ok),
         responseStatus: response.status,
       });
     } catch (error: any) {
-      setMasterSettlementRecordPreview({
+      setMasterSettlementRecordSave({
         ok: false,
-        action: "local-settlement-record-preview",
+        action: "local-settlement-record-save",
         previewOnly: true,
         localFirst: true,
-        error: error?.message || "Local settlement record preview failed.",
+        error: error?.message || "Local settlement record save failed.",
       });
     } finally {
-      setMasterSettlementRecordPreviewLoading(false);
+      setMasterSettlementRecordSaveLoading(false);
     }
   }
 
@@ -6659,41 +6659,41 @@ export default function FilteredMattersPage() {
                         </div>
                       )}
 
-                      {masterSettlementRecordPreview && (
+                      {masterSettlementRecordSave && (
                         <div
                           data-barsh-local-settlement-save-preview-panel="true"
                           style={{
-                            border: masterSettlementRecordPreview.ok ? "1px solid #93c5fd" : "1px solid #fecaca",
+                            border: masterSettlementRecordSave.ok ? "1px solid #93c5fd" : "1px solid #fecaca",
                             borderRadius: 12,
-                            background: masterSettlementRecordPreview.ok ? "#eff6ff" : "#fef2f2",
+                            background: masterSettlementRecordSave.ok ? "#eff6ff" : "#fef2f2",
                             padding: "10px 12px",
                             display: "grid",
                             gap: 6,
                           }}
                         >
-                          <div style={{ fontWeight: 950, color: masterSettlementRecordPreview.ok ? "#1d4ed8" : "#991b1b" }}>
-                            Local Settlement Save Preview
+                          <div style={{ fontWeight: 950, color: masterSettlementRecordSave.ok ? "#1d4ed8" : "#991b1b" }}>
+                            Local Settlement Save Result
                           </div>
                           <div style={{ color: "#475569", lineHeight: 1.45 }}>
-                            Preview only.  This validates what would save to LocalSettlementRecord and LocalSettlementRow, but does not write the database.
+                            Local save result.  This saves to Barsh Matters local settlement tables only and does not write Clio, generate documents, print, queue, or close matters.
                           </div>
-                          {masterSettlementRecordPreview.error && (
+                          {masterSettlementRecordSave.error && (
                             <div style={{ color: "#991b1b", fontWeight: 900 }}>
-                              Error: {masterSettlementRecordPreview.error}
+                              Error: {masterSettlementRecordSave.error}
                             </div>
                           )}
-                          {masterSettlementRecordPreview.wouldSaveRecord && (
+                          {masterSettlementRecordSave.savedRecord && (
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 8 }}>
-                              <div><strong>Target:</strong> {masterSettlementRecordPreview.wouldSaveRecord.targetModel || "—"}</div>
-                              <div><strong>Rows:</strong> {Array.isArray(masterSettlementRecordPreview.wouldSaveRecord.rowValues) ? masterSettlementRecordPreview.wouldSaveRecord.rowValues.length : "—"}</div>
-                              <div><strong>Total Fee:</strong> {money(masterSettlementRecordPreview.wouldSaveRecord.recordValues?.totalFee)}</div>
-                              <div><strong>Provider Net:</strong> {money(masterSettlementRecordPreview.wouldSaveRecord.recordValues?.providerNetTotal)}</div>
-                              <div><strong>DB Changed:</strong> {masterSettlementRecordPreview.wouldSaveRecord.databaseRecordsChanged ? "Yes" : "No"}</div>
+                              <div><strong>Target:</strong> {masterSettlementRecordSave.savedRecord.targetModel || "—"}</div>
+                              <div><strong>Rows:</strong> {Array.isArray(masterSettlementRecordSave.savedRecord.rowValues) ? masterSettlementRecordSave.savedRecord.rowValues.length : "—"}</div>
+                              <div><strong>Total Fee:</strong> {money(masterSettlementRecordSave.savedRecord.recordValues?.totalFee)}</div>
+                              <div><strong>Provider Net:</strong> {money(masterSettlementRecordSave.savedRecord.recordValues?.providerNetTotal)}</div>
+                              <div><strong>DB Changed:</strong> {masterSettlementRecordSave.savedRecord.databaseRecordsChanged ? "Yes" : "No"}</div>
                             </div>
                           )}
-                          {Array.isArray(masterSettlementRecordPreview?.validation?.blockingErrors) && masterSettlementRecordPreview.validation.blockingErrors.length > 0 && (
+                          {Array.isArray(masterSettlementRecordSave?.validation?.blockingErrors) && masterSettlementRecordSave.validation.blockingErrors.length > 0 && (
                             <div style={{ color: "#991b1b", fontWeight: 900 }}>
-                              Save Preview Blocking: {masterSettlementRecordPreview.validation.blockingErrors.join(" ")}
+                              Save Blocking: {masterSettlementRecordSave.validation.blockingErrors.join(" ")}
                             </div>
                           )}
                         </div>
@@ -6788,31 +6788,31 @@ export default function FilteredMattersPage() {
                     <button
                       type="button"
                       data-barsh-record-local-settlement-guarded-button="true"
-                      onClick={runMasterSettlementRecordPreview}
+                      onClick={runMasterSettlementRecordSave}
                       disabled={
-                        masterSettlementRecordPreviewLoading ||
+                        masterSettlementRecordSaveLoading ||
                         !masterSettlementLocalPreview?.ok ||
                         !masterSettlementLocalPreview?.settlementRecordPayload
                       }
-                      title="Preview what would save to the local settlement tables.  This is still preview-only and does not write the database."
+                      title="Save the settlement to Barsh Matters local settlement tables only.  This does not write Clio, generate documents, print, queue, or close matters."
                       style={{
                         minWidth: 230,
                         height: 44,
                         border:
-                          masterSettlementRecordPreviewLoading ||
+                          masterSettlementRecordSaveLoading ||
                           !masterSettlementLocalPreview?.ok ||
                           !masterSettlementLocalPreview?.settlementRecordPayload
                             ? "1px solid #bbf7d0"
                             : "1px solid #16a34a",
                         borderRadius: 12,
                         background:
-                          masterSettlementRecordPreviewLoading ||
+                          masterSettlementRecordSaveLoading ||
                           !masterSettlementLocalPreview?.ok ||
                           !masterSettlementLocalPreview?.settlementRecordPayload
                             ? "#dcfce7"
                             : "#16a34a",
                         color:
-                          masterSettlementRecordPreviewLoading ||
+                          masterSettlementRecordSaveLoading ||
                           !masterSettlementLocalPreview?.ok ||
                           !masterSettlementLocalPreview?.settlementRecordPayload
                             ? "#166534"
@@ -6820,20 +6820,20 @@ export default function FilteredMattersPage() {
                         fontWeight: 950,
                         fontSize: 15,
                         cursor:
-                          masterSettlementRecordPreviewLoading ||
+                          masterSettlementRecordSaveLoading ||
                           !masterSettlementLocalPreview?.ok ||
                           !masterSettlementLocalPreview?.settlementRecordPayload
                             ? "not-allowed"
                             : "pointer",
                         opacity:
-                          masterSettlementRecordPreviewLoading ||
+                          masterSettlementRecordSaveLoading ||
                           !masterSettlementLocalPreview?.ok ||
                           !masterSettlementLocalPreview?.settlementRecordPayload
                             ? 0.78
                             : 1,
                       }}
                     >
-                      {masterSettlementRecordPreviewLoading ? "Checking Save..." : "Record Local Settlement"}
+                      {masterSettlementRecordSaveLoading ? "Saving..." : "Record Local Settlement"}
                     </button>
                   </div>
                 </div>

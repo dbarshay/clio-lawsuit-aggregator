@@ -28,7 +28,7 @@ function mustNotContain(label, text, needle) {
   }
 }
 
-const routePath = "app/api/settlements/local-record-preview/route.ts";
+const routePath = "app/api/settlements/local-record/route.ts";
 const pagePath = "app/matters/page.tsx";
 const packagePath = "package.json";
 
@@ -36,48 +36,48 @@ const route = read(routePath);
 const page = read(pagePath);
 const packageJson = read(packagePath);
 
-console.log("=== LOCAL SETTLEMENT RECORD PREVIEW SAFETY VERIFICATION ===");
+console.log("=== LOCAL SETTLEMENT RECORD SAVE SAFETY VERIFICATION ===");
 
 [
   "export async function POST",
-  'action: "local-settlement-record-preview"',
-  "previewOnly: true",
-  "wouldSaveRecord",
-  'targetModel: "LocalSettlementRecord"',
-  'targetRowModel: "LocalSettlementRow"',
-  "readyForLocalSettlementRecordSavePreview",
-  "databaseRecordsChanged: false",
+  'action: "local-settlement-record-save"',
+  "prisma.localSettlementRecord.create",
+  "rows: {",
+  "create: validation.settlementRows.map",
+  'databaseWriteScope: ["LocalSettlementRecord", "LocalSettlementRow"]',
   "clioRecordsChanged: false",
   "documentsGenerated: false",
   "printQueueChanged: false",
   "mattersClosed: false",
   "settlementWritebackPerformed: false",
-  "does not write the database, write Clio, generate documents, print, queue, or close matters",
+  "An active local settlement record already exists",
 ].forEach((needle) => mustContain(routePath, route, needle));
 
 [
-  "prisma.",
   "clioFetch(",
+  "writeSettlementToClio",
+  "previewSettlementWritebackToClio",
+  "prisma.claimIndex.update",
+  "prisma.claimIndex.create",
+  "prisma.documentPrintQueueItem.create",
+  "prisma.documentFinalization.create",
+  "prisma.settlementWriteback.create",
   "method: \"PATCH\"",
   "method: \"DELETE\"",
-  ".create(",
-  ".update(",
-  ".delete(",
-  "LocalSettlementRecord.create",
-  "LocalSettlementRow.create",
 ].forEach((needle) => mustNotContain(routePath, route, needle));
 
 [
-  "data-barsh-record-local-settlement-guarded-button",
-  "Local Settlement Save Result",
   "/api/settlements/local-record",
+  "Local Settlement Save Result",
+  "Barsh Matters local settlement tables only",
+  "databaseRecordsChanged",
 ].forEach((needle) => mustContain(pagePath, page, needle));
 
-mustContain(packagePath, packageJson, '"verify:local-settlement-record-preview-safety"');
+mustContain(packagePath, packageJson, '"verify:local-settlement-record-save-safety"');
 
 if (failures) {
-  console.error(`=== LOCAL SETTLEMENT RECORD PREVIEW SAFETY FAILED: ${failures} failure(s) ===`);
+  console.error(`=== LOCAL SETTLEMENT RECORD SAVE SAFETY FAILED: ${failures} failure(s) ===`);
   process.exit(1);
 }
 
-console.log("=== LOCAL SETTLEMENT RECORD PREVIEW SAFETY PASSED ===");
+console.log("=== LOCAL SETTLEMENT RECORD SAVE SAFETY PASSED ===");

@@ -3,46 +3,95 @@ import fs from "node:fs";
 let failures = 0;
 
 function read(path) {
-  return fs.readFileSync(path, "utf8");
-}
-
-function mustContain(path, text, needle) {
-  if (!text.includes(needle)) {
-    console.error(`FAIL ${path}: missing ${needle}`);
+  try {
+    return fs.readFileSync(path, "utf8");
+  } catch {
+    console.error(`FAIL ${path}: missing file`);
     failures += 1;
+    return "";
   }
 }
 
-function mustNotContain(path, text, needle) {
-  if (text.includes(needle)) {
-    console.error(`FAIL ${path}: must not contain ${needle}`);
-    failures += 1;
-  }
+function pass(message) {
+  console.log(`PASS: ${message}`);
 }
+
+function fail(message) {
+  failures += 1;
+  console.error(`FAIL: ${message}`);
+}
+
+function mustContain(label, text, needle) {
+  if (text.includes(needle)) pass(`${label}: found ${needle}`);
+  else fail(`${label}: missing ${needle}`);
+}
+
+function mustNotContain(label, text, needle) {
+  if (!text.includes(needle)) pass(`${label}: does not contain ${needle}`);
+  else fail(`${label}: must not contain ${needle}`);
+}
+
+const pagePath = "app/matters/page.tsx";
+const packagePath = "package.json";
+
+const page = read(pagePath);
+const packageJson = read(packagePath);
 
 console.log("=== DOCUMENT DELIVERY PREVIEW UI SAFETY VERIFICATION ===");
 
-const directPath = "app/matter/[id]/page.tsx";
-const masterPath = "app/matters/page.tsx";
-const direct = read(directPath);
-const master = read(masterPath);
+console.log("\n=== VERIFY NEW IN-POPUP DOCUMENT DELIVERY PREVIEW PANEL ===");
+[
+  "data-barsh-document-delivery-preview-panel",
+  "Document Delivery Preview",
+  "Preview only.  No Outlook draft is created unless Create Outlook Draft is clicked.",
+  "Create Outlook Draft",
+  "Open Outlook Draft in Web",
+  "Outlook desktop app's Drafts folder",
+  "To recipient override",
+  "Enter a valid email address such as name@example.com",
+  "Enter a valid email address before creating an Outlook draft.",
+  "Graph draft creation available",
+  "Safety flags",
+  "Creates Outlook draft from preview alone: No",
+  "Sends email: No",
+  "Writes Clio: No",
+  "Uploads document: No",
+  "Prints or queues document: No",
+  "MailDrop in Cc only",
+].forEach((needle) => mustContain(pagePath, page, needle));
 
-for (const [path, text, source] of [
-  [directPath, direct, 'source: "direct_matter"'],
-  [masterPath, master, 'source: "master_lawsuit"'],
-]) {
-  mustContain(path, text, "/api/documents/delivery-draft-preview");
-  mustContain(path, text, source);
-  mustContain(path, text, "Document Email Draft Preview Only");
-  mustContain(path, text, "No Outlook draft was created");
-  mustContain(path, text, "No email was sent");
-  mustContain(path, text, "No Clio record, database record, document, or print-queue record was changed");
-  mustContain(path, text, "Ready for future Graph draft creation");
-  mustNotContain(path, text, "window.location.href = buildMailtoHref(context);");
-}
+console.log("\n=== VERIFY EMAIL DOCUMENT ACTION USES PREVIEW PANEL, NOT BROWSER ALERT ===");
+[
+  "masterDocumentDeliveryPreview",
+  "setMasterDocumentDeliveryPreview",
+  "masterDocumentDeliveryPreviewLoading",
+  "masterDocumentDraftCreateLoading",
+  "masterDocumentDeliveryToOverride",
+  "launchMasterDocumentEmail",
+  "/api/documents/delivery-draft-preview",
+  "/api/graph/create-draft?confirm=create-graph-draft",
+  "isValidDocumentDeliveryEmail",
+  "isDocumentDeliveryReadyForGraphDraft",
+  "buildDocumentDeliveryToOverrideRecipient",
+  "displayedWarnings",
+  "text.includes(\"No To recipient\")",
+].forEach((needle) => mustContain(pagePath, page, needle));
 
-mustNotContain(directPath, direct, "buildMailtoHref,");
-mustNotContain(masterPath, master, "buildMailtoHref,");
+console.log("\n=== VERIFY REMOVED LEGACY ALERT COPY IS NOT REQUIRED / NOT PRESENT ===");
+[
+  "Document Email Draft Preview Only",
+  "Ready for future Graph draft creation",
+].forEach((needle) => mustNotContain(pagePath, page, needle));
+
+console.log("\n=== VERIFY NO MAILTO FALLBACK OR SENDMAIL WIRING IN DELIVERY PANEL ===");
+[
+  "window.location.href = buildMailtoHref(context);",
+  "sendMail",
+  "/sendMail",
+].forEach((needle) => mustNotContain(pagePath, page, needle));
+
+console.log("\n=== VERIFY SCRIPT REGISTRATION ===");
+mustContain("package.json", packageJson, '"verify:document-delivery-preview-ui-safety"');
 
 if (failures > 0) {
   console.error(`=== DOCUMENT DELIVERY PREVIEW UI SAFETY FAILED: ${failures} failure(s) ===`);

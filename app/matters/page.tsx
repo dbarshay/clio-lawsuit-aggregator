@@ -556,6 +556,7 @@ export default function FilteredMattersPage() {
   }
 
   const settlementRecordSettlementOpenerLabel = "Record Settlement";
+  const settlementPopupBottomButtonsMarker = "data-barsh-settlement-popup-bottom-buttons-marker: Cancel | Clear | Commit Settlement";
   const settlementCommitFlowMarker = "data-barsh-settlement-commit-flow-marker: Cancel | Clear | Commit Settlement | tickler | document-dialog";
   const [masterSettlementFormOpen, setMasterSettlementFormOpen] = useState(false);
   const [masterSettlementGrossInput, setMasterSettlementGrossInput] = useState("");
@@ -7702,7 +7703,7 @@ function masterSettlementDateFiledValue(): string {
                             : 1,
                       }}
                     >
-                      {masterSettlementRecordSaveLoading ? "Saving..." : "Record Local Settlement"}
+                      {masterSettlementRecordSaveLoading ? "Committing..." : "Commit Settlement"}
                     </button>
                   </div>
                 </div>

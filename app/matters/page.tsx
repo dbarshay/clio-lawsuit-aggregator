@@ -573,6 +573,10 @@ export default function FilteredMattersPage() {
   const [masterSettlementRecordSaveLoading, setMasterSettlementRecordSaveLoading] = useState(false);
   const [masterSettlementHistory, setMasterSettlementHistory] = useState<any>(null);
   const [masterSettlementHistoryLoading, setMasterSettlementHistoryLoading] = useState(false);
+  const [masterSettlementTicklers, setMasterSettlementTicklers] = useState<any>(null);
+  const [masterSettlementTicklersLoading, setMasterSettlementTicklersLoading] = useState(false);
+  const [masterSettlementTicklerCreate, setMasterSettlementTicklerCreate] = useState<any>(null);
+  const [masterSettlementTicklerCreateLoading, setMasterSettlementTicklerCreateLoading] = useState(false);
   const [masterSettlementProviderFeeDefaults, setMasterSettlementProviderFeeDefaults] = useState<any>(null);
   const [masterSettlementProviderFeeDefaultsLoading, setMasterSettlementProviderFeeDefaultsLoading] = useState(false);
   const [masterSettlementPopupPosition, setMasterSettlementPopupPosition] = useState({ x: 0, y: 72 });
@@ -1792,6 +1796,85 @@ export default function FilteredMattersPage() {
     }
   }
 
+  async function loadMasterSettlementTicklers(settlementRecordId?: string) {
+    const masterLawsuitId = currentMasterLawsuitIdForDocumentPreview();
+    const query = settlementRecordId
+      ? `settlementRecordId=${encodeURIComponent(settlementRecordId)}`
+      : masterLawsuitId
+        ? `masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`
+        : "";
+
+    if (!query) {
+      setMasterSettlementTicklers(null);
+      return;
+    }
+
+    setMasterSettlementTicklersLoading(true);
+    try {
+      const response = await fetch(`/api/ticklers/settlement-payment-due?${query}`);
+      const json = await response.json().catch(() => ({}));
+      setMasterSettlementTicklers({
+        ...json,
+        httpStatus: response.status,
+      });
+    } catch (error: any) {
+      setMasterSettlementTicklers({
+        ok: false,
+        action: "settlement-payment-due-ticklers-list",
+        localFirst: true,
+        sourceOfTruth: "barsh-matters-local",
+        error: error?.message || "Local settlement ticklers failed.",
+      });
+    } finally {
+      setMasterSettlementTicklersLoading(false);
+    }
+  }
+
+  async function createMasterSettlementPaymentDueTickler(settlementRecordId?: string) {
+    const activeRecordId = settlementRecordId || masterSettlementHistory?.activeRecordId || masterSettlementRecordSave?.record?.id;
+    const masterLawsuitId = currentMasterLawsuitIdForDocumentPreview();
+
+    if (!activeRecordId && !masterLawsuitId) {
+      setMasterSettlementTicklerCreate({
+        ok: false,
+        error: "No settlement record or lawsuit ID is available for tickler creation.",
+      });
+      return;
+    }
+
+    setMasterSettlementTicklerCreateLoading(true);
+    setMasterSettlementTicklerCreate(null);
+
+    try {
+      const response = await fetch("/api/ticklers/settlement-payment-due", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          settlementRecordId: activeRecordId,
+          masterLawsuitId,
+        }),
+      });
+      const json = await response.json().catch(() => ({}));
+      setMasterSettlementTicklerCreate({
+        ...json,
+        httpStatus: response.status,
+      });
+      if (json?.ok) {
+        await loadMasterSettlementTicklers(json?.tickler?.settlementRecordId || activeRecordId);
+      }
+    } catch (error: any) {
+      setMasterSettlementTicklerCreate({
+        ok: false,
+        action: "settlement-payment-due-tickler",
+        localFirst: true,
+        sourceOfTruth: "barsh-matters-local",
+        error: error?.message || "Local settlement tickler creation failed.",
+      });
+    } finally {
+      setMasterSettlementTicklerCreateLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!masterSettlementFormOpen || activeMasterWorkspaceTab !== "payments") return;
 
@@ -1806,6 +1889,7 @@ export default function FilteredMattersPage() {
   useEffect(() => {
     if (activeMasterWorkspaceTab !== "payments") return;
     void loadMasterSettlementHistory();
+    void loadMasterSettlementTicklers();
   }, [activeMasterWorkspaceTab, masterLawsuitId]);
 
   const masterWorkspaceTabButtonStyle = (tab: MasterWorkspaceTab): React.CSSProperties =>
@@ -6566,6 +6650,65 @@ export default function FilteredMattersPage() {
               }}
             >
               {masterSettlementHistoryLoading ? "Refreshing..." : "Refresh Settlement"}
+            </button>
+          </div>
+
+          <div
+            data-barsh-settlement-payment-due-tickler-strip="true"
+            style={{
+              marginTop: 14,
+              border: "1px solid #fef3c7",
+              background: "#fffbeb",
+              borderRadius: 14,
+              padding: 12,
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 14,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 900, color: "#92400e" }}>Payment Due Follow-Up</div>
+              <div style={{ marginTop: 3, fontSize: 12, color: "#78350f" }}>
+                Generic Barsh Matters tickler system.  Settlement payment due is the first tickler kind.
+              </div>
+              <div style={{ marginTop: 6, fontSize: 12, color: "#475569" }}>
+                {masterSettlementTicklersLoading
+                  ? "Loading ticklers..."
+                  : masterSettlementTicklers?.ok && Array.isArray(masterSettlementTicklers.ticklers) && masterSettlementTicklers.ticklers.length > 0
+                    ? `${masterSettlementTicklers.ticklers.length} open payment due follow-up(s): ${masterSettlementTicklers.ticklers.map((tickler: any) => tickler.dueDate || "no due date").join(", ")}`
+                    : masterSettlementTicklers?.ok
+                      ? "No open payment due follow-up tickler yet."
+                      : masterSettlementTicklers?.error || "Ticklers not loaded yet."}
+              </div>
+              {masterSettlementTicklerCreate?.error && (
+                <div style={{ marginTop: 6, fontSize: 12, color: "#991b1b", fontWeight: 800 }}>
+                  {masterSettlementTicklerCreate.error}
+                </div>
+              )}
+              {masterSettlementTicklerCreate?.duplicatePrevented && (
+                <div style={{ marginTop: 6, fontSize: 12, color: "#166534", fontWeight: 800 }}>
+                  Existing open payment due tickler reused.
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => void createMasterSettlementPaymentDueTickler(masterSettlementHistory?.activeRecordId)}
+              disabled={masterSettlementTicklerCreateLoading}
+              style={{
+                border: "1px solid #f59e0b",
+                background: "#ffffff",
+                color: "#92400e",
+                borderRadius: 999,
+                padding: "8px 12px",
+                fontSize: 12,
+                fontWeight: 900,
+                cursor: masterSettlementTicklerCreateLoading ? "not-allowed" : "pointer",
+              }}
+            >
+              {masterSettlementTicklerCreateLoading ? "Creating..." : "Create Payment Due Tickler"}
             </button>
           </div>
 

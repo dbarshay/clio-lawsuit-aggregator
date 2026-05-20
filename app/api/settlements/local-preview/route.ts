@@ -21,6 +21,48 @@ type SettlementRowInput = {
   balance_presuit: number | null;
 };
 
+type SettlementPreviewRow = {
+  matterId: number;
+  displayNumber: string | null;
+  provider: string | null;
+  patient: string | null;
+  insurer: string | null;
+  claimNumber: string | null;
+  billNumber: string | null;
+  dosStart: string | null;
+  dosEnd: string | null;
+  denialReason: string | null;
+  claimAmount: number;
+  principalBasis: number;
+  allocatedSettlement: number;
+  interestAmount: number;
+  principalFee: number;
+  interestFee: number;
+  totalFee: number;
+  providerPrincipalNet: number;
+  providerInterestNet: number;
+  providerNet: number;
+};
+
+type MonetaryField =
+  | "allocatedSettlement"
+  | "interestAmount"
+  | "principalFee"
+  | "interestFee"
+  | "totalFee"
+  | "providerPrincipalNet"
+  | "providerInterestNet"
+  | "providerNet";
+
+type RoundingAdjustment = {
+  field: MonetaryField;
+  matterId: number;
+  displayNumber: string | null;
+  cents: number;
+  amount: number;
+  reason: string;
+};
+
 function clean(value: unknown): string {
   return String(value ?? "").trim();
 }
@@ -35,6 +77,14 @@ function numberOrZero(value: unknown): number {
 
 function cents(value: number): number {
   return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
+}
+
+function centsInteger(value: number): number {
+  return Math.round(cents(value) * 100);
+}
+
+function fromCentsInteger(value: number): number {
+  return cents(value / 100);
 }
 
 function percent(value: unknown): number {
@@ -55,6 +105,77 @@ function principalBasis(row: SettlementRowInput): number {
 function proratedAmount(total: number, basis: number, basisTotal: number): number {
   if (total <= 0 || basis <= 0 || basisTotal <= 0) return 0;
   return cents(total * (basis / basisTotal));
+}
+
+function sumFieldCents(rows: SettlementPreviewRow[], field: MonetaryField): number {
+  return rows.reduce((sum, row) => sum + centsInteger(row[field]), 0);
+}
+
+function deterministicAdjustmentRowIndex(rows: SettlementPreviewRow[]): number {
+  if (!rows.length) return -1;
+
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const basisDiff = centsInteger(b.row.principalBasis) - centsInteger(a.row.principalBasis);
+      if (basisDiff !== 0) return basisDiff;
+      return a.row.matterId - b.row.matterId;
+    })[0].index;
+}
+
+function adjustFieldToTarget(
+  rows: SettlementPreviewRow[],
+  field: MonetaryField,
+  expectedTotal: number,
+  roundingAdjustments: RoundingAdjustment[],
+  reason: string
+): void {
+  if (!rows.length) return;
+
+  const expectedCents = centsInteger(expectedTotal);
+  const currentCents = sumFieldCents(rows, field);
+  const deltaCents = expectedCents - currentCents;
+
+  if (deltaCents === 0) return;
+
+  const targetIndex = deterministicAdjustmentRowIndex(rows);
+  if (targetIndex < 0) return;
+
+  const row = rows[targetIndex];
+  row[field] = fromCentsInteger(centsInteger(row[field]) + deltaCents);
+
+  roundingAdjustments.push({
+    field,
+    matterId: row.matterId,
+    displayNumber: row.displayNumber,
+    cents: deltaCents,
+    amount: fromCentsInteger(deltaCents),
+    reason,
+  });
+}
+
+function recomputeFeesAndNets(
+  rows: SettlementPreviewRow[],
+  principalFeePercent: number,
+  interestFeePercent: number
+): void {
+  rows.forEach((row) => {
+    row.principalFee = cents(row.allocatedSettlement * (principalFeePercent / 100));
+    row.interestFee = cents(row.interestAmount * (interestFeePercent / 100));
+    row.totalFee = cents(row.principalFee + row.interestFee);
+    row.providerPrincipalNet = cents(row.allocatedSettlement - row.principalFee);
+    row.providerInterestNet = cents(row.interestAmount - row.interestFee);
+    row.providerNet = cents(row.providerPrincipalNet + row.providerInterestNet);
+  });
+}
+
+function recomputeNetsFromBalancedFees(rows: SettlementPreviewRow[]): void {
+  rows.forEach((row) => {
+    row.totalFee = cents(row.principalFee + row.interestFee);
+    row.providerPrincipalNet = cents(row.allocatedSettlement - row.principalFee);
+    row.providerInterestNet = cents(row.interestAmount - row.interestFee);
+    row.providerNet = cents(row.providerPrincipalNet + row.providerInterestNet);
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -137,7 +258,7 @@ export async function POST(req: NextRequest) {
       warnings.push(`Unsupported allocation mode "${allocationMode}" was requested; preview used pro_rata_by_principal_balance.`);
     }
 
-    const previewRows = basisRows.map(({ row, principalBasis }) => {
+    const previewRows: SettlementPreviewRow[] = basisRows.map(({ row, principalBasis }) => {
       const rawPrincipalAllocation = proratedAmount(
         grossSettlementAmount,
         principalBasis,
@@ -180,35 +301,77 @@ export async function POST(req: NextRequest) {
       };
     });
 
+    const expectedAllocatedSettlementTotal = cents(Math.min(grossSettlementAmount, principalBasisTotal));
+    const expectedInterestAmountTotal = interestAmountTotal;
+    const expectedPrincipalFeeTotal = cents(expectedAllocatedSettlementTotal * (principalFeePercent / 100));
+    const expectedInterestFeeTotal = cents(expectedInterestAmountTotal * (interestFeePercent / 100));
+    const expectedTotalFee = cents(expectedPrincipalFeeTotal + expectedInterestFeeTotal);
+    const expectedProviderPrincipalNetTotal = cents(expectedAllocatedSettlementTotal - expectedPrincipalFeeTotal);
+    const expectedProviderInterestNetTotal = cents(expectedInterestAmountTotal - expectedInterestFeeTotal);
+    const expectedProviderNetTotal = cents(expectedProviderPrincipalNetTotal + expectedProviderInterestNetTotal);
+
+    const roundingAdjustments: RoundingAdjustment[] = [];
+
+    adjustFieldToTarget(
+      previewRows,
+      "allocatedSettlement",
+      expectedAllocatedSettlementTotal,
+      roundingAdjustments,
+      "Reconciled prorated principal allocation rows to the aggregate expected allocated settlement total."
+    );
+
+    adjustFieldToTarget(
+      previewRows,
+      "interestAmount",
+      expectedInterestAmountTotal,
+      roundingAdjustments,
+      "Reconciled prorated interest rows to the aggregate expected interest total."
+    );
+
+    recomputeFeesAndNets(previewRows, principalFeePercent, interestFeePercent);
+
+    adjustFieldToTarget(
+      previewRows,
+      "principalFee",
+      expectedPrincipalFeeTotal,
+      roundingAdjustments,
+      "Reconciled row-level principal fees to the aggregate expected principal fee total."
+    );
+
+    adjustFieldToTarget(
+      previewRows,
+      "interestFee",
+      expectedInterestFeeTotal,
+      roundingAdjustments,
+      "Reconciled row-level interest fees to the aggregate expected interest fee total."
+    );
+
+    recomputeNetsFromBalancedFees(previewRows);
+
     const summary = {
       masterLawsuitId,
       allocationMode: "pro_rata_by_principal_balance",
       grossSettlementAmount,
       principalBasisTotal,
-      allocatedSettlementTotal: cents(
-        previewRows.reduce((sum, row) => sum + row.allocatedSettlement, 0)
-      ),
-      interestAmountTotal: cents(
-        previewRows.reduce((sum, row) => sum + row.interestAmount, 0)
-      ),
+      expectedAllocatedSettlementTotal,
+      allocatedSettlementTotal: fromCentsInteger(sumFieldCents(previewRows, "allocatedSettlement")),
+      interestAmountTotal: fromCentsInteger(sumFieldCents(previewRows, "interestAmount")),
       principalFeePercent,
       interestFeePercent,
-      principalFeeTotal: cents(
-        previewRows.reduce((sum, row) => sum + row.principalFee, 0)
-      ),
-      interestFeeTotal: cents(
-        previewRows.reduce((sum, row) => sum + row.interestFee, 0)
-      ),
-      totalFee: cents(previewRows.reduce((sum, row) => sum + row.totalFee, 0)),
-      providerPrincipalNetTotal: cents(
-        previewRows.reduce((sum, row) => sum + row.providerPrincipalNet, 0)
-      ),
-      providerInterestNetTotal: cents(
-        previewRows.reduce((sum, row) => sum + row.providerInterestNet, 0)
-      ),
-      providerNetTotal: cents(
-        previewRows.reduce((sum, row) => sum + row.providerNet, 0)
-      ),
+      principalFeeTotal: fromCentsInteger(sumFieldCents(previewRows, "principalFee")),
+      interestFeeTotal: fromCentsInteger(sumFieldCents(previewRows, "interestFee")),
+      totalFee: fromCentsInteger(sumFieldCents(previewRows, "totalFee")),
+      providerPrincipalNetTotal: fromCentsInteger(sumFieldCents(previewRows, "providerPrincipalNet")),
+      providerInterestNetTotal: fromCentsInteger(sumFieldCents(previewRows, "providerInterestNet")),
+      providerNetTotal: fromCentsInteger(sumFieldCents(previewRows, "providerNet")),
+      expectedInterestAmountTotal,
+      expectedPrincipalFeeTotal,
+      expectedInterestFeeTotal,
+      expectedTotalFee,
+      expectedProviderPrincipalNetTotal,
+      expectedProviderInterestNetTotal,
+      expectedProviderNetTotal,
+      roundingAdjustmentCount: roundingAdjustments.length,
       rowCount: previewRows.length,
     };
 
@@ -221,6 +384,7 @@ export async function POST(req: NextRequest) {
         sourceOfTruth: "barsh-matters-local-claimindex",
         summary,
         rows: previewRows,
+        roundingAdjustments,
         validation: {
           readyForLocalSettlementPreview: blockingErrors.length === 0,
           blockingErrors,

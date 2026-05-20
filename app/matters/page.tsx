@@ -6707,6 +6707,27 @@ export default function FilteredMattersPage() {
                     >
                       {masterSettlementLocalPreviewLoading ? "Previewing..." : "Preview Local Settlement"}
                     </button>
+
+                    <button
+                      type="button"
+                      data-barsh-record-local-settlement-guarded-button="true"
+                      disabled
+                      title="Local settlement persistence schema is ready, but the save route is not wired yet.  This button is intentionally disabled to prevent accidental settlement recording."
+                      style={{
+                        minWidth: 230,
+                        height: 44,
+                        border: "1px solid #bbf7d0",
+                        borderRadius: 12,
+                        background: "#dcfce7",
+                        color: "#166534",
+                        fontWeight: 950,
+                        fontSize: 15,
+                        cursor: "not-allowed",
+                        opacity: 0.78,
+                      }}
+                    >
+                      Record Local Settlement
+                    </button>
                   </div>
                 </div>
               </div>

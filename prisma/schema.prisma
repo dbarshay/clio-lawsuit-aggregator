@@ -203,6 +203,90 @@ model SettlementWriteback {
   @@index([finalizedAt])
 }
 
+model LocalSettlementRecord {
+  id                          String   @id @default(cuid())
+  masterLawsuitId             String
+  status                      String   @default("recorded")
+  source                      String   @default("barsh-matters-local")
+  payloadKind                 String?
+  recordIntent                String?
+  settledWith                 String?
+  settlementDate              String?
+  paymentExpectedDate         String?
+  notes                       String?
+  allocationMode              String?
+  grossSettlementAmount       Float?
+  interestAmountTotal         Float?
+  principalFeePercent         Float?
+  interestFeePercent          Float?
+  allocatedSettlementTotal    Float?
+  principalFeeTotal           Float?
+  interestFeeTotal            Float?
+  totalFee                    Float?
+  providerPrincipalNetTotal   Float?
+  providerInterestNetTotal    Float?
+  providerNetTotal            Float?
+  rowCount                    Int      @default(0)
+  previewSnapshot             Json?
+  roundingAdjustmentsSnapshot Json?
+  safetySnapshot              Json?
+  recordedBy                  String?
+  recordedAt                  DateTime @default(now())
+  voided                      Boolean  @default(false)
+  voidedAt                    DateTime?
+  voidedBy                    String?
+  voidReason                  String?
+  voidSnapshot                Json?
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  rows LocalSettlementRow[]
+
+  @@index([masterLawsuitId])
+  @@index([status])
+  @@index([settlementDate])
+  @@index([recordedAt])
+  @@index([voided])
+}
+
+model LocalSettlementRow {
+  id                       String   @id @default(cuid())
+  settlementRecordId       String
+  settlementRecord         LocalSettlementRecord @relation(fields: [settlementRecordId], references: [id], onDelete: Cascade)
+  masterLawsuitId          String
+  matterId                 Int
+  displayNumber            String?
+  provider                 String?
+  patient                  String?
+  insurer                  String?
+  claimNumber              String?
+  billNumber               String?
+  dosStart                 String?
+  dosEnd                   String?
+  denialReason             String?
+  claimAmount              Float?
+  principalBasis           Float?
+  allocatedSettlement      Float?
+  interestAmount           Float?
+  principalFee             Float?
+  interestFee              Float?
+  totalFee                 Float?
+  providerPrincipalNet     Float?
+  providerInterestNet      Float?
+  providerNet              Float?
+  settlementStatus         String?
+  rowSnapshot              Json?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([settlementRecordId])
+  @@index([masterLawsuitId])
+  @@index([matterId])
+  @@index([displayNumber])
+  @@index([settlementStatus])
+}
+
+
 model MatterPaymentReceipt {
   id                     Int       @id @default(autoincrement())
   matterId               Int

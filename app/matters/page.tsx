@@ -571,6 +571,8 @@ export default function FilteredMattersPage() {
   const [masterSettlementLocalPreviewLoading, setMasterSettlementLocalPreviewLoading] = useState(false);
   const [masterSettlementRecordSave, setMasterSettlementRecordSave] = useState<any>(null);
   const [masterSettlementRecordSaveLoading, setMasterSettlementRecordSaveLoading] = useState(false);
+  const [masterSettlementHistory, setMasterSettlementHistory] = useState<any>(null);
+  const [masterSettlementHistoryLoading, setMasterSettlementHistoryLoading] = useState(false);
   const [masterSettlementProviderFeeDefaults, setMasterSettlementProviderFeeDefaults] = useState<any>(null);
   const [masterSettlementProviderFeeDefaultsLoading, setMasterSettlementProviderFeeDefaultsLoading] = useState(false);
   const [masterSettlementPopupPosition, setMasterSettlementPopupPosition] = useState({ x: 0, y: 72 });
@@ -1756,6 +1758,40 @@ export default function FilteredMattersPage() {
     }
   }
 
+  function formatSettlementHistoryMoney(value: unknown): string {
+    const numeric = typeof value === "number" ? value : Number(String(value ?? "").replace(/[$,\s]/g, ""));
+    const safe = Number.isFinite(numeric) ? numeric : 0;
+    return safe.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  }
+
+  async function loadMasterSettlementHistory() {
+    const masterLawsuitId = currentMasterLawsuitIdForDocumentPreview();
+    if (!masterLawsuitId) {
+      setMasterSettlementHistory(null);
+      return;
+    }
+
+    setMasterSettlementHistoryLoading(true);
+    try {
+      const response = await fetch(`/api/settlements/local-history?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}&limit=5`);
+      const json = await response.json().catch(() => ({}));
+      setMasterSettlementHistory({
+        ...json,
+        httpStatus: response.status,
+      });
+    } catch (error: any) {
+      setMasterSettlementHistory({
+        ok: false,
+        action: "local-settlement-history",
+        localFirst: true,
+        sourceOfTruth: "barsh-matters-local",
+        error: error?.message || "Local settlement history failed.",
+      });
+    } finally {
+      setMasterSettlementHistoryLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!masterSettlementFormOpen || activeMasterWorkspaceTab !== "payments") return;
 
@@ -1766,6 +1802,11 @@ export default function FilteredMattersPage() {
       setMasterSettlementCostsInput(formatMasterSettlementDollarInput(String(costsAmount)));
     }
   }, [masterSettlementFormOpen, activeMasterWorkspaceTab]);
+
+  useEffect(() => {
+    if (activeMasterWorkspaceTab !== "payments") return;
+    void loadMasterSettlementHistory();
+  }, [activeMasterWorkspaceTab, masterLawsuitId]);
 
   const masterWorkspaceTabButtonStyle = (tab: MasterWorkspaceTab): React.CSSProperties =>
     activeMasterWorkspaceTab === tab ? masterWorkflowActiveButtonStyle : masterWorkflowButtonStyle;
@@ -6489,7 +6530,146 @@ export default function FilteredMattersPage() {
             )}
 
 
-            {masterSettlementFormOpen && activeMasterWorkspaceTab === "payments" && (
+            {activeMasterWorkspaceTab === "payments" && (
+        <section
+          data-barsh-local-settlement-history-panel="true"
+          style={{
+            border: "1px solid #dbeafe",
+            background: "#f8fbff",
+            borderRadius: 18,
+            padding: 18,
+            marginTop: 18,
+            marginBottom: 18,
+            boxShadow: "0 10px 24px rgba(30, 64, 175, 0.08)",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#172554" }}>Recorded Settlement</div>
+              <div style={{ marginTop: 4, fontSize: 13, color: "#475569" }}>
+                Barsh Matters local settlement readback.  Clio is not the source of truth for this panel.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadMasterSettlementHistory()}
+              disabled={masterSettlementHistoryLoading}
+              style={{
+                border: "1px solid #bfdbfe",
+                background: "#ffffff",
+                color: "#1d4ed8",
+                borderRadius: 999,
+                padding: "8px 12px",
+                fontSize: 12,
+                fontWeight: 800,
+                cursor: masterSettlementHistoryLoading ? "not-allowed" : "pointer",
+              }}
+            >
+              {masterSettlementHistoryLoading ? "Refreshing..." : "Refresh Settlement"}
+            </button>
+          </div>
+
+          {masterSettlementHistoryLoading && !masterSettlementHistory ? (
+            <div style={{ marginTop: 14, color: "#475569", fontSize: 13 }}>Loading local settlement history...</div>
+          ) : masterSettlementHistory?.ok && Array.isArray(masterSettlementHistory.records) && masterSettlementHistory.records.length > 0 ? (
+            <div style={{ marginTop: 16, display: "grid", gap: 14 }}>
+              {masterSettlementHistory.records.map((record: any) => (
+                <div
+                  key={record.id}
+                  style={{
+                    border: "1px solid #e2e8f0",
+                    background: "#ffffff",
+                    borderRadius: 14,
+                    padding: 14,
+                  }}
+                >
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(110px, 1fr))", gap: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 11, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>Status</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: record.voided ? "#991b1b" : "#166534" }}>
+                        {record.voided ? "Voided" : record.status || "Recorded"}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>Settled With</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{record.settledWith || "—"}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>Settlement Date</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{record.settlementDate || "—"}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>Payment Due</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{record.paymentExpectedDate || "—"}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>Principal</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>{formatSettlementHistoryMoney(record.allocatedSettlementTotal || 0)}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>Interest</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>{formatSettlementHistoryMoney(record.interestAmountTotal || 0)}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>Attorney Fee</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>{formatSettlementHistoryMoney(record.totalFee || 0)}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>Provider Net</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>{formatSettlementHistoryMoney(record.providerNetTotal || 0)}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>Rows</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{record.rowCount || record.rows?.length || 0}</div>
+                    </div>
+                  </div>
+
+                  {Array.isArray(record.rows) && record.rows.length > 0 && (
+                    <div style={{ marginTop: 14, overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: "#f8fafc", color: "#475569" }}>
+                            <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #e2e8f0" }}>Matter</th>
+                            <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #e2e8f0" }}>Provider</th>
+                            <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #e2e8f0" }}>Patient</th>
+                            <th style={{ textAlign: "right", padding: 8, borderBottom: "1px solid #e2e8f0" }}>Principal</th>
+                            <th style={{ textAlign: "right", padding: 8, borderBottom: "1px solid #e2e8f0" }}>Interest</th>
+                            <th style={{ textAlign: "right", padding: 8, borderBottom: "1px solid #e2e8f0" }}>Fee</th>
+                            <th style={{ textAlign: "right", padding: 8, borderBottom: "1px solid #e2e8f0" }}>Provider Net</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {record.rows.map((row: any) => (
+                            <tr key={row.id}>
+                              <td style={{ padding: 8, borderBottom: "1px solid #f1f5f9", fontWeight: 800 }}>{row.displayNumber || row.matterId}</td>
+                              <td style={{ padding: 8, borderBottom: "1px solid #f1f5f9" }}>{row.provider || "—"}</td>
+                              <td style={{ padding: 8, borderBottom: "1px solid #f1f5f9" }}>{row.patient || "—"}</td>
+                              <td style={{ padding: 8, borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{formatSettlementHistoryMoney(row.allocatedSettlement || 0)}</td>
+                              <td style={{ padding: 8, borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{formatSettlementHistoryMoney(row.interestAmount || 0)}</td>
+                              <td style={{ padding: 8, borderBottom: "1px solid #f1f5f9", textAlign: "right" }}>{formatSettlementHistoryMoney(row.totalFee || 0)}</td>
+                              <td style={{ padding: 8, borderBottom: "1px solid #f1f5f9", textAlign: "right", fontWeight: 800 }}>{formatSettlementHistoryMoney(row.providerNet || 0)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : masterSettlementHistory?.ok ? (
+            <div style={{ marginTop: 14, color: "#475569", fontSize: 13 }}>
+              No local settlement has been recorded for this lawsuit yet.
+            </div>
+          ) : (
+            <div style={{ marginTop: 14, color: "#991b1b", fontSize: 13, fontWeight: 700 }}>
+              {masterSettlementHistory?.error || "Local settlement history is not loaded yet."}
+            </div>
+          )}
+        </section>
+      )}
+
+      {masterSettlementFormOpen && activeMasterWorkspaceTab === "payments" && (
               <div
                 role="dialog"
                 aria-modal="true"

@@ -4413,7 +4413,7 @@ export default function FilteredMattersPage() {
               </div>
 
               <div style={masterSettlementTermFootnoteStyle}>
-                This is a visual/local draft only.  It does not run Clio contact search, settlement preview, writeback, document generation, or Close Paid Settlements.
+                This is a visual/local draft only.  It does not run external settlement posting, document generation, or Close Paid Settlements.
               </div>
 
             </div>
@@ -5012,7 +5012,7 @@ export default function FilteredMattersPage() {
                       <button
                         type="button"
                         onClick={() => setMasterPaymentFormOpen(true)}
-                        title="Open lawsuit-level payment preview popup.  No Clio writeback will occur."
+                        title="Open lawsuit-level payment preview popup.  Local payment workflow only."
                         style={{
                           width: "100%",
                           minWidth: 0,
@@ -5061,7 +5061,7 @@ export default function FilteredMattersPage() {
                       <button
                         type="button"
                         onClick={() => setMasterSettlementFormOpen(true)}
-                        title="Open settlement preview popup.  No Clio writeback will occur."
+                        title="Open settlement preview popup.  Local settlement workflow only."
                         style={{
                           width: "100%",
                           minWidth: 0,
@@ -5797,7 +5797,7 @@ export default function FilteredMattersPage() {
                           color: "#1e40af",
                         }}
                       >
-                        Master Lawsuit field edit · Local save, no Clio writeback.
+                        Master Lawsuit field edit · Local save.
                       </div>
                     </div>
 
@@ -6253,7 +6253,7 @@ export default function FilteredMattersPage() {
                           color: "#1e40af",
                         }}
                       >
-                        Master Lawsuit Settlement · Local preview only, no Clio writeback.
+                        Master Lawsuit Settlement · Local-first workflow.
                       </div>
                     </div>
 
@@ -6502,7 +6502,7 @@ export default function FilteredMattersPage() {
                         fontWeight: 900,
                       }}
                     >
-                      This is a local settlement draft only.  It does not run Clio contact search, settlement preview, settlement writeback, document generation, or Close Paid Settlements.
+                      This is a local settlement draft only.  It does not run external settlement posting, document generation, or Close Paid Settlements.
                     </div>
                   </div>
 
@@ -6769,7 +6769,7 @@ export default function FilteredMattersPage() {
                       type="button"
                       onClick={runMasterSettlementLocalPreview}
                       disabled={masterSettlementLocalPreviewLoading || masterSettlementGrossValue() <= 0}
-                      title="Preview local-first settlement calculations only.  No Clio writeback, database write, document generation, print queue change, or matter closure occurs."
+                      title="Preview local-first settlement calculations only.  No database write, document generation, print queue change, or matter closure occurs."
                       style={{
                         minWidth: 250,
                         height: 44,
@@ -7150,7 +7150,7 @@ export default function FilteredMattersPage() {
                           color: "#166534",
                         }}
                       >
-                        Master Lawsuit Payment · Local child-bill receipts, no Clio writeback.
+                        Master Lawsuit Payment · Local child-bill receipts.
                       </div>
                     </div>
 
@@ -7354,7 +7354,7 @@ export default function FilteredMattersPage() {
                         fontWeight: 900,
                       }}
                     >
-                      This posts local Barsh Matters payment receipts to the child bill matters.  No Clio writeback occurs.
+                      This posts local Barsh Matters payment receipts to the child bill matters.
                     </div>
                   </div>
 
@@ -7496,7 +7496,7 @@ export default function FilteredMattersPage() {
                       type="button"
                       disabled={masterPaymentPosting}
                       onClick={postMasterPaymentLocally}
-                      title="Post local Barsh Matters payment receipts to the child bill matters.  No Clio writeback will occur."
+                      title="Post local Barsh Matters payment receipts to the child bill matters."
                       style={{
                         minWidth: 190,
                         height: 44,

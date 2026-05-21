@@ -101,6 +101,19 @@ function findCurrentClioMatch(
   return filenameMatches[0] || null;
 }
 
+function buildClioDocumentOpenUrl(req: NextRequest, documentId: unknown, filename?: unknown): string {
+  const cleanDocumentId = clean(documentId);
+  if (!cleanDocumentId) return "";
+
+  const url = new URL("/api/documents/clio-document-open", req.nextUrl.origin);
+  url.searchParams.set("documentId", cleanDocumentId);
+
+  const cleanFilename = clean(filename);
+  if (cleanFilename) url.searchParams.set("filename", cleanFilename);
+
+  return url.toString();
+}
+
 async function verifyCandidatesAgainstCurrentClioDocuments(finalizations: any[]) {
   const documentsByMatterId = new Map<number, ClioMatterDocument[]>();
   const verificationErrors: any[] = [];
@@ -235,14 +248,24 @@ export async function GET(req: NextRequest) {
       }));
 
     const candidateDocuments = finalizations.flatMap((row) =>
-      row.uploadedDocuments.map((doc: any) => ({
-        finalizationId: row.finalizationId,
-        masterLawsuitId: row.masterLawsuitId,
-        masterMatterId: row.masterMatterId,
-        masterDisplayNumber: row.masterDisplayNumber,
-        finalizedAt: row.finalizedAt,
-        ...doc,
-      }))
+      row.uploadedDocuments.map((doc: any) => {
+        const documentUrl = buildClioDocumentOpenUrl(
+          req,
+          doc.clioDocumentId,
+          doc.filename || doc.clioDocumentName || doc.label || doc.key
+        );
+
+        return {
+          finalizationId: row.finalizationId,
+          masterLawsuitId: row.masterLawsuitId,
+          masterMatterId: row.masterMatterId,
+          masterDisplayNumber: row.masterDisplayNumber,
+          finalizedAt: row.finalizedAt,
+          ...doc,
+          documentUrl,
+          downloadUrl: documentUrl,
+        };
+      })
     );
 
     const localAuditCandidateDocuments = verification.finalizations.flatMap((row) =>

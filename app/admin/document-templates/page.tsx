@@ -72,6 +72,29 @@ function display(value: unknown, fallback = "—"): string {
   return text || fallback;
 }
 
+function mergeFieldVisibility(field: any): string {
+  return String(field?.metadata?.visibility || field?.visibility || "visible_ui");
+}
+
+function mergeFieldVisibilityCounts(fields: any[]) {
+  const counts = {
+    visible_ui: 0,
+    hidden_internal: 0,
+    computed: 0,
+    system: 0,
+  };
+
+  for (const field of fields || []) {
+    const visibility = mergeFieldVisibility(field);
+    if (visibility === "hidden_internal") counts.hidden_internal += 1;
+    else if (visibility === "computed") counts.computed += 1;
+    else if (visibility === "system") counts.system += 1;
+    else counts.visible_ui += 1;
+  }
+
+  return counts;
+}
+
 function statusBadgeStyle(kind: "ok" | "warn" | "neutral"): React.CSSProperties {
   const colors = {
     ok: { background: "#dcfce7", color: "#166534", border: "#bbf7d0" },
@@ -510,6 +533,7 @@ export default function AdminDocumentTemplatesPage() {
                 <tbody>
                   {templates.map((template) => {
                     const mergeFields = Array.isArray(template.mergeFields) ? template.mergeFields : [];
+                    const visibilityCounts = mergeFieldVisibilityCounts(mergeFields);
                     return (
                       <tr key={template.key} style={{ borderBottom: "1px solid #f1f5f9" }}>
                         <td style={{ padding: 12, verticalAlign: "top" }}>
@@ -565,6 +589,9 @@ export default function AdminDocumentTemplatesPage() {
                             <details>
                               <summary style={{ cursor: "pointer", fontWeight: 900 }}>
                                 {mergeFields.length} field(s)
+                                <div style={{ marginTop: 4, color: "#475569", fontSize: 12, lineHeight: 1.45 }}>
+                                  Visible UI: {visibilityCounts.visible_ui} · Hidden/internal: {visibilityCounts.hidden_internal} · Computed: {visibilityCounts.computed} · System: {visibilityCounts.system}
+                                </div>
                               </summary>
                               <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
                                 {mergeFields.map((field) => (
@@ -577,9 +604,12 @@ export default function AdminDocumentTemplatesPage() {
                                       background: "#f8fafc",
                                     }}
                                   >
-                                    <div style={{ fontWeight: 900 }}>{display(field.label)} <span style={{ color: "#64748b" }}>({field.key})</span></div>
+                                    <div style={{ fontWeight: 900 }}>
+                                      {display(field.label)} <span style={{ color: "#64748b" }}>({field.key})</span>
+                                      <span style={{ color: "#4f46e5", fontWeight: 900 }}> [{display(mergeFieldVisibility(field))}]</span>
+                                    </div>
                                     <div style={{ color: "#64748b", fontSize: 12 }}>
-                                      Source: {display(field.source)} · Required: {field.required ? "Yes" : "No"}
+                                      Source: {display(field.source)} · Visibility: {display(mergeFieldVisibility(field))} · Required: {field.required ? "Yes" : "No"}
                                     </div>
                                     {field.description && (
                                       <div style={{ color: "#475569", fontSize: 12, marginTop: 3 }}>{field.description}</div>

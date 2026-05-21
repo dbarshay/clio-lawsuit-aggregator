@@ -105,7 +105,8 @@
     "verify:document-template-import-routes-safety": "node scripts/verify-document-template-import-routes-safety.mjs",
     "verify:admin-document-template-import-ui-safety": "node scripts/verify-admin-document-template-import-ui-safety.mjs",
     "verify:admin-document-template-repository-page": "node scripts/verify-admin-document-template-repository-page.mjs",
-    "verify:document-template-merge-field-visibility-safety": "node scripts/verify-document-template-merge-field-visibility-safety.mjs"
+    "verify:document-template-merge-field-visibility-safety": "node scripts/verify-document-template-merge-field-visibility-safety.mjs",
+    "verify:admin-template-merge-field-visibility-display": "node scripts/verify-admin-template-merge-field-visibility-display.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

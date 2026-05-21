@@ -3179,7 +3179,8 @@ function masterSettlementDateFiledValue(): string {
     }
   }
 
-  function launchMasterDocumentPrint(selectedTemplate: { key: string; label: string; description: string } | null) {
+  async function launchMasterDocumentPrint(selectedTemplate: { key: string; label: string; description: string } | null) {
+    const masterLawsuitId = currentMasterLawsuitIdForDocumentPreview();
     const context = buildMasterDocumentDeliveryContext(selectedTemplate);
     const isSettlementDocumentMode =
       masterDocumentLaunchMode === "settlement" ||
@@ -3219,31 +3220,127 @@ function masterSettlementDateFiledValue(): string {
         printablePdfReady: false,
         clioRecordsChanged: false,
         emailSent: false,
-        note: "Opened the real generated DOCX route.  PDF generation and browser print-ready PDF are not yet wired.",
+        note: "Opened the real generated DOCX route.  PDF conversion/printing remains browser-controlled.",
       });
       return;
     }
 
-    const printableUrl = resolvePrintableUrl(context);
-
-    if (!printableUrl) {
-      alert("A finalized PDF/printable document is required before printing.  The shared print action is wired, but the PDF generation route is not ready yet.");
+    if (!masterLawsuitId) {
+      alert("No Lawsuit ID is available for finalized-document print lookup.");
       return;
     }
 
-    const printWindow = window.open(printableUrl, "_blank", "noopener,noreferrer");
-    if (!printWindow) {
-      alert("The browser blocked the print window.  Please allow popups for Barsh Matters and try again.");
-      return;
-    }
+    setMasterDocumentPrintResult(null);
 
-    window.setTimeout(() => {
-      try {
-        printWindow.print();
-      } catch {
-        // Browser-controlled print behavior; the opened PDF can still be printed manually.
+    try {
+      const params = new URLSearchParams();
+      params.set("masterLawsuitId", masterLawsuitId);
+      params.set("limit", "25");
+
+      const response = await fetch("/api/documents/print-queue-preview?" + params.toString(), {
+        cache: "no-store",
+      });
+      const json = await response.json().catch(() => null);
+
+      if (!response.ok || !json?.ok) {
+        const message = json?.error || "Could not load finalized document print candidates.";
+        setMasterDocumentPrintResult(json || { ok: false, error: message });
+        alert(message);
+        return;
       }
-    }, 750);
+
+      const candidates = Array.isArray(json?.candidateDocuments) ? json.candidateDocuments : [];
+
+      if (candidates.length === 0) {
+        const message = "No finalized Clio-verified documents are available to print yet.  Upload final documents to Clio first.";
+        setMasterDocumentPrintResult({
+          ...json,
+          ok: false,
+          action: "master-document-print-preview",
+          error: message,
+        });
+        alert(message);
+        return;
+      }
+
+      const selectedKey = String(selectedTemplate?.key || "").trim().toLowerCase();
+      const selectedLabel = String(selectedTemplate?.label || "").trim().toLowerCase();
+
+      const selectedCandidate =
+        candidates.find((candidate: any) => String(candidate?.key || "").trim().toLowerCase() === selectedKey) ||
+        candidates.find((candidate: any) => String(candidate?.documentKey || "").trim().toLowerCase() === selectedKey) ||
+        candidates.find((candidate: any) => String(candidate?.label || "").trim().toLowerCase() === selectedLabel) ||
+        candidates.find((candidate: any) => String(candidate?.documentLabel || "").trim().toLowerCase() === selectedLabel) ||
+        candidates.find((candidate: any) => selectedKey && String(candidate?.filename || "").trim().toLowerCase().includes(selectedKey)) ||
+        candidates[0];
+
+      const printableUrl =
+        selectedCandidate?.pdfUrl ||
+        selectedCandidate?.downloadUrl ||
+        selectedCandidate?.documentUrl ||
+        selectedCandidate?.docxUrl ||
+        selectedCandidate?.url ||
+        selectedCandidate?.webUrl ||
+        selectedCandidate?.clioDocumentUrl ||
+        selectedCandidate?.previewUrl ||
+        "";
+
+      if (!printableUrl) {
+        const message =
+          "Barsh Matters found a current Clio-verified finalized document, but the preview contract did not expose an openable file URL.  The candidate details are shown below.";
+        setMasterDocumentPrintResult({
+          ...json,
+          ok: false,
+          action: "master-document-print-preview",
+          error: message,
+          selectedCandidate,
+        });
+        alert(message);
+        return;
+      }
+
+      const printWindow = window.open(printableUrl, "_blank", "noopener,noreferrer");
+
+      if (!printWindow) {
+        alert("The browser blocked the print window.  Please allow popups for Barsh Matters and try again.");
+        return;
+      }
+
+      window.setTimeout(() => {
+        try {
+          printWindow.print();
+        } catch {
+          // Browser-controlled print behavior; the opened document can still be printed manually.
+        }
+      }, 750);
+
+      setMasterDocumentPrintResult({
+        ok: true,
+        action: "master-document-print-open",
+        masterLawsuitId,
+        documentLabel:
+          selectedCandidate?.label ||
+          selectedCandidate?.documentLabel ||
+          selectedTemplate?.label ||
+          context.documentLabel ||
+          "Document",
+        filename: selectedCandidate?.filename || selectedCandidate?.clioDocumentName || "",
+        printableUrl,
+        selectedCandidate,
+        candidateDocumentCount: candidates.length,
+        currentClioExistenceVerified: json?.verification?.currentClioExistenceVerified === true,
+        clioDocumentsTabRemainsSourceOfTruth: true,
+        note: "Opened a current Clio-verified finalized document for browser printing.",
+      });
+    } catch (err: any) {
+      const fallback = {
+        ok: false,
+        action: "master-document-print-open",
+        error: err?.message || "Could not open the finalized document for printing.",
+      };
+      setMasterDocumentPrintResult(fallback);
+      alert(fallback.error);
+    }
   }
 
   async function loadMasterFinalizePreview() {
@@ -3450,33 +3547,83 @@ function masterSettlementDateFiledValue(): string {
   }
 
   async function sendMasterDocumentToPrintQueue(selectedTemplate: { key: string; label: string; description: string } | null) {
+    const masterLawsuitId = currentMasterLawsuitIdForDocumentPreview();
     const context = buildMasterDocumentDeliveryContext(selectedTemplate);
     const isSettlementDocumentMode =
       masterDocumentLaunchMode === "settlement" ||
       masterDocumentDataPreview?.documentLaunchMode === "settlement" ||
       masterDocumentDataPreview?.action === "settlement-documents-preview";
 
-    if (!isSettlementDocumentMode) {
-      alert(`${documentDeliverySafetyNote()}\n\nSend to Print Queue is reserved for the generalized finalized-document queue backend and is not yet writing queue records.\n\nDocument: ${context.documentLabel}`);
+    if (isSettlementDocumentMode) {
+      const finalizationId = Number(masterDocumentFinalizationResult?.finalizationRecord?.id || 0);
+
+      if (!finalizationId) {
+        alert("Finalize the settlement document before sending it to the print queue.");
+        return;
+      }
+
+      setMasterDocumentPrintQueueLoading(true);
+      setMasterDocumentPrintQueueResult(null);
+
+      try {
+        const response = await fetch("/api/settlements/documents-print-queue-local", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            finalizationId,
+            confirmAdd: true,
+          }),
+        });
+
+        const json = await response.json().catch(() => null);
+
+        if (!response.ok || !json?.ok) {
+          const message = json?.error || "Could not send the finalized settlement document to the print queue.";
+          setMasterDocumentPrintQueueResult(json || { ok: false, error: message });
+          alert(message);
+          return;
+        }
+
+        setMasterDocumentPrintQueueResult(json);
+      } catch (err: any) {
+        const fallback = {
+          ok: false,
+          action: "settlement-document-print-queue-local",
+          error: err?.message || "Could not send the finalized settlement document to the print queue.",
+        };
+        setMasterDocumentPrintQueueResult(fallback);
+        alert(fallback.error);
+      } finally {
+        setMasterDocumentPrintQueueLoading(false);
+      }
+
       return;
     }
 
-    const finalizationId = Number(masterDocumentFinalizationResult?.finalizationRecord?.id || 0);
-
-    if (!finalizationId) {
-      alert("Finalize the settlement document before sending it to the print queue.");
+    if (!masterLawsuitId) {
+      alert("No Lawsuit ID is available for sending finalized documents to the print queue.");
       return;
     }
+
+    const confirmed = confirm(
+      "SEND FINALIZED DOCUMENTS TO PRINT QUEUE\n\n" +
+        "Lawsuit ID: " + masterLawsuitId + "\n" +
+        "Document: " + (context.documentLabel || selectedTemplate?.label || "Selected finalized document(s)") + "\n\n" +
+        "Barsh Matters will add currently Clio-verified finalized document file(s) to the print queue.  Existing queue records are skipped.\n\n" +
+        "Continue?"
+    );
+
+    if (!confirmed) return;
 
     setMasterDocumentPrintQueueLoading(true);
     setMasterDocumentPrintQueueResult(null);
 
     try {
-      const response = await fetch("/api/settlements/documents-print-queue-local", {
+      const response = await fetch("/api/documents/print-queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          finalizationId,
+          masterLawsuitId,
           confirmAdd: true,
         }),
       });
@@ -3484,7 +3631,7 @@ function masterSettlementDateFiledValue(): string {
       const json = await response.json().catch(() => null);
 
       if (!response.ok || !json?.ok) {
-        const message = json?.error || "Could not send the finalized settlement document placeholder to the print queue.";
+        const message = json?.error || "Could not send finalized document(s) to the print queue.";
         setMasterDocumentPrintQueueResult(json || { ok: false, error: message });
         alert(message);
         return;
@@ -3494,8 +3641,8 @@ function masterSettlementDateFiledValue(): string {
     } catch (err: any) {
       const fallback = {
         ok: false,
-        action: "settlement-document-print-queue-local",
-        error: err?.message || "Could not send the finalized settlement document placeholder to the print queue.",
+        action: "master-document-print-queue-add",
+        error: err?.message || "Could not send finalized document(s) to the print queue.",
       };
       setMasterDocumentPrintQueueResult(fallback);
       alert(fallback.error);
@@ -4370,7 +4517,7 @@ function masterSettlementDateFiledValue(): string {
               <p style={{ margin: "8px 0 0", color: "#475569", lineHeight: 1.45 }}>
                 {isSettlementDocumentMode
                   ? "Select a settlement document, preview or edit it, then finalize.  This settlement path reads Barsh Matters local settlement records only.  It does not use Clio as the settlement source of truth."
-                  : "Select a document, preview it, run the finalization preview, and explicitly upload final documents to the mapped master Clio matter when ready.  Email, print, and queue actions remain pending until finalized-document delivery is wired."}
+                  : "Select a document, preview it, run the finalization preview, and explicitly upload final documents to the mapped master Clio matter when ready.  Email, print, and queue actions use finalized-document delivery records."}
               </p>
             </div>
             <button
@@ -5125,6 +5272,17 @@ function masterSettlementDateFiledValue(): string {
       cursor: "not-allowed",
     };
 
+    const secondaryDeliveryButtonStyle: React.CSSProperties = {
+      border: "1px solid #cbd5e1",
+      background: "#ffffff",
+      color: "#0f172a",
+      borderRadius: 12,
+      padding: "10px 14px",
+      fontWeight: 900,
+      cursor: "pointer",
+      boxShadow: "0 8px 16px rgba(15, 23, 42, 0.08)",
+    };
+
     return (
       <div
         role="dialog"
@@ -5164,9 +5322,9 @@ function masterSettlementDateFiledValue(): string {
             }}
           >
             <div>
-              <h2 style={{ margin: 0, fontSize: 22 }}>Email / Print / Queue</h2>
+              <h2 style={{ margin: 0, fontSize: 22 }}>Document Delivery</h2>
               <p style={{ margin: "8px 0 0", color: "#475569", lineHeight: 1.45 }}>
-                Use this delivery popup after Master/Lawsuit final upload completes or is safely processed with duplicate-file skipping.  Email can build the document delivery preview.  Print and print-queue actions remain pending until finalized-document delivery is wired to real files.
+                Use this delivery popup after Master/Lawsuit final upload completes or is safely processed with duplicate-file skipping.  Email prepares an Outlook draft preview, Print opens a current Clio-verified finalized document, and Queue adds current Clio-verified finalized document records to the Barsh Matters print queue.
               </p>
             </div>
             <button
@@ -5200,7 +5358,7 @@ function masterSettlementDateFiledValue(): string {
               <div>
                 <h3 style={{ margin: 0, fontSize: 18 }}>Delivery Options</h3>
                 <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.45 }}>
-                  Email Document opens the existing delivery preview below.  Create Outlook Draft remains a separate explicit action after the preview is ready.
+                  Choose how to deliver the finalized document.  Email prepares an Outlook draft preview first; print opens the finalized file; queue adds finalized Clio-verified files to the Barsh Matters print queue.
                 </p>
               </div>
 
@@ -5217,20 +5375,22 @@ function masterSettlementDateFiledValue(): string {
 
                 <button
                   type="button"
-                  disabled
-                  title="Pending finalized-document print backend."
-                  style={pendingButtonStyle}
+                  onClick={() => launchMasterDocumentPrint(displayedSelectedTemplate)}
+                  disabled={!displayedSelectedTemplate}
+                  title={!displayedSelectedTemplate ? "Select a finalized document before printing." : undefined}
+                  style={displayedSelectedTemplate ? secondaryDeliveryButtonStyle : pendingButtonStyle}
                 >
-                  Print Document — Pending
+                  Print Document
                 </button>
 
                 <button
                   type="button"
-                  disabled
-                  title="Pending finalized-document print queue backend."
-                  style={pendingButtonStyle}
+                  onClick={() => sendMasterDocumentToPrintQueue(displayedSelectedTemplate)}
+                  disabled={!displayedSelectedTemplate || masterDocumentPrintQueueLoading}
+                  title={!displayedSelectedTemplate ? "Select a finalized document before sending it to the print queue." : undefined}
+                  style={displayedSelectedTemplate && !masterDocumentPrintQueueLoading ? secondaryDeliveryButtonStyle : pendingButtonStyle}
                 >
-                  Send to Print Queue — Pending
+                  {masterDocumentPrintQueueLoading ? "Sending to Print Queue..." : "Send to Print Queue"}
                 </button>
               </div>
             </section>
@@ -5283,7 +5443,7 @@ function masterSettlementDateFiledValue(): string {
                   }}
                 >
                   <div>
-                    <h3 style={{ margin: 0, fontSize: 18 }}>Document Delivery Preview / Admin Diagnostic</h3>
+                    <h3 style={{ margin: 0, fontSize: 18 }}>Email Draft Preview</h3>
                     <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.45 }}>
                       Preview only.  No Outlook draft is created unless Create Outlook Draft is clicked.  This does not send email, write Clio, upload documents, print, or queue anything.
                     </p>

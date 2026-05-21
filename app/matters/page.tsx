@@ -4233,7 +4233,7 @@ function masterSettlementDateFiledValue(): string {
               <p style={{ margin: "8px 0 0", color: "#475569", lineHeight: 1.45 }}>
                 {isSettlementDocumentMode
                   ? "Select a settlement document, preview or edit it, then finalize.  This settlement path reads Barsh Matters local settlement records only.  It does not use Clio as the settlement source of truth."
-                  : "Select a document, preview or edit it, then finalize when the backend is safely wired.  No documents are generated from this popup.  This popup does not generate files, upload to Clio, email, print, or change the print queue."}
+                  : "Select a document, preview it, finalize it, and then explicitly upload the final document set to Clio.  The workflow uses the existing backend target-routing safeguards."}
               </p>
             </div>
             <button
@@ -4265,7 +4265,7 @@ function masterSettlementDateFiledValue(): string {
               {stepArrow(step1Complete)}
               {stepBadge(
                 2,
-                "Preview PDF or Edit",
+                "Preview or Edit Document",
                 masterDocumentWorkflowStage === "chooseAction" ||
                   masterDocumentWorkflowStage === "preview" ||
                   masterDocumentWorkflowStage === "edit",
@@ -4386,7 +4386,7 @@ function masterSettlementDateFiledValue(): string {
               }}
             >
               <div>
-                <h3 style={{ margin: 0, fontSize: 18 }}>Step 2: Preview PDF or Edit</h3>
+                <h3 style={{ margin: 0, fontSize: 18 }}>Step 2: Preview or Edit Document</h3>
                 <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
                   {displayedSelectedTemplate
                     ? `Selected: ${displayedSelectedTemplate?.label || "Selected document"}`
@@ -4396,7 +4396,7 @@ function masterSettlementDateFiledValue(): string {
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 {actionButton(
-                  "Preview PDF",
+                  "Preview Document",
                   () => setMasterDocumentWorkflowStage("preview"),
                   !displayedSelectedTemplate,
                   !displayedSelectedTemplate ? "Select a document first." : undefined
@@ -4476,11 +4476,11 @@ function masterSettlementDateFiledValue(): string {
               >
                 <div>
                   <h3 style={{ margin: 0, fontSize: 18 }}>
-                    {showPreviewStep ? "PDF Preview" : "Edit Document"}
+                    {showPreviewStep ? "Document Preview" : "Edit Document"}
                   </h3>
                   <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
                     {showPreviewStep
-                      ? "Review the PDF preview before finalizing.  The actual PDF route will be wired next; this step currently shows the safe local preview shell."
+                      ? "Review the document preview before finalizing.  The final document route will be wired next; this step currently shows the safe local preview shell."
                       : "Word editing will be wired later.  This step currently confirms the intended edit workflow without faking Word integration."}
                   </p>
                 </div>
@@ -4496,7 +4496,7 @@ function masterSettlementDateFiledValue(): string {
                       lineHeight: 1.45,
                     }}
                   >
-                    <strong>PDF preview shell:</strong> {displayedSelectedTemplate?.label || "Selected document"} will launch as a PDF preview after the PDF preview route is safely wired.  {isSettlementDocumentMode ? "For now, this preview uses the local settlement document plan." : "For now, this preview uses the local master lawsuit document packet."}
+                    <strong>Document preview shell:</strong> {displayedSelectedTemplate?.label || "Selected document"} will launch as a PDF preview after the PDF preview route is safely wired.  {isSettlementDocumentMode ? "For now, this preview uses the local settlement document plan." : "For now, this preview uses the local master lawsuit document packet."}
                     <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
                       <div><strong>Lawsuit ID:</strong> {masterDocumentPreviewText(masterDocumentDataPreview?.masterLawsuitId || templateFields.masterLawsuitId || uiFields.masterLawsuitId) || "—"}</div>
                       <div><strong>Provider:</strong> {masterDocumentPreviewText(masterDocumentDataPreview?.settlementSummary?.provider || templateFields.providerName || claimIndexFields.providerName) || "—"}</div>
@@ -4928,6 +4928,7 @@ function masterSettlementDateFiledValue(): string {
 
             <details
               style={{
+                display: "none",
                 border: "1px solid #e5e7eb",
                 borderRadius: 14,
                 padding: 14,

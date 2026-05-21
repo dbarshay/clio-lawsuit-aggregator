@@ -5050,7 +5050,7 @@ const activeGroupKey =
             <div>
               <h2 style={{ margin: 0, fontSize: 22 }}>Document Generation</h2>
               <p style={{ margin: "8px 0 0", color: "#475569", lineHeight: 1.45 }}>
-                Select a document, preview or edit it, then finalize when the backend is safely wired.  No documents are generated from this popup.  This popup does not generate files, upload to Clio, email, print, or change the print queue.
+                Select a document, preview it, finalize it, and then explicitly upload the final document set to Clio.  The workflow uses the existing backend target-routing safeguards.
               </p>
             </div>
             <button
@@ -5082,7 +5082,7 @@ const activeGroupKey =
               {stepArrow(step1Complete)}
               {stepBadge(
                 2,
-                "Preview PDF or Edit",
+                "Preview or Edit Document",
                 matterDocumentWorkflowStage === "chooseAction" ||
                   matterDocumentWorkflowStage === "preview" ||
                   matterDocumentWorkflowStage === "edit",
@@ -5181,7 +5181,7 @@ const activeGroupKey =
               }}
             >
               <div>
-                <h3 style={{ margin: 0, fontSize: 18 }}>Step 2: Preview PDF or Edit</h3>
+                <h3 style={{ margin: 0, fontSize: 18 }}>Step 2: Preview or Edit Document</h3>
                 <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
                   {selectedTemplate
                     ? `Selected: ${selectedTemplate?.label || "Selected document"}`
@@ -5191,8 +5191,11 @@ const activeGroupKey =
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 {actionButton(
-                  "Preview PDF",
-                  () => setMatterDocumentWorkflowStage("preview"),
+                  "Preview Document",
+                  () => {
+                    setMatterDocumentWorkflowStage("preview");
+                    void loadDocumentGenerationPreview();
+                  },
                   !selectedTemplate,
                   !selectedTemplate ? "Select a document first." : undefined
                 )}
@@ -5334,7 +5337,15 @@ const activeGroupKey =
                   >
                     Back
                   </button>
-                  {actionButton("Finalize Document", () => setMatterDocumentWorkflowStage("finalize"), false)}
+                  {actionButton(
+                    documentPreviewLoading ? "Checking..." : "Finalize Document",
+                    () => {
+                      setMatterDocumentWorkflowStage("finalize");
+                      void loadFinalizePreview();
+                    },
+                    documentPreviewLoading || finalizeUploadLoading,
+                    "Run finalization preview before uploading the final document set to Clio."
+                  )}
                 </div>
               </section>
             )}
@@ -5358,10 +5369,13 @@ const activeGroupKey =
 
               <div>
                 {actionButton(
-                  "Finalize Document",
-                  () => setMatterDocumentWorkflowStage("delivery"),
-                  !canFinalize,
-                  "Preview the PDF or edit the selected document before finalizing."
+                  finalizeUploadLoading ? "Uploading..." : "Upload Final Document to Clio",
+                  uploadFinalDocumentsToClio,
+                  documentPreviewLoading ||
+                    finalizeUploadLoading ||
+                    documentPreview?.action !== "finalize-preview" ||
+                    !documentPreview?.ok,
+                  "Requires a successful Finalize Document step first."
                 )}
               </div>
 
@@ -5440,6 +5454,7 @@ const activeGroupKey =
 
             <details
               style={{
+                display: "none",
                 border: "1px solid #e5e7eb",
                 borderRadius: 14,
                 padding: 14,
@@ -12181,7 +12196,7 @@ const activeGroupKey =
                         : "pointer",
                     fontWeight: 700,
                   }}
-                  title="Requires a successful Finalize Documents Preview first."
+                  title="Requires a successful Finalize Document step first."
                 >
                   {finalizeUploadLoading ? "Uploading..." : "Upload Final Documents to Clio"}
                 </button>

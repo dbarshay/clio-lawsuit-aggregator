@@ -1186,6 +1186,20 @@ export default function FilteredMattersPage() {
     }
   }
 
+  function openAdministratorMenu() {
+    if (administratorMenuOpen) {
+      setAdministratorMenuOpen(false);
+      return;
+    }
+
+    void runAdministratorGate(
+      "Open Administrator Menu",
+      () => {
+        setAdministratorMenuOpen(true);
+      }
+    );
+  }
+
   function openAdminHome() {
     void runAdministratorGate(
       "Open Administrator Home",
@@ -4550,7 +4564,7 @@ function masterSettlementDateFiledValue(): string {
             <div style={{ ...printButtonRowStyle, position: "relative" }}>
               <button
                 type="button"
-                onClick={() => setAdministratorMenuOpen((open) => !open)}
+                onClick={openAdministratorMenu}
                 title="Administrator functions require password access."
                 style={{
                   ...lockedPrintQueueButtonStyle,

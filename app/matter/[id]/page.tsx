@@ -791,6 +791,20 @@ const activeGroupKey =
     }
   }
 
+  function openAdministratorMenu() {
+    if (administratorMenuOpen) {
+      setAdministratorMenuOpen(false);
+      return;
+    }
+
+    void runAdministratorGate(
+      "Open Administrator Menu",
+      () => {
+        setAdministratorMenuOpen(true);
+      }
+    );
+  }
+
   function openAdminHome() {
     void runAdministratorGate(
       "Open Administrator Home",
@@ -5974,7 +5988,7 @@ const activeGroupKey =
           <div style={{ ...bmGlobalPrintButtonRowStyle, position: "relative" }}>
             <button
               type="button"
-              onClick={() => setAdministratorMenuOpen((open) => !open)}
+              onClick={openAdministratorMenu}
               title="Administrator functions require password access."
               style={{
                 ...bmGlobalLockedPrintQueueStyle,

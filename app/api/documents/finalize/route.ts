@@ -89,9 +89,26 @@ async function recordDocumentFinalizationAttempt(params: {
   }
 }
 
-async function loadFinalizePreview(req: NextRequest, masterLawsuitId: string) {
+async function loadFinalizePreview(req: NextRequest, params: {
+  masterLawsuitId: string;
+  uploadTargetMode?: string;
+  directMatterId?: string | number | null;
+  directMatterDisplayNumber?: string | null;
+}) {
   const previewUrl = new URL("/api/documents/finalize-preview", req.nextUrl.origin);
-  previewUrl.searchParams.set("masterLawsuitId", masterLawsuitId);
+  previewUrl.searchParams.set("masterLawsuitId", params.masterLawsuitId);
+
+  if (clean(params.uploadTargetMode)) {
+    previewUrl.searchParams.set("uploadTarget", clean(params.uploadTargetMode));
+  }
+
+  if (clean(params.directMatterId)) {
+    previewUrl.searchParams.set("directMatterId", clean(params.directMatterId));
+  }
+
+  if (clean(params.directMatterDisplayNumber)) {
+    previewUrl.searchParams.set("directMatterDisplayNumber", clean(params.directMatterDisplayNumber));
+  }
 
   const previewRes = await fetch(previewUrl, {
     method: "GET",
@@ -163,6 +180,9 @@ export async function POST(req: NextRequest) {
     const allowDuplicateUploads = body?.allowDuplicateUploads === true;
 
     const masterLawsuitId = clean(body?.masterLawsuitId);
+    const uploadTargetMode = clean(body?.uploadTargetMode || body?.uploadTarget);
+    const directMatterId = clean(body?.directMatterId);
+    const directMatterDisplayNumber = clean(body?.directMatterDisplayNumber);
     const confirmUpload = body?.confirmUpload === true;
     const requestedKeys = asStringArray(body?.documentKeys);
 
@@ -191,7 +211,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const preview = await loadFinalizePreview(req, masterLawsuitId);
+    const preview = await loadFinalizePreview(req, {
+      masterLawsuitId,
+      uploadTargetMode,
+      directMatterId,
+      directMatterDisplayNumber,
+    });
     const validation = preview?.validation || {};
 
     if (!validation.canGenerate) {
@@ -387,7 +412,7 @@ export async function POST(req: NextRequest) {
         databaseAuditLayerOnly: true,
         clioDocumentsTabRemainsSourceOfTruth: true,
         noOneDriveOrSharePointFoldersCreated: true,
-        uploadedOnlyToMasterMatterDocumentsTab: true,
+        uploadedOnlyToRequestedClioMatterDocumentsTab: true,
       },
     });
   } catch (err: any) {

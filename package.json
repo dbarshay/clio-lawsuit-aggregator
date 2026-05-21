@@ -112,7 +112,11 @@
     "verify:admin-template-file-placeholder-ui-safety": "node scripts/verify-admin-template-file-placeholder-ui-safety.mjs",
     "verify:clio-document-list-readonly-safety": "node scripts/verify-clio-document-list-readonly-safety.mjs",
     "verify:clio-document-list-ui-safety": "node scripts/verify-clio-document-list-ui-safety.mjs",
-    "verify:master-view-documents-button-separation": "node scripts/verify-master-view-documents-button-separation.mjs"
+    "verify:master-view-documents-button-separation": "node scripts/verify-master-view-documents-button-separation.mjs",
+    "verify:direct-finalize-master-id-resolution-safety": "node scripts/verify-direct-finalize-master-id-resolution-safety.mjs",
+    "verify:packet-clio-master-mapping-safety": "node scripts/verify-packet-clio-master-mapping-safety.mjs",
+    "verify:master-view-documents-source-labels-safety": "node scripts/verify-master-view-documents-source-labels-safety.mjs",
+    "verify:document-finalization-target-routing-safety": "node scripts/verify-document-finalization-target-routing-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

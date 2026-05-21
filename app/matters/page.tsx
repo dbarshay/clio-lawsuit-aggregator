@@ -888,6 +888,23 @@ export default function FilteredMattersPage() {
                           cursor: "pointer",
                         }}
                       >
+                        <div style={{ marginBottom: 6 }}>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              border: "1px solid #cbd5e1",
+                              borderRadius: 999,
+                              padding: "3px 7px",
+                              background: doc.sourceRole === "lawsuit" ? "#ecfdf5" : "#eff6ff",
+                              color: doc.sourceRole === "lawsuit" ? "#166534" : "#1d4ed8",
+                              fontSize: 11,
+                              fontWeight: 950,
+                            }}
+                          >
+                            {masterDocumentPreviewText(doc.sourceLabel) || "—"}
+                          </span>
+                        </div>
                         <div style={{ fontWeight: 950 }}>{masterDocumentPreviewText(doc.clioDocumentName) || masterDocumentPreviewText(doc.clioDocumentFilename) || "Untitled"}</div>
                         <div style={{ marginTop: 4, color: "#64748b", fontSize: 12, fontWeight: 700 }}>
                           {masterDocumentPreviewText(doc.latestDocumentVersion?.filename) || masterDocumentPreviewText(doc.clioDocumentFilename) || "No filename"}
@@ -907,6 +924,8 @@ export default function FilteredMattersPage() {
                         {masterDocumentPreviewText(selectedDoc.clioDocumentName) || masterDocumentPreviewText(selectedDoc.clioDocumentFilename) || "Untitled"}
                       </h3>
                       <div style={{ display: "grid", gap: 8, fontSize: 13 }}>
+                        <div><strong>Source:</strong> {masterDocumentPreviewText(selectedDoc.sourceLabel) || "—"}</div>
+                        <div><strong>Source Clio Matter:</strong> {masterDocumentPreviewText(selectedDoc.sourceClioDisplayNumber) || "—"}</div>
                         <div><strong>Clio Document ID:</strong> {masterDocumentPreviewText(selectedDoc.clioDocumentId) || "—"}</div>
                         <div><strong>Filename:</strong> {masterDocumentPreviewText(selectedDoc.latestDocumentVersion?.filename) || masterDocumentPreviewText(selectedDoc.clioDocumentFilename) || "—"}</div>
                         <div><strong>Version UUID:</strong> <span style={{ fontFamily: "monospace" }}>{masterDocumentPreviewText(selectedDoc.latestDocumentVersion?.uuid) || "—"}</span></div>

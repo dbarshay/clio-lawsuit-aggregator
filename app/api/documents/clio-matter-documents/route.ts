@@ -98,6 +98,42 @@ async function resolveClioMatterByDisplayNumber(displayNumberInput: string) {
   };
 }
 
+function normalizeClioDocumentRows(documents: any[], source: {
+  clioMatterId: number | null;
+  clioDisplayNumber: string;
+  sourceRole: "lawsuit" | "bill";
+  sourceLabel: string;
+}) {
+  return documents.map((doc: any) => ({
+    clioDocumentId: doc.id,
+    clioDocumentName: doc.name,
+    clioDocumentFilename: doc.filename,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+    sourceClioMatterId: source.clioMatterId,
+    sourceClioDisplayNumber: source.clioDisplayNumber,
+    sourceRole: source.sourceRole,
+    sourceLabel: source.sourceLabel,
+    latestDocumentVersion: doc.latestDocumentVersion
+      ? {
+          id: doc.latestDocumentVersion.id,
+          uuid: doc.latestDocumentVersion.uuid,
+          filename: doc.latestDocumentVersion.filename,
+          size: doc.latestDocumentVersion.size,
+          contentType: doc.latestDocumentVersion.contentType,
+          fullyUploaded: doc.latestDocumentVersion.fullyUploaded,
+          receivedAt: doc.latestDocumentVersion.receivedAt,
+          createdAt: doc.latestDocumentVersion.createdAt,
+          updatedAt: doc.latestDocumentVersion.updatedAt,
+        }
+      : null,
+  }));
+}
+
+function sourceLabel(displayNumber: string, role: "lawsuit" | "bill") {
+  return `${normalizeBrl(displayNumber)}- ${role === "lawsuit" ? "Lawsuit" : "Bill"}`;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
@@ -229,6 +265,21 @@ export async function GET(req: NextRequest) {
         },
       });
 
+      const childClaimIndexRows = await prisma.claimIndex.findMany({
+        where: { master_lawsuit_id: masterLawsuitId },
+        select: {
+          matter_id: true,
+          display_number: true,
+          description: true,
+          provider_name: true,
+          patient_name: true,
+          insurer_name: true,
+          claim_number_raw: true,
+        },
+        orderBy: [{ display_number: "asc" }, { matter_id: "asc" }],
+        take: 200,
+      });
+
       clioMatterId = numberOrNull(lawsuit?.clioMasterMatterId);
       clioDisplayNumber = normalizeBrl(lawsuit?.clioMasterDisplayNumber);
       localSource = {
@@ -236,6 +287,7 @@ export async function GET(req: NextRequest) {
         mappingRequired: true,
         rowFound: Boolean(lawsuit),
         lawsuit,
+        childClaimIndexRows,
       };
 
       if (!lawsuit) {
@@ -304,28 +356,76 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const documents = await listClioMatterDocuments(clioMatterId);
+    let normalizedDocuments: any[] = [];
+    const sourceSummaries: any[] = [];
 
-    const normalizedDocuments = documents.map((doc) => ({
-      clioDocumentId: doc.id,
-      clioDocumentName: doc.name,
-      clioDocumentFilename: doc.filename,
-      createdAt: doc.createdAt,
-      updatedAt: doc.updatedAt,
-      latestDocumentVersion: doc.latestDocumentVersion
-        ? {
-            id: doc.latestDocumentVersion.id,
-            uuid: doc.latestDocumentVersion.uuid,
-            filename: doc.latestDocumentVersion.filename,
-            size: doc.latestDocumentVersion.size,
-            contentType: doc.latestDocumentVersion.contentType,
-            fullyUploaded: doc.latestDocumentVersion.fullyUploaded,
-            receivedAt: doc.latestDocumentVersion.receivedAt,
-            createdAt: doc.latestDocumentVersion.createdAt,
-            updatedAt: doc.latestDocumentVersion.updatedAt,
-          }
-        : null,
-    }));
+    if (targetType === "master-lawsuit") {
+      const masterDisplay = clioDisplayNumber || normalizeBrl(localSource?.lawsuit?.clioMasterDisplayNumber);
+      const masterDocuments = await listClioMatterDocuments(clioMatterId);
+      const masterSource = {
+        clioMatterId,
+        clioDisplayNumber: masterDisplay,
+        sourceRole: "lawsuit" as const,
+        sourceLabel: sourceLabel(masterDisplay, "lawsuit"),
+      };
+
+      normalizedDocuments.push(...normalizeClioDocumentRows(masterDocuments, masterSource));
+      sourceSummaries.push({
+        ...masterSource,
+        documentCount: masterDocuments.length,
+      });
+
+      const childRows = Array.isArray(localSource?.childClaimIndexRows)
+        ? localSource.childClaimIndexRows
+        : [];
+
+      for (const child of childRows) {
+        const childDisplay = normalizeBrl(child?.display_number) || inferDisplayNumber(child?.matter_id);
+        if (!childDisplay) continue;
+        if (childDisplay === masterDisplay) continue;
+
+        const childResolution = await resolveClioMatterByDisplayNumber(childDisplay);
+        if (!childResolution.ok || !childResolution.clioMatterId) {
+          sourceSummaries.push({
+            clioMatterId: null,
+            clioDisplayNumber: childDisplay,
+            sourceRole: "bill",
+            sourceLabel: sourceLabel(childDisplay, "bill"),
+            documentCount: 0,
+            error: childResolution.error || `Could not resolve ${childDisplay}.`,
+          });
+          continue;
+        }
+
+        const childDocuments = await listClioMatterDocuments(childResolution.clioMatterId);
+        const childSource = {
+          clioMatterId: childResolution.clioMatterId,
+          clioDisplayNumber: childResolution.clioDisplayNumber || childDisplay,
+          sourceRole: "bill" as const,
+          sourceLabel: sourceLabel(childResolution.clioDisplayNumber || childDisplay, "bill"),
+        };
+
+        normalizedDocuments.push(...normalizeClioDocumentRows(childDocuments, childSource));
+        sourceSummaries.push({
+          ...childSource,
+          documentCount: childDocuments.length,
+        });
+      }
+    } else {
+      const directDocuments = await listClioMatterDocuments(clioMatterId);
+      const directSource = {
+        clioMatterId,
+        clioDisplayNumber,
+        sourceRole: "bill" as const,
+        sourceLabel: sourceLabel(clioDisplayNumber, "bill"),
+      };
+
+      normalizedDocuments = normalizeClioDocumentRows(directDocuments, directSource);
+      sourceSummaries.push({
+        ...directSource,
+        documentCount: directDocuments.length,
+      });
+    }
 
     return NextResponse.json({
       ok: true,
@@ -347,8 +447,10 @@ export async function GET(req: NextRequest) {
       clioDisplayNumber,
       localSource,
       documents: normalizedDocuments,
+      sourceSummaries,
       summary: {
         documentCount: normalizedDocuments.length,
+        sourceCount: sourceSummaries.length,
         fullyUploadedCount: normalizedDocuments.filter(
           (doc) => doc.latestDocumentVersion?.fullyUploaded
         ).length,

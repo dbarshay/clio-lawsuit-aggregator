@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { clioFetch } from "@/lib/clio";
 import {
   findExistingClioDocumentsByFilename,
   listClioMatterDocuments,
@@ -8,6 +9,88 @@ export const runtime = "nodejs";
 
 function clean(value: unknown): string {
   return String(value ?? "").trim();
+}
+
+function numberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function normalizeBrl(value: unknown): string {
+  const raw = clean(value).toUpperCase();
+  if (!raw) return "";
+  if (/^BRL\d+$/.test(raw)) return raw;
+  if (/^\d+$/.test(raw)) return `BRL${raw}`;
+  return raw;
+}
+
+async function readClioJson(res: Response, fallback: string): Promise<any> {
+  const text = await res.text();
+  let json: any = null;
+
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    json = null;
+  }
+
+  if (!res.ok) {
+    throw new Error(
+      `${fallback}: ${res.status} ${res.statusText}${json ? ` ${JSON.stringify(json)}` : text ? ` ${text}` : ""}`
+    );
+  }
+
+  return json;
+}
+
+async function resolveClioMatterByDisplayNumber(displayNumberInput: string) {
+  const displayNumber = normalizeBrl(displayNumberInput);
+
+  if (!displayNumber) {
+    return {
+      ok: false,
+      displayNumber: "",
+      clioMatterId: null,
+      clioDisplayNumber: "",
+      error: "Missing Clio display number.",
+    };
+  }
+
+  const params = new URLSearchParams();
+  params.set("query", displayNumber);
+  params.set("limit", "20");
+  params.set("fields", "id,display_number,description");
+
+  const res = await clioFetch(`/matters.json?${params.toString()}`);
+  const json = await readClioJson(res, `Clio matter lookup failed for ${displayNumber}`);
+  const rows = Array.isArray(json?.data) ? json.data : [];
+
+  const exact = rows
+    .map((row: any) => ({
+      id: numberOrNull(row?.id),
+      displayNumber: normalizeBrl(row?.display_number),
+      description: clean(row?.description),
+    }))
+    .find((row: any) => row.id && row.displayNumber === displayNumber);
+
+  if (!exact?.id) {
+    return {
+      ok: false,
+      displayNumber,
+      clioMatterId: null,
+      clioDisplayNumber: "",
+      error: `Could not resolve Clio matter id for ${displayNumber}.`,
+    };
+  }
+
+  return {
+    ok: true,
+    displayNumber,
+    clioMatterId: exact.id,
+    clioDisplayNumber: exact.displayNumber,
+    error: "",
+  };
 }
 
 function safeFilePart(value: unknown, maxLength = 120): string {
@@ -104,15 +187,15 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const uploadTargetMode = clean(req.nextUrl.searchParams.get("uploadTarget")) || "master-lawsuit";
+    const directMatterDisplayNumber = normalizeBrl(req.nextUrl.searchParams.get("directMatterDisplayNumber"));
+    const directMatterId = numberOrNull(req.nextUrl.searchParams.get("directMatterId"));
+
     const packet = await loadPacket(req, masterLawsuitId);
     const metadata = packet.metadata || {};
     const validation = packet.validation || {};
     const masterMatter = packet.masterMatter || {};
     const totals = packet.totals || {};
-
-    const canGenerate = Boolean(validation.canGenerate);
-    const baseName = buildBaseName(packet, masterLawsuitId);
-    const plannedDocuments = buildDocumentPlan(masterLawsuitId, baseName, canGenerate);
 
     const masterMatterId =
       masterMatter.matterId ??
@@ -122,12 +205,54 @@ export async function GET(req: NextRequest) {
 
     const masterDisplayNumber = clean(masterMatter.displayNumber || masterLawsuitId);
 
+    let uploadTarget = {
+      type: "master-matter-documents-tab",
+      matterId: masterMatterId,
+      displayNumber: masterDisplayNumber,
+      masterLawsuitId,
+      uploadTargetMode: "master-lawsuit",
+      wouldUploadToClio: Boolean(validation.canGenerate),
+    };
+
+    if (uploadTargetMode === "direct-matter") {
+      const directDisplay = directMatterDisplayNumber || (directMatterId ? `BRL${directMatterId}` : "");
+      const directResolution = await resolveClioMatterByDisplayNumber(directDisplay);
+
+      uploadTarget = {
+        type: "direct-matter-documents-tab",
+        matterId: directResolution.clioMatterId,
+        displayNumber: directResolution.clioDisplayNumber || directDisplay,
+        masterLawsuitId,
+        uploadTargetMode: "direct-matter",
+        wouldUploadToClio: Boolean(validation.canGenerate && directResolution.ok && directResolution.clioMatterId),
+      } as any;
+
+      if (!directResolution.ok || !directResolution.clioMatterId) {
+        validation.blockingErrors = Array.isArray(validation.blockingErrors) ? validation.blockingErrors : [];
+        validation.blockingErrors.push(directResolution.error || "Could not resolve direct matter Clio upload target.");
+        validation.canGenerate = false;
+      }
+    }
+
+    const canGenerate = Boolean(validation.canGenerate) && Boolean(uploadTarget.matterId);
+    const baseName = buildBaseName(
+      {
+        ...packet,
+        masterMatter: {
+          ...(masterMatter || {}),
+          displayNumber: uploadTarget.displayNumber || masterDisplayNumber,
+        },
+      },
+      masterLawsuitId
+    );
+    const plannedDocuments = buildDocumentPlan(masterLawsuitId, baseName, canGenerate);
+
     let existingClioDocuments: any[] = [];
     let existingDocumentLookupError = "";
 
-    if (canGenerate && masterMatterId) {
+    if (canGenerate && uploadTarget.matterId) {
       try {
-        existingClioDocuments = await listClioMatterDocuments(Number(masterMatterId));
+        existingClioDocuments = await listClioMatterDocuments(Number(uploadTarget.matterId));
       } catch (err: any) {
         existingDocumentLookupError =
           err?.message || "Could not check existing Clio documents.";
@@ -173,10 +298,7 @@ export async function GET(req: NextRequest) {
       finalizationDate: todayIsoDate(),
 
       clioUploadTarget: {
-        type: "master-matter-documents-tab",
-        matterId: masterMatterId,
-        displayNumber: masterDisplayNumber,
-        masterLawsuitId,
+        ...uploadTarget,
         wouldUploadToClio: canGenerate,
       },
 
@@ -196,7 +318,7 @@ export async function GET(req: NextRequest) {
       plannedDocuments: plannedDocumentsWithExistingStatus,
 
       existingDocumentCheck: {
-        attempted: Boolean(canGenerate && masterMatterId),
+        attempted: Boolean(canGenerate && uploadTarget.matterId),
         error: existingDocumentLookupError,
         matchCount: existingUploadMatches.length,
         matches: existingUploadMatches,

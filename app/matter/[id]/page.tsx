@@ -2928,12 +2928,10 @@ const activeGroupKey =
   }
 
   async function loadDocumentGenerationPreview() {
-    const masterLawsuitId =
-      textValue(packetPreview?.packet?.masterLawsuitId) ||
-      textValue(matter?.masterLawsuitId);
+    const masterLawsuitId = usableMasterLawsuitIdForDocuments();
 
     if (!masterLawsuitId) {
-      alert("Load a lawsuit packet first.");
+      alert("No valid Master Lawsuit ID is available for finalization.  Load or connect a lawsuit first.");
       return;
     }
 
@@ -3205,22 +3203,50 @@ const activeGroupKey =
     }
   }
 
+  function usableMasterLawsuitIdForDocuments(): string {
+    const candidates = [
+      packetPreview?.packet?.masterLawsuitId,
+      packetPreview?.packet?.master_lawsuit_id,
+      packetPreview?.packet?.metadata?.masterLawsuitId?.value,
+      packetPreview?.packet?.metadata?.master_lawsuit_id?.value,
+      matter?.masterLawsuitId,
+      matter?.master_lawsuit_id,
+      tabMasterLawsuitId,
+    ];
+
+    for (const candidate of candidates) {
+      const value = textValue(candidate);
+      if (!value) continue;
+      if (value === "MASTER_LAWSUIT_ID") continue;
+      if (/^\d{4}\.\d{2}\.\d{5}$/.test(value)) return value;
+    }
+
+    return "";
+  }
+
   async function loadFinalizePreview() {
-    const masterLawsuitId =
-      textValue(packetPreview?.packet?.masterLawsuitId) ||
-      textValue(matter?.masterLawsuitId);
+    const masterLawsuitId = usableMasterLawsuitIdForDocuments();
 
     if (!masterLawsuitId) {
-      alert("Load a lawsuit packet first.");
+      alert("No valid Master Lawsuit ID is available for finalization.  Load or connect a lawsuit first.");
       return;
     }
 
     setDocumentPreviewLoading(true);
 
     try {
-      const res = await fetch(
-        `/api/documents/finalize-preview?masterLawsuitId=${encodeURIComponent(masterLawsuitId)}`
-      );
+      const directMatterId = directMatterNumericIdForDocuments();
+      const directMatterDisplayNumber =
+        textValue(matter?.displayNumber || matter?.display_number) ||
+        (directMatterId ? `BRL${directMatterId}` : "");
+
+      const params = new URLSearchParams();
+      params.set("masterLawsuitId", masterLawsuitId);
+      params.set("uploadTarget", "direct-matter");
+      if (directMatterId) params.set("directMatterId", String(directMatterId));
+      if (directMatterDisplayNumber) params.set("directMatterDisplayNumber", directMatterDisplayNumber);
+
+      const res = await fetch(`/api/documents/finalize-preview?${params.toString()}`);
 
       const json = await res.json();
 
@@ -3283,7 +3309,7 @@ const activeGroupKey =
     const confirmed = confirm(
       `FINALIZE AND UPLOAD TO CLIO\n\n` +
         `Target: ${targetDisplay}${targetMatterId ? ` / Matter ID ${targetMatterId}` : ""}\n\n` +
-        `This will upload the following final document copy/copies to the Clio master matter Documents tab:\n\n` +
+        `This will upload the following final document copy/copies to the direct bill matter Clio Documents tab:\n\n` +
         `${documentList}\n\n` +
         `This is an explicit finalization action. Preview and download actions remain non-persistent.\n\n` +
         `WARNING: Running this again may create duplicate uploaded documents in Clio.\n\n` +
@@ -3303,6 +3329,11 @@ const activeGroupKey =
         },
         body: JSON.stringify({
           masterLawsuitId,
+          uploadTargetMode: "direct-matter",
+          directMatterId: directMatterNumericIdForDocuments(),
+          directMatterDisplayNumber:
+            textValue(matter?.displayNumber || matter?.display_number) ||
+            (directMatterNumericIdForDocuments() ? `BRL${directMatterNumericIdForDocuments()}` : ""),
           confirmUpload: true,
           documentKeys: uploadableDocuments.map((doc: any) => textValue(doc.key)).filter(Boolean),
         }),
@@ -3336,10 +3367,10 @@ const activeGroupKey =
   }
 
   function downloadBillScheduleDocx() {
-    const masterLawsuitId = textValue(packetPreview?.packet?.masterLawsuitId || matter?.masterLawsuitId);
+    const masterLawsuitId = usableMasterLawsuitIdForDocuments();
 
     if (!masterLawsuitId) {
-      alert("No Master Lawsuit ID found.");
+      alert("No valid Master Lawsuit ID found.");
       return;
     }
 
@@ -3351,10 +3382,10 @@ const activeGroupKey =
   }
 
   function downloadPacketSummaryDocx() {
-    const masterLawsuitId = textValue(packetPreview?.packet?.masterLawsuitId || matter?.masterLawsuitId);
+    const masterLawsuitId = usableMasterLawsuitIdForDocuments();
 
     if (!masterLawsuitId) {
-      alert("No Master Lawsuit ID found.");
+      alert("No valid Master Lawsuit ID found.");
       return;
     }
 
@@ -3366,10 +3397,10 @@ const activeGroupKey =
   }
 
   function downloadSummonsComplaintDocx() {
-    const masterLawsuitId = textValue(packetPreview?.packet?.masterLawsuitId || matter?.masterLawsuitId);
+    const masterLawsuitId = usableMasterLawsuitIdForDocuments();
 
     if (!masterLawsuitId) {
-      alert("No Master Lawsuit ID found.");
+      alert("No valid Master Lawsuit ID found.");
       return;
     }
 

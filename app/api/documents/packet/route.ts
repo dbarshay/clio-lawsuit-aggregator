@@ -222,6 +222,11 @@ export async function GET(req: NextRequest) {
       amountSought: true,
       customAmountSought: true,
       amountSoughtBreakdown: true,
+      clioMasterMatterId: true,
+      clioMasterDisplayNumber: true,
+      clioMasterMatterDescription: true,
+      clioMasterMappedAt: true,
+      clioMasterMappingSource: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -252,9 +257,13 @@ export async function GET(req: NextRequest) {
 
   const warnings: string[] = [];
   const blockingErrors: string[] = [];
+  const hasMappedClioMasterMatter =
+    Boolean(lawsuit?.clioMasterMatterId) || Boolean(clean(lawsuit?.clioMasterDisplayNumber));
 
   if (rows.length === 0) blockingErrors.push("No ClaimIndex rows found for MASTER_LAWSUIT_ID.");
-  if (masterRows.length === 0) blockingErrors.push("No master matter found for MASTER_LAWSUIT_ID.");
+  if (masterRows.length === 0 && !hasMappedClioMasterMatter) {
+    blockingErrors.push("No master matter found for MASTER_LAWSUIT_ID.");
+  }
   if (masterRows.length > 1) blockingErrors.push("Multiple master matters found for MASTER_LAWSUIT_ID.");
   if (childRows.length === 0) blockingErrors.push("No child bill matters found for MASTER_LAWSUIT_ID.");
 
@@ -485,12 +494,30 @@ export async function GET(req: NextRequest) {
           amountSought: lawsuit.amountSought,
           customAmountSought: lawsuit.customAmountSought,
           amountSoughtBreakdown: lawsuit.amountSoughtBreakdown,
+          clioMasterMatterId: lawsuit.clioMasterMatterId,
+          clioMasterDisplayNumber: lawsuit.clioMasterDisplayNumber,
+          clioMasterMatterDescription: lawsuit.clioMasterMatterDescription,
+          clioMasterMappedAt: lawsuit.clioMasterMappedAt,
+          clioMasterMappingSource: lawsuit.clioMasterMappingSource,
           createdAt: lawsuit.createdAt,
           updatedAt: lawsuit.updatedAt,
         }
       : null,
 
-    masterMatter: master
+    masterMatter: lawsuit?.clioMasterMatterId
+      ? {
+          ...(master || {}),
+          matterId: lawsuit.clioMasterMatterId,
+          id: lawsuit.clioMasterMatterId,
+          displayNumber: lawsuit.clioMasterDisplayNumber || master?.display_number || masterLawsuitId,
+          display_number: lawsuit.clioMasterDisplayNumber || master?.display_number || masterLawsuitId,
+          description: lawsuit.clioMasterMatterDescription || master?.description || "",
+          localMasterLawsuitId: masterLawsuitId,
+          mappingSource: lawsuit.clioMasterMappingSource || "lawsuit.clio-master-mapping",
+          mappedAt: lawsuit.clioMasterMappedAt || null,
+          source: "lawsuit.clio-master-mapping",
+        }
+      : master
       ? {
           matterId: master.matter_id,
           displayNumber: master.display_number,
@@ -511,6 +538,8 @@ export async function GET(req: NextRequest) {
       warnings,
       blockingErrors,
       canGenerate: blockingErrors.length === 0,
+      hasClaimIndexMasterMatter: masterRows.length > 0,
+      hasMappedClioMasterMatter,
     },
 
     refresh: {

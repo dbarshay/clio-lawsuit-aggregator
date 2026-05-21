@@ -9034,7 +9034,7 @@ const activeGroupKey =
 
       {renderMatterViewDocumentsPopup()}
       {renderMatterDocumentGenerationPopup()}
-      {activeWorkspaceTab === "documents" && !alreadyAggregated && (
+      {false && activeWorkspaceTab === "documents" && !alreadyAggregated && (
         <section style={tabPlaceholderPanelStyle}>
           <h2 style={{ marginTop: 0 }}>Documents</h2>
           {renderMatterDocumentDataPreviewPanel()}
@@ -11890,9 +11890,9 @@ const activeGroupKey =
         <>
           <hr style={{ margin: "18px 0 20px 0", border: 0, borderTop: "1px solid #999"  }} />
 
-          {activeWorkspaceTab === "documents" && alreadyAggregated && renderMatterDocumentDataPreviewPanel()}
-          {activeWorkspaceTab === "documents" && alreadyAggregated && renderMatterClioDocumentsPanel()}
-      {activeWorkspaceTab === "documents" && alreadyAggregated && (
+          {false && activeWorkspaceTab === "documents" && alreadyAggregated && renderMatterDocumentDataPreviewPanel()}
+          {false && activeWorkspaceTab === "documents" && alreadyAggregated && renderMatterClioDocumentsPanel()}
+      {false && activeWorkspaceTab === "documents" && alreadyAggregated && (
         <section
           style={{
             border: "1px solid #bfbfbf",

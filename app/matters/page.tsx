@@ -5820,7 +5820,7 @@ function masterSettlementDateFiledValue(): string {
 
         {kind === "master" && activeMasterWorkspaceTab === "email_threads" && renderMasterEmailThreadsPanel()}
 
-        {kind === "master" && activeMasterWorkspaceTab !== "settlement" && activeMasterWorkspaceTab !== "email_threads" && (
+        {kind === "master" && activeMasterWorkspaceTab !== "settlement" && activeMasterWorkspaceTab !== "email_threads" && activeMasterWorkspaceTab !== "documents" && (
           <section style={masterWorkspacePanelStyle}>
 
             {activeMasterWorkspaceTab !== "payments" && (

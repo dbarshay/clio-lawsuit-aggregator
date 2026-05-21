@@ -125,6 +125,7 @@ export default function AdminDocumentTemplatesPage() {
   const [importConfirmResult, setImportConfirmResult] = useState<any>(null);
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState("");
+  const [mergeFieldVisibilityFilter, setMergeFieldVisibilityFilter] = useState<"all" | "visible_ui" | "hidden_internal" | "computed" | "system">("all");
 
   async function loadTemplates(nextCategory = category) {
     setLoading(true);
@@ -518,6 +519,49 @@ export default function AdminDocumentTemplatesPage() {
           )}
 
           {!loading && templates.length > 0 && (
+            <div
+              style={{
+                border: "1px solid #dbe4f0",
+                borderRadius: 14,
+                padding: 12,
+                background: "#f8fafc",
+                marginBottom: 12,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                flexWrap: "wrap",
+              }}
+            >
+              <label style={{ fontWeight: 950, color: "#334155" }}>Merge Field Visibility Filter</label>
+              {([
+                ["all", "All"],
+                ["visible_ui", "Visible UI"],
+                ["hidden_internal", "Hidden/internal"],
+                ["computed", "Computed"],
+                ["system", "System"],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setMergeFieldVisibilityFilter(value)}
+                  style={{
+                    border: mergeFieldVisibilityFilter === value ? "1px solid #4f46e5" : "1px solid #cbd5e1",
+                    background: mergeFieldVisibilityFilter === value ? "#eef2ff" : "#fff",
+                    color: mergeFieldVisibilityFilter === value ? "#3730a3" : "#334155",
+                    borderRadius: 999,
+                    padding: "6px 10px",
+                    fontSize: 12,
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {!loading && templates.length > 0 && (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
                 <thead>
@@ -534,6 +578,10 @@ export default function AdminDocumentTemplatesPage() {
                   {templates.map((template) => {
                     const mergeFields = Array.isArray(template.mergeFields) ? template.mergeFields : [];
                     const visibilityCounts = mergeFieldVisibilityCounts(mergeFields);
+                    const displayedMergeFields =
+                      mergeFieldVisibilityFilter === "all"
+                        ? mergeFields
+                        : mergeFields.filter((field) => mergeFieldVisibility(field) === mergeFieldVisibilityFilter);
                     return (
                       <tr key={template.key} style={{ borderBottom: "1px solid #f1f5f9" }}>
                         <td style={{ padding: 12, verticalAlign: "top" }}>
@@ -585,16 +633,18 @@ export default function AdminDocumentTemplatesPage() {
                         <td style={{ padding: 12, verticalAlign: "top" }}>
                           {mergeFields.length === 0 ? (
                             <span style={{ color: "#64748b" }}>None listed</span>
+                          ) : displayedMergeFields.length === 0 ? (
+                            <span style={{ color: "#64748b" }}>No merge fields match the selected visibility filter.</span>
                           ) : (
                             <details>
                               <summary style={{ cursor: "pointer", fontWeight: 900 }}>
                                 {mergeFields.length} field(s)
                                 <div style={{ marginTop: 4, color: "#475569", fontSize: 12, lineHeight: 1.45 }}>
-                                  Visible UI: {visibilityCounts.visible_ui} · Hidden/internal: {visibilityCounts.hidden_internal} · Computed: {visibilityCounts.computed} · System: {visibilityCounts.system}
+                                  Visible UI: {visibilityCounts.visible_ui} · Hidden/internal: {visibilityCounts.hidden_internal} · Computed: {visibilityCounts.computed} · System: {visibilityCounts.system} · Showing: {displayedMergeFields.length}
                                 </div>
                               </summary>
                               <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                                {mergeFields.map((field) => (
+                                {displayedMergeFields.map((field) => (
                                   <div
                                     key={field.key}
                                     style={{

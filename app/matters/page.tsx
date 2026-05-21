@@ -653,6 +653,7 @@ export default function FilteredMattersPage() {
 
   const [masterDocumentDataPreview, setMasterDocumentDataPreview] = useState<any>(null);
   const [masterDocumentGenerationPopupOpen, setMasterDocumentGenerationPopupOpen] = useState(false);
+  const [masterDocumentDeliveryPopupOpen, setMasterDocumentDeliveryPopupOpen] = useState(false);
   const [masterDocumentDeliveryPreview, setMasterDocumentDeliveryPreview] = useState<any>(null);
   const [masterDocumentDeliveryPreviewLoading, setMasterDocumentDeliveryPreviewLoading] = useState(false);
   const [masterDocumentDraftCreateLoading, setMasterDocumentDraftCreateLoading] = useState(false);
@@ -4844,6 +4845,26 @@ function masterSettlementDateFiledValue(): string {
                       .join(", ")}
                   </div>
                 )}
+
+                {masterFinalizeUploadResult.ok && (
+                  <div style={{ display: "flex", justifyContent: "flex-start", marginTop: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => setMasterDocumentDeliveryPopupOpen(true)}
+                      style={{
+                        border: "1px solid #2563eb",
+                        background: "#2563eb",
+                        color: "#fff",
+                        borderRadius: 12,
+                        padding: "10px 14px",
+                        fontWeight: 950,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Open Delivery Options
+                    </button>
+                  </div>
+                )}
               </section>
             )}
 
@@ -4966,11 +4987,253 @@ function masterSettlementDateFiledValue(): string {
                 )}
                 {masterDocumentPrintQueueResult?.printQueueItem?.docxDownloadUrl && (
                   <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
-                    Queued placeholder DOCX route: <strong>{masterDocumentPrintQueueResult.printQueueItem.docxDownloadUrl}</strong>
+                    Queued placeholder DOCX route: <strong></strong>
                   </p>
                 )}
               </section>
             )}
+
+            
+            {masterDocumentDataPreview?.error && (
+              <div style={{ color: "#991b1b", fontWeight: 900 }}>
+                Error: {masterDocumentPreviewText(masterDocumentDataPreview.error)}
+              </div>
+            )}
+
+            <details
+              style={{
+                display: "none",
+                border: "1px solid #e5e7eb",
+                borderRadius: 14,
+                padding: 14,
+                background: "#fff",
+              }}
+            >
+              <summary style={{ cursor: "pointer", fontWeight: 950 }}>
+                Advanced / Data Preview
+              </summary>
+              <div style={{ marginTop: 14 }}>
+                <h3 style={{ margin: 0, fontSize: 16 }}>Template Data Review</h3>
+                <p style={{ margin: "6px 0 12px", color: "#64748b", lineHeight: 1.45 }}>
+                  Read-only local data available for future Master Lawsuit templates.  It does not generate documents, upload documents, write to Clio, or change the print queue.
+                </p>
+                <pre
+                  style={{
+                    margin: 0,
+                    whiteSpace: "pre-wrap",
+                    overflowX: "auto",
+                    background: "#0f172a",
+                    color: "#e5e7eb",
+                    borderRadius: 12,
+                    padding: 14,
+                    fontSize: 12,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {JSON.stringify({ templateFields, referenceData, documentData }, null, 2)}
+                </pre>
+                <div style={{ display: "none" }}>{renderMasterDocumentDataPreviewPanel()}</div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderMasterDocumentDeliveryPopup() {
+    if (!masterDocumentDeliveryPopupOpen) return null;
+
+    const documentData = masterDocumentDataPreview?.packet?.metadata?.documentData;
+    const templateFields = documentData?.templateFields || {};
+    const uiFields = documentData?.uiFields || {};
+    const claimIndexFields = documentData?.claimIndexFields || {};
+    const isSettlementDocumentMode =
+      masterDocumentLaunchMode === "settlement" ||
+      masterDocumentDataPreview?.documentLaunchMode === "settlement" ||
+      masterDocumentDataPreview?.action === "settlement-documents-preview";
+
+    const query = masterDocumentTemplateQuery.trim().toLowerCase();
+    const templateOptions = [
+      {
+        key: "summons-complaint",
+        label: "Summons and Complaint",
+        description: "Draft demand package for this master lawsuit.",
+      },
+      {
+        key: "bill-schedule",
+        label: "Bill Schedule",
+        description: "Schedule of lawsuit bills and balances.",
+      },
+      {
+        key: "packet-summary",
+        label: "Packet Summary",
+        description: "Internal filing and packet summary for the lawsuit.",
+      },
+    ];
+    const sortedTemplateOptions = [...templateOptions].sort((a, b) => a.label.localeCompare(b.label));
+    const repositoryDocumentOptions = Array.isArray(masterDocumentRepositoryTemplates)
+      ? masterDocumentRepositoryTemplates.map((template: any) => ({
+          key: String(template?.key || ""),
+          label: String(template?.label || template?.key || "Document"),
+          description: [
+            template?.description ? String(template.description) : "",
+            template?.mergeFieldSet ? `Merge fields: ${template.mergeFieldSet}` : "",
+            template?.repositorySource ? `Repository: ${template.repositorySource}` : "Repository: Barsh Matters template repository",
+          ].filter(Boolean).join("  "),
+        })).filter((template: any) => template.key)
+      : [];
+    const settlementPreviewDocumentOptions = Array.isArray(masterDocumentDataPreview?.plannedDocuments)
+      ? masterDocumentDataPreview.plannedDocuments.map((doc: any) => ({
+          key: String(doc?.key || ""),
+          label: String(doc?.label || doc?.key || "Settlement Document"),
+          description: [
+            doc?.description ? String(doc.description) : "",
+            doc?.filename ? `File: ${doc.filename}` : "",
+          ].filter(Boolean).join("  "),
+        })).filter((doc: any) => doc.key)
+      : [];
+    const settlementDocumentOptions = repositoryDocumentOptions.length > 0
+      ? repositoryDocumentOptions
+      : settlementPreviewDocumentOptions;
+    const displayedTemplateOptions = isSettlementDocumentMode && settlementDocumentOptions.length > 0
+      ? settlementDocumentOptions
+      : sortedTemplateOptions;
+    const displayedSelectedTemplate =
+      displayedTemplateOptions.find((option: any) => option.key === masterSelectedDocumentTemplateKey) ||
+      displayedTemplateOptions.find((option: any) => option.label.toLowerCase() === query) ||
+      null;
+
+    const deliveryButtonStyle: React.CSSProperties = {
+      border: "1px solid #4f46e5",
+      background: "#4f46e5",
+      color: "#fff",
+      borderRadius: 12,
+      padding: "10px 14px",
+      fontWeight: 900,
+      cursor: "pointer",
+      boxShadow: "0 10px 20px rgba(79, 70, 229, 0.18)",
+    };
+
+    const pendingButtonStyle: React.CSSProperties = {
+      border: "1px solid #d1d5db",
+      background: "#f3f4f6",
+      color: "#6b7280",
+      borderRadius: 12,
+      padding: "10px 14px",
+      fontWeight: 900,
+      cursor: "not-allowed",
+    };
+
+    return (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Master Lawsuit Document Delivery"
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 10001,
+          background: "rgba(15, 23, 42, 0.45)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 24,
+        }}
+      >
+        <div
+          onClick={(event) => event.stopPropagation()}
+          style={{
+            width: "min(980px, 96vw)",
+            maxHeight: "88vh",
+            overflow: "auto",
+            background: "#fff",
+            borderRadius: 24,
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 30px 70px rgba(15, 23, 42, 0.35)",
+          }}
+        >
+          <div
+            style={{
+              padding: "22px 24px",
+              borderBottom: "1px solid #e5e7eb",
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 18,
+            }}
+          >
+            <div>
+              <h2 style={{ margin: 0, fontSize: 22 }}>Email / Print / Queue</h2>
+              <p style={{ margin: "8px 0 0", color: "#475569", lineHeight: 1.45 }}>
+                Use this delivery popup after Master/Lawsuit final upload completes or is safely processed with duplicate-file skipping.  Email can build the document delivery preview.  Print and print-queue actions remain pending until finalized-document delivery is wired to real files.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMasterDocumentDeliveryPopupOpen(false)}
+              style={{
+                border: "1px solid #d1d5db",
+                background: "#fff",
+                borderRadius: 999,
+                padding: "8px 12px",
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+            >
+              Close
+            </button>
+          </div>
+
+          <div style={{ padding: 24, display: "grid", gap: 18 }}>
+            <section
+              data-barsh-master-document-delivery-popup-actions="true"
+              style={{
+                border: "1px solid #dbeafe",
+                borderRadius: 18,
+                padding: 18,
+                background: "#eff6ff",
+                display: "grid",
+                gap: 14,
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18 }}>Delivery Options</h3>
+                <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.45 }}>
+                  Email Document opens the existing delivery preview below.  Create Outlook Draft remains a separate explicit action after the preview is ready.
+                </p>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => launchMasterDocumentEmail(displayedSelectedTemplate)}
+                  disabled={!displayedSelectedTemplate}
+                  title={!displayedSelectedTemplate ? "Select a document before opening delivery options." : undefined}
+                  style={displayedSelectedTemplate ? deliveryButtonStyle : pendingButtonStyle}
+                >
+                  Email Document
+                </button>
+
+                <button
+                  type="button"
+                  disabled
+                  title="Pending finalized-document print backend."
+                  style={pendingButtonStyle}
+                >
+                  Print Document — Pending
+                </button>
+
+                <button
+                  type="button"
+                  disabled
+                  title="Pending finalized-document print queue backend."
+                  style={pendingButtonStyle}
+                >
+                  Send to Print Queue — Pending
+                </button>
+              </div>
+            </section>
 
             {(masterDocumentDeliveryPreviewLoading || masterDocumentDeliveryPreview) && (() => {
               const previewState = masterDocumentDeliveryPreview || {};
@@ -5041,7 +5304,7 @@ function masterSettlementDateFiledValue(): string {
                           gap: 10,
                         }}
                       >
-                        <div><strong>Document:</strong> {previewState?.documentLabel || context?.documentLabel || selectedTemplate?.label || "Document"}</div>
+                        <div><strong>Document:</strong> {previewState?.documentLabel || context?.documentLabel || displayedSelectedTemplate?.label || "Document"}</div>
                         <div><strong>To:</strong> {toDisplay}</div>
                         <div><strong>Cc / MailDrop:</strong> {ccDisplay}</div>
                         <div><strong>Subject:</strong> {subjectDisplay}</div>
@@ -5161,48 +5424,6 @@ function masterSettlementDateFiledValue(): string {
                 </section>
               );
             })()}
-
-            {masterDocumentDataPreview?.error && (
-              <div style={{ color: "#991b1b", fontWeight: 900 }}>
-                Error: {masterDocumentPreviewText(masterDocumentDataPreview.error)}
-              </div>
-            )}
-
-            <details
-              style={{
-                display: "none",
-                border: "1px solid #e5e7eb",
-                borderRadius: 14,
-                padding: 14,
-                background: "#fff",
-              }}
-            >
-              <summary style={{ cursor: "pointer", fontWeight: 950 }}>
-                Advanced / Data Preview
-              </summary>
-              <div style={{ marginTop: 14 }}>
-                <h3 style={{ margin: 0, fontSize: 16 }}>Template Data Review</h3>
-                <p style={{ margin: "6px 0 12px", color: "#64748b", lineHeight: 1.45 }}>
-                  Read-only local data available for future Master Lawsuit templates.  It does not generate documents, upload documents, write to Clio, or change the print queue.
-                </p>
-                <pre
-                  style={{
-                    margin: 0,
-                    whiteSpace: "pre-wrap",
-                    overflowX: "auto",
-                    background: "#0f172a",
-                    color: "#e5e7eb",
-                    borderRadius: 12,
-                    padding: 14,
-                    fontSize: 12,
-                    lineHeight: 1.45,
-                  }}
-                >
-                  {JSON.stringify({ templateFields, referenceData, documentData }, null, 2)}
-                </pre>
-                <div style={{ display: "none" }}>{renderMasterDocumentDataPreviewPanel()}</div>
-              </div>
-            </details>
           </div>
         </div>
       </div>
@@ -6799,6 +7020,7 @@ function masterSettlementDateFiledValue(): string {
 
                       {renderMasterViewDocumentsPopup()}
                       {renderMasterDocumentGenerationPopup()}
+                      {renderMasterDocumentDeliveryPopup()}
 
                     
                     

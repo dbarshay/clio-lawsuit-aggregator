@@ -638,6 +638,8 @@ export default function FilteredMattersPage() {
   const [masterDocumentRepositoryTemplates, setMasterDocumentRepositoryTemplates] = useState<any[]>([]);
   const [masterDocumentRepositoryTemplatesLoading, setMasterDocumentRepositoryTemplatesLoading] = useState(false);
   const [masterDocumentRepositoryTemplatesError, setMasterDocumentRepositoryTemplatesError] = useState("");
+  const [masterDocumentFinalizing, setMasterDocumentFinalizing] = useState(false);
+  const [masterDocumentFinalizationResult, setMasterDocumentFinalizationResult] = useState<any>(null);
 
   const [masterDocumentDataPreview, setMasterDocumentDataPreview] = useState<any>(null);
   const [masterDocumentGenerationPopupOpen, setMasterDocumentGenerationPopupOpen] = useState(false);
@@ -2437,6 +2439,7 @@ function masterSettlementDateFiledValue(): string {
     }
 
     setMasterDocumentDataPreviewLoading(true);
+    setMasterDocumentFinalizationResult(null);
     setMasterDocumentDataPreview(null);
 
     try {
@@ -2763,6 +2766,76 @@ function masterSettlementDateFiledValue(): string {
         // Browser-controlled print behavior; the opened PDF can still be printed manually.
       }
     }, 750);
+  }
+
+  async function finalizeMasterSettlementDocumentPlaceholder(selectedTemplate: { key: string; label: string; description: string } | null) {
+    const context = buildMasterDocumentDeliveryContext(selectedTemplate);
+    const isSettlementDocumentMode =
+      masterDocumentLaunchMode === "settlement" ||
+      masterDocumentDataPreview?.documentLaunchMode === "settlement" ||
+      masterDocumentDataPreview?.action === "settlement-documents-preview";
+
+    if (!isSettlementDocumentMode) {
+      setMasterDocumentWorkflowStage("delivery");
+      return;
+    }
+
+    if (!selectedTemplate?.key) {
+      alert("Select a settlement document before finalizing.");
+      return;
+    }
+
+    const masterLawsuitId = currentMasterLawsuitIdForDocumentPreview();
+    const settlementRecordId = masterDocumentPreviewText(
+      masterDocumentDataPreview?.settlementRecordId ||
+        masterDocumentSettlementRecordId ||
+        masterSettlementHistory?.activeRecordId ||
+        masterSettlementRecordSave?.record?.id
+    );
+
+    if (!masterLawsuitId && !settlementRecordId) {
+      alert("No lawsuit ID or settlement record ID is available for local settlement document finalization.");
+      return;
+    }
+
+    setMasterDocumentFinalizing(true);
+    setMasterDocumentFinalizationResult(null);
+
+    try {
+      const response = await fetch("/api/settlements/documents-finalize-local", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          masterLawsuitId,
+          settlementRecordId,
+          templateKey: selectedTemplate.key,
+          templateLabel: selectedTemplate.label || context.documentLabel,
+          confirmFinalize: true,
+        }),
+      });
+
+      const json = await response.json().catch(() => null);
+
+      if (!response.ok || !json?.ok) {
+        const message = json?.error || "Local settlement document finalization failed.";
+        setMasterDocumentFinalizationResult(json || { ok: false, error: message });
+        alert(message);
+        return;
+      }
+
+      setMasterDocumentFinalizationResult(json);
+      setMasterDocumentWorkflowStage("delivery");
+    } catch (err: any) {
+      const fallback = {
+        ok: false,
+        action: "settlement-document-finalize-local",
+        error: err?.message || "Local settlement document finalization failed.",
+      };
+      setMasterDocumentFinalizationResult(fallback);
+      alert(fallback.error);
+    } finally {
+      setMasterDocumentFinalizing(false);
+    }
   }
 
   function sendMasterDocumentToPrintQueue(selectedTemplate: { key: string; label: string; description: string } | null) {
@@ -3966,10 +4039,12 @@ function masterSettlementDateFiledValue(): string {
 
               <div>
                 {actionButton(
-                  "Finalize Document",
-                  () => setMasterDocumentWorkflowStage("delivery"),
-                  !canFinalize,
-                  "Preview the PDF or edit the selected document before finalizing."
+                  masterDocumentFinalizing ? "Finalizing..." : "Finalize Document",
+                  () => finalizeMasterSettlementDocumentPlaceholder(displayedSelectedTemplate),
+                  !canFinalize || masterDocumentFinalizing,
+                  isSettlementDocumentMode
+                    ? "Create a persistent local Barsh Matters finalized-document placeholder record.  This does not create a PDF, upload to Clio, email, or print."
+                    : "Preview the PDF or edit the selected document before finalizing."
                 )}
               </div>
 
@@ -4011,6 +4086,33 @@ function masterSettlementDateFiledValue(): string {
                   {actionButton("Print Document", () => launchMasterDocumentPrint(displayedSelectedTemplate), false, "Open the finalized PDF/printable document and show the print dialog when available.")}
                   {actionButton("Send to Print Queue", () => sendMasterDocumentToPrintQueue(displayedSelectedTemplate), false, "Send this document to the shared Barsh Matters print queue after the print-queue backend is connected.")}
                 </div>
+              </section>
+            )}
+
+            {masterDocumentFinalizationResult && (
+              <section
+                style={{
+                  border: masterDocumentFinalizationResult.ok ? "1px solid #86efac" : "1px solid #fecaca",
+                  borderRadius: 18,
+                  padding: 18,
+                  background: masterDocumentFinalizationResult.ok ? "#f0fdf4" : "#fef2f2",
+                  display: "grid",
+                  gap: 8,
+                }}
+              >
+                <h3 style={{ margin: 0, fontSize: 18 }}>
+                  {masterDocumentFinalizationResult.ok ? "Local Finalization Record Created" : "Local Finalization Failed"}
+                </h3>
+                <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
+                  {masterDocumentFinalizationResult.ok
+                    ? `DocumentFinalization ID ${masterDocumentFinalizationResult.finalizationRecord?.id || "created"} was saved locally.  No PDF was generated, no Clio upload occurred, no Outlook draft was created, and no print queue record was written.`
+                    : masterDocumentFinalizationResult.error || "Local settlement document finalization failed."}
+                </p>
+                {masterDocumentFinalizationResult?.selectedDocument?.filename && (
+                  <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
+                    Planned filename: <strong>{masterDocumentFinalizationResult.selectedDocument.filename}</strong>
+                  </p>
+                )}
               </section>
             )}
 

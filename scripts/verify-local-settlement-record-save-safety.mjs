@@ -50,7 +50,11 @@ console.log("=== LOCAL SETTLEMENT RECORD SAVE SAFETY VERIFICATION ===");
   "printQueueChanged: false",
   "mattersClosed: false",
   "settlementWritebackPerformed: false",
-  "An active local settlement record already exists",
+  "SUPERSEDED_BY_NEW_LOCAL_SETTLEMENT",
+  "prisma.localSettlementRecord.update",
+  "prisma.localWorkflowTickler.updateMany",
+  "priorActiveSettlementAutoSuperseded",
+  "supersededTicklersClosed",
 ].forEach((needle) => mustContain(routePath, route, needle));
 
 [

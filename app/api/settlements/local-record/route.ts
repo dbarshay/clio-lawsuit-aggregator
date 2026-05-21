@@ -160,31 +160,51 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    let supersededExistingRecord: any = null;
+    let supersededTicklersClosed = 0;
+
     if (existingRecord) {
-      return NextResponse.json(
-        {
-          ok: false,
-          action: "local-settlement-record-save",
-          localFirst: true,
-          databaseRecordsChanged: false,
-          error: "An active local settlement record already exists for this Master Lawsuit.",
-          existingRecord,
-          validation: {
-            readyForLocalSettlementRecordSave: false,
-            blockingErrors: ["An active local settlement record already exists for this Master Lawsuit."],
-            warnings: validation.warnings,
-          },
-          safety: {
-            clioRecordsChanged: false,
-            databaseRecordsChanged: false,
-            documentsGenerated: false,
-            printQueueChanged: false,
-            mattersClosed: false,
-            settlementWritebackPerformed: false,
+      const supersededAt = new Date();
+
+      supersededExistingRecord = await prisma.localSettlementRecord.update({
+        where: { id: existingRecord.id },
+        data: {
+          voided: true,
+          voidedAt: supersededAt,
+          voidedBy: "barsh-matters-local-record-save",
+          voidReason: "Superseded by a newly saved local settlement record for the same Master Lawsuit.",
+          status: "SUPERSEDED_BY_NEW_LOCAL_SETTLEMENT",
+          voidSnapshot: {
+            supersededByNewLocalSettlementRecord: true,
+            supersededAt: supersededAt.toISOString(),
+            previousRecord: existingRecord,
           },
         },
-        { status: 409 }
-      );
+        select: {
+          id: true,
+          recordedAt: true,
+          status: true,
+          voided: true,
+          voidedAt: true,
+          voidReason: true,
+        },
+      });
+
+      const ticklerUpdate = await prisma.localWorkflowTickler.updateMany({
+        where: {
+          settlementRecordId: existingRecord.id,
+          kind: "settlement_payment_due_followup",
+          status: "open",
+        },
+        data: {
+          status: "closed",
+          completedAt: supersededAt,
+          completedBy: "barsh-matters-local-record-save",
+          completedNote: "Closed automatically because the prior local settlement record was superseded by a newly saved local settlement record.",
+        },
+      });
+
+      supersededTicklersClosed = ticklerUpdate.count;
     }
 
     const terms = validation.settlementTerms;
@@ -220,6 +240,8 @@ export async function POST(req: NextRequest) {
           clioRecordsChanged: false,
           databaseRecordsChanged: true,
           databaseWriteScope: ["LocalSettlementRecord", "LocalSettlementRow"],
+          priorActiveSettlementAutoSuperseded: Boolean(supersededExistingRecord),
+          supersededTicklersClosed,
           documentsGenerated: false,
           printQueueChanged: false,
           mattersClosed: false,

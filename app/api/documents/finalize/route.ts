@@ -5,11 +5,13 @@ import {
   listClioMatterDocuments,
   uploadBufferToClioMatterDocuments,
 } from "@/lib/clioDocumentUpload";
+import { convertWorkingDocxDriveItemToPdf } from "@/lib/documents/graphWorkingDocuments";
 
 export const runtime = "nodejs";
 
 const DOCX_CONTENT_TYPE =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const PDF_CONTENT_TYPE = "application/pdf";
 
 type PlannedDocument = {
   key: string;
@@ -25,6 +27,13 @@ type PlannedDocument = {
 
 function clean(value: unknown): string {
   return String(value ?? "").trim();
+}
+
+function pdfFilenameFromDocxFilename(value: unknown): string {
+  const raw = clean(value) || "Document.pdf";
+  if (raw.toLowerCase().endsWith(".pdf")) return raw;
+  if (raw.toLowerCase().endsWith(".docx")) return `${raw.slice(0, -5)}.pdf`;
+  return `${raw.replace(/\.[^.]+$/, "") || "Document"}.pdf`;
 }
 
 function asStringArray(value: unknown): string[] {
@@ -185,6 +194,8 @@ export async function POST(req: NextRequest) {
     const directMatterDisplayNumber = clean(body?.directMatterDisplayNumber);
     const confirmUpload = body?.confirmUpload === true;
     const requestedKeys = asStringArray(body?.documentKeys);
+    const workingDocumentDriveItemId = clean(body?.workingDocumentDriveItemId || body?.workingDriveItemId);
+    const workingDocumentKey = clean(body?.workingDocumentKey);
 
     if (!masterLawsuitId) {
       return NextResponse.json(
@@ -252,16 +263,18 @@ export async function POST(req: NextRequest) {
     const documentsToUpload: PlannedDocument[] = [];
 
     for (const document of selectedDocuments) {
+      const finalPdfFilename = pdfFilenameFromDocxFilename(document.filename);
       const existingMatches = findExistingClioDocumentsByFilename(
         existingDocuments,
-        document.filename
+        finalPdfFilename
       );
 
       if (existingMatches.length > 0 && !allowDuplicateUploads) {
         skipped.push({
           key: document.key,
           label: document.label,
-          filename: document.filename,
+          filename: finalPdfFilename,
+          sourceDocxFilename: document.filename,
           reason: "already-uploaded-to-clio",
           existingClioDocuments: existingMatches.map((match) => ({
             id: match.id,
@@ -283,7 +296,8 @@ export async function POST(req: NextRequest) {
       skipped.push({
         key: document.key,
         label: document.label,
-        filename: document.filename,
+        filename: pdfFilenameFromDocxFilename(document.filename),
+        sourceDocxFilename: document.filename,
         reason: requestedKeys.length
           ? "not-requested"
           : document.wouldUploadToClio
@@ -359,20 +373,50 @@ export async function POST(req: NextRequest) {
     }
 
     for (const document of documentsToUpload) {
-      const buffer = await generateDocumentBuffer(req, document);
+      const finalPdfFilename = pdfFilenameFromDocxFilename(document.filename);
+      const shouldUseWorkingDocument =
+        Boolean(workingDocumentDriveItemId) &&
+        (!workingDocumentKey || clean(workingDocumentKey) === clean(document.key));
+
+      let sourceDocxByteLength: number | null = null;
+      let pdfBuffer: Buffer;
+      let pdfConversion: any;
+
+      if (shouldUseWorkingDocument) {
+        pdfConversion = await convertWorkingDocxDriveItemToPdf({
+          driveItemId: workingDocumentDriveItemId,
+        });
+        pdfBuffer = pdfConversion.pdfBuffer;
+      } else {
+        throw new Error(
+          "Finalize Document now requires a saved working Word document so the final PDF reflects the latest edits. Use Edit Document first, save in Word, then Finalize Document."
+        );
+      }
 
       const result = await uploadBufferToClioMatterDocuments({
         matterId,
-        filename: document.filename,
-        buffer,
-        contentType: DOCX_CONTENT_TYPE,
+        filename: finalPdfFilename,
+        buffer: pdfBuffer,
+        contentType: PDF_CONTENT_TYPE,
       });
 
       uploaded.push({
         key: document.key,
         label: document.label,
-        filename: document.filename,
-        byteLength: buffer.byteLength,
+        filename: finalPdfFilename,
+        sourceDocxFilename: document.filename,
+        byteLength: pdfBuffer.byteLength,
+        sourceDocxByteLength,
+        contentType: PDF_CONTENT_TYPE,
+        sourceDocxContentType: DOCX_CONTENT_TYPE,
+        workingDocumentDriveItemId: shouldUseWorkingDocument ? workingDocumentDriveItemId : null,
+        pdfFinalization: {
+          provider: "microsoft_graph_driveitem_content_format_pdf",
+          source: shouldUseWorkingDocument ? "working-docx-drive-item" : "generated-docx",
+          sourceDriveItemId: pdfConversion?.sourceDriveItemId || null,
+          pdfContentType: pdfConversion?.pdfContentType || PDF_CONTENT_TYPE,
+          pdfByteLength: pdfConversion?.pdfByteLength || pdfBuffer.byteLength,
+        },
         clioDocumentId: result.documentId,
         clioDocumentName: result.documentName,
         clioDocumentVersionUuid: result.documentVersionUuid,
@@ -413,6 +457,8 @@ export async function POST(req: NextRequest) {
         clioDocumentsTabRemainsSourceOfTruth: true,
         noOneDriveOrSharePointFoldersCreated: true,
         uploadedOnlyToRequestedClioMatterDocumentsTab: true,
+        finalDeliveryFormat: "pdf",
+        sourceWorkingFormat: "docx",
       },
     });
   } catch (err: any) {

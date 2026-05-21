@@ -3694,11 +3694,47 @@ function masterSettlementDateFiledValue(): string {
       return;
     }
 
+    let workingDocumentForFinalization = masterDocumentFinalizationResult?.workingDocument || null;
+
+    if (!workingDocumentForFinalization?.driveItemId) {
+      try {
+        const params = new URLSearchParams();
+        params.set("templateKey", selectedTemplate.key);
+        params.set("templateLabel", selectedTemplate.label || selectedTemplate.key);
+
+        const latestResponse = await fetch("/api/documents/working-docx-latest?" + params.toString(), {
+          cache: "no-store",
+        });
+        const latestJson = await latestResponse.json().catch(() => null);
+
+        if (latestResponse.ok && latestJson?.ok && latestJson?.workingDocument?.driveItemId) {
+          workingDocumentForFinalization = latestJson.workingDocument;
+          setMasterDocumentFinalizationResult({
+            ok: true,
+            action: "working-docx-recovered",
+            selectedDocument: {
+              key: selectedTemplate.key,
+              label: selectedTemplate.label,
+            },
+            workingDocument: workingDocumentForFinalization,
+            note: "Recovered latest working DOCX from Microsoft Graph/OneDrive for PDF finalization.",
+          });
+        }
+      } catch {
+        // Fall through to user-facing block below.
+      }
+    }
+
+    if (!workingDocumentForFinalization?.driveItemId) {
+      alert("Barsh Matters could not find the working Word document.  Click Edit Document again to recreate the working-document link before finalizing.");
+      return;
+    }
+
     const confirmed = confirm(
-      "FINALIZE DOCUMENT TO CLIO\n\n" +
+      "FINALIZE PDF TO CLIO\n\n" +
         "Document: " + (selectedTemplate.label || selectedTemplate.key) + "\n" +
         "Lawsuit ID: " + masterLawsuitId + "\n\n" +
-        "Barsh Matters will generate the final document and upload it to the mapped master Clio matter Documents tab.  Exact duplicate filenames are skipped.\n\n" +
+        "Barsh Matters will convert the latest saved working Word document to PDF and upload the PDF to the mapped master Clio matter Documents tab.  Exact duplicate filenames are skipped.\n\n" +
         "Continue?"
     );
 
@@ -3721,6 +3757,8 @@ function masterSettlementDateFiledValue(): string {
           uploadTargetMode: "master-lawsuit",
           confirmUpload: true,
           documentKeys: [selectedTemplate.key],
+          workingDocumentDriveItemId: workingDocumentForFinalization?.driveItemId || "",
+          workingDocumentKey: masterDocumentFinalizationResult?.selectedDocument?.key || selectedTemplate.key,
         }),
       });
 

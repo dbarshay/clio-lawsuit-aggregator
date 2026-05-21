@@ -64,10 +64,14 @@ export async function uploadWorkingDocxToGraph(params: {
   }
 
   const safeFilename = safeGraphFilename(params.filename);
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const uniqueFilename = safeFilename.toLowerCase().endsWith(".docx")
+    ? `${safeFilename.slice(0, -5)} - Working ${timestamp}.docx`
+    : `${safeFilename} - Working ${timestamp}.docx`;
   const folder = clean(params.folder) || "BarshMattersWorkingDocs";
   const uploadUrl =
     `${graphApiBase()}/users/${encodeURIComponent(mailboxUserId)}` +
-    `/drive/root:/${encodeURIComponent(folder)}/${encodeURIComponent(safeFilename)}:/content`;
+    `/drive/root:/${encodeURIComponent(folder)}/${encodeURIComponent(uniqueFilename)}:/content`;
 
   const uploadRes = await graphRawFetch(uploadUrl, {
     method: "PUT",
@@ -89,7 +93,7 @@ export async function uploadWorkingDocxToGraph(params: {
 
   const driveItemId = clean(uploadJson?.id);
   const webUrl = clean(uploadJson?.webUrl);
-  const name = clean(uploadJson?.name) || safeFilename;
+  const name = clean(uploadJson?.name) || uniqueFilename;
 
   if (!driveItemId) {
     throw new Error("Microsoft Graph working DOCX upload did not return a drive item id.");
@@ -110,5 +114,189 @@ export async function uploadWorkingDocxToGraph(params: {
     contentType: DOCX_CONTENT_TYPE,
     msWordEditUrl: webUrl ? `ms-word:ofe|u|${webUrl}` : "",
     graphSource: "users-drive-working-docx",
+  };
+}
+
+const PDF_CONTENT_TYPE = "application/pdf";
+
+export async function downloadWorkingDocxFromGraph(driveItemId: string): Promise<{
+  buffer: Buffer;
+  contentType: string;
+  byteLength: number;
+}> {
+  const cleanDriveItemId = clean(driveItemId);
+  const config = getGraphAuthConfig();
+  const mailboxUserId = clean(config.mailboxUserId);
+
+  if (!mailboxUserId) {
+    throw new Error("Missing MICROSOFT_GRAPH_MAILBOX_USER_ID for working document download.");
+  }
+
+  if (!cleanDriveItemId) {
+    throw new Error("Missing Graph working document driveItemId.");
+  }
+
+  const downloadUrl =
+    `${graphApiBase()}/users/${encodeURIComponent(mailboxUserId)}` +
+    `/drive/items/${encodeURIComponent(cleanDriveItemId)}/content`;
+
+  const res = await graphRawFetch(downloadUrl, {
+    method: "GET",
+    headers: {
+      Accept: DOCX_CONTENT_TYPE,
+    },
+  });
+
+  if (!res.ok) {
+    const json = await readGraphJson(res);
+    throw new Error(
+      `Microsoft Graph working DOCX download failed: ${res.status} ${res.statusText} ${
+        json?.error?.message || json?.error || JSON.stringify(json)
+      }`
+    );
+  }
+
+  const buffer = Buffer.from(await res.arrayBuffer());
+
+  if (!buffer.byteLength) {
+    throw new Error("Microsoft Graph returned an empty working DOCX buffer.");
+  }
+
+  return {
+    buffer,
+    contentType: res.headers.get("content-type") || DOCX_CONTENT_TYPE,
+    byteLength: buffer.byteLength,
+  };
+}
+
+export async function convertWorkingDocxDriveItemToPdf(params: {
+  driveItemId: string;
+}): Promise<{
+  pdfBuffer: Buffer;
+  pdfContentType: string;
+  pdfByteLength: number;
+  sourceDriveItemId: string;
+}> {
+  const cleanDriveItemId = clean(params.driveItemId);
+  const config = getGraphAuthConfig();
+  const mailboxUserId = clean(config.mailboxUserId);
+
+  if (!mailboxUserId) {
+    throw new Error("Missing MICROSOFT_GRAPH_MAILBOX_USER_ID for working document PDF conversion.");
+  }
+
+  if (!cleanDriveItemId) {
+    throw new Error("Missing Graph working document driveItemId.");
+  }
+
+  const pdfUrl =
+    `${graphApiBase()}/users/${encodeURIComponent(mailboxUserId)}` +
+    `/drive/items/${encodeURIComponent(cleanDriveItemId)}/content?format=pdf`;
+
+  const res = await graphRawFetch(pdfUrl, {
+    method: "GET",
+    headers: {
+      Accept: PDF_CONTENT_TYPE,
+    },
+  });
+
+  if (!res.ok) {
+    const json = await readGraphJson(res);
+    throw new Error(
+      `Microsoft Graph working DOCX to PDF conversion failed: ${res.status} ${res.statusText} ${
+        json?.error?.message || json?.error || JSON.stringify(json)
+      }`
+    );
+  }
+
+  const pdfBuffer = Buffer.from(await res.arrayBuffer());
+
+  if (!pdfBuffer.byteLength) {
+    throw new Error("Microsoft Graph returned an empty PDF buffer.");
+  }
+
+  if (pdfBuffer.slice(0, 4).toString("utf8") !== "%PDF") {
+    throw new Error("Microsoft Graph conversion response did not look like a PDF.");
+  }
+
+  return {
+    pdfBuffer,
+    pdfContentType: res.headers.get("content-type") || PDF_CONTENT_TYPE,
+    pdfByteLength: pdfBuffer.byteLength,
+    sourceDriveItemId: cleanDriveItemId,
+  };
+}
+
+
+export async function findLatestWorkingDocxInGraph(params: {
+  filenameIncludes?: string;
+  folder?: string;
+}) {
+  const config = getGraphAuthConfig();
+  const mailboxUserId = clean(config.mailboxUserId);
+
+  if (!mailboxUserId) {
+    throw new Error("Missing MICROSOFT_GRAPH_MAILBOX_USER_ID for working document lookup.");
+  }
+
+  const folder = clean(params.folder) || "BarshMattersWorkingDocs";
+  const childrenUrl =
+    `${graphApiBase()}/users/${encodeURIComponent(mailboxUserId)}` +
+    `/drive/root:/${encodeURIComponent(folder)}:/children?$top=200&$orderby=lastModifiedDateTime desc`;
+
+  const res = await graphRawFetch(childrenUrl, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  const json = await readGraphJson(res);
+
+  if (!res.ok) {
+    throw new Error(
+      `Microsoft Graph working document lookup failed: ${res.status} ${res.statusText} ${
+        json?.error?.message || json?.error || JSON.stringify(json)
+      }`
+    );
+  }
+
+  const wanted = clean(params.filenameIncludes).toLowerCase();
+  const rows = Array.isArray(json?.value) ? json.value : [];
+  const docxRows = rows.filter((row: any) => {
+    const name = clean(row?.name).toLowerCase();
+    if (!name.endsWith(".docx")) return false;
+    if (wanted && !name.includes(wanted)) return false;
+    return true;
+  });
+
+  const row = docxRows[0] || null;
+
+  if (!row) {
+    return {
+      ok: false,
+      found: false,
+      folder,
+      filenameIncludes: wanted,
+      candidateCount: docxRows.length,
+    };
+  }
+
+  const driveItemId = clean(row.id);
+  const webUrl = clean(row.webUrl);
+
+  return {
+    ok: true,
+    found: true,
+    folder,
+    filenameIncludes: wanted,
+    driveItemId,
+    name: clean(row.name),
+    webUrl,
+    lastModifiedDateTime: clean(row.lastModifiedDateTime),
+    createdDateTime: clean(row.createdDateTime),
+    size: Number(row.size || 0),
+    msWordEditUrl: webUrl ? `ms-word:ofe|u|${webUrl}` : "",
+    graphSource: "users-drive-working-docx-latest",
   };
 }

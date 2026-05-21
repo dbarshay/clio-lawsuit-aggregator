@@ -4166,6 +4166,11 @@ function masterSettlementDateFiledValue(): string {
                     Planned filename: <strong>{masterDocumentFinalizationResult.selectedDocument.filename}</strong>
                   </p>
                 )}
+                {masterDocumentFinalizationResult?.generatedDocument?.downloadUrl && (
+                  <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
+                    DOCX route ready: <strong>{masterDocumentFinalizationResult.generatedDocument.downloadUrl}</strong>
+                  </p>
+                )}
               </section>
             )}
 
@@ -4217,6 +4222,11 @@ function masterSettlementDateFiledValue(): string {
                 {masterDocumentPrintQueueResult?.printQueueItem?.filename && (
                   <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
                     Queue filename: <strong>{masterDocumentPrintQueueResult.printQueueItem.filename}</strong>
+                  </p>
+                )}
+                {masterDocumentPrintQueueResult?.printQueueItem?.docxDownloadUrl && (
+                  <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
+                    Queue DOCX route: <strong>{masterDocumentPrintQueueResult.printQueueItem.docxDownloadUrl}</strong>
                   </p>
                 )}
               </section>

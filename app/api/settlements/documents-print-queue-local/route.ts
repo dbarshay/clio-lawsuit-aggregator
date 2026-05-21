@@ -104,6 +104,7 @@ export async function POST(req: NextRequest) {
 
     const packetSummary = jsonObject(finalization.packetSummarySnapshot);
     const selectedDocument = jsonObject(packetSummary.selectedDocument);
+    const generatedDocument = jsonObject(selectedDocument.generatedDocument || packetSummary.generatedDocument);
     const skipped = jsonArray(finalization.skipped);
     const fallbackSkipped = jsonObject(skipped[0]);
 
@@ -158,8 +159,11 @@ export async function POST(req: NextRequest) {
         notes: "Local settlement finalized-document placeholder queued. PDF generation and Clio document-vault upload are not yet wired.",
         documentSnapshot: {
           ...selectedDocument,
+          generatedDocument,
+          docxDownloadUrl: clean(generatedDocument.downloadUrl) || clean(selectedDocument.docxDownloadUrl) || null,
           queuedFrom: "local-settlement-finalized-placeholder",
           settlementRecordId: settlementRecordId || null,
+          routeBackedArtifact: Boolean(clean(generatedDocument.downloadUrl) || clean(selectedDocument.docxDownloadUrl)),
           finalizedPdfGenerated: false,
           persistentFileCreated: false,
           clioUploaded: false,
@@ -193,6 +197,7 @@ export async function POST(req: NextRequest) {
         status: record.status,
         filename: record.filename,
         documentKey: record.documentKey,
+        docxDownloadUrl: clean((record.documentSnapshot as any)?.docxDownloadUrl) || clean((record.documentSnapshot as any)?.generatedDocument?.downloadUrl) || null,
         documentLabel: record.documentLabel,
         queuedAt: record.queuedAt.toISOString(),
       },

@@ -94,7 +94,8 @@
     "verify:administrator-header-opens-admin-home-only": "node scripts/verify-administrator-header-opens-admin-home-only.mjs",
     "verify:settlement-document-workflow-ui-safety": "node scripts/verify-settlement-document-workflow-ui-safety.mjs",
     "verify:settlement-document-local-finalization-safety": "node scripts/verify-settlement-document-local-finalization-safety.mjs",
-    "verify:settlement-document-local-print-queue-safety": "node scripts/verify-settlement-document-local-print-queue-safety.mjs"
+    "verify:settlement-document-local-print-queue-safety": "node scripts/verify-settlement-document-local-print-queue-safety.mjs",
+    "verify:settlement-document-generated-docx-reference-safety": "node scripts/verify-settlement-document-generated-docx-reference-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

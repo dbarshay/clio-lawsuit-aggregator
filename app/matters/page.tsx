@@ -3579,6 +3579,96 @@ function masterSettlementDateFiledValue(): string {
     }
   }
 
+  function masterGeneratedDocumentRouteForTemplate(selectedTemplate: { key: string; label: string; description: string } | null): string {
+    const masterLawsuitId = currentMasterLawsuitIdForDocumentPreview();
+
+    if (!masterLawsuitId || !selectedTemplate?.key) return "";
+
+    const params = new URLSearchParams();
+    params.set("masterLawsuitId", masterLawsuitId);
+    params.set("mode", "edit");
+
+    if (selectedTemplate.key === "bill-schedule") {
+      return "/api/documents/bill-schedule?" + params.toString();
+    }
+
+    if (selectedTemplate.key === "packet-summary") {
+      return "/api/documents/packet-summary?" + params.toString();
+    }
+
+    if (selectedTemplate.key === "summons-complaint") {
+      return "/api/documents/summons-complaint?" + params.toString();
+    }
+
+    return "";
+  }
+
+  async function launchMasterStep2GeneratedDocumentEdit(selectedTemplate: { key: string; label: string; description: string } | null) {
+    const masterLawsuitId = currentMasterLawsuitIdForDocumentPreview();
+
+    if (!masterLawsuitId || !selectedTemplate?.key) {
+      alert("Select a document before editing.");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/documents/working-docx", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          masterLawsuitId,
+          uploadTargetMode: "master-lawsuit",
+          documentKeys: [selectedTemplate.key],
+          confirmCreate: true,
+        }),
+      });
+
+      const json = await response.json().catch(() => null);
+
+      if (!response.ok || !json?.ok) {
+        alert(json?.error || "Could not create the working Word document.");
+        return;
+      }
+
+      const working = json.workingDocument || {};
+      const wordUrl = working.msWordEditUrl || "";
+      const fallbackUrl = working.webUrl || "";
+
+      if (!wordUrl && !fallbackUrl) {
+        alert("The working document was created, but Graph did not return an editable URL.");
+        return;
+      }
+
+      const opened = window.open(wordUrl || fallbackUrl, "_blank", "noopener,noreferrer");
+
+      if (!opened && fallbackUrl) {
+        const fallback = window.open(fallbackUrl, "_blank", "noopener,noreferrer");
+        if (!fallback) {
+          alert("The browser blocked the Word edit window.  Please allow popups for Barsh Matters and try again.");
+          return;
+        }
+      }
+
+      setMasterDocumentFinalizationResult({
+        ok: true,
+        action: "working-docx-create",
+        selectedDocument: json.selectedDocument,
+        workingDocument: working,
+        note: "Working DOCX created in Microsoft Graph/OneDrive. Edit and save in Word, then finalize to create the PDF delivery document.",
+      });
+      setMasterDocumentWorkflowStage("edit");
+    } catch (err: any) {
+      alert(err?.message || "Could not create the working Word document.");
+    }
+  }
+
+  function launchMasterStep2PdfPreview(selectedTemplate: { key: string; label: string; description: string } | null) {
+    alert("PDF preview is not wired yet because the current document-generation routes produce DOCX files only.  The next backend step is PDF conversion/generation, then this button can open the PDF inline for Adobe/browser handling.");
+    setMasterDocumentWorkflowStage("preview");
+  }
+
   async function finalizeMasterDocumentFromStep2(selectedTemplate: { key: string; label: string; description: string } | null) {
     if (masterDocumentFinalizing || masterFinalizeUploadLoading) return;
 
@@ -4876,15 +4966,15 @@ function masterSettlementDateFiledValue(): string {
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 {actionButton(
                   "Preview PDF",
-                  () => setMasterDocumentWorkflowStage("preview"),
+                  () => launchMasterStep2PdfPreview(displayedSelectedTemplate),
                   !displayedSelectedTemplate,
-                  !displayedSelectedTemplate ? "Select a document first." : undefined
+                  !displayedSelectedTemplate ? "Select a document first." : "PDF preview will be enabled after PDF generation/conversion is wired."
                 )}
                 {actionButton(
                   "Edit Document",
-                  () => setMasterDocumentWorkflowStage("edit"),
+                  () => launchMasterStep2GeneratedDocumentEdit(displayedSelectedTemplate),
                   !displayedSelectedTemplate,
-                  !displayedSelectedTemplate ? "Select a document first." : undefined
+                  !displayedSelectedTemplate ? "Select a document first." : "Open the generated DOCX in Microsoft Word."
                 )}
                 {actionButton(
                   masterFinalizeUploadLoading || masterDocumentFinalizing ? "Finalizing..." : "Finalize Document",
@@ -4966,7 +5056,7 @@ function masterSettlementDateFiledValue(): string {
                       lineHeight: 1.45,
                     }}
                   >
-                    <strong>Document preview shell:</strong> {displayedSelectedTemplate?.label || "Selected document"} will launch as a PDF preview after the PDF preview route is safely wired.  {isSettlementDocumentMode ? "For now, this preview uses the local settlement document plan." : "For now, this preview uses the local master lawsuit document packet."}
+                    <strong>PDF preview pending:</strong> {displayedSelectedTemplate?.label || "Selected document"} cannot open as a PDF until server-side PDF generation/conversion is wired.  The current generated document routes produce DOCX.
                     <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
                       <div><strong>Lawsuit ID:</strong> {masterDocumentPreviewText(masterDocumentDataPreview?.masterLawsuitId || templateFields.masterLawsuitId || uiFields.masterLawsuitId) || "—"}</div>
                       <div><strong>Provider:</strong> {masterDocumentPreviewText(masterDocumentDataPreview?.settlementSummary?.provider || templateFields.providerName || claimIndexFields.providerName) || "—"}</div>
@@ -4989,7 +5079,7 @@ function masterSettlementDateFiledValue(): string {
                       lineHeight: 1.45,
                     }}
                   >
-                    <strong>Word editing placeholder:</strong> {displayedSelectedTemplate?.label || "Selected document"} opens in the Barsh Matters edit shell using the current document data.  Full Word editing will be connected in the later template-generation phase.
+                    <strong>Working Word document:</strong> {displayedSelectedTemplate?.label || "Selected document"} opens from the Barsh Matters working-docs folder in Microsoft Graph/OneDrive. Save changes in Word, then use Finalize Document to create the PDF delivery version.
                   </div>
                 )}
 

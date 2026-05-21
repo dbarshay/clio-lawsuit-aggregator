@@ -1,0 +1,204 @@
+import { NextRequest, NextResponse } from "next/server";
+import { uploadWorkingDocxToGraph } from "@/lib/documents/graphWorkingDocuments";
+
+export const runtime = "nodejs";
+
+const DOCX_CONTENT_TYPE =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+function clean(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => clean(item)).filter(Boolean);
+}
+
+async function loadFinalizePreview(req: NextRequest, params: {
+  masterLawsuitId: string;
+  uploadTargetMode?: string;
+  directMatterId?: string | number | null;
+  directMatterDisplayNumber?: string | null;
+}) {
+  const previewUrl = new URL("/api/documents/finalize-preview", req.nextUrl.origin);
+  previewUrl.searchParams.set("masterLawsuitId", params.masterLawsuitId);
+
+  if (clean(params.uploadTargetMode)) {
+    previewUrl.searchParams.set("uploadTarget", clean(params.uploadTargetMode));
+  }
+
+  if (clean(params.directMatterId)) {
+    previewUrl.searchParams.set("directMatterId", clean(params.directMatterId));
+  }
+
+  if (clean(params.directMatterDisplayNumber)) {
+    previewUrl.searchParams.set("directMatterDisplayNumber", clean(params.directMatterDisplayNumber));
+  }
+
+  const previewRes = await fetch(previewUrl, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const previewJson = await previewRes.json().catch(() => null);
+
+  if (!previewRes.ok || !previewJson) {
+    throw new Error(previewJson?.error || "Could not load finalization preview before working DOCX creation.");
+  }
+
+  return previewJson;
+}
+
+async function generateDocumentBuffer(req: NextRequest, document: any) {
+  const sourceUrl = new URL(document.sourceEndpoint, req.nextUrl.origin);
+
+  const docRes = await fetch(sourceUrl, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const contentType = docRes.headers.get("Content-Type") || "";
+
+  if (!docRes.ok) {
+    const text = await docRes.text().catch(() => "");
+    throw new Error(
+      `Document generation failed for ${document.label}: ${docRes.status} ${docRes.statusText}${text ? ` ${text}` : ""}`
+    );
+  }
+
+  if (!contentType.includes(DOCX_CONTENT_TYPE)) {
+    const text = await docRes.text().catch(() => "");
+    throw new Error(
+      `Document generation for ${document.label} did not return a DOCX response. Content-Type was ${contentType || "missing"}.${text ? ` Body: ${text}` : ""}`
+    );
+  }
+
+  const buffer = Buffer.from(await docRes.arrayBuffer());
+
+  if (!buffer.byteLength) {
+    throw new Error(`Document generation returned an empty buffer for ${document.label}.`);
+  }
+
+  return buffer;
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json().catch(() => ({}));
+
+    const masterLawsuitId = clean(body?.masterLawsuitId);
+    const uploadTargetMode = clean(body?.uploadTargetMode || body?.uploadTarget || "master-lawsuit");
+    const directMatterId = clean(body?.directMatterId);
+    const directMatterDisplayNumber = clean(body?.directMatterDisplayNumber);
+    const requestedKeys = asStringArray(body?.documentKeys);
+    const confirmCreate = body?.confirmCreate === true;
+
+    if (!masterLawsuitId) {
+      return NextResponse.json(
+        { ok: false, action: "working-docx-create", error: "Missing masterLawsuitId." },
+        { status: 400 }
+      );
+    }
+
+    if (!confirmCreate) {
+      return NextResponse.json(
+        {
+          ok: false,
+          action: "working-docx-create",
+          error: "Working DOCX creation requires confirmCreate: true.",
+          safety: {
+            graphFileCreated: false,
+            clioRecordsChanged: false,
+            databaseRecordsChanged: false,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    const preview = await loadFinalizePreview(req, {
+      masterLawsuitId,
+      uploadTargetMode,
+      directMatterId,
+      directMatterDisplayNumber,
+    });
+
+    const plannedDocuments = Array.isArray(preview?.plannedDocuments) ? preview.plannedDocuments : [];
+    const selectedDocument =
+      plannedDocuments.find((document: any) => requestedKeys.includes(clean(document?.key))) ||
+      plannedDocuments.find((document: any) => document?.wouldGenerate && document?.availableNow);
+
+    if (!selectedDocument?.sourceEndpoint) {
+      return NextResponse.json(
+        {
+          ok: false,
+          action: "working-docx-create",
+          error: "No generated DOCX source endpoint is available for the selected document.",
+          requestedKeys,
+          plannedDocumentCount: plannedDocuments.length,
+        },
+        { status: 422 }
+      );
+    }
+
+    if (!selectedDocument?.wouldGenerate || !selectedDocument?.availableNow) {
+      return NextResponse.json(
+        {
+          ok: false,
+          action: "working-docx-create",
+          error: "Selected document is not generation-ready.",
+          selectedDocument,
+          validation: preview?.validation || null,
+        },
+        { status: 422 }
+      );
+    }
+
+    const buffer = await generateDocumentBuffer(req, selectedDocument);
+    const working = await uploadWorkingDocxToGraph({
+      docxBuffer: buffer,
+      filename: clean(selectedDocument.filename).toLowerCase().endsWith(".pdf")
+        ? `${clean(selectedDocument.filename).slice(0, -4)}.docx`
+        : clean(selectedDocument.filename),
+      folder: "BarshMattersWorkingDocs",
+    });
+
+    return NextResponse.json({
+      ok: true,
+      action: "working-docx-create",
+      masterLawsuitId,
+      uploadTargetMode,
+      selectedDocument: {
+        key: clean(selectedDocument.key),
+        label: clean(selectedDocument.label),
+        filename: clean(selectedDocument.filename),
+        sourceEndpoint: clean(selectedDocument.sourceEndpoint),
+      },
+      workingDocument: working,
+      sourceDocxByteLength: buffer.byteLength,
+      safety: {
+        graphFileCreated: true,
+        clioRecordsChanged: false,
+        databaseRecordsChanged: false,
+        finalPdfCreated: false,
+        deliveryArtifactCreated: false,
+      },
+      note:
+        "Working DOCX was created in Microsoft Graph/OneDrive for editing. Final delivery must still convert the latest edited DOCX to PDF before delivery.",
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      {
+        ok: false,
+        action: "working-docx-create",
+        error: err?.message || "Working DOCX creation failed.",
+        safety: {
+          clioRecordsChanged: false,
+          databaseRecordsChanged: false,
+        },
+      },
+      { status: 500 }
+    );
+  }
+}

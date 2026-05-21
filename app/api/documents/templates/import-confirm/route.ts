@@ -150,7 +150,14 @@ export async function POST(req: NextRequest) {
               source: field.source,
               required: Boolean(field.required),
               exampleValue: field.exampleValue || null,
-              metadata: field.metadata || {},
+              metadata: {
+                ...(field.metadata || {}),
+                visibility: field.visibility || field.metadata?.visibility || "visible_ui",
+                isVisibleInUi: (field.visibility || field.metadata?.visibility || "visible_ui") === "visible_ui",
+                isHiddenInternal: (field.visibility || field.metadata?.visibility) === "hidden_internal",
+                isComputed: (field.visibility || field.metadata?.visibility) === "computed",
+                isSystem: (field.visibility || field.metadata?.visibility) === "system",
+              },
             },
             create: {
               templateId: template.id,
@@ -160,7 +167,14 @@ export async function POST(req: NextRequest) {
               source: field.source,
               required: Boolean(field.required),
               exampleValue: field.exampleValue || null,
-              metadata: field.metadata || {},
+              metadata: {
+                ...(field.metadata || {}),
+                visibility: field.visibility || field.metadata?.visibility || "visible_ui",
+                isVisibleInUi: (field.visibility || field.metadata?.visibility || "visible_ui") === "visible_ui",
+                isHiddenInternal: (field.visibility || field.metadata?.visibility) === "hidden_internal",
+                isComputed: (field.visibility || field.metadata?.visibility) === "computed",
+                isSystem: (field.visibility || field.metadata?.visibility) === "system",
+              },
             },
           });
         }

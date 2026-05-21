@@ -3,6 +3,12 @@ import {
   templateRepositoryRecords,
 } from "@/lib/documents/templateRegistry";
 
+export type TemplateMergeFieldVisibility =
+  | "visible_ui"
+  | "hidden_internal"
+  | "computed"
+  | "system";
+
 export type TemplateImportRow = {
   key: string;
   label: string;
@@ -27,6 +33,7 @@ export type TemplateImportRow = {
     source: string;
     required?: boolean;
     exampleValue?: string;
+    visibility?: TemplateMergeFieldVisibility;
     metadata?: Record<string, unknown>;
   }>;
 };
@@ -48,6 +55,31 @@ function category(value: unknown): BarshDocumentTemplateCategory {
     return text;
   }
   return "general";
+}
+
+export function mergeFieldVisibility(value: unknown, fallback: TemplateMergeFieldVisibility = "visible_ui"): TemplateMergeFieldVisibility {
+  const text = clean(value);
+  if (text === "visible_ui" || text === "hidden_internal" || text === "computed" || text === "system") {
+    return text;
+  }
+  return fallback;
+}
+
+export function mergeFieldMetadataWithVisibility(field: {
+  source?: unknown;
+  visibility?: unknown;
+  metadata?: Record<string, unknown>;
+}) {
+  const visibility = mergeFieldVisibility(field.visibility);
+  return {
+    ...(field.metadata || {}),
+    visibility,
+    isVisibleInUi: visibility === "visible_ui",
+    isHiddenInternal: visibility === "hidden_internal",
+    isComputed: visibility === "computed",
+    isSystem: visibility === "system",
+    source: clean(field.source),
+  };
 }
 
 export function safetyTemplateImportPreview() {
@@ -117,10 +149,15 @@ export function normalizeTemplateImportRows(inputRows: unknown[]): TemplateImpor
               source: clean(field.source || "manual-template-import"),
               required: bool(field.required, false),
               exampleValue: clean(field.exampleValue || field.example_value),
-              metadata:
-                field.metadata && typeof field.metadata === "object" && !Array.isArray(field.metadata)
-                  ? field.metadata
-                  : {},
+              visibility: mergeFieldVisibility(field.visibility || field.field_visibility || field.mergeFieldVisibility),
+              metadata: mergeFieldMetadataWithVisibility({
+                source: field.source || "manual-template-import",
+                visibility: field.visibility || field.field_visibility || field.mergeFieldVisibility,
+                metadata:
+                  field.metadata && typeof field.metadata === "object" && !Array.isArray(field.metadata)
+                    ? field.metadata
+                    : {},
+              }),
             }))
             .filter((field: any) => field.key)
         : [],
@@ -151,7 +188,17 @@ export function seededTemplateImportRows(category?: BarshDocumentTemplateCategor
       finalProductionDocument: false,
       note: "Seeded placeholder template record. This is not a final production template/document.",
     },
-    mergeFields: Array.isArray(row.mergeFields) ? row.mergeFields : [],
+    mergeFields: Array.isArray(row.mergeFields)
+      ? row.mergeFields.map((field: any) => ({
+          ...field,
+          visibility: mergeFieldVisibility(field.visibility || field.metadata?.visibility),
+          metadata: mergeFieldMetadataWithVisibility({
+            source: field.source,
+            visibility: field.visibility || field.metadata?.visibility,
+            metadata: field.metadata || {},
+          }),
+        }))
+      : [],
   }));
 }
 
@@ -186,6 +233,10 @@ export function buildTemplateImportPreview(params: {
       productionTemplateReady: row.productionTemplateReady,
       finalProductionDocument: row.finalProductionDocument,
       mergeFieldCount: row.mergeFields?.length || 0,
+      visibleMergeFieldCount: (row.mergeFields || []).filter((field) => field.visibility === "visible_ui").length,
+      hiddenInternalMergeFieldCount: (row.mergeFields || []).filter((field) => field.visibility === "hidden_internal").length,
+      computedMergeFieldCount: (row.mergeFields || []).filter((field) => field.visibility === "computed").length,
+      systemMergeFieldCount: (row.mergeFields || []).filter((field) => field.visibility === "system").length,
       row,
     };
   });
@@ -204,6 +255,10 @@ export function buildTemplateImportPreview(params: {
       rowsToUpdate: updateRows,
       productionReadyRows: rowPreviews.filter((row) => row.productionTemplateReady).length,
       finalProductionRows: rowPreviews.filter((row) => row.finalProductionDocument).length,
+      visibleMergeFields: rowPreviews.reduce((sum, row) => sum + row.visibleMergeFieldCount, 0),
+      hiddenInternalMergeFields: rowPreviews.reduce((sum, row) => sum + row.hiddenInternalMergeFieldCount, 0),
+      computedMergeFields: rowPreviews.reduce((sum, row) => sum + row.computedMergeFieldCount, 0),
+      systemMergeFields: rowPreviews.reduce((sum, row) => sum + row.systemMergeFieldCount, 0),
     },
     rowPreviews,
   };

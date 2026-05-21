@@ -445,7 +445,8 @@ export default function AdminDocumentTemplatesPage() {
               <strong>Placeholder warning:</strong> Current seeded templates are only workflow/testing
               placeholders.  Confirming this import creates local DB template records, versions, and merge
               fields, but it does not make them final production templates, generate documents, upload to
-              Clio, create email drafts, print, or queue documents.
+              Clio, create email drafts, print, or queue documents.  Merge fields may include visible UI
+              fields and hidden/internal data fields; the repository must preserve that distinction.
             </div>
 
             {importError && (
@@ -464,6 +465,10 @@ export default function AdminDocumentTemplatesPage() {
                   <div><strong>Update:</strong> {importPreview.summary?.rowsToUpdate ?? 0}</div>
                   <div><strong>Production-ready rows:</strong> {importPreview.summary?.productionReadyRows ?? 0}</div>
                   <div><strong>Final production rows:</strong> {importPreview.summary?.finalProductionRows ?? 0}</div>
+                  <div><strong>Visible UI merge fields:</strong> {importPreview.summary?.visibleMergeFields ?? 0}</div>
+                  <div><strong>Hidden/internal merge fields:</strong> {importPreview.summary?.hiddenInternalMergeFields ?? 0}</div>
+                  <div><strong>Computed merge fields:</strong> {importPreview.summary?.computedMergeFields ?? 0}</div>
+                  <div><strong>System merge fields:</strong> {importPreview.summary?.systemMergeFields ?? 0}</div>
                   <div><strong>Database changed:</strong> {String(Boolean(importPreview.safety?.databaseRecordsChanged))}</div>
                 </div>
               </div>

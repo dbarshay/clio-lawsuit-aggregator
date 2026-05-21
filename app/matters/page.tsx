@@ -4213,7 +4213,7 @@ function masterSettlementDateFiledValue(): string {
                 )}
                 {masterDocumentFinalizationResult?.generatedDocument?.downloadUrl && (
                   <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
-                    DOCX route ready: <strong>{masterDocumentFinalizationResult.generatedDocument.downloadUrl}</strong>
+                    Placeholder DOCX route ready: <strong>{masterDocumentFinalizationResult.generatedDocument.downloadUrl}</strong>
                   </p>
                 )}
               </section>
@@ -4261,12 +4261,12 @@ function masterSettlementDateFiledValue(): string {
                 </h3>
                 <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
                   {masterDocumentPrintResult.ok
-                    ? "The generated DOCX route was opened.  No PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent."
+                    ? "The placeholder-seeded generated DOCX route was opened.  This is not a final production template/document.  No PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent."
                     : masterDocumentPrintResult.error || "Could not open the generated settlement document route."}
                 </p>
                 {masterDocumentPrintResult?.docxDownloadUrl && (
                   <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
-                    Opened DOCX route: <strong>{masterDocumentPrintResult.docxDownloadUrl}</strong>
+                    Opened placeholder DOCX route: <strong>{masterDocumentPrintResult.docxDownloadUrl}</strong>
                   </p>
                 )}
               </section>
@@ -4298,7 +4298,7 @@ function masterSettlementDateFiledValue(): string {
                 )}
                 {masterDocumentPrintQueueResult?.printQueueItem?.docxDownloadUrl && (
                   <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
-                    Queue DOCX route: <strong>{masterDocumentPrintQueueResult.printQueueItem.docxDownloadUrl}</strong>
+                    Queued placeholder DOCX route: <strong>{masterDocumentPrintQueueResult.printQueueItem.docxDownloadUrl}</strong>
                   </p>
                 )}
               </section>

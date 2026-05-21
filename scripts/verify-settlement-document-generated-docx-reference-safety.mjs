@@ -25,7 +25,10 @@ mustInclude(finalizeRoute, "buildGeneratedDocxReference");
 mustInclude(finalizeRoute, "/api/settlements/settlement-summary");
 mustInclude(finalizeRoute, "/api/settlements/provider-remittance-breakdown");
 mustInclude(finalizeRoute, "/api/settlements/attorney-fee-breakdown");
-mustInclude(finalizeRoute, 'artifactKind: "generated-docx-route"');
+mustInclude(finalizeRoute, 'artifactKind: "placeholder-seeded-generated-docx-route"');
+mustInclude(finalizeRoute, 'templateSource: "placeholder-seeded"');
+mustInclude(finalizeRoute, "productionTemplateReady: false");
+mustInclude(finalizeRoute, "finalProductionDocument: false");
 mustInclude(finalizeRoute, "routeBackedArtifact");
 mustInclude(finalizeRoute, "docxDownloadUrl");
 mustInclude(finalizeRoute, "generatedDocument: generatedDocx");
@@ -44,8 +47,8 @@ mustInclude(queueRoute, "printableFileReady: false");
 mustNotInclude(queueRoute, "fs.writeFile", "persistent filesystem write");
 mustNotInclude(queueRoute, "uploadDocumentToClio", "Clio upload");
 
-mustInclude(pagePath, "DOCX route ready");
-mustInclude(pagePath, "Queue DOCX route");
+mustInclude(pagePath, "Placeholder DOCX route ready");
+mustInclude(pagePath, "Queued placeholder DOCX route");
 
 if (failures.length) {
   console.error("FAIL: settlement document generated DOCX route reference safety verifier");

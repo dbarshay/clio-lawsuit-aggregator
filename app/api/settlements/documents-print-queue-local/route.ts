@@ -156,12 +156,15 @@ export async function POST(req: NextRequest) {
         clioDocumentName: null,
         clioDocumentVersionUuid: null,
         status: "queued",
-        notes: "Local settlement finalized-document placeholder queued. PDF generation and Clio document-vault upload are not yet wired.",
+        notes: "Placeholder-seeded local settlement document route reference queued for delivery-workflow testing. This is not a final production template/document. PDF generation and Clio document-vault upload are not yet wired.",
         documentSnapshot: {
           ...selectedDocument,
           generatedDocument,
           docxDownloadUrl: clean(generatedDocument.downloadUrl) || clean(selectedDocument.docxDownloadUrl) || null,
           queuedFrom: "local-settlement-finalized-placeholder",
+          templateSource: "placeholder-seeded",
+          productionTemplateReady: false,
+          finalProductionDocument: false,
           settlementRecordId: settlementRecordId || null,
           routeBackedArtifact: Boolean(clean(generatedDocument.downloadUrl) || clean(selectedDocument.docxDownloadUrl)),
           finalizedPdfGenerated: false,
@@ -202,7 +205,7 @@ export async function POST(req: NextRequest) {
         queuedAt: record.queuedAt.toISOString(),
       },
       safety: localQueueSafety(1, 0),
-      note: "Created a local Barsh Matters DocumentPrintQueueItem from a settlement DocumentFinalization placeholder. No PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent.",
+      note: "Created a local Barsh Matters DocumentPrintQueueItem from a placeholder-seeded settlement DocumentFinalization route reference. This is not a final production template/document. No PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent.",
     });
   } catch (error: any) {
     return NextResponse.json(

@@ -52,7 +52,10 @@ function buildGeneratedDocxReference(params: {
   const downloadUrl = endpoint ? `${endpoint}?${query.toString()}` : "";
 
   return {
-    artifactKind: "generated-docx-route",
+    artifactKind: "placeholder-seeded-generated-docx-route",
+    templateSource: "placeholder-seeded",
+    productionTemplateReady: false,
+    finalProductionDocument: false,
     outputFormat: "docx",
     contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     filename: clean(params.filename) || null,
@@ -65,7 +68,7 @@ function buildGeneratedDocxReference(params: {
     clioUploaded: false,
     emailAttachmentReady: false,
     printableFileReady: false,
-    note: "This is a real Barsh Matters DOCX generation route reference. It does not create a persistent file, PDF, Clio upload, email attachment, or print-ready PDF.",
+    note: "This is a placeholder-seeded Barsh Matters DOCX generation route reference for testing the delivery workflow. It is not a final production template/document. It does not create a persistent file, PDF, Clio upload, email attachment, or print-ready PDF.",
   };
 }
 
@@ -283,6 +286,9 @@ export async function POST(req: NextRequest) {
       settlementRecordId: settlementRecord.id,
       masterLawsuitId: effectiveMasterLawsuitId,
       sourceOfTruth: "barsh-matters-local",
+      templateSource: "placeholder-seeded",
+      productionTemplateReady: false,
+      finalProductionDocument: false,
       generatedDocument: generatedDocx,
       docxDownloadUrl: generatedDocx.downloadUrl,
       finalizedPdfGenerated: false,
@@ -291,7 +297,7 @@ export async function POST(req: NextRequest) {
       clioUploaded: false,
       printQueueRecordCreated: false,
       emailAttachmentReady: false,
-      note: "Local finalization now stores a real Barsh Matters DOCX generation route reference. It does not create a persistent file, PDF, Clio upload, email attachment, or print queue record.",
+      note: "Local finalization stores a placeholder-seeded Barsh Matters DOCX generation route reference for testing. This is not a final production template/document. It does not create a persistent file, PDF, Clio upload, email attachment, or print queue record.",
     };
 
     const record = await prisma.documentFinalization.create({
@@ -333,6 +339,9 @@ export async function POST(req: NextRequest) {
           workflow: "settlement-document-finalization",
           localFirst: true,
           sourceOfTruth: "barsh-matters-local",
+          templateSource: "placeholder-seeded",
+          productionTemplateReady: false,
+          finalProductionDocument: false,
           settlementRecord: {
             id: settlementRecord.id,
             masterLawsuitId: settlementRecord.masterLawsuitId,
@@ -377,7 +386,7 @@ export async function POST(req: NextRequest) {
         createdAt: record.createdAt.toISOString(),
       },
       safety: safetyLocalSettlementDocumentFinalize(),
-      note: "Created a persistent local Barsh Matters DocumentFinalization record for the selected settlement document with a real DOCX generation route reference. No persistent file was created, no PDF was generated, no Clio upload occurred, no Outlook draft was created, and no print queue item was written.",
+      note: "Created a persistent local Barsh Matters DocumentFinalization record for the selected settlement document with a placeholder-seeded DOCX generation route reference. This is not a final production template/document. No persistent file was created, no PDF was generated, no Clio upload occurred, no Outlook draft was created, and no print queue item was written.",
     });
   } catch (error: any) {
     return NextResponse.json(

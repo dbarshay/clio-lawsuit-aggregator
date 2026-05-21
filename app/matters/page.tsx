@@ -642,6 +642,7 @@ export default function FilteredMattersPage() {
   const [masterDocumentFinalizationResult, setMasterDocumentFinalizationResult] = useState<any>(null);
   const [masterDocumentPrintQueueLoading, setMasterDocumentPrintQueueLoading] = useState(false);
   const [masterDocumentPrintQueueResult, setMasterDocumentPrintQueueResult] = useState<any>(null);
+  const [masterDocumentPrintResult, setMasterDocumentPrintResult] = useState<any>(null);
 
   const [masterDocumentDataPreview, setMasterDocumentDataPreview] = useState<any>(null);
   const [masterDocumentGenerationPopupOpen, setMasterDocumentGenerationPopupOpen] = useState(false);
@@ -2443,6 +2444,7 @@ function masterSettlementDateFiledValue(): string {
     setMasterDocumentDataPreviewLoading(true);
     setMasterDocumentFinalizationResult(null);
     setMasterDocumentPrintQueueResult(null);
+    setMasterDocumentPrintResult(null);
     setMasterDocumentDataPreview(null);
 
     try {
@@ -2749,6 +2751,49 @@ function masterSettlementDateFiledValue(): string {
 
   function launchMasterDocumentPrint(selectedTemplate: { key: string; label: string; description: string } | null) {
     const context = buildMasterDocumentDeliveryContext(selectedTemplate);
+    const isSettlementDocumentMode =
+      masterDocumentLaunchMode === "settlement" ||
+      masterDocumentDataPreview?.documentLaunchMode === "settlement" ||
+      masterDocumentDataPreview?.action === "settlement-documents-preview";
+
+    if (isSettlementDocumentMode) {
+      const docxDownloadUrl =
+        masterDocumentFinalizationResult?.generatedDocument?.downloadUrl ||
+        masterDocumentFinalizationResult?.selectedDocument?.generatedDocument?.downloadUrl ||
+        masterDocumentFinalizationResult?.selectedDocument?.docxDownloadUrl ||
+        "";
+
+      if (!docxDownloadUrl) {
+        alert("Finalize the settlement document before opening the generated DOCX route.");
+        return;
+      }
+
+      const docxWindow = window.open(docxDownloadUrl, "_blank", "noopener,noreferrer");
+
+      if (!docxWindow) {
+        alert("The browser blocked the generated DOCX route.  Please allow popups for Barsh Matters and try again.");
+        return;
+      }
+
+      setMasterDocumentPrintResult({
+        ok: true,
+        action: "settlement-document-docx-open-for-print",
+        documentLabel: context.documentLabel,
+        filename:
+          masterDocumentFinalizationResult?.generatedDocument?.filename ||
+          masterDocumentFinalizationResult?.selectedDocument?.filename ||
+          context.filename ||
+          "",
+        docxDownloadUrl,
+        finalizedPdfGenerated: false,
+        printablePdfReady: false,
+        clioRecordsChanged: false,
+        emailSent: false,
+        note: "Opened the real generated DOCX route.  PDF generation and browser print-ready PDF are not yet wired.",
+      });
+      return;
+    }
+
     const printableUrl = resolvePrintableUrl(context);
 
     if (!printableUrl) {
@@ -4197,6 +4242,33 @@ function masterSettlementDateFiledValue(): string {
                   {actionButton("Print Document", () => launchMasterDocumentPrint(displayedSelectedTemplate), false, "Open the finalized PDF/printable document and show the print dialog when available.")}
                   {actionButton(masterDocumentPrintQueueLoading ? "Sending..." : "Send to Print Queue", () => sendMasterDocumentToPrintQueue(displayedSelectedTemplate), masterDocumentPrintQueueLoading, "Send this local finalized-document placeholder to the shared Barsh Matters print queue. PDF generation is not yet wired.")}
                 </div>
+              </section>
+            )}
+
+            {masterDocumentPrintResult && (
+              <section
+                style={{
+                  border: masterDocumentPrintResult.ok ? "1px solid #c4b5fd" : "1px solid #fecaca",
+                  borderRadius: 18,
+                  padding: 18,
+                  background: masterDocumentPrintResult.ok ? "#f5f3ff" : "#fef2f2",
+                  display: "grid",
+                  gap: 8,
+                }}
+              >
+                <h3 style={{ margin: 0, fontSize: 18 }}>
+                  {masterDocumentPrintResult.ok ? "DOCX Route Opened" : "Print Launch Failed"}
+                </h3>
+                <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
+                  {masterDocumentPrintResult.ok
+                    ? "The generated DOCX route was opened.  No PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent."
+                    : masterDocumentPrintResult.error || "Could not open the generated settlement document route."}
+                </p>
+                {masterDocumentPrintResult?.docxDownloadUrl && (
+                  <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
+                    Opened DOCX route: <strong>{masterDocumentPrintResult.docxDownloadUrl}</strong>
+                  </p>
+                )}
               </section>
             )}
 

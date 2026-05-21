@@ -228,12 +228,13 @@ export default function PrintQueuePage() {
             }}
           >
             <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              title="Print Queue access is locked unless the user has print-queue rights."
-              style={{
-                display: "inline-flex",
+                type="button"
+                onClick={() => {
+                  window.location.href = "/print-queue";
+                }}
+                title="Open Daily Print Queue."
+                style={{
+                  display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 6,
@@ -245,13 +246,13 @@ export default function PrintQueuePage() {
                 fontSize: 12,
                 fontWeight: 800,
                 whiteSpace: "nowrap",
-                cursor: "not-allowed",
-                opacity: 0.9,
+                cursor: "pointer",
+                opacity: 1,
               }}
-            >
-              <span aria-hidden="true">🔒</span>
-              <span>Print Queue</span>
-            </button>
+              >
+                <span aria-hidden="true">🖨️</span>
+                <span>Print Queue</span>
+              </button>
           </div>
 
           <a href="/" title="Return to Barsh Matters entry screen" style={{ display: "inline-flex", textDecoration: "none" }}>

@@ -4567,7 +4567,7 @@ function masterSettlementDateFiledValue(): string {
                 onClick={openAdministratorMenu}
                 title="Administrator functions require password access."
                 style={{
-                  ...lockedPrintQueueButtonStyle,
+                  ...printQueueButtonStyle,
                   cursor: "pointer",
                   opacity: 1,
                 }}
@@ -4603,12 +4603,17 @@ function masterSettlementDateFiledValue(): string {
 
               <button
                 type="button"
-                disabled
-                aria-disabled="true"
-                title="Print Queue access is locked unless the user has print-queue rights."
-                style={lockedPrintQueueButtonStyle}
+                onClick={() => {
+                  window.location.href = "/print-queue";
+                }}
+                title="Open Daily Print Queue."
+                style={{
+                  ...printQueueButtonStyle,
+                  cursor: "pointer",
+                  opacity: 1,
+                }}
               >
-                <span aria-hidden="true">🔒</span>
+                <span aria-hidden="true">🖨️</span>
                 <span>Print Queue</span>
               </button>
             </div>
@@ -5896,7 +5901,7 @@ function masterSettlementDateFiledValue(): string {
                           color: "#fff",
                           fontSize: 12,
                           fontWeight: 950,
-                          cursor: "not-allowed",
+                          cursor: "pointer",
                         }}
                       >
                         Close Lawsuit
@@ -9009,7 +9014,7 @@ const bmLogoStyle: React.CSSProperties = {
   flexShrink: 0,
 };
 
-const lockedPrintQueueButtonStyle: React.CSSProperties = {
+const printQueueButtonStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",

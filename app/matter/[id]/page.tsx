@@ -496,7 +496,7 @@ const bmGlobalPrintButtonRowStyle: React.CSSProperties = {
   zIndex: 2,
 };
 
-const bmGlobalLockedPrintQueueStyle: React.CSSProperties = {
+const bmGlobalPrintQueueButtonStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -5991,7 +5991,7 @@ const activeGroupKey =
               onClick={openAdministratorMenu}
               title="Administrator functions require password access."
               style={{
-                ...bmGlobalLockedPrintQueueStyle,
+                ...bmGlobalPrintQueueButtonStyle,
                 cursor: "pointer",
                 opacity: 1,
               }}
@@ -6026,15 +6026,20 @@ const activeGroupKey =
             )}
 
             <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              title="Print Queue access is locked unless the user has print-queue rights."
-              style={bmGlobalLockedPrintQueueStyle}
-            >
-              <span aria-hidden="true">🔒</span>
-              <span>Print Queue</span>
-            </button>
+                type="button"
+                onClick={() => {
+                  window.location.href = "/print-queue";
+                }}
+                title="Open Daily Print Queue."
+                style={{
+                  ...bmGlobalPrintQueueButtonStyle,
+                  cursor: "pointer",
+                  opacity: 1,
+                }}
+              >
+                <span aria-hidden="true">🖨️</span>
+                <span>Print Queue</span>
+              </button>
           </div>
 
           <a href="/" title="Return to Barsh Matters entry screen" style={bmGlobalLogoLinkStyle}>
@@ -7289,7 +7294,7 @@ const activeGroupKey =
                         color: "#1d4ed8",
                         fontSize: 12,
                         fontWeight: 950,
-                        cursor: "not-allowed",
+                        cursor: "pointer",
                         opacity: 0.82,
                       }}
                     >
@@ -13123,7 +13128,7 @@ const activeGroupKey =
                     }
                   >
                     {locked ? (
-                      <span style={{ fontSize: 18, lineHeight: 1 }}>🔒</span>
+                      <span style={{ fontSize: 18, lineHeight: 1 }}>🖨️</span>
                     ) : (
                       <input
                         type="checkbox"
@@ -13142,7 +13147,7 @@ const activeGroupKey =
                 </td>
 
                 <td style={tdStyle}>
-                  {aggregated ? "🔒 " : ""}
+                  {aggregated ? "🖨️ " : ""}
                   <a
                     href={`/matter/${Number(r.id)}`}
                     style={{

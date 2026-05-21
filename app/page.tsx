@@ -2027,7 +2027,7 @@ export default function Home() {
                 onClick={openAdministratorMenu}
                 title="Administrator functions require password access."
                 style={{
-                  ...lockedPrintQueueButtonStyle,
+                  ...printQueueButtonStyle,
                   cursor: "pointer",
                   opacity: 1,
                 }}
@@ -2063,12 +2063,17 @@ export default function Home() {
 
               <button
                 type="button"
-                disabled
-                aria-disabled="true"
-                title="Print Queue access is locked unless the user has print-queue rights."
-                style={lockedPrintQueueButtonStyle}
+                onClick={() => {
+                  window.location.href = "/print-queue";
+                }}
+                title="Open Daily Print Queue."
+                style={{
+                  ...printQueueButtonStyle,
+                  cursor: "pointer",
+                  opacity: 1,
+                }}
               >
-                <span aria-hidden="true">🔒</span>
+                <span aria-hidden="true">🖨️</span>
                 <span>Print Queue</span>
               </button>
             </div>
@@ -2805,7 +2810,7 @@ const bmLogoStyle: React.CSSProperties = {
   flexShrink: 0,
 };
 
-const lockedPrintQueueButtonStyle: React.CSSProperties = {
+const printQueueButtonStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",

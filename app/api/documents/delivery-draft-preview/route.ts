@@ -8,7 +8,7 @@ import {
 import { buildGraphDraftPayloadPreview } from "@/lib/graph/draft";
 
 function clean(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
+  return String(value ?? "").trim();
 }
 
 function cleanObject(value: unknown): Record<string, unknown> {
@@ -67,7 +67,11 @@ function normalizeContext(raw: Record<string, unknown>): DocumentDeliveryContext
     clioMaildropLabel: clean(raw.clioMaildropLabel) || undefined,
     matterId: clean(raw.matterId) || undefined,
     masterLawsuitId: clean(raw.masterLawsuitId) || undefined,
-  };
+    clioDocumentId: clean((raw as any).clioDocumentId) || undefined,
+    clioDocumentVersionUuid: clean((raw as any).clioDocumentVersionUuid) || undefined,
+    pdfFilename: clean((raw as any).pdfFilename) || undefined,
+    filename: clean((raw as any).filename) || undefined,
+  } as any;
 }
 
 export async function POST(req: NextRequest) {
@@ -86,14 +90,21 @@ export async function POST(req: NextRequest) {
       context.pdfUrl
         ? {
             type: "pdf",
+            name: clean((context as any).pdfFilename) || clean((context as any).filename) || "document.pdf",
+            contentType: "application/pdf",
             url: context.pdfUrl,
+            clioDocumentId: clean((context as any).clioDocumentId),
+            clioDocumentVersionUuid: clean((context as any).clioDocumentVersionUuid),
             requiredForFinalGraphDraft: true,
           }
         : null,
-      context.documentUrl
+      context.documentUrl && context.documentUrl !== context.pdfUrl
         ? {
             type: "document",
+            name: clean((context as any).filename) || "document",
             url: context.documentUrl,
+            clioDocumentId: clean((context as any).clioDocumentId),
+            clioDocumentVersionUuid: clean((context as any).clioDocumentVersionUuid),
             requiredForFinalGraphDraft: false,
           }
         : null,

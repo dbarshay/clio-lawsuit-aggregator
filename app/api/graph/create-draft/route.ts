@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { assertGraphDraftEnvironmentReady, graphFetchJson, graphMailboxMessagesUrl } from "@/lib/graph/client";
+import { assertGraphDraftEnvironmentReady, graphApiBase, graphFetchJson, graphMailboxMessagesUrl } from "@/lib/graph/client";
+import { clioFetch } from "@/lib/clio";
+import { requestMicrosoftGraphAppToken } from "@/lib/graph/token";
 import { buildGraphDraftPayloadPreview, normalizeGraphRecipients } from "@/lib/graph/draft";
 import { persistGraphDraftMetadata } from "@/lib/graph/emailPersistence";
 import { resolveMaildropForGraphDraftMatterId } from "@/lib/graph/maildropForDraft";
@@ -14,6 +16,110 @@ function clean(value: unknown): string {
 
 function objectValue(value: unknown): Record<string, any> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, any>) : {};
+}
+
+function safeAttachmentName(value: unknown): string {
+  const raw = clean(value) || "document.pdf";
+  return raw.replace(/[\\/:*?"<>|#%{}~&]+/g, "_").slice(0, 180) || "document.pdf";
+}
+
+async function downloadAttachmentBytesFromPlan(attachment: any): Promise<{
+  name: string;
+  contentType: string;
+  contentBytes: string;
+  byteLength: number;
+  source: string;
+}> {
+  const name = safeAttachmentName(attachment?.name || attachment?.filename || "document.pdf");
+  const contentType = clean(attachment?.contentType) || "application/pdf";
+  const clioDocumentId = clean(attachment?.clioDocumentId);
+
+  if (clioDocumentId) {
+    const downloadRes = await clioFetch(`/api/v4/documents/${encodeURIComponent(clioDocumentId)}/download`);
+
+    if (!downloadRes.ok) {
+      const text = await downloadRes.text().catch(() => "");
+      throw new Error(
+        `Could not download finalized Clio document ${clioDocumentId} for attachment: ${downloadRes.status} ${downloadRes.statusText}${text ? ` ${text.slice(0, 500)}` : ""}`
+      );
+    }
+
+    const buffer = Buffer.from(await downloadRes.arrayBuffer());
+
+    if (!buffer.byteLength) {
+      throw new Error(`Finalized Clio document ${clioDocumentId} downloaded as an empty file.`);
+    }
+
+    return {
+      name,
+      contentType: downloadRes.headers.get("content-type") || contentType,
+      contentBytes: buffer.toString("base64"),
+      byteLength: buffer.byteLength,
+      source: "clio-document-download",
+    };
+  }
+
+  throw new Error(`Attachment ${name} does not include a supported finalized-document source.`);
+}
+
+async function addFileAttachmentToGraphDraft(params: {
+  mailboxUserId: string;
+  messageId: string;
+  attachment: {
+    name: string;
+    contentType: string;
+    contentBytes: string;
+  };
+}) {
+  const tokenResult = await requestMicrosoftGraphAppToken();
+
+  if (!tokenResult.ok || !tokenResult.token?.accessToken) {
+    throw new Error(tokenResult.error || "Microsoft Graph token request failed before attachment upload.");
+  }
+
+  const url =
+    `${graphApiBase()}/users/${encodeURIComponent(params.mailboxUserId)}` +
+    `/messages/${encodeURIComponent(params.messageId)}/attachments`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${tokenResult.token.accessToken}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      "@odata.type": "#microsoft.graph.fileAttachment",
+      name: params.attachment.name,
+      contentType: params.attachment.contentType,
+      contentBytes: params.attachment.contentBytes,
+    }),
+    cache: "no-store",
+  });
+
+  const text = await response.text();
+  let json: any = null;
+
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    json = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      json?.error?.message ||
+        text ||
+        `Microsoft Graph attachment upload failed: ${response.status} ${response.statusText}`
+    );
+  }
+
+  return {
+    ok: true,
+    status: response.status,
+    statusText: response.statusText,
+    json,
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -169,20 +275,7 @@ export async function POST(req: NextRequest) {
 
   const attachmentPlan = Array.isArray(preview.attachmentPlan) ? preview.attachmentPlan : [];
   const requiresAttachmentUpload = attachmentPlan.some((attachment: any) => Boolean(attachment?.graphUploadRequired));
-
-  if (requiresAttachmentUpload && clean(body.allowMetadataOnlyDraft) !== "true") {
-    return NextResponse.json(
-      {
-        ...responseBase,
-        previewOnly: false,
-        blocked: true,
-        payload: preview,
-        error:
-          "Attachment upload is not wired yet.  Pass allowMetadataOnlyDraft=true only for an explicit metadata-only draft test, or wire Clio/finalized-document attachment upload first.",
-      },
-      { status: 400 }
-    );
-  }
+  const allowMetadataOnlyDraft = clean(body.allowMetadataOnlyDraft) === "true";
 
   const graphPayload = preview.graphMessagePayload;
   const graphResult = await graphFetchJson({
@@ -220,6 +313,61 @@ export async function POST(req: NextRequest) {
     lastModifiedDateTime: clean(graphResult.json?.lastModifiedDateTime),
   };
 
+  const attachmentUploads: any[] = [];
+  const attachmentErrors: any[] = [];
+
+  if (requiresAttachmentUpload && !allowMetadataOnlyDraft && draftMetadata.graphMessageId) {
+    for (const attachment of attachmentPlan.filter((item: any) => Boolean(item?.graphUploadRequired))) {
+      try {
+        const file = await downloadAttachmentBytesFromPlan(attachment);
+        const upload = await addFileAttachmentToGraphDraft({
+          mailboxUserId: env.mailboxUserId,
+          messageId: draftMetadata.graphMessageId,
+          attachment: {
+            name: file.name,
+            contentType: file.contentType,
+            contentBytes: file.contentBytes,
+          },
+        });
+
+        attachmentUploads.push({
+          ok: true,
+          name: file.name,
+          contentType: file.contentType,
+          byteLength: file.byteLength,
+          source: file.source,
+          graphAttachmentId: clean(upload?.json?.id),
+        });
+      } catch (error: any) {
+        attachmentErrors.push({
+          ok: false,
+          name: clean(attachment?.name),
+          clioDocumentId: clean(attachment?.clioDocumentId),
+          error: error?.message || "Attachment upload failed.",
+        });
+      }
+    }
+  }
+
+  if (attachmentErrors.length > 0) {
+    return NextResponse.json(
+      {
+        ...responseBase,
+        previewOnly: false,
+        graphCallsMade: true,
+        createsOutlookDraft: true,
+        attachesDocument: attachmentUploads.length > 0,
+        attachmentUploadDeferred: false,
+        attachmentUploads,
+        attachmentErrors,
+        payload: preview,
+        draft: draftMetadata,
+        error: "Outlook draft was created, but one or more finalized PDF attachments could not be uploaded.",
+      },
+      { status: 502 }
+    );
+  }
+
   const persisted = await persistGraphDraftMetadata({
     mailboxUserId: env.mailboxUserId,
     graphDraft: draftMetadata,
@@ -248,7 +396,8 @@ export async function POST(req: NextRequest) {
     payload: preview,
     draft: draftMetadata,
     persisted,
-    note:
-      "Outlook draft created through Microsoft Graph and draft metadata persisted locally.  Attachments remain deferred until finalized-document upload support is wired.",
+    note: attachmentUploads.length > 0
+      ? "Outlook draft created through Microsoft Graph, finalized PDF attachment uploaded, and draft metadata persisted locally."
+      : "Outlook draft created through Microsoft Graph and draft metadata persisted locally.  No finalized PDF attachment was uploaded.",
   });
 }

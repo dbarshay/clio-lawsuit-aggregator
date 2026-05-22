@@ -20,6 +20,16 @@ function safeGraphFilename(value: unknown): string {
     .slice(0, 180);
 }
 
+function workingFilenameSearchSlug(value: unknown): string {
+  const raw = clean(value).toLowerCase();
+
+  if (raw.includes("bill schedule")) return "Bill-Schedule";
+  if (raw.includes("packet summary")) return "Packet-Summary";
+  if (raw.includes("summons") || raw.includes("complaint")) return "Summons-Complaint";
+
+  return "Document";
+}
+
 function encodeSharePointPathSegment(value: string): string {
   return encodeURIComponent(value).replace(/%20/g, "%20");
 }
@@ -129,7 +139,8 @@ export async function uploadWorkingDocxToGraph(params: {
 
   const originalFilename = safeGraphFilename(params.filename);
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const uniqueFilename = `BM-Working-${timestamp}.docx`;
+  const searchSlug = workingFilenameSearchSlug(originalFilename);
+  const uniqueFilename = `BM-Working-${searchSlug}-${timestamp}.docx`;
   const folder = clean(params.folder) || "BarshMattersWorkingDocs";
   const uploadUrl =
     `${graphApiBase()}/users/${encodeURIComponent(mailboxUserId)}` +

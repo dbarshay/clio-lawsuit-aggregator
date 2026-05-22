@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  findExistingClioDocumentsByFilename,
+  listClioMatterDocuments,
+} from "@/lib/clioDocumentUpload";
+import { clioFetch } from "@/lib/clio";
 
 export const runtime = "nodejs";
 
@@ -63,6 +68,35 @@ function allowedPrintQueueStatus(value: unknown): string {
   }
 
   return status;
+}
+
+async function verifyClioDocumentById(documentId: string) {
+  const cleanDocumentId = clean(documentId);
+
+  if (!cleanDocumentId) return null;
+
+  const fields = "id,name,latest_document_version{id,uuid,filename,size,content_type,fully_uploaded}";
+  const res = await clioFetch(
+    `/api/v4/documents/${encodeURIComponent(cleanDocumentId)}.json?fields=${encodeURIComponent(fields)}`
+  );
+
+  const json = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    return null;
+  }
+
+  const data = json?.data || {};
+  const version = data?.latest_document_version || {};
+
+  return {
+    id: data.id || cleanDocumentId,
+    name: data.name || "",
+    filename: version.filename || data.name || "",
+    createdAt: null,
+    updatedAt: null,
+    latestDocumentVersion: version,
+  };
 }
 
 function uniqueQueueKeyFor(candidate: any): string {
@@ -198,6 +232,9 @@ export async function POST(req: NextRequest) {
     const requestedUniqueQueueKeys = Array.isArray(body?.uniqueQueueKeys)
       ? body.uniqueQueueKeys.map((value: unknown) => clean(value)).filter(Boolean)
       : [];
+    const directMatterCandidates = Array.isArray(body?.directMatterCandidates)
+      ? body.directMatterCandidates
+      : [];
 
     if (!masterLawsuitId) {
       return NextResponse.json(
@@ -232,10 +269,106 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { preview, candidates } = await loadVerifiedPrintCandidates(
-      req,
-      masterLawsuitId
-    );
+    let preview: any = null;
+    let candidates: any[] = [];
+
+    if (directMatterCandidates.length > 0) {
+      const verifiedDirectCandidates: any[] = [];
+      const verificationErrors: any[] = [];
+
+      for (const rawCandidate of directMatterCandidates) {
+        const masterMatterId =
+          numberOrNull(rawCandidate?.clioMatterId) ||
+          numberOrNull(body?.clioMatterId) ||
+          numberOrNull(rawCandidate?.masterMatterId) ||
+          numberOrNull(rawCandidate?.directMatterId) ||
+          numberOrNull(body?.directMatterId);
+        const clioDocumentId = clean(rawCandidate?.clioDocumentId || rawCandidate?.documentId || rawCandidate?.id);
+        const filename = clean(rawCandidate?.filename || rawCandidate?.clioDocumentName || rawCandidate?.name);
+
+        if (!masterMatterId || !clioDocumentId) {
+          verificationErrors.push({
+            filename,
+            clioDocumentId,
+            masterMatterId,
+            error: "Direct matter print candidate requires a direct matter ID and Clio document ID.",
+          });
+          continue;
+        }
+
+        const currentDocuments = await listClioMatterDocuments(masterMatterId);
+        const wantedId = Number(clioDocumentId);
+        const byId = currentDocuments.find((document: any) => Number(document?.id) === wantedId);
+        let byFilename = byId
+          ? byId
+          : findExistingClioDocumentsByFilename(currentDocuments, filename)[0] || null;
+
+        if (!byFilename && clioDocumentId) {
+          byFilename = await verifyClioDocumentById(clioDocumentId);
+        }
+
+        if (!byFilename) {
+          verificationErrors.push({
+            filename,
+            clioDocumentId,
+            masterMatterId,
+            error: "No current matching document was found in this direct matter's Clio Documents tab or by Clio document ID lookup.",
+          });
+          continue;
+        }
+
+        const version = byFilename.latestDocumentVersion || {};
+
+        verifiedDirectCandidates.push({
+          ...rawCandidate,
+          key: clean(rawCandidate?.key) || clean(rawCandidate?.documentKey) || filename,
+          label: clean(rawCandidate?.label) || clean(rawCandidate?.documentLabel) || filename,
+          filename: clean(version.filename) || filename || clean(byFilename.filename) || clean(byFilename.name),
+          masterLawsuitId,
+          masterMatterId,
+          masterDisplayNumber:
+            clean(rawCandidate?.masterDisplayNumber) ||
+            clean(rawCandidate?.directMatterDisplayNumber) ||
+            clean(rawCandidate?.matterDisplayNumber) ||
+            null,
+          clioDocumentId: clean(byFilename.id || clioDocumentId),
+          clioDocumentName: clean(byFilename.name || rawCandidate?.clioDocumentName || filename),
+          clioDocumentVersionUuid: clean(version.uuid || rawCandidate?.clioDocumentVersionUuid),
+          currentClioExistenceVerified: true,
+          currentClioExistenceMatch: {
+            id: byFilename.id,
+            name: byFilename.name,
+            filename: byFilename.filename,
+            createdAt: byFilename.createdAt,
+            updatedAt: byFilename.updatedAt,
+            latestDocumentVersion: byFilename.latestDocumentVersion,
+          },
+          printCandidateReason:
+            "Direct matter finalized PDF candidate supplied by the UI and verified against the current direct matter Clio Documents tab.",
+          source: "direct_matter",
+        });
+      }
+
+      preview = {
+        ok: true,
+        action: "print-queue-direct-candidates",
+        masterLawsuitId,
+        candidateDocumentCount: verifiedDirectCandidates.length,
+        verificationErrors,
+        verification: {
+          currentClioExistenceVerified: verifiedDirectCandidates.length > 0,
+          directMatterCandidateMode: true,
+        },
+      };
+      candidates = verifiedDirectCandidates;
+    } else {
+      const loaded = await loadVerifiedPrintCandidates(
+        req,
+        masterLawsuitId
+      );
+      preview = loaded.preview;
+      candidates = loaded.candidates;
+    }
 
     const selectedCandidates = candidates
       .map((candidate: any) => ({
@@ -258,6 +391,11 @@ export async function POST(req: NextRequest) {
             candidateDocumentCount: preview?.candidateDocumentCount ?? null,
             currentClioExistenceVerified:
               preview?.verification?.currentClioExistenceVerified === true,
+            directMatterCandidateMode:
+              preview?.verification?.directMatterCandidateMode === true,
+            verificationErrors: Array.isArray(preview?.verificationErrors)
+              ? preview.verificationErrors
+              : [],
           },
           safety: {
             explicitActionRequired: true,

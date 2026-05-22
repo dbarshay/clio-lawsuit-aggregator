@@ -574,6 +574,7 @@ const activeGroupKey =
 
   const [matterDocumentDataPreview, setMatterDocumentDataPreview] = useState<any>(null);
   const [matterDocumentGenerationPopupOpen, setMatterDocumentGenerationPopupOpen] = useState(false);
+  const [matterDocumentDeliveryToOverride, setMatterDocumentDeliveryToOverride] = useState("");
   const [finalizeUploadLoading, setFinalizeUploadLoading] = useState(false);
   const [finalizeUploadResult, setFinalizeUploadResult] = useState<any>(null);
   const [matterDocumentFinalizationResult, setMatterDocumentFinalizationResult] = useState<any>(null);
@@ -3549,7 +3550,36 @@ const activeGroupKey =
       textValue(matter?.displayNumber || matter?.display_number) ||
       (directMatterId ? `BRL${directMatterId}` : "");
 
-    const workingDocumentForFinalization = matterDocumentFinalizationResult?.workingDocument || null;
+    let workingDocumentForFinalization = matterDocumentFinalizationResult?.workingDocument || null;
+
+    if (!workingDocumentForFinalization?.driveItemId) {
+      try {
+        const params = new URLSearchParams();
+        params.set("templateKey", selectedTemplate.key);
+        params.set("templateLabel", selectedTemplate.label || selectedTemplate.key);
+
+        const latestResponse = await fetch("/api/documents/working-docx-latest?" + params.toString(), {
+          cache: "no-store",
+        });
+        const latestJson = await latestResponse.json().catch(() => null);
+
+        if (latestResponse.ok && latestJson?.ok && latestJson?.workingDocument?.driveItemId) {
+          workingDocumentForFinalization = latestJson.workingDocument;
+          setMatterDocumentFinalizationResult({
+            ok: true,
+            action: "working-docx-recovered",
+            selectedDocument: {
+              key: selectedTemplate.key,
+              label: selectedTemplate.label,
+            },
+            workingDocument: workingDocumentForFinalization,
+            note: "Recovered latest working DOCX from Microsoft Graph/OneDrive for Direct Matter PDF finalization.",
+          });
+        }
+      } catch {
+        // Fall through to user-facing block below.
+      }
+    }
 
     if (!workingDocumentForFinalization?.driveItemId) {
       alert("Barsh Matters could not find the working Word document.  Click Edit Document first, save in Word Web, then Finalize Document.");
@@ -4296,7 +4326,19 @@ const activeGroupKey =
       ...context,
       documentUrl: documentUrl || context.documentUrl,
       pdfUrl: pdfUrl || context.pdfUrl,
-    };
+      pdfFilename: candidate?.filename || candidate?.clioDocumentName || context.documentLabel,
+      clioDocumentId: candidate?.clioDocumentId || candidate?.id || "",
+      clioDocumentVersionUuid: candidate?.clioDocumentVersionUuid || candidate?.latestDocumentVersion?.uuid || "",
+    } as any;
+  }
+
+  function isValidMatterDocumentDeliveryEmail(value: string): boolean {
+    return /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(value.trim());
+  }
+
+  function buildMatterDocumentDeliveryToOverrideRecipient(): any[] {
+    const email = matterDocumentDeliveryToOverride.trim();
+    return isValidMatterDocumentDeliveryEmail(email) ? [{ email, name: email }] : [];
   }
 
   async function launchMatterDocumentEmail(selectedTemplate: { key: string; label: string; description: string } | null) {
@@ -4314,6 +4356,9 @@ const activeGroupKey =
         body: JSON.stringify({
           source: "direct_matter",
           context,
+          ...(matterDocumentDeliveryToOverride.trim()
+            ? { to: buildMatterDocumentDeliveryToOverrideRecipient() }
+            : {}),
         }),
       });
 
@@ -4333,16 +4378,71 @@ const activeGroupKey =
           ? draft.attachments
           : [];
 
+      const createResponse = await fetch("/api/graph/create-draft?confirm=create-graph-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: "direct_matter",
+          context,
+          draft: {
+            ...draft,
+            ...(matterDocumentDeliveryToOverride.trim()
+              ? { to: buildMatterDocumentDeliveryToOverrideRecipient() }
+              : {}),
+          },
+          ...(matterDocumentDeliveryToOverride.trim()
+            ? {}
+            : { graphDraftPayloadPreview: preview.graphDraftPayloadPreview }),
+          to: matterDocumentDeliveryToOverride.trim()
+            ? buildMatterDocumentDeliveryToOverrideRecipient()
+            : undefined,
+          matterId: context.matterId,
+        }),
+      });
+
+      const createResult = await createResponse.json().catch(() => null);
+
+      if (!createResponse.ok || !createResult?.createsOutlookDraft) {
+        alert(
+          "Document Email Draft Preview Ready, But Draft Creation Failed\n\n" +
+            "No email was sent.\n\n" +
+            `Document: ${context.documentLabel || selectedTemplate?.label || "Document"}\n` +
+            `To: ${draft.to || "not resolved"}\n` +
+            `Cc / MailDrop: ${context.clioMaildropLabel || "MailDrop"} ${context.clioMaildropEmail ? "<" + context.clioMaildropEmail + ">" : "not resolved"}\n` +
+            `Subject: ${draft.subject || "not resolved"}\n` +
+            `Attachments planned: ${attachmentPlan.length}\n` +
+            `Ready for Graph draft creation: ${readiness.readyForGraphDraftCreate ? "Yes" : "No"}\n\n` +
+            `Error: ${createResult?.error || "Graph draft creation failed."}` +
+            (Array.isArray(createResult?.attachmentErrors) && createResult.attachmentErrors.length
+              ? "\n\nAttachment errors:\n" +
+                createResult.attachmentErrors
+                  .map((item: any) =>
+                    [
+                      item?.name ? "Name: " + item.name : "",
+                      item?.clioDocumentId ? "Clio Document ID: " + item.clioDocumentId : "",
+                      item?.error ? "Error: " + item.error : "",
+                    ].filter(Boolean).join("\n")
+                  )
+                  .join("\n\n")
+              : "")
+        );
+        return;
+      }
+
+      if (createResult?.draft?.webLink) {
+        window.open(createResult.draft.webLink, "_blank", "noopener,noreferrer");
+      }
+
       alert(
-        "Document Email Draft Preview Only\n\n" +
-          "No Outlook draft was created.  No email was sent.  No Clio record, database record, document, or print-queue record was changed.\n\n" +
+        "Outlook Draft Created\n\n" +
+          "No email was sent.  The draft was created through Microsoft Graph and opened in Outlook if the browser allowed the new tab.\n" +
+          `Finalized PDF attachments uploaded: ${Array.isArray(createResult?.attachmentUploads) ? createResult.attachmentUploads.length : 0}\n\n` +
           `Document: ${context.documentLabel || selectedTemplate?.label || "Document"}\n` +
           `To: ${draft.to || "not resolved"}\n` +
           `Cc / MailDrop: ${context.clioMaildropLabel || "MailDrop"} ${context.clioMaildropEmail ? "<" + context.clioMaildropEmail + ">" : "not resolved"}\n` +
           `Subject: ${draft.subject || "not resolved"}\n` +
           `Attachments planned: ${attachmentPlan.length}\n` +
-          `Ready for future Graph draft creation: ${readiness.readyForGraphDraftCreate ? "Yes" : "No"}\n\n` +
-          "This is the preview-first bridge for the later Graph draft-with-PDF-attachment workflow."
+          `Draft ID: ${createResult?.draft?.graphMessageId || "created"}`
       );
     } catch (error: any) {
       alert(error?.message || "Document delivery draft preview failed.");
@@ -4388,15 +4488,97 @@ const activeGroupKey =
     });
   }
 
-  function sendMatterDocumentToPrintQueue(selectedTemplate: { key: string; label: string; description: string } | null) {
+  async function sendMatterDocumentToPrintQueue(selectedTemplate: { key: string; label: string; description: string } | null) {
     const context = buildMatterFinalizedPdfDeliveryContext(selectedTemplate);
+    const candidate = selectedFinalizedMatterDocumentCandidate(selectedTemplate);
+    const masterLawsuitId = usableMasterLawsuitIdForDocuments();
+    const directMatterId = directMatterNumericIdForDocuments();
+    const clioTargetMatterId = Number(finalizeUploadResult?.clioUploadTarget?.matterId || 0);
+    const printQueueMatterId = Number.isFinite(clioTargetMatterId) && clioTargetMatterId > 0
+      ? clioTargetMatterId
+      : directMatterId;
+    const directMatterDisplayNumber =
+      textValue(matter?.displayNumber || matter?.display_number) ||
+      textValue(finalizeUploadResult?.clioUploadTarget?.displayNumber) ||
+      (directMatterId ? `BRL${directMatterId}` : "");
 
-    if (!context.pdfUrl) {
+    if (!context.pdfUrl || !candidate?.clioDocumentId) {
       alert("Finalize the document before sending it to the print queue.  The queue workflow requires a finalized PDF from this matter's Clio Documents tab.");
       return;
     }
 
-    alert(`${documentDeliverySafetyNote()}\n\nDirect Matter Send to Print Queue still needs backend support for direct-matter finalized PDF queue records.\n\nDocument: ${context.documentLabel}`);
+    if (!masterLawsuitId || !printQueueMatterId) {
+      alert("Barsh Matters could not identify the lawsuit ID or Clio direct matter ID needed for the print queue.");
+      return;
+    }
+
+    const confirmed = confirm(
+      "SEND FINALIZED DOCUMENT TO PRINT QUEUE\n\n" +
+        "Matter: " + (directMatterDisplayNumber || directMatterId) + "\n" +
+        "Document: " + (context.documentLabel || selectedTemplate?.label || "Selected finalized document") + "\n\n" +
+        "Barsh Matters will add the currently Clio-verified finalized PDF to the print queue.  Existing queue records are skipped.\n\n" +
+        "Continue?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch("/api/documents/print-queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          masterLawsuitId,
+          directMatterId: directMatterId,
+          clioMatterId: printQueueMatterId,
+          confirmAdd: true,
+          directMatterCandidates: [
+            {
+              ...candidate,
+              key: candidate.key || selectedTemplate?.key,
+              label: candidate.label || selectedTemplate?.label,
+              masterLawsuitId,
+              masterMatterId: printQueueMatterId,
+              clioMatterId: printQueueMatterId,
+              directMatterId,
+              masterDisplayNumber: directMatterDisplayNumber,
+              directMatterDisplayNumber,
+              source: "direct_matter",
+            },
+          ],
+        }),
+      });
+
+      const json = await response.json().catch(() => null);
+
+      if (!response.ok || !json?.ok) {
+        const verificationErrors = Array.isArray(json?.previewSummary?.verificationErrors)
+          ? json.previewSummary.verificationErrors
+          : [];
+        const detailText = verificationErrors.length
+          ? "\n\nVerification details:\n" +
+            verificationErrors
+              .map((item: any) =>
+                [
+                  item?.error ? "Error: " + item.error : "",
+                  item?.masterMatterId ? "Matter ID: " + item.masterMatterId : "",
+                  item?.clioDocumentId ? "Clio Document ID: " + item.clioDocumentId : "",
+                  item?.filename ? "Filename: " + item.filename : "",
+                ].filter(Boolean).join("\n")
+              )
+              .join("\n\n")
+          : "";
+        alert((json?.error || "Could not send the finalized document to the print queue.") + detailText);
+        return;
+      }
+
+      alert(
+        "Print queue updated.\n\n" +
+          "Created: " + Number(json.createdCount || 0) + "\n" +
+          "Already queued: " + Number(json.existingCount || 0)
+      );
+    } catch (err: any) {
+      alert(err?.message || "Could not send the finalized document to the print queue.");
+    }
   }
 
   function formatEmailThreadTimestamp(value: any): string {
@@ -5859,13 +6041,38 @@ const activeGroupKey =
                 <div>
                   <h3 style={{ margin: 0, fontSize: 18 }}>Document Delivery</h3>
                   <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
-                    These delivery actions use the finalized PDF from this direct matter's Clio Documents tab.  Email prepares a draft preview with the finalized PDF attached.  Print opens the finalized PDF.  Send to Print Queue still requires direct-matter queue backend support.
+                    These delivery actions use the finalized PDF from this direct matter's Clio Documents tab.  Email prepares a draft preview with the finalized PDF attached.  Print opens the finalized PDF.  Send to Print Queue adds the finalized PDF to the Barsh Matters print queue.
                   </p>
                 </div>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  {actionButton("Email Document", () => launchMatterDocumentEmail(selectedTemplate), false, "Open Outlook/mail compose with recipient and subject prefilled where available.")}
-                  {actionButton("Print Document", () => launchMatterDocumentPrint(selectedTemplate), false, "Open the finalized PDF/printable document and show the print dialog when available.")}
-                  {actionButton("Send to Print Queue", () => sendMatterDocumentToPrintQueue(selectedTemplate), false, "Send this finalized document to the shared Barsh Matters print queue when backend support is available.")}
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6, maxWidth: 420 }}>
+                    <span style={{ fontWeight: 850, color: "#334155" }}>To Email for Document Delivery</span>
+                    <input
+                      value={matterDocumentDeliveryToOverride}
+                      onChange={(event) => setMatterDocumentDeliveryToOverride(event.target.value)}
+                      placeholder="Enter recipient email before creating an Outlook draft"
+                      style={{
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 10,
+                        padding: "9px 10px",
+                        fontWeight: 750,
+                      }}
+                    />
+                    {matterDocumentDeliveryToOverride.trim() && !isValidMatterDocumentDeliveryEmail(matterDocumentDeliveryToOverride) && (
+                      <span style={{ color: "#b91c1c", fontSize: 12, fontWeight: 800 }}>Enter a valid email address.</span>
+                    )}
+                  </label>
+
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {actionButton(
+                      "Email Document",
+                      () => launchMatterDocumentEmail(selectedTemplate),
+                      Boolean(matterDocumentDeliveryToOverride.trim()) && !isValidMatterDocumentDeliveryEmail(matterDocumentDeliveryToOverride),
+                      "Create an Outlook draft with To/Cc/subject/body populated.  PDF attachment upload is still metadata-only."
+                    )}
+                    {actionButton("Print Document", () => launchMatterDocumentPrint(selectedTemplate), false, "Open the finalized PDF/printable document and show the print dialog when available.")}
+                    {actionButton("Send to Print Queue", () => sendMatterDocumentToPrintQueue(selectedTemplate), false, "Send this finalized document to the shared Barsh Matters print queue when backend support is available.")}
+                  </div>
                 </div>
               </section>
             )}
@@ -5885,13 +6092,38 @@ const activeGroupKey =
                   <h3 style={{ margin: 0, fontSize: 18 }}>Document Delivery</h3>
                   <span style={{ display: "none" }}>Document Delivery — Standalone</span>
                   <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
-                    These delivery actions use the finalized PDF from this direct matter's Clio Documents tab.  Email prepares a draft preview with the finalized PDF attached.  Print opens the finalized PDF.  Send to Print Queue still requires direct-matter queue backend support.
+                    These delivery actions use the finalized PDF from this direct matter's Clio Documents tab.  Email prepares a draft preview with the finalized PDF attached.  Print opens the finalized PDF.  Send to Print Queue adds the finalized PDF to the Barsh Matters print queue.
                   </p>
                 </div>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  {actionButton("Email Document", () => launchMatterDocumentEmail(selectedTemplate), false, "Open Outlook/mail compose with recipient and subject prefilled where available.")}
-                  {actionButton("Print Document", () => launchMatterDocumentPrint(selectedTemplate), false, "Open the finalized PDF/printable document and show the print dialog when available.")}
-                  {actionButton("Send to Print Queue", () => sendMatterDocumentToPrintQueue(selectedTemplate), false, "Send this finalized document to the shared Barsh Matters print queue when backend support is available.")}
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6, maxWidth: 420 }}>
+                    <span style={{ fontWeight: 850, color: "#334155" }}>To Email for Document Delivery</span>
+                    <input
+                      value={matterDocumentDeliveryToOverride}
+                      onChange={(event) => setMatterDocumentDeliveryToOverride(event.target.value)}
+                      placeholder="Enter recipient email before creating an Outlook draft"
+                      style={{
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 10,
+                        padding: "9px 10px",
+                        fontWeight: 750,
+                      }}
+                    />
+                    {matterDocumentDeliveryToOverride.trim() && !isValidMatterDocumentDeliveryEmail(matterDocumentDeliveryToOverride) && (
+                      <span style={{ color: "#b91c1c", fontSize: 12, fontWeight: 800 }}>Enter a valid email address.</span>
+                    )}
+                  </label>
+
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {actionButton(
+                      "Email Document",
+                      () => launchMatterDocumentEmail(selectedTemplate),
+                      Boolean(matterDocumentDeliveryToOverride.trim()) && !isValidMatterDocumentDeliveryEmail(matterDocumentDeliveryToOverride),
+                      "Create an Outlook draft with To/Cc/subject/body populated.  PDF attachment upload is still metadata-only."
+                    )}
+                    {actionButton("Print Document", () => launchMatterDocumentPrint(selectedTemplate), false, "Open the finalized PDF/printable document and show the print dialog when available.")}
+                    {actionButton("Send to Print Queue", () => sendMatterDocumentToPrintQueue(selectedTemplate), false, "Send this finalized document to the shared Barsh Matters print queue when backend support is available.")}
+                  </div>
                 </div>
               </section>
             )}

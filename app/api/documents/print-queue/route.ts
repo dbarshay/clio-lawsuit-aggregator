@@ -325,7 +325,7 @@ export async function POST(req: NextRequest) {
         const currentDocuments = await listClioMatterDocuments(masterMatterId);
         const wantedId = Number(clioDocumentId);
         const byId = currentDocuments.find((document: any) => Number(document?.id) === wantedId);
-        let byFilename = byId
+        let byFilename: ClioMatterDocument | null = byId
           ? byId
           : findExistingClioDocumentsByFilename(currentDocuments, filename)[0] || null;
 

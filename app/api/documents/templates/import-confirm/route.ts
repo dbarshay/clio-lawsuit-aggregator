@@ -10,13 +10,57 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function metadataFor(row: any) {
+function uploadedTemplateFileFor(row: any) {
+  const file = row?.metadata?.uploadedTemplateFile;
+  if (!file || typeof file !== "object" || Array.isArray(file)) return null;
+
+  const contentBase64 = String(file.contentBase64 || "").trim();
+  const name = String(file.name || "").trim();
+  const type = String(file.type || "").trim();
+  const size = Number(file.size || 0);
+
+  if (!contentBase64) return null;
+
   return {
-    ...(row.metadata || {}),
-    templateSource: row.metadata?.templateSource || row.repositorySource || "barsh-matters-template-import",
+    name,
+    type,
+    size: Number.isFinite(size) ? size : 0,
+    lastModified: file.lastModified || null,
+    lastModifiedIso: file.lastModifiedIso || null,
+    storageKind: "db-docx-base64",
+    actualFileStored: true,
+    uploadPerformed: true,
+    contentBase64,
+  };
+}
+
+function metadataFor(row: any) {
+  const uploadedTemplateFile = uploadedTemplateFileFor(row);
+  const originalMetadata = row.metadata || {};
+
+  return {
+    ...originalMetadata,
+    templateSource: originalMetadata?.templateSource || row.repositorySource || "barsh-matters-template-import",
     repositoryStatus: row.repositoryStatus,
     productionTemplateReady: Boolean(row.productionTemplateReady),
     finalProductionDocument: Boolean(row.finalProductionDocument),
+    ...(uploadedTemplateFile
+      ? {
+          storageKind: "db-docx-base64",
+          actualFileStored: true,
+          uploadedTemplateFile: {
+            name: uploadedTemplateFile.name,
+            type: uploadedTemplateFile.type,
+            size: uploadedTemplateFile.size,
+            lastModified: uploadedTemplateFile.lastModified,
+            lastModifiedIso: uploadedTemplateFile.lastModifiedIso,
+            storageKind: uploadedTemplateFile.storageKind,
+            actualFileStored: true,
+            uploadPerformed: true,
+            contentBase64StoredInVersion: true,
+          },
+        }
+      : {}),
   };
 }
 
@@ -113,19 +157,36 @@ export async function POST(req: NextRequest) {
 
         const versionNumber = latestVersion ? latestVersion.versionNumber + 1 : 1;
 
+        const uploadedTemplateFile = uploadedTemplateFileFor(row);
+
         const version = await tx.documentTemplateVersion.create({
           data: {
             templateId: template.id,
             versionNumber,
             status: row.productionTemplateReady ? "production-ready" : "draft",
             bodyFormat: "docx-template",
-            storageKind: "metadata-only",
-            contentText: null,
+            storageKind: uploadedTemplateFile ? "db-docx-base64" : "metadata-only",
+            contentText: uploadedTemplateFile?.contentBase64 || null,
             contentJson: {
               importedFrom: mode,
               placeholderSeeded: row.repositorySource === "barsh-matters-code-registry-seed",
               productionTemplateReady: Boolean(row.productionTemplateReady),
               finalProductionDocument: Boolean(row.finalProductionDocument),
+              ...(uploadedTemplateFile
+                ? {
+                    uploadedTemplateFile: {
+                      name: uploadedTemplateFile.name,
+                      type: uploadedTemplateFile.type,
+                      size: uploadedTemplateFile.size,
+                      lastModified: uploadedTemplateFile.lastModified,
+                      lastModifiedIso: uploadedTemplateFile.lastModifiedIso,
+                      storageKind: uploadedTemplateFile.storageKind,
+                      actualFileStored: true,
+                      uploadPerformed: true,
+                      contentBase64StoredInVersion: true,
+                    },
+                  }
+                : {}),
             },
             mergeFieldSet: row.mergeFieldSet || null,
           },
@@ -188,6 +249,8 @@ export async function POST(req: NextRequest) {
           mergeFieldCount: row.mergeFields?.length || 0,
           productionTemplateReady: Boolean(row.productionTemplateReady),
           finalProductionDocument: Boolean(row.finalProductionDocument),
+          storageKind: uploadedTemplateFile ? "db-docx-base64" : "metadata-only",
+          actualFileStored: Boolean(uploadedTemplateFile),
         });
       }
     });

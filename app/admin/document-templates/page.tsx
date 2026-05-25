@@ -283,19 +283,19 @@ export default function AdminDocumentTemplatesPage() {
       sourceOfTruth: firstRow.sourceOfTruth || "barsh-matters-local",
       enabled: firstRow.enabled ?? true,
       editableInRepository: firstRow.editableInRepository ?? true,
-      repositorySource: "barsh-matters-template-upload-placeholder",
-      repositoryStatus: "upload-placeholder",
+      repositorySource: "barsh-matters-template-upload-db",
+      repositoryStatus: "uploaded-docx-template",
       productionTemplateReady: false,
       finalProductionDocument: false,
       metadata: {
         ...(firstRow.metadata || {}),
         templateSource: "uploaded-production-template",
-        storageKind: "upload-placeholder",
-        actualFileStored: false,
+        storageKind: "db-docx-base64",
+        actualFileStored: true,
         productionTemplateReady: false,
         finalProductionDocument: false,
         uploadedTemplateFile: fileInfo,
-        note: "File metadata captured only. Actual file storage is not wired yet.",
+        note: "DOCX file content is captured as base64 and stored in the local DocumentTemplateVersion.contentText field when confirmed.  This does not generate documents, upload to Clio, create drafts, send email, print, or queue documents.",
       },
       mergeFields: Array.isArray(firstRow.mergeFields) ? firstRow.mergeFields : [],
     };
@@ -303,6 +303,20 @@ export default function AdminDocumentTemplatesPage() {
     setCustomTemplateRowsText(JSON.stringify([nextRow], null, 2));
     setCustomTemplatePreview(null);
     setCustomTemplateConfirmResult(null);
+  }
+
+  function readFileAsBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Could not read the selected DOCX file."));
+      reader.onload = () => {
+        const value = String(reader.result || "");
+        const marker = "base64,";
+        const idx = value.indexOf(marker);
+        resolve(idx >= 0 ? value.slice(idx + marker.length) : value);
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   async function handleTemplateFilePlaceholderChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -318,26 +332,35 @@ export default function AdminDocumentTemplatesPage() {
 
     if (!lowerName.endsWith(".docx")) {
       setTemplateFilePlaceholder(null);
-      setTemplateFilePlaceholderError("Use a .docx Word template file for this placeholder workflow.");
+      setTemplateFilePlaceholderError("Use a .docx Word template file for this template-storage workflow.");
       return;
     }
 
     const baseName = file.name.replace(/\.docx$/i, "");
-    const fileInfo = {
-      name: file.name,
-      baseName,
-      size: file.size,
-      type: file.type || "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      lastModified: file.lastModified,
-      lastModifiedIso: new Date(file.lastModified).toISOString(),
-      storageKind: "upload-placeholder",
-      actualFileStored: false,
-      contentRead: false,
-      uploadPerformed: false,
-    };
 
-    setTemplateFilePlaceholder(fileInfo);
-    applyTemplateFilePlaceholderToCustomJson(fileInfo);
+    try {
+      const contentBase64 = await readFileAsBase64(file);
+      const fileInfo = {
+        name: file.name,
+        baseName,
+        size: file.size,
+        type: file.type || "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        lastModified: file.lastModified,
+        lastModifiedIso: new Date(file.lastModified).toISOString(),
+        storageKind: "db-docx-base64",
+        actualFileStored: true,
+        contentRead: true,
+        uploadPerformed: true,
+        contentBase64,
+        contentBase64Length: contentBase64.length,
+      };
+
+      setTemplateFilePlaceholder(fileInfo);
+      applyTemplateFilePlaceholderToCustomJson(fileInfo);
+    } catch (error: any) {
+      setTemplateFilePlaceholder(null);
+      setTemplateFilePlaceholderError(error?.message || "Could not read the selected DOCX file.");
+    }
   }
 
   function parseCustomTemplateRows() {
@@ -737,9 +760,9 @@ export default function AdminDocumentTemplatesPage() {
                 lineHeight: 1.5,
               }}
             >
-              <strong>Template File Placeholder:</strong> Select a .docx file to capture metadata into the custom
-              template JSON.  This does not upload, store, parse, or generate from the file yet; it only records
-              the intended file metadata for the future template file-storage layer.
+              <strong>Template DOCX Storage:</strong> Select a .docx file to capture the file content into the custom
+              template JSON.  On confirmed import, the DOCX is stored locally in DocumentTemplateVersion.contentText
+              as base64.  This does not generate documents, upload to Clio, create drafts, send email, print, or queue documents.
               <div style={{ marginTop: 10 }}>
                 <input
                   type="file"
@@ -757,6 +780,8 @@ export default function AdminDocumentTemplatesPage() {
                   <div><strong>File:</strong> {templateFilePlaceholder.name}</div>
                   <div><strong>Size:</strong> {templateFilePlaceholder.size} bytes</div>
                   <div><strong>Actual file stored:</strong> {String(Boolean(templateFilePlaceholder.actualFileStored))}</div>
+                  <div><strong>Storage kind:</strong> {templateFilePlaceholder.storageKind}</div>
+                  <div><strong>Base64 length:</strong> {templateFilePlaceholder.contentBase64Length ?? "—"}</div>
                 </div>
               )}
             </div>

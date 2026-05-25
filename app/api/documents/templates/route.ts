@@ -73,6 +73,18 @@ function readOnlyDbTemplateToRepositoryRecord(row: any) {
           status: currentVersion.status,
           bodyFormat: currentVersion.bodyFormat,
           storageKind: currentVersion.storageKind,
+          hasStoredDocx:
+            currentVersion.storageKind === "db-docx-base64" && Boolean(currentVersion.contentText),
+          storedDocxBytes:
+            currentVersion.storageKind === "db-docx-base64" && currentVersion.contentText
+              ? Math.floor((String(currentVersion.contentText).length * 3) / 4)
+              : 0,
+          uploadedTemplateFile:
+            currentVersion.contentJson &&
+            typeof currentVersion.contentJson === "object" &&
+            !Array.isArray(currentVersion.contentJson)
+              ? (currentVersion.contentJson as any).uploadedTemplateFile || null
+              : null,
           mergeFieldSet: currentVersion.mergeFieldSet || "",
         }
       : null,

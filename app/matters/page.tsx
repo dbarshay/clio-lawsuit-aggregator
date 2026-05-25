@@ -5647,8 +5647,8 @@ function masterSettlementDateFiledValue(): string {
                   </h3>
                   <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
                     {showPreviewStep
-                      ? "Review the document preview before finalizing.  The final document route will be wired next; this step currently shows the safe local preview shell."
-                      : "Word editing will be wired later.  This step currently confirms the intended edit workflow without faking Word integration."}
+                      ? "Review the PDF preview before finalizing.  Barsh Matters creates a temporary working DOCX, converts it to PDF through Microsoft Graph, and opens the generated PDF in a new tab."
+                      : "Edit the generated working DOCX in Word Web, save your changes, then return here to finalize the document."}
                   </p>
                 </div>
 
@@ -5663,7 +5663,7 @@ function masterSettlementDateFiledValue(): string {
                       lineHeight: 1.45,
                     }}
                   >
-                    <strong>PDF preview pending:</strong> {displayedSelectedTemplate?.label || "Selected document"} cannot open as a PDF until server-side PDF generation/conversion is wired.  The current generated document routes produce DOCX.
+                    <strong>PDF preview generated:</strong> {displayedSelectedTemplate?.label || "Selected document"} is previewed through a temporary working DOCX converted to PDF.  No final Clio upload, email draft, or print queue record is created by preview.
                     <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
                       <div><strong>Lawsuit ID:</strong> {masterDocumentPreviewText(masterDocumentDataPreview?.masterLawsuitId || templateFields.masterLawsuitId || uiFields.masterLawsuitId) || "—"}</div>
                       <div><strong>Provider:</strong> {masterDocumentPreviewText(masterDocumentDataPreview?.settlementSummary?.provider || templateFields.providerName || claimIndexFields.providerName) || "—"}</div>

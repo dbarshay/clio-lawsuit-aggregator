@@ -658,6 +658,10 @@ export default function FilteredMattersPage() {
   const [masterDocumentDeliveryPreviewLoading, setMasterDocumentDeliveryPreviewLoading] = useState(false);
   const [masterDocumentDraftCreateLoading, setMasterDocumentDraftCreateLoading] = useState(false);
   const [masterDocumentDeliveryToOverride, setMasterDocumentDeliveryToOverride] = useState("");
+  const [masterDocumentHistoryPopupOpen, setMasterDocumentHistoryPopupOpen] = useState(false);
+  const [masterDocumentHistoryLoading, setMasterDocumentHistoryLoading] = useState(false);
+  const [masterDocumentHistoryError, setMasterDocumentHistoryError] = useState("");
+  const [masterDocumentHistoryResult, setMasterDocumentHistoryResult] = useState<any>(null);
   const [masterAuditHistoryEntries, setMasterAuditHistoryEntries] = useState<any[]>([]);
   const masterNoteTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const masterNoteDeleteConfirmButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -1627,6 +1631,300 @@ export default function FilteredMattersPage() {
     );
   }
 
+
+
+  function formatMasterDocumentHistoryDate(value: unknown): string {
+    if (!value) return "—";
+    const date = new Date(String(value));
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleString();
+  }
+
+  function formatMasterDocumentHistoryStatus(value: unknown): string {
+    const text = String(value || "").trim();
+    return text || "—";
+  }
+
+  function describeMasterDocumentHistoryEvent(event: any): string {
+    if (!event) return "Document activity";
+    const type = String(event.type || "");
+    const row = event.row || {};
+
+    if (type === "finalization") {
+      const uploaded = Array.isArray(row.uploaded) ? row.uploaded.length : 0;
+      const skipped = Array.isArray(row.skipped) ? row.skipped.length : 0;
+      return `Finalized document packet · Uploaded ${uploaded} · Skipped ${skipped}`;
+    }
+
+    if (type === "print_queue") {
+      return `${row.documentLabel || row.documentKey || row.filename || "Document"} · ${row.filename || "No filename"}`;
+    }
+
+    if (type === "email_draft" || type === "email_message") {
+      const message = row.message || {};
+      return `${message.subject || row.thread?.subject || "Email"}${message.hasAttachments ? " · Attachment present" : ""}`;
+    }
+
+    if (type === "email_filing_log") {
+      return `${row.action || "Email filing"} · ${row.targetType || "Target"} ${row.targetId || ""}`.trim();
+    }
+
+    return String(event.label || "Document activity");
+  }
+
+  async function loadMasterDocumentHistory() {
+    const lookupMasterLawsuitId = clean(value);
+    if (kind !== "master" || !lookupMasterLawsuitId) {
+      setMasterDocumentHistoryResult(null);
+      setMasterDocumentHistoryError("Missing lawsuit ID.");
+      return;
+    }
+
+    setMasterDocumentHistoryLoading(true);
+    setMasterDocumentHistoryError("");
+
+    try {
+      const response = await fetch(
+        `/api/documents/finalization-history?masterLawsuitId=${encodeURIComponent(lookupMasterLawsuitId)}&limit=50`,
+        { cache: "no-store" }
+      );
+      const json = await response.json();
+      setMasterDocumentHistoryResult(json);
+      if (!response.ok || !json?.ok) {
+        setMasterDocumentHistoryError(json?.error || "Document activity lookup failed.");
+      }
+    } catch (err: any) {
+      setMasterDocumentHistoryResult(null);
+      setMasterDocumentHistoryError(err?.message || "Document activity lookup failed.");
+    } finally {
+      setMasterDocumentHistoryLoading(false);
+    }
+  }
+
+  function openMasterDocumentHistoryPopup() {
+    setMasterDocumentHistoryPopupOpen(true);
+    void loadMasterDocumentHistory();
+  }
+
+  function closeMasterDocumentHistoryPopup() {
+    setMasterDocumentHistoryPopupOpen(false);
+    setMasterDocumentHistoryError("");
+  }
+
+  function renderMasterDocumentHistoryPopup() {
+    if (!masterDocumentHistoryPopupOpen) return null;
+
+    const events = Array.isArray(masterDocumentHistoryResult?.events)
+      ? masterDocumentHistoryResult.events
+      : [];
+
+    const sections = masterDocumentHistoryResult?.sections || {};
+    const summaryItems = [
+      ["Finalizations", sections.finalizations?.count ?? 0],
+      ["Print Queue", sections.printQueueItems?.count ?? 0],
+      ["Email Threads", sections.emailThreads?.count ?? 0],
+      ["Filing Logs", sections.emailFilingLogs?.count ?? 0],
+    ];
+
+    return (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Master Lawsuit Document Activity"
+        style={{
+          position: "fixed",
+          inset: "76px 24px 24px 24px",
+          zIndex: 10000,
+          background: "rgba(15, 23, 42, 0.45)",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "center",
+          paddingTop: 12,
+        }}
+      >
+        <div
+          onClick={(event) => event.stopPropagation()}
+          style={{
+            width: "min(1180px, calc(100vw - 64px))",
+            maxHeight: "calc(100vh - 124px)",
+            overflow: "auto",
+            resize: "both",
+            minWidth: 780,
+            minHeight: 460,
+            background: "#ffffff",
+            borderRadius: 22,
+            border: "1px solid #cbd5e1",
+            boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
+            padding: 22,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start" }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 900, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Document Activity
+              </div>
+              <div style={{ marginTop: 4, fontSize: 24, fontWeight: 950, color: "#0f172a" }}>
+                Lawsuit {clean(value) || "—"}
+              </div>
+              <div style={{ marginTop: 6, fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
+                Read-only local history for finalized documents, drafted emails, print queue records, and delivery status.  This popup does not email, print, upload, queue, or write records.
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={() => void loadMasterDocumentHistory()}
+                disabled={masterDocumentHistoryLoading}
+                style={{
+                  border: "1px solid #bfdbfe",
+                  background: masterDocumentHistoryLoading ? "#eff6ff" : "#dbeafe",
+                  color: "#1d4ed8",
+                  borderRadius: 999,
+                  padding: "9px 14px",
+                  fontSize: 13,
+                  fontWeight: 900,
+                  cursor: masterDocumentHistoryLoading ? "default" : "pointer",
+                }}
+              >
+                {masterDocumentHistoryLoading ? "Loading..." : "Refresh"}
+              </button>
+              <button
+                type="button"
+                onClick={closeMasterDocumentHistoryPopup}
+                style={{
+                  border: "1px solid #cbd5e1",
+                  background: "#ffffff",
+                  color: "#334155",
+                  borderRadius: 999,
+                  padding: "9px 14px",
+                  fontSize: 13,
+                  fontWeight: 900,
+                  cursor: "pointer",
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginTop: 18,
+              display: "grid",
+              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+              gap: 10,
+            }}
+          >
+            {summaryItems.map(([label, count]) => (
+              <div
+                key={String(label)}
+                style={{
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 16,
+                  background: "#f8fafc",
+                  padding: 14,
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>
+                  {label}
+                </div>
+                <div style={{ marginTop: 6, fontSize: 24, fontWeight: 950, color: "#0f172a" }}>
+                  {String(count)}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {masterDocumentHistoryError && (
+            <div
+              style={{
+                marginTop: 16,
+                border: "1px solid #fecaca",
+                background: "#fef2f2",
+                color: "#991b1b",
+                borderRadius: 16,
+                padding: 12,
+                fontSize: 13,
+                fontWeight: 800,
+              }}
+            >
+              {masterDocumentHistoryError}
+            </div>
+          )}
+
+          <div style={{ marginTop: 18, border: "1px solid #e2e8f0", borderRadius: 18, overflow: "hidden" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "170px 170px 150px 1fr",
+                background: "#f1f5f9",
+                borderBottom: "1px solid #e2e8f0",
+                fontSize: 12,
+                fontWeight: 950,
+                color: "#475569",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+              }}
+            >
+              <div style={{ padding: 12 }}>Date</div>
+              <div style={{ padding: 12 }}>Activity</div>
+              <div style={{ padding: 12 }}>Status</div>
+              <div style={{ padding: 12 }}>Details</div>
+            </div>
+
+            {masterDocumentHistoryLoading && events.length === 0 ? (
+              <div style={{ padding: 18, fontSize: 13, color: "#64748b", fontWeight: 800 }}>
+                Loading document activity...
+              </div>
+            ) : events.length === 0 ? (
+              <div style={{ padding: 18, fontSize: 13, color: "#64748b", fontWeight: 800 }}>
+                No document activity found for this lawsuit.
+              </div>
+            ) : (
+              events.map((event: any, index: number) => (
+                <div
+                  key={`${event.type || "event"}-${event.occurredAt || index}-${index}`}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "170px 170px 150px 1fr",
+                    borderBottom: index === events.length - 1 ? "none" : "1px solid #f1f5f9",
+                    fontSize: 13,
+                    color: "#0f172a",
+                  }}
+                >
+                  <div style={{ padding: 12, color: "#475569", fontWeight: 800 }}>
+                    {formatMasterDocumentHistoryDate(event.occurredAt)}
+                  </div>
+                  <div style={{ padding: 12, fontWeight: 950 }}>
+                    {event.label || event.type || "Activity"}
+                  </div>
+                  <div style={{ padding: 12 }}>
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        border: "1px solid #cbd5e1",
+                        background: "#f8fafc",
+                        borderRadius: 999,
+                        padding: "4px 9px",
+                        fontSize: 12,
+                        fontWeight: 900,
+                        color: "#334155",
+                      }}
+                    >
+                      {formatMasterDocumentHistoryStatus(event.status)}
+                    </span>
+                  </div>
+                  <div style={{ padding: 12, color: "#334155", lineHeight: 1.45 }}>
+                    {describeMasterDocumentHistoryEvent(event)}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
 
   function openMasterAuditHistoryPopup() {
@@ -7804,6 +8102,27 @@ function masterSettlementDateFiledValue(): string {
 
                       <button
                         type="button"
+                        title="Open the Master Lawsuit document activity."
+                        onClick={() => void openMasterDocumentHistoryPopup()}
+                        style={{
+                          width: "100%",
+                          minWidth: 0,
+                          height: 44,
+                          border: "1px solid #334155",
+                          borderRadius: 999,
+                          background: "#f8fafc",
+                          color: "#334155",
+                          fontSize: 12,
+                          fontWeight: 950,
+                          cursor: "pointer",
+                          boxShadow: "0 8px 18px rgba(15, 23, 42, 0.12)",
+                        }}
+                      >
+                        Document Activity
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => {
                           setActiveMasterWorkspaceTab("email_threads");
                           void loadMasterEmailThreadPreview();
@@ -7847,6 +8166,7 @@ function masterSettlementDateFiledValue(): string {
                       </button>
 
                       {renderMasterViewDocumentsPopup()}
+                      {renderMasterDocumentHistoryPopup()}
                       {renderMasterDocumentGenerationPopup()}
                       {renderMasterDocumentDeliveryPopup()}
 

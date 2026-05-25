@@ -146,12 +146,14 @@ export async function uploadWorkingDocxToGraph(params: {
     `${graphApiBase()}/users/${encodeURIComponent(mailboxUserId)}` +
     `/drive/root:/${encodeURIComponent(folder)}/${encodeURIComponent(uniqueFilename)}:/content`;
 
+  const docxBody = new Uint8Array(params.docxBuffer);
+
   const uploadRes = await graphRawFetch(uploadUrl, {
     method: "PUT",
     headers: {
       "Content-Type": DOCX_CONTENT_TYPE,
     },
-    body: params.docxBuffer,
+    body: docxBody,
   });
 
   const uploadJson = await readGraphJson(uploadRes);

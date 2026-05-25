@@ -3206,7 +3206,7 @@ function masterSettlementDateFiledValue(): string {
 
   async function loadMasterDocumentRepositoryTemplates(options?: { mode?: "lawsuit" | "settlement" }) {
     const mode = options?.mode || masterDocumentLaunchMode || "lawsuit";
-    const category = mode === "settlement" ? "settlement" : "lawsuit";
+    const category = mode === "settlement" ? "settlement" : "all";
 
     setMasterDocumentRepositoryTemplatesLoading(true);
     setMasterDocumentRepositoryTemplatesError("");
@@ -5110,20 +5110,30 @@ function masterSettlementDateFiledValue(): string {
     const isSettlementDocumentMode = masterDocumentLaunchMode === "settlement" || masterDocumentDataPreview?.documentLaunchMode === "settlement" || masterDocumentDataPreview?.action === "settlement-documents-preview";
 
     const repositoryDocumentOptions = Array.isArray(masterDocumentRepositoryTemplates)
-      ? masterDocumentRepositoryTemplates.map((template: any) => ({
-          key: String(template?.key || ""),
-          label: String(template?.label || template?.key || "Document"),
-          description: [
-            template?.description ? String(template.description) : "",
-            template?.mergeFieldSet ? `Merge fields: ${template.mergeFieldSet}` : "",
-            template?.repositorySource ? `Repository: ${template.repositorySource}` : "Repository: Barsh Matters template repository",
-            template?.editableLater ? "Editable/versioned repository support planned." : "",
-          ].filter(Boolean).join("  "),
-          availableNow: template?.enabled !== false,
-          filename: template?.defaultFilenameSuffix ? `${template.defaultFilenameSuffix}.docx` : "",
-          repositorySource: template?.repositorySource || "barsh-matters-template-repository-api",
-          mergeFields: Array.isArray(template?.mergeFields) ? template.mergeFields : [],
-        })).filter((template: any) => template.key)
+      ? masterDocumentRepositoryTemplates.map((template: any) => {
+          const currentVersion = template?.currentVersion || null;
+          const hasStoredDocx = Boolean(currentVersion?.hasStoredDocx);
+          return {
+            key: String(template?.key || ""),
+            label: String(template?.label || template?.key || "Document"),
+            description: [
+              template?.description ? String(template.description) : "",
+              hasStoredDocx ? `Stored DOCX: ${currentVersion?.storedDocxBytes || 0} bytes` : "",
+              template?.mergeFieldSet ? `Merge fields: ${template.mergeFieldSet}` : "",
+              template?.repositorySource ? `Repository: ${template.repositorySource}` : "Repository: Barsh Matters template repository",
+              template?.editableLater ? "Editable/versioned repository support planned." : "",
+            ].filter(Boolean).join("  "),
+            availableNow: template?.enabled !== false,
+            filename: template?.defaultFilenameSuffix ? `${template.defaultFilenameSuffix}.docx` : "",
+            repositorySource: template?.repositorySource || "barsh-matters-template-repository-api",
+            repositoryStatus: template?.repositoryStatus || "",
+            currentVersionId: currentVersion?.id || "",
+            hasStoredDocx,
+            storedDocxBytes: currentVersion?.storedDocxBytes || 0,
+            templateSource: hasStoredDocx ? "barsh-matters-db-template-repository" : "barsh-matters-template-repository",
+            mergeFields: Array.isArray(template?.mergeFields) ? template.mergeFields : [],
+          };
+        }).filter((template: any) => template.key)
       : [];
 
     const settlementPreviewDocumentOptions = Array.isArray(masterDocumentDataPreview?.plannedDocuments)
@@ -5145,9 +5155,14 @@ function masterSettlementDateFiledValue(): string {
       ? repositoryDocumentOptions
       : settlementPreviewDocumentOptions;
 
+    const storedRepositoryDocumentOptions = repositoryDocumentOptions.filter((option: any) => option.hasStoredDocx);
+
     const displayedTemplateOptions = isSettlementDocumentMode && settlementDocumentOptions.length > 0
       ? settlementDocumentOptions
-      : sortedTemplateOptions;
+      : [
+          ...storedRepositoryDocumentOptions,
+          ...sortedTemplateOptions,
+        ];
     const displayedSelectedTemplate =
       displayedTemplateOptions.find((option: any) => option.key === masterSelectedDocumentTemplateKey) ||
       displayedTemplateOptions.find((option: any) => option.label.toLowerCase() === masterDocumentTemplateQuery.trim().toLowerCase()) ||
@@ -5356,7 +5371,7 @@ function masterSettlementDateFiledValue(): string {
                 <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
                   {isSettlementDocumentMode
                     ? "Choose one of the settlement documents from the Barsh Matters document-template repository.  The current seeded settlement templates are Settlement Summary, Provider Remittance Breakdown, and Attorney Fee Breakdown."
-                    : "Start typing to filter available document templates.  These are sample options until the real template source is wired."}
+                    : "Start typing to filter available document templates.  Stored local DOCX templates appear first when available; placeholder fallbacks remain available for testing."}
                 </p>
                 {isSettlementDocumentMode && (
                   <p style={{ margin: "6px 0 0", color: masterDocumentRepositoryTemplatesError ? "#991b1b" : "#64748b", lineHeight: 1.45, fontWeight: masterDocumentRepositoryTemplatesError ? 900 : 700 }}>
@@ -5364,7 +5379,7 @@ function masterSettlementDateFiledValue(): string {
                       ? "Loading document-template repository..."
                       : masterDocumentRepositoryTemplatesError
                         ? `Template repository warning: ${masterDocumentRepositoryTemplatesError}.  Falling back to the settlement preview document plan.`
-                        : "Template source: /api/documents/templates?category=settlement."}
+                        : "Template source: /api/documents/templates.  Settlement mode uses settlement templates; lawsuit mode loads all stored local DOCX templates first."}
                   </p>
                 )}
               </div>
@@ -5416,6 +5431,11 @@ function masterSettlementDateFiledValue(): string {
                     }}
                   >
                     <strong>Selected:</strong> {displayedSelectedTemplate.label}
+                    {displayedSelectedTemplate.hasStoredDocx && (
+                      <span style={{ marginLeft: 8, color: "#166534", fontWeight: 950 }}>
+                        Stored DOCX
+                      </span>
+                    )}
                     <div style={{ marginTop: 4, color: "#475569" }}>{displayedSelectedTemplate.description}</div>
                   </div>
                 )}
@@ -6175,15 +6195,24 @@ function masterSettlementDateFiledValue(): string {
     ];
     const sortedTemplateOptions = [...templateOptions].sort((a, b) => a.label.localeCompare(b.label));
     const repositoryDocumentOptions = Array.isArray(masterDocumentRepositoryTemplates)
-      ? masterDocumentRepositoryTemplates.map((template: any) => ({
-          key: String(template?.key || ""),
-          label: String(template?.label || template?.key || "Document"),
-          description: [
-            template?.description ? String(template.description) : "",
-            template?.mergeFieldSet ? `Merge fields: ${template.mergeFieldSet}` : "",
-            template?.repositorySource ? `Repository: ${template.repositorySource}` : "Repository: Barsh Matters template repository",
-          ].filter(Boolean).join("  "),
-        })).filter((template: any) => template.key)
+      ? masterDocumentRepositoryTemplates.map((template: any) => {
+          const currentVersion = template?.currentVersion || null;
+          const hasStoredDocx = Boolean(currentVersion?.hasStoredDocx);
+          return {
+            key: String(template?.key || ""),
+            label: String(template?.label || template?.key || "Document"),
+            description: [
+              template?.description ? String(template.description) : "",
+              hasStoredDocx ? `Stored DOCX: ${currentVersion?.storedDocxBytes || 0} bytes` : "",
+              template?.mergeFieldSet ? `Merge fields: ${template.mergeFieldSet}` : "",
+              template?.repositorySource ? `Repository: ${template.repositorySource}` : "Repository: Barsh Matters template repository",
+            ].filter(Boolean).join("  "),
+            hasStoredDocx,
+            storedDocxBytes: currentVersion?.storedDocxBytes || 0,
+            currentVersionId: currentVersion?.id || "",
+            templateSource: hasStoredDocx ? "barsh-matters-db-template-repository" : "barsh-matters-template-repository",
+          };
+        }).filter((template: any) => template.key)
       : [];
     const settlementPreviewDocumentOptions = Array.isArray(masterDocumentDataPreview?.plannedDocuments)
       ? masterDocumentDataPreview.plannedDocuments.map((doc: any) => ({
@@ -6198,9 +6227,13 @@ function masterSettlementDateFiledValue(): string {
     const settlementDocumentOptions = repositoryDocumentOptions.length > 0
       ? repositoryDocumentOptions
       : settlementPreviewDocumentOptions;
+    const storedRepositoryDocumentOptions = repositoryDocumentOptions.filter((option: any) => option.hasStoredDocx);
     const displayedTemplateOptions = isSettlementDocumentMode && settlementDocumentOptions.length > 0
       ? settlementDocumentOptions
-      : sortedTemplateOptions;
+      : [
+          ...storedRepositoryDocumentOptions,
+          ...sortedTemplateOptions,
+        ];
     const displayedSelectedTemplate =
       displayedTemplateOptions.find((option: any) => option.key === masterSelectedDocumentTemplateKey) ||
       displayedTemplateOptions.find((option: any) => option.label.toLowerCase() === query) ||

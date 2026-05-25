@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { clioFetch } from "@/lib/clio";
 import {
   findExistingClioDocumentsByFilename,
@@ -122,8 +123,98 @@ function buildBaseName(packet: any, masterLawsuitId: string) {
   return `${masterDisplay} - ${provider} aao ${patient} v ${insurer} - Claim ${claimNumber}`;
 }
 
-function buildDocumentPlan(masterLawsuitId: string, baseName: string, canGenerate: boolean) {
-  return [
+function safeFilenamePart(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  return raw.replace(/[\\/:*?"<>|#%{}~&]+/g, "_").slice(0, 120);
+}
+
+function storedTemplateFilename(baseName: string, template: any): string {
+  const suffix =
+    safeFilenamePart(template?.defaultFilenameSuffix) ||
+    safeFilenamePart(template?.label) ||
+    safeFilenamePart(template?.key) ||
+    "Stored Template";
+  return `${baseName} - ${suffix}.docx`;
+}
+
+async function buildStoredDbDocxTemplateDocuments(baseName: string, canGenerate: boolean) {
+  const templates = await prisma.documentTemplate.findMany({
+    where: {
+      enabled: true,
+      outputFormat: {
+        in: ["docx", "both"],
+      },
+    },
+    orderBy: [
+      { category: "asc" },
+      { label: "asc" },
+      { key: "asc" },
+    ],
+    include: {
+      versions: {
+        orderBy: {
+          versionNumber: "desc",
+        },
+        take: 1,
+      },
+      mergeFields: {
+        orderBy: {
+          key: "asc",
+        },
+      },
+    },
+  });
+
+  return templates
+    .map((template) => {
+      const currentVersion = Array.isArray(template.versions) ? template.versions[0] : null;
+      const hasStoredDocx =
+        currentVersion?.storageKind === "db-docx-base64" && Boolean(currentVersion?.contentText);
+
+      if (!currentVersion || !hasStoredDocx) return null;
+
+      const metadata = template.metadata && typeof template.metadata === "object" && !Array.isArray(template.metadata)
+        ? (template.metadata as any)
+        : {};
+
+      return {
+        key: template.key,
+        label: template.label,
+        filename: storedTemplateFilename(baseName, template),
+        sourceEndpoint: `/api/documents/templates/stored-docx?versionId=${encodeURIComponent(currentVersion.id)}`,
+        wouldGenerate: canGenerate,
+        wouldUploadToClio: canGenerate,
+        reason: canGenerate ? "" : "Packet validation blocks document generation.",
+        availableNow: true,
+        status: canGenerate ? "ready-for-finalization" : "blocked",
+        templateSource: "barsh-matters-db-template-repository",
+        repositorySource: "barsh-matters-db",
+        repositoryStatus: "stored-db-docx-template",
+        storedTemplateVersionId: currentVersion.id,
+        storedTemplateVersionNumber: currentVersion.versionNumber,
+        storageKind: currentVersion.storageKind,
+        hasStoredDocx: true,
+        storedDocxBytes: currentVersion.contentText
+          ? Buffer.from(String(currentVersion.contentText), "base64").length
+          : 0,
+        productionTemplateReady:
+          Boolean(metadata.productionTemplateReady) || currentVersion.status === "production-ready",
+        finalProductionDocument: Boolean(metadata.finalProductionDocument),
+        mergeFieldSet: currentVersion.mergeFieldSet || metadata.mergeFieldSet || "",
+        mergeFields: template.mergeFields.map((field) => ({
+          key: field.key,
+          label: field.label,
+          source: field.source,
+          required: Boolean(field.required),
+          metadata: field.metadata || null,
+        })),
+      };
+    })
+    .filter(Boolean);
+}
+
+async function buildDocumentPlan(masterLawsuitId: string, baseName: string, canGenerate: boolean) {
+  const placeholderDocuments = [
     {
       key: "bill-schedule",
       label: "Bill Schedule",
@@ -155,6 +246,13 @@ function buildDocumentPlan(masterLawsuitId: string, baseName: string, canGenerat
       status: canGenerate ? "ready-for-finalization" : "blocked",
       note: "Current Summons and Complaint output is a scaffold/draft until final pleading content is approved.",
     },
+  ];
+
+  const storedDbTemplateDocuments = await buildStoredDbDocxTemplateDocuments(baseName, canGenerate);
+
+  return [
+    ...storedDbTemplateDocuments,
+    ...placeholderDocuments,
   ];
 }
 
@@ -245,7 +343,7 @@ export async function GET(req: NextRequest) {
       },
       masterLawsuitId
     );
-    const plannedDocuments = buildDocumentPlan(masterLawsuitId, baseName, canGenerate);
+    const plannedDocuments = await buildDocumentPlan(masterLawsuitId, baseName, canGenerate);
 
     let existingClioDocuments: any[] = [];
     let existingDocumentLookupError = "";

@@ -24,7 +24,17 @@ const adminPage = read("app/admin/document-templates/page.tsx");
 assert(adminPage.includes("function rowsForPreviewOnly"), "admin custom import omits stored DOCX base64 from preview request");
 assert(adminPage.includes("contentBase64PreviewOmitted"), "admin custom import marks preview-only base64 omission");
 assert(adminPage.includes("rows: previewRows"), "admin custom import sends sanitized previewRows to preview endpoint");
-assert(adminPage.includes("rows,\n          confirm: true") || adminPage.includes("rows,\r\n          confirm: true"), "admin custom import keeps full rows for confirmed import");
+assert(
+  adminPage.includes("const confirmBody = JSON.stringify({") &&
+    adminPage.includes("rows,") &&
+    adminPage.includes("confirm: true") &&
+    adminPage.includes("body: confirmBody"),
+  "admin custom import keeps full rows for confirmed import"
+);
+assert(adminPage.includes("confirmPayloadBytes"), "admin custom import confirm reports full confirm payload size");
+assert(adminPage.includes("includesBase64Payload"), "admin custom import confirm reports whether base64 was included");
+assert(adminPage.includes("Status ${response.status}. Confirm payload"), "admin custom import confirm error includes response status and payload size");
+assert(adminPage.includes("clientConfirmDiagnostics"), "admin custom import confirm exposes client confirm diagnostics on success");
 
 assert(importConfirm.includes("maxWait: 10000"), "template import confirm uses Prisma transaction maxWait 10000");
 assert(importConfirm.includes("timeout: 30000"), "template import confirm uses Prisma transaction timeout 30000");

@@ -457,27 +457,45 @@ export default function AdminDocumentTemplatesPage() {
 
     try {
       const rows = parseCustomTemplateRows();
+      const confirmBody = JSON.stringify({
+        mode: "rows",
+        rows,
+        confirm: true,
+      });
+      const confirmPayloadBytes = new Blob([confirmBody]).size;
 
       const response = await fetch("/api/documents/templates/import-confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "rows",
-          rows,
-          confirm: true,
-        }),
+        body: confirmBody,
       });
 
-      const json = await response.json().catch(() => null);
-
-      if (!response.ok || !json?.ok) {
-        throw new Error(json?.error || "Could not confirm custom template import.");
+      const responseText = await response.text();
+      let json: any = null;
+      try {
+        json = responseText ? JSON.parse(responseText) : null;
+      } catch {
+        json = null;
       }
 
-      setCustomTemplateConfirmResult(json);
+      if (!response.ok || !json?.ok) {
+        const bodyPreview = responseText ? responseText.slice(0, 300) : "";
+        throw new Error(
+          json?.error ||
+            `Could not confirm custom template import. Status ${response.status}. Confirm payload ${confirmPayloadBytes} bytes. Response: ${bodyPreview || "empty response"}`
+        );
+      }
+
+      setCustomTemplateConfirmResult({
+        ...json,
+        clientConfirmDiagnostics: {
+          confirmPayloadBytes,
+          includesBase64Payload: confirmBody.includes("contentBase64"),
+        },
+      });
       await loadTemplates(category);
     } catch (err: any) {
-      setCustomTemplateError(err?.message || "Could not confirm custom template import.");
+      setCustomTemplateError(err?.message || "Could not confirm custom template import. Check the response status and payload size.");
     } finally {
       setCustomTemplateLoading(false);
     }
@@ -962,6 +980,8 @@ export default function AdminDocumentTemplatesPage() {
                   <div><strong>Rows updated:</strong> {customTemplateConfirmResult.summary?.rowsToUpdate ?? 0}</div>
                   <div><strong>Database changed:</strong> {String(Boolean(customTemplateConfirmResult.safety?.databaseRecordsChanged))}</div>
                   <div><strong>No Clio / email / print:</strong> {String(!customTemplateConfirmResult.safety?.clioRecordsChanged && !customTemplateConfirmResult.safety?.emailsSent && !customTemplateConfirmResult.safety?.printQueueChanged)}</div>
+                  <div><strong>Confirm payload bytes:</strong> {customTemplateConfirmResult.clientConfirmDiagnostics?.confirmPayloadBytes ?? "—"}</div>
+                  <div><strong>Includes base64 payload:</strong> {String(Boolean(customTemplateConfirmResult.clientConfirmDiagnostics?.includesBase64Payload))}</div>
                 </div>
               </div>
             )}

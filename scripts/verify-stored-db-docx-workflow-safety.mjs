@@ -21,6 +21,11 @@ const graphWorking = read("lib/documents/graphWorkingDocuments.ts");
 const storedDocxRoute = read("app/api/documents/templates/stored-docx/route.ts");
 const adminPage = read("app/admin/document-templates/page.tsx");
 
+assert(adminPage.includes("function rowsForPreviewOnly"), "admin custom import omits stored DOCX base64 from preview request");
+assert(adminPage.includes("contentBase64PreviewOmitted"), "admin custom import marks preview-only base64 omission");
+assert(adminPage.includes("rows: previewRows"), "admin custom import sends sanitized previewRows to preview endpoint");
+assert(adminPage.includes("rows,\n          confirm: true") || adminPage.includes("rows,\r\n          confirm: true"), "admin custom import keeps full rows for confirmed import");
+
 assert(importConfirm.includes("maxWait: 10000"), "template import confirm uses Prisma transaction maxWait 10000");
 assert(importConfirm.includes("timeout: 30000"), "template import confirm uses Prisma transaction timeout 30000");
 assert(importConfirm.includes('storageKind: "db-docx-base64"'), "template import confirm supports stored DB DOCX storage kind");

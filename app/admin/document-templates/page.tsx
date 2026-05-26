@@ -374,6 +374,26 @@ export default function AdminDocumentTemplatesPage() {
     return parsed;
   }
 
+  function rowsForPreviewOnly(rows: any[]) {
+    return rows.map((row) => {
+      const uploadedTemplateFile = row?.metadata?.uploadedTemplateFile;
+      if (!uploadedTemplateFile?.contentBase64) return row;
+
+      const { contentBase64, ...safeUploadedTemplateFile } = uploadedTemplateFile;
+      return {
+        ...row,
+        metadata: {
+          ...(row.metadata || {}),
+          uploadedTemplateFile: {
+            ...safeUploadedTemplateFile,
+            contentBase64PreviewOmitted: true,
+            contentBase64Length: uploadedTemplateFile.contentBase64Length || contentBase64.length,
+          },
+        },
+      };
+    });
+  }
+
   async function previewCustomTemplateRowsImport() {
     setCustomTemplateLoading(true);
     setCustomTemplateError("");
@@ -382,25 +402,44 @@ export default function AdminDocumentTemplatesPage() {
 
     try {
       const rows = parseCustomTemplateRows();
+      const previewRows = rowsForPreviewOnly(rows);
+      const previewBody = JSON.stringify({
+        mode: "rows",
+        rows: previewRows,
+      });
+      const previewPayloadBytes = new Blob([previewBody]).size;
 
       const response = await fetch("/api/documents/templates/import-preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "rows",
-          rows,
-        }),
+        body: previewBody,
       });
 
-      const json = await response.json().catch(() => null);
-
-      if (!response.ok || !json) {
-        throw new Error(json?.error || "Could not preview custom template import.");
+      const responseText = await response.text();
+      let json: any = null;
+      try {
+        json = responseText ? JSON.parse(responseText) : null;
+      } catch {
+        json = null;
       }
 
-      setCustomTemplatePreview(json);
+      if (!response.ok || !json) {
+        const bodyPreview = responseText ? responseText.slice(0, 300) : "";
+        throw new Error(
+          json?.error ||
+            `Could not preview custom template import. Status ${response.status}. Preview payload ${previewPayloadBytes} bytes. Response: ${bodyPreview || "empty response"}`
+        );
+      }
+
+      setCustomTemplatePreview({
+        ...json,
+        clientPreviewDiagnostics: {
+          previewPayloadBytes,
+          base64OmittedFromPreview: JSON.stringify(previewRows).includes("contentBase64PreviewOmitted"),
+        },
+      });
     } catch (err: any) {
-      setCustomTemplateError(err?.message || "Could not preview custom template import.");
+      setCustomTemplateError(err?.message || "Could not preview custom template import. Check that the JSON is an array of template row objects.");
     } finally {
       setCustomTemplateLoading(false);
     }
@@ -908,6 +947,8 @@ export default function AdminDocumentTemplatesPage() {
                   <div><strong>Computed merge fields:</strong> {customTemplatePreview.summary?.computedMergeFields ?? 0}</div>
                   <div><strong>System merge fields:</strong> {customTemplatePreview.summary?.systemMergeFields ?? 0}</div>
                   <div><strong>Database changed:</strong> {String(Boolean(customTemplatePreview.safety?.databaseRecordsChanged))}</div>
+                  <div><strong>Preview payload bytes:</strong> {customTemplatePreview.clientPreviewDiagnostics?.previewPayloadBytes ?? "—"}</div>
+                  <div><strong>Base64 omitted from preview:</strong> {String(Boolean(customTemplatePreview.clientPreviewDiagnostics?.base64OmittedFromPreview))}</div>
                 </div>
               </div>
             )}

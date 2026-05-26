@@ -9410,7 +9410,7 @@ function masterSettlementDateFiledValue(): string {
             )}
 
 
-            {activeMasterWorkspaceTab === "payments" && (
+            {activeMasterWorkspaceTab === "payments" && masterSettlementHistory?.ok && Boolean(masterSettlementHistory.activeRecordId) && (
         <section
           data-barsh-local-settlement-history-panel="true"
           style={{

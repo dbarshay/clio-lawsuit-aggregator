@@ -652,6 +652,9 @@ export default function FilteredMattersPage() {
   const [masterDocumentFinalizing, setMasterDocumentFinalizing] = useState(false);
   const [masterDocumentFinalizationResult, setMasterDocumentFinalizationResult] = useState<any>(null);
   const [masterSettlementUploadNotice, setMasterSettlementUploadNotice] = useState("");
+  const [masterSettlementEmailNotice, setMasterSettlementEmailNotice] = useState("");
+  const [masterSettlementVoidLoading, setMasterSettlementVoidLoading] = useState(false);
+  const [masterSettlementVoidNotice, setMasterSettlementVoidNotice] = useState("");
   const [masterFinalizePreview, setMasterFinalizePreview] = useState<any>(null);
   const [masterFinalizeUploadLoading, setMasterFinalizeUploadLoading] = useState(false);
   const [masterFinalizeUploadResult, setMasterFinalizeUploadResult] = useState<any>(null);
@@ -666,6 +669,7 @@ export default function FilteredMattersPage() {
   const [masterDocumentDataPreview, setMasterDocumentDataPreview] = useState<any>(null);
   const [masterDocumentGenerationPopupOpen, setMasterDocumentGenerationPopupOpen] = useState(false);
   const [masterDocumentDeliveryPopupOpen, setMasterDocumentDeliveryPopupOpen] = useState(false);
+  const [masterSettlementEmailPreviewPopupOpen, setMasterSettlementEmailPreviewPopupOpen] = useState(false);
   const [masterDocumentDeliveryPreview, setMasterDocumentDeliveryPreview] = useState<any>(null);
   const [masterDocumentDeliveryPreviewLoading, setMasterDocumentDeliveryPreviewLoading] = useState(false);
   const [masterDocumentDraftCreateLoading, setMasterDocumentDraftCreateLoading] = useState(false);
@@ -1679,6 +1683,87 @@ export default function FilteredMattersPage() {
     } catch (error: any) {
       window.alert(error?.message || "Administrator authorization failed.");
     }
+  }
+
+  function activeMasterSettlementRecordForVoid() {
+    const records = Array.isArray(masterSettlementHistory?.records) ? masterSettlementHistory.records : [];
+    return masterSettlementHistory?.activeRecord || records.find((record: any) => !record?.voided) || null;
+  }
+
+  async function voidActiveMasterSettlementRecord(record: any) {
+    if (!record?.id) {
+      setMasterSettlementVoidNotice("No active settlement record was found to void.");
+      return;
+    }
+
+    const reason = window.prompt(
+      "VOID SETTLEMENT\n\nThis will void the active local settlement record and restore the Record Settlement workflow.  It will not delete Clio documents, print queue records, email records, or local settlement rows.\n\nEnter a reason for voiding this settlement:"
+    );
+
+    if (reason === null) return;
+    if (!String(reason).trim()) {
+      window.alert("A void reason is required.");
+      return;
+    }
+
+    const typed = window.prompt(
+      "Confirm settlement void.\n\nType confirm to void this settlement."
+    );
+
+    if (String(typed || "").trim().toLowerCase() !== "confirm") {
+      window.alert("Settlement void cancelled.  Confirmation text did not match.");
+      return;
+    }
+
+    setMasterSettlementVoidLoading(true);
+    setMasterSettlementVoidNotice("Voiding active local settlement record...");
+
+    try {
+      const voidMasterLawsuitId = currentMasterLawsuitIdForDocumentPreview();
+
+      const response = await fetch("/api/settlements/local-void", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          masterLawsuitId: voidMasterLawsuitId,
+          settlementRecordId: record?.id || "",
+          voidReason: String(reason).trim(),
+          voidedBy: "Administrator",
+          confirmVoid: true,
+        }),
+      });
+
+      const json = await response.json().catch(() => null);
+
+      if (!response.ok || !json?.ok) {
+        throw new Error(json?.error || `Settlement void failed: ${response.status}`);
+      }
+
+      setMasterSettlementVoidNotice(
+        `Voided settlement record ${record.id}.  Record Settlement is available again.`
+      );
+
+      await loadMasterSettlementHistory();
+      await loadMasterSettlementTicklers();
+    } catch (error: any) {
+      setMasterSettlementVoidNotice(error?.message || "Settlement void failed.");
+    } finally {
+      setMasterSettlementVoidLoading(false);
+    }
+  }
+
+  function openVoidActiveSettlementAdminFlow() {
+    const record = activeMasterSettlementRecordForVoid();
+
+    if (!record?.id) {
+      setMasterSettlementVoidNotice("No active settlement record was found to void.");
+      return;
+    }
+
+    void runAdministratorGate(
+      "Void Active Settlement",
+      () => void voidActiveMasterSettlementRecord(record)
+    );
   }
 
   function openAdministratorMenu() {
@@ -3535,6 +3620,158 @@ function masterSettlementDateFiledValue(): string {
     return isValidDocumentDeliveryEmail(email) ? [{ email, name: email }] : [];
   }
 
+  function settlementFinalizedPdfCandidateFromResult() {
+    const result = masterDocumentFinalizationResult || {};
+    const uploaded = Array.isArray(result.uploaded) ? result.uploaded : [];
+    const skipped = Array.isArray(result.skipped) ? result.skipped : [];
+    const source = uploaded[0] || skipped[0] || null;
+
+    if (!source) return null;
+
+    const clioDocumentId =
+      source.clioDocumentId ||
+      source.documentId ||
+      source.existingClioDocumentId ||
+      source.id ||
+      "";
+
+    const clioDocumentVersionUuid =
+      source.clioDocumentVersionUuid ||
+      source.documentVersionUuid ||
+      source.existingClioDocumentVersionUuid ||
+      source.latestDocumentVersion?.uuid ||
+      "";
+
+    const filename =
+      source.filename ||
+      source.clioDocumentName ||
+      source.existingClioDocumentName ||
+      result.selectedDocument?.filename ||
+      result.generatedDocument?.filename ||
+      "Finalized Settlement Document.pdf";
+
+    const clioDisplayNumber =
+      result.clioUploadTarget?.displayNumber ||
+      source.clioDisplayNumber ||
+      source.clioUploadTargetDisplayNumber ||
+      "";
+
+    return {
+      ...source,
+      id: clioDocumentId,
+      clioDocumentId,
+      clioDocumentVersionUuid,
+      filename,
+      clioDocumentName: filename,
+      name: filename,
+      mimeType: "application/pdf",
+      contentType: "application/pdf",
+      documentType: "settlement_finalized_pdf",
+      sourceType: "settlement_finalization_result",
+      masterLawsuitId,
+      masterDisplayNumber: clioDisplayNumber,
+      clioDisplayNumber,
+      downloadUrl: source.downloadUrl || source.url || "",
+      webUrl: source.webUrl || source.url || "",
+    };
+  }
+
+  async function launchSettlementFinalizedDocumentEmail() {
+    const draftWindow = window.open("", "_blank");
+    if (draftWindow) {
+      draftWindow.document.write("<!doctype html><title>Preparing Outlook Draft</title><body style='font-family: system-ui, sans-serif; padding: 24px;'>Preparing Outlook draft from Barsh Matters...</body>");
+    }
+
+    setMasterSettlementEmailPreviewPopupOpen(false);
+    setMasterSettlementEmailNotice("Preparing Outlook draft for finalized settlement PDF...");
+
+    const selectedCandidate = settlementFinalizedPdfCandidateFromResult();
+
+    if (!selectedCandidate?.clioDocumentId) {
+      if (draftWindow && !draftWindow.closed) draftWindow.close();
+
+      setMasterSettlementEmailNotice("Finalize the settlement document first.  The email workflow requires a finalized PDF from the mapped master Clio matter Documents tab.");
+      setMasterDocumentDeliveryPreview({
+        ok: false,
+        error: "Finalize the settlement document first.  The email workflow requires a finalized PDF from the mapped master Clio matter Documents tab.",
+      });
+      return;
+    }
+
+    setMasterDocumentDeliveryPreview(null);
+    setMasterDocumentDeliveryPreviewLoading(true);
+
+    try {
+      const baseContext = buildMasterDocumentDeliveryContext(null);
+      const finalizedPdfUrl = finalizedDocumentLooksLikePdf(selectedCandidate)
+        ? selectedFinalizedDocumentUrl(selectedCandidate, "download")
+        : "";
+
+      const finalizedDocumentUrl = selectedFinalizedDocumentUrl(selectedCandidate, "download");
+
+      const context = {
+        ...baseContext,
+        documentLabel: selectedCandidate.filename || baseContext.documentLabel || "Finalized Settlement Document",
+        documentUrl: finalizedDocumentUrl || baseContext.documentUrl,
+        pdfUrl: finalizedPdfUrl || baseContext.pdfUrl,
+        pdfFilename: selectedCandidate.filename || baseContext.documentLabel || "Finalized Settlement Document.pdf",
+        clioDocumentId: selectedCandidate.clioDocumentId || "",
+        clioDocumentVersionUuid: selectedCandidate.clioDocumentVersionUuid || "",
+        source: "settlement_finalized_pdf_delivery",
+      };
+
+      const response = await fetch("/api/documents/delivery-draft-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: "settlement_finalized_pdf_delivery",
+          masterLawsuitId,
+          matterId: masterLawsuitId,
+          context,
+        }),
+      });
+
+      const json = await response.json().catch(() => null);
+
+      if (!response.ok || !json?.ok) {
+        if (draftWindow && !draftWindow.closed) {
+          draftWindow.document.write("<!doctype html><title>Outlook Draft</title><body style='font-family: system-ui, sans-serif; padding: 24px;'>Outlook draft could not be prepared.  Return to Barsh Matters for details.</body>");
+        }
+
+        setMasterDocumentDeliveryPreview({
+          ok: false,
+          error: json?.error || `Could not prepare settlement finalized PDF email draft preview: ${response.status}`,
+        });
+        setMasterSettlementEmailNotice(json?.error || `Could not prepare Outlook draft: ${response.status}`);
+        return;
+      }
+
+      const nextPreview = {
+        ...json,
+        settlementFinalizedPdfDelivery: true,
+        selectedFinalizedDocument: selectedCandidate,
+        context,
+      };
+
+      setMasterDocumentDeliveryPreview(nextPreview);
+      setMasterSettlementEmailNotice("Creating Outlook draft with finalized settlement PDF attached.  You can add or edit recipients in Outlook...");
+      await createMasterDocumentOutlookDraft(nextPreview, draftWindow);
+      setMasterSettlementEmailNotice("Outlook draft created and opened.  Review, edit, and send from Outlook when ready.");
+    } catch (error: any) {
+      if (draftWindow && !draftWindow.closed) {
+        draftWindow.document.write("<!doctype html><title>Outlook Draft</title><body style='font-family: system-ui, sans-serif; padding: 24px;'>Outlook draft could not be created.  Return to Barsh Matters for details.</body>");
+      }
+
+      setMasterSettlementEmailNotice(error?.message || "Could not prepare settlement finalized PDF email draft preview.");
+      setMasterDocumentDeliveryPreview({
+        ok: false,
+        error: error?.message || "Could not prepare settlement finalized PDF email draft preview.",
+      });
+    } finally {
+      setMasterDocumentDeliveryPreviewLoading(false);
+    }
+  }
+
   async function launchMasterDocumentEmail(selectedTemplate: { key: string; label: string; description: string } | null) {
     setMasterDocumentDeliveryPreview(null);
     setMasterDocumentDeliveryPreviewLoading(true);
@@ -3807,15 +4044,26 @@ function masterSettlementDateFiledValue(): string {
     }
   }
 
-  async function createMasterDocumentOutlookDraft() {
-    const previewState = masterDocumentDeliveryPreview;
+  async function createMasterDocumentOutlookDraft(previewOverride?: any, draftWindow?: Window | null) {
+    const previewState = previewOverride || masterDocumentDeliveryPreview;
+    const settlementFinalizedPdfDelivery =
+      Boolean(previewState?.settlementFinalizedPdfDelivery) ||
+      previewState?.context?.source === "settlement_finalized_pdf_delivery" ||
+      previewState?.source === "settlement_finalized_pdf_delivery";
 
-    if (!previewState || !isDocumentDeliveryReadyForGraphDraft(previewState)) {
+    if (!previewState || (!settlementFinalizedPdfDelivery && !isDocumentDeliveryReadyForGraphDraft(previewState))) {
+      const message = settlementFinalizedPdfDelivery
+        ? "Graph draft creation is blocked because no finalized settlement PDF payload was available."
+        : "Graph draft creation is blocked until the preview has a To recipient, MailDrop in Cc, and no MailDrop in Bcc.";
+
+      if (draftWindow && !draftWindow.closed) {
+        draftWindow.document.write(`<!doctype html><title>Outlook Draft</title><body style='font-family: system-ui, sans-serif; padding: 24px;'>${message}</body>`);
+      }
+
       setMasterDocumentDeliveryPreview({
         ...(previewState || {}),
-        ok: false,
-        createError:
-          "Graph draft creation is blocked until the preview has a To recipient, MailDrop in Cc, and no MailDrop in Bcc.",
+        draftCreated: false,
+        createError: message,
       });
       return;
     }
@@ -3826,33 +4074,43 @@ function masterSettlementDateFiledValue(): string {
       const response = await fetch("/api/graph/create-draft?confirm=create-graph-draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          source: "master_lawsuit",
-          context: previewState.context,
-          draft: {
-            ...(previewState.draft || {}),
-            ...(masterDocumentDeliveryToOverride.trim() ? { to: buildDocumentDeliveryToOverrideRecipient() } : {}),
-          },
-          ...(masterDocumentDeliveryToOverride.trim()
-            ? {}
-            : { graphDraftPayloadPreview: readDocumentDeliveryGraphPreview(previewState) }),
-          to: masterDocumentDeliveryToOverride.trim() ? buildDocumentDeliveryToOverrideRecipient() : undefined,
-        }),
+        body: JSON.stringify(
+          previewState?.graphDraftPayload
+            ? previewState.graphDraftPayload
+            : { graphDraftPayloadPreview: readDocumentDeliveryGraphPreview(previewState) }
+        ),
       });
 
       const result = await response.json().catch(() => null);
+      const outlookDraftUrl = String(result?.draftMetadata?.webLink || result?.webLink || result?.draft?.webLink || "").trim();
+
+      if (response.ok && result?.createsOutlookDraft && outlookDraftUrl) {
+        if (draftWindow && !draftWindow.closed) {
+          draftWindow.location.href = outlookDraftUrl;
+        } else {
+          window.open(outlookDraftUrl, "_blank", "noopener,noreferrer");
+        }
+      } else if (draftWindow && !draftWindow.closed) {
+        draftWindow.document.write("<!doctype html><title>Outlook Draft</title><body style='font-family: system-ui, sans-serif; padding: 24px;'>Outlook draft could not be opened.  Return to Barsh Matters for details.</body>");
+      }
 
       setMasterDocumentDeliveryPreview({
         ...previewState,
-        createResult: result,
         draftCreated: Boolean(response.ok && result?.createsOutlookDraft),
+        outlookDraftUrl,
+        draftMetadata: result?.draftMetadata || null,
         attachmentUploads: Array.isArray(result?.attachmentUploads) ? result.attachmentUploads : [],
         attachmentErrors: Array.isArray(result?.attachmentErrors) ? result.attachmentErrors : [],
         createError: response.ok ? "" : result?.error || "Graph draft creation failed.",
       });
     } catch (error: any) {
+      if (draftWindow && !draftWindow.closed) {
+        draftWindow.document.write("<!doctype html><title>Outlook Draft</title><body style='font-family: system-ui, sans-serif; padding: 24px;'>Outlook draft could not be created.  Return to Barsh Matters for details.</body>");
+      }
+
       setMasterDocumentDeliveryPreview({
         ...previewState,
+        draftCreated: false,
         createError: error?.message || "Graph draft creation failed.",
       });
     } finally {
@@ -6379,21 +6637,55 @@ function masterSettlementDateFiledValue(): string {
                         !masterDocumentFinalizationResult?.finalizationRecord?.id
                       )}
                       <button
+                        onClick={() => void launchSettlementFinalizedDocumentEmail()}
                         type="button"
-                        disabled
-                        title="Email delivery for finalized settlement documents is not wired yet."
+                       
+                        disabled={!masterDocumentFinalizationResult?.finalizationRecord?.id}
+                        title="Create an Outlook draft with the finalized settlement PDF attached from the mapped master Clio matter."
                         style={{
                           border: "1px solid #cbd5e1",
-                          background: "#f8fafc",
-                          color: "#94a3b8",
+                          background: masterDocumentFinalizationResult?.finalizationRecord?.id ? "#ecfdf5" : "#f8fafc",
+                          color: masterDocumentFinalizationResult?.finalizationRecord?.id ? "#166534" : "#94a3b8",
                           borderRadius: 999,
                           padding: "10px 14px",
                           fontWeight: 850,
-                          cursor: "not-allowed",
+                          cursor: masterDocumentFinalizationResult?.finalizationRecord?.id ? "pointer" : "not-allowed",
                         }}
                       >
                         Email Finalized Document
                       </button>
+                      {masterSettlementEmailNotice && (
+                        <div
+                          style={{
+                            marginTop: 10,
+                            border: "1px solid #bbf7d0",
+                            background: "#f0fdf4",
+                            color: "#166534",
+                            borderRadius: 12,
+                            padding: "10px 12px",
+                            fontWeight: 800,
+                            fontSize: 13,
+                          }}
+                        >
+                          {masterSettlementEmailNotice}
+                        </div>
+                      )}
+                      {masterSettlementVoidNotice && (
+                        <div
+                          style={{
+                            marginTop: 10,
+                            border: masterSettlementVoidNotice.toLowerCase().includes("failed") ? "1px solid #fecaca" : "1px solid #bbf7d0",
+                            background: masterSettlementVoidNotice.toLowerCase().includes("failed") ? "#fef2f2" : "#f0fdf4",
+                            color: masterSettlementVoidNotice.toLowerCase().includes("failed") ? "#991b1b" : "#166534",
+                            borderRadius: 12,
+                            padding: "10px 12px",
+                            fontWeight: 800,
+                            fontSize: 13,
+                          }}
+                        >
+                          {masterSettlementVoidNotice}
+                        </div>
+                      )}
                     </div>
                     <div
                       style={{
@@ -6406,7 +6698,7 @@ function masterSettlementDateFiledValue(): string {
                         lineHeight: 1.45,
                       }}
                     >
-                      Settlement delivery now uses the local settlement finalization record created in Step 2.  Save Locally opens the generated DOCX route for desktop saving.  Print Finalized Document opens a local printable view and launches the browser print dialog.  Send to Print Queue writes a local Barsh Matters print-queue item only.
+                      Settlement delivery now uses the local settlement finalization record created in Step 2.  Save Locally opens the generated DOCX route for desktop saving.  Print Finalized Document opens a local printable view and launches the browser print dialog.  Send to Print Queue writes a local Barsh Matters print-queue item only.  Email Finalized Document creates a Microsoft Graph / Outlook draft using the finalized PDF stored in the mapped master Clio matter Documents tab.  Review and edit the draft in Outlook before sending.
                     </div>
                   </div>
                 ) : (
@@ -6543,6 +6835,252 @@ function masterSettlementDateFiledValue(): string {
                 <div style={{ display: "none" }}>{renderMasterDocumentDataPreviewPanel()}</div>
               </div>
             </details>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderSettlementFinalizedEmailPreviewPopup() {
+    if (!masterSettlementEmailPreviewPopupOpen) return null;
+
+    const previewState = masterDocumentDeliveryPreview || {};
+    const graphPayloadPreview = readDocumentDeliveryGraphPreview(previewState);
+    const validation = graphPayloadPreview?.validation || graphPayloadPreview?.readiness || {};
+    const validationErrors = Array.isArray(validation?.errors) ? validation.errors : [];
+    const graphMessagePayload = graphPayloadPreview?.graphMessagePayload || {};
+    const attachmentPlan = Array.isArray(graphPayloadPreview?.attachmentPlan)
+      ? graphPayloadPreview.attachmentPlan
+      : Array.isArray(previewState?.attachmentPlan)
+        ? previewState.attachmentPlan
+        : [];
+    const readyForGraphDraftCreate = isDocumentDeliveryReadyForGraphDraft(previewState);
+
+    const recipientSummary = (items: any) => {
+      const list = Array.isArray(items) ? items : [];
+      const labels = list
+        .map((item: any) => {
+          const emailAddress = item?.emailAddress || item || {};
+          return emailAddress?.address || emailAddress?.email || item?.address || item?.email || "";
+        })
+        .filter(Boolean);
+      return labels.length ? labels.join(", ") : "—";
+    };
+
+    return (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Settlement finalized document email draft preview popup"
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 50000,
+          background: "rgba(15, 23, 42, 0.35)",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "center",
+          padding: "72px 24px 24px",
+        }}
+      >
+        <div
+          style={{
+            width: "min(980px, calc(100vw - 48px))",
+            maxHeight: "calc(100vh - 96px)",
+            overflow: "auto",
+            resize: "both",
+            borderRadius: 24,
+            border: "1px solid #bfdbfe",
+            background: "#ffffff",
+            boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
+          }}
+        >
+          <div
+            style={{
+              position: "sticky",
+              top: 0,
+              zIndex: 1,
+              borderBottom: "1px solid #dbeafe",
+              background: "linear-gradient(135deg, #eff6ff, #f8fafc)",
+              padding: "18px 22px",
+            }}
+          >
+            <h2 style={{ margin: 0, fontSize: 22, color: "#0f172a" }}>Email Draft Preview</h2>
+            <p style={{ margin: "6px 0 0", color: "#475569", fontWeight: 650 }}>
+              Settlement finalized PDF delivery.  This prepares an Outlook draft through Microsoft Graph; it does not send email.
+            </p>
+          </div>
+
+          <div style={{ padding: 22 }}>
+            {masterDocumentDeliveryPreviewLoading && (
+              <div
+                style={{
+                  border: "1px solid #bfdbfe",
+                  background: "#eff6ff",
+                  color: "#1d4ed8",
+                  borderRadius: 16,
+                  padding: 14,
+                  fontWeight: 850,
+                }}
+              >
+                Preparing Outlook draft preview...
+              </div>
+            )}
+
+            {!masterDocumentDeliveryPreviewLoading && (
+              <div style={{ display: "grid", gap: 14 }}>
+                {previewState?.error && (
+                  <div
+                    style={{
+                      border: "1px solid #fecaca",
+                      background: "#fef2f2",
+                      color: "#991b1b",
+                      borderRadius: 16,
+                      padding: 14,
+                      fontWeight: 850,
+                    }}
+                  >
+                    {previewState.error}
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    border: "1px solid #bbf7d0",
+                    background: "#f0fdf4",
+                    color: "#166534",
+                    borderRadius: 16,
+                    padding: 14,
+                    display: "grid",
+                    gap: 8,
+                    fontWeight: 750,
+                  }}
+                >
+                  <div><strong>Graph draft creation available:</strong> {readyForGraphDraftCreate ? "Yes" : "No"}</div>
+                  <div><strong>To:</strong> {recipientSummary(graphMessagePayload?.toRecipients)}</div>
+                  <div><strong>Cc:</strong> {recipientSummary(graphMessagePayload?.ccRecipients)}</div>
+                  <div><strong>Bcc:</strong> {recipientSummary(graphMessagePayload?.bccRecipients)}</div>
+                  <div><strong>Subject:</strong> {graphMessagePayload?.subject || "—"}</div>
+                  <div><strong>Attachments planned:</strong> {attachmentPlan.length}</div>
+                </div>
+
+                {attachmentPlan.length > 0 && (
+                  <div
+                    style={{
+                      border: "1px solid #e2e8f0",
+                      background: "#f8fafc",
+                      borderRadius: 16,
+                      padding: 14,
+                    }}
+                  >
+                    <div style={{ fontWeight: 900, marginBottom: 8 }}>Attachment Plan</div>
+                    <ul style={{ margin: 0, paddingLeft: 20 }}>
+                      {attachmentPlan.map((attachment: any, index: number) => (
+                        <li key={`${attachment?.clioDocumentId || attachment?.name || "attachment"}-${index}`}>
+                          {attachment?.name || attachment?.filename || "Finalized PDF"} · {attachment?.contentType || "application/pdf"}
+                          {attachment?.graphUploadRequired ? " · Graph upload required" : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {validationErrors.length > 0 && (
+                  <div
+                    style={{
+                      border: "1px solid #fde68a",
+                      background: "#fffbeb",
+                      color: "#92400e",
+                      borderRadius: 16,
+                      padding: 14,
+                      fontWeight: 750,
+                    }}
+                  >
+                    <div style={{ fontWeight: 900, marginBottom: 8 }}>Draft Requirements</div>
+                    <ul style={{ margin: 0, paddingLeft: 20 }}>
+                      {validationErrors.map((error: any, index: number) => (
+                        <li key={`settlement-email-validation-${index}`}>{String(error)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {previewState?.draftCreated && (
+                  <div
+                    style={{
+                      border: "1px solid #bbf7d0",
+                      background: "#f0fdf4",
+                      color: "#166534",
+                      borderRadius: 16,
+                      padding: 14,
+                      fontWeight: 850,
+                    }}
+                  >
+                    Outlook draft created.  Open Outlook to review and send when ready.
+                  </div>
+                )}
+
+                {previewState?.createError && (
+                  <div
+                    style={{
+                      border: "1px solid #fecaca",
+                      background: "#fef2f2",
+                      color: "#991b1b",
+                      borderRadius: 16,
+                      padding: 14,
+                      fontWeight: 850,
+                    }}
+                  >
+                    {previewState.createError}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              position: "sticky",
+              bottom: 0,
+              borderTop: "1px solid #e2e8f0",
+              background: "#ffffff",
+              padding: "14px 22px",
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 10,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setMasterSettlementEmailPreviewPopupOpen(false)}
+              style={{
+                border: "1px solid #cbd5e1",
+                background: "#ffffff",
+                color: "#334155",
+                borderRadius: 999,
+                padding: "10px 16px",
+                fontWeight: 850,
+                cursor: "pointer",
+              }}
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              onClick={() => void createMasterDocumentOutlookDraft()}
+              disabled={!readyForGraphDraftCreate || masterDocumentDraftCreateLoading || Boolean(previewState?.draftCreated)}
+              style={{
+                border: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated ? "1px solid #cbd5e1" : "1px solid #2563eb",
+                background: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated ? "#f8fafc" : "#2563eb",
+                color: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated ? "#94a3b8" : "#ffffff",
+                borderRadius: 999,
+                padding: "10px 16px",
+                fontWeight: 900,
+                cursor: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated ? "not-allowed" : "pointer",
+              }}
+            >
+              {masterDocumentDraftCreateLoading ? "Creating Draft..." : previewState?.draftCreated ? "Draft Created" : "Create Outlook Draft"}
+            </button>
           </div>
         </div>
       </div>
@@ -8455,14 +8993,18 @@ function masterSettlementDateFiledValue(): string {
 
                       <button
                         type="button"
-                        disabled={masterHasActiveRecordedSettlement}
                         onClick={() => {
-                          if (masterHasActiveRecordedSettlement) return;
+                          if (masterHasActiveRecordedSettlement) {
+                            openVoidActiveSettlementAdminFlow();
+                            return;
+                          }
+
+                          resetMasterSettlementPreviewForm();
                           setMasterSettlementFormOpen(true);
                         }}
                         title={
                           masterHasActiveRecordedSettlement
-                            ? "A settlement is already recorded for this lawsuit.  The settlement entry dialog is disabled."
+                            ? "Administrator only: void the active local settlement record."
                             : "Open settlement preview popup.  Local settlement workflow only."
                         }
                         style={{
@@ -8475,9 +9017,9 @@ function masterSettlementDateFiledValue(): string {
                           color: "#fff",
                           fontSize: 12,
                           fontWeight: 950,
-                          cursor: masterHasActiveRecordedSettlement ? "not-allowed" : "pointer",
+                          cursor: "pointer",
                           boxShadow: masterHasActiveRecordedSettlement ? "none" : "0 8px 24px rgba(22, 163, 74, 0.22)",
-                          opacity: masterHasActiveRecordedSettlement ? 0.72 : 1,
+                          opacity: 1,
                         }}
                       >
                         {masterHasActiveRecordedSettlement ? "Settlement Already Recorded" : "Record Settlement"}
@@ -8596,6 +9138,7 @@ function masterSettlementDateFiledValue(): string {
                       {renderMasterDocumentHistoryPopup()}
                       {renderMasterDocumentGenerationPopup()}
                       {renderMasterDocumentDeliveryPopup()}
+                      {renderSettlementFinalizedEmailPreviewPopup()}
 
                     
                     

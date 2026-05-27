@@ -259,15 +259,37 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!preview?.validation?.readyForGraphDraftCreate) {
+  const attachmentPlanForReadiness = Array.isArray(preview?.attachmentPlan) ? preview.attachmentPlan : [];
+  const sourceForReadiness = clean(
+    preview?.matterContext?.source ||
+    preview?.context?.source ||
+    body?.source ||
+    body?.context?.source ||
+    body?.graphDraftPayloadPreview?.matterContext?.source ||
+    body?.graphDraftPayloadPreview?.context?.source
+  );
+  const settlementFinalizedPdfDelivery = sourceForReadiness === "settlement_finalized_pdf_delivery";
+  const hasFinalizedSettlementPdfAttachment = attachmentPlanForReadiness.some((attachment: any) =>
+    Boolean(
+      attachment?.graphUploadRequired &&
+      (clean(attachment?.clioDocumentId) || clean(attachment?.downloadUrl) || clean(attachment?.pdfUrl))
+    )
+  );
+
+  if (
+    !preview?.validation?.readyForGraphDraftCreate &&
+    !(settlementFinalizedPdfDelivery && hasFinalizedSettlementPdfAttachment)
+  ) {
     return NextResponse.json(
       {
-        ...responseBase,
-        previewOnly: false,
-        blocked: true,
-        payload: preview,
-        error:
-          "Graph draft payload is not ready.  The draft must have a To recipient, Clio MailDrop in Cc, and no MailDrop in Bcc.",
+        ok: false,
+        action: "graph-create-draft",
+        graphCallsMade: false,
+        createsOutlookDraft: false,
+        error: "Graph draft payload is not ready for draft creation.",
+        validation: preview?.validation || null,
+        settlementFinalizedPdfDelivery,
+        hasFinalizedSettlementPdfAttachment,
       },
       { status: 400 }
     );

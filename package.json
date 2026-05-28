@@ -125,7 +125,8 @@
     "verify:admin-template-custom-import-demoted-safety": "node scripts/verify-admin-template-custom-import-demoted-safety.mjs",
     "verify:settlement-finalized-email-safety": "node scripts/verify-settlement-finalized-email-safety.mjs",
     "verify:settlement-void-safety": "node scripts/verify-settlement-void-safety.mjs",
-    "verify:settlement-percent-normalization-safety": "node scripts/verify-settlement-percent-normalization-safety.mjs"
+    "verify:settlement-percent-normalization-safety": "node scripts/verify-settlement-percent-normalization-safety.mjs",
+    "verify:settlement-history-display-contract": "node scripts/verify-settlement-history-display-contract.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

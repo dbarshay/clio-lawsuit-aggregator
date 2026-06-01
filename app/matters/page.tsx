@@ -6912,7 +6912,7 @@ function masterSettlementDateFiledValue(): string {
                         lineHeight: 1.45,
                       }}
                     >
-                      Settlement delivery now uses the local settlement finalization record created in Step 2.  Save Locally opens the generated DOCX route for desktop saving.  Print Finalized Document opens a local printable view and launches the browser print dialog.  Send to Print Queue writes a local Barsh Matters print-queue item only.  Email Finalized Document creates a Microsoft Graph / Outlook draft using the finalized PDF stored in the mapped master Clio matter Documents tab.  Review and edit the draft in Outlook before sending.  Temporary Void Settlement is a local-development shortcut only; it bypasses the administrator password gate but still requires a reason.
+                      Settlement delivery now uses the local settlement finalization record created in Step 2.  Save Locally opens the generated DOCX route for desktop saving.  Print Finalized Document opens a local printable view and launches the browser print dialog.  Send to Print Queue writes a local Barsh Matters print-queue item only.  Email Finalized Document creates a Microsoft Graph / Outlook draft using the finalized PDF stored in the mapped master Clio matter Documents tab.  Review and edit the draft in Outlook before sending.  Temporary Void Settlement is a local-development shortcut only; it bypasses the administrator password gate, reason prompt, and typed confirmation while still using the local-only safe void route.
                     </div>
                   </div>
                 ) : (

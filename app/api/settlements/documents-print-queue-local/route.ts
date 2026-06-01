@@ -31,7 +31,8 @@ function isSettlementFinalizationStatus(status: unknown): boolean {
     value === "local-settlement-finalized-pdf" ||
     value === "settlement-finalized-pdf" ||
     value === "settlement-finalized-document" ||
-    value === "settlement-clio-duplicate-skipped"
+    value === "settlement-clio-duplicate-skipped" ||
+    value === "settlement-uploaded-to-clio"
   );
 }
 

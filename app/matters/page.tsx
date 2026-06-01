@@ -4041,7 +4041,25 @@ function masterSettlementDateFiledValue(): string {
       candidate?.previewUrl ||
       "";
 
-    return appendDocumentOpenMode(raw, mode);
+    if (raw) return appendDocumentOpenMode(raw, mode);
+
+    const clioDocumentId =
+      candidate?.clioDocumentId ||
+      candidate?.existingClioDocumentId ||
+      candidate?.documentId ||
+      candidate?.id ||
+      "";
+
+    if (clioDocumentId) {
+      const params = new URLSearchParams();
+      params.set("documentId", String(clioDocumentId));
+      params.set("mode", mode);
+      const filename = String(candidate?.filename || candidate?.clioDocumentName || candidate?.name || "").trim();
+      if (filename) params.set("filename", filename);
+      return `/api/documents/clio-document-open?${params.toString()}`;
+    }
+
+    return "";
   }
 
   function finalizedDocumentLooksLikePdf(candidate: any): boolean {
@@ -4393,30 +4411,51 @@ function masterSettlementDateFiledValue(): string {
         return;
       }
 
-      const printableUrl = `/api/settlements/documents-print-local?finalizationId=${encodeURIComponent(String(finalizationId))}`;
-      const printWindow = window.open(printableUrl, "_blank", "noopener,noreferrer");
+      const selectedCandidate = settlementFinalizedPdfCandidateFromResult();
+
+      if (!selectedCandidate?.clioDocumentId && !selectedCandidate?.clioDocumentVersionUuid && !selectedCandidate?.downloadUrl) {
+        alert("Finalize the settlement document first.  The print workflow requires a finalized PDF from the mapped master Clio matter Documents tab.");
+        return;
+      }
+
+      const printableUrl = finalizedDocumentLooksLikePdf(selectedCandidate)
+        ? selectedFinalizedDocumentUrl(selectedCandidate, "inline")
+        : selectedFinalizedDocumentUrl(selectedCandidate, "download");
+
+      if (!printableUrl) {
+        alert("Barsh Matters found the finalized settlement document, but no printable PDF URL is available.");
+        return;
+      }
+
+      const printWindow = window.open("", "_blank");
 
       if (!printWindow) {
         alert("The browser blocked the settlement print window.  Please allow popups for Barsh Matters and try again.");
         return;
       }
 
+      printWindow.document.write("<!doctype html><title>Preparing Settlement PDF</title><body style='font-family: system-ui, sans-serif; padding: 24px;'>Preparing finalized settlement PDF for printing...</body>");
+      printWindow.document.close();
+      printWindow.location.href = printableUrl;
+
       setMasterDocumentPrintResult({
         ok: true,
-        action: "settlement-document-print-dialog-opened",
-        documentLabel: context.documentLabel,
+        action: "settlement-document-finalized-pdf-print-opened",
+        documentLabel: selectedCandidate.filename || context.documentLabel,
         filename:
-          masterDocumentFinalizationResult?.generatedDocument?.filename ||
-          masterDocumentFinalizationResult?.selectedDocument?.filename ||
+          selectedCandidate.filename ||
+          selectedCandidate.clioDocumentName ||
           context.documentLabel ||
-          "",
+          "Finalized Settlement Document.pdf",
         printableUrl,
         finalizationId,
-        finalizedPdfGenerated: false,
-        printablePdfReady: false,
+        clioDocumentId: selectedCandidate.clioDocumentId || "",
+        clioDocumentVersionUuid: selectedCandidate.clioDocumentVersionUuid || "",
+        finalizedPdfGenerated: true,
+        printablePdfReady: true,
         clioRecordsChanged: false,
         emailSent: false,
-        note: "Opened a local printable settlement document view and launched the browser print dialog.",
+        note: "Opened the finalized settlement PDF from the mapped master Clio matter Documents tab for printing.",
       });
       return;
     }
@@ -4659,6 +4698,11 @@ function masterSettlementDateFiledValue(): string {
     }
 
     try {
+      const isSettlementDocumentMode =
+        masterDocumentLaunchMode === "settlement" ||
+        masterDocumentDataPreview?.documentLaunchMode === "settlement" ||
+        masterDocumentDataPreview?.action === "settlement-documents-preview";
+
       const response = await fetch("/api/documents/working-docx", {
         method: "POST",
         headers: {
@@ -4667,6 +4711,10 @@ function masterSettlementDateFiledValue(): string {
         body: JSON.stringify({
           masterLawsuitId,
           uploadTargetMode: "master-lawsuit",
+          documentLaunchMode: isSettlementDocumentMode ? "settlement" : "lawsuit",
+          settlementRecordId: isSettlementDocumentMode
+            ? masterDocumentPreviewText(masterDocumentDataPreview?.settlementRecordId || masterDocumentSettlementRecordId)
+            : "",
           documentKeys: [selectedTemplate.key],
           confirmCreate: true,
         }),
@@ -4965,6 +5013,10 @@ function masterSettlementDateFiledValue(): string {
     }
   }
 
+  function waitForWordWebAutosaveBeforeFinalize(): Promise<void> {
+    return new Promise((resolve) => window.setTimeout(resolve, 5000));
+  }
+
   async function finalizeMasterSettlementDocumentPlaceholder(selectedTemplate: { key: string; label: string; description: string } | null) {
     const context = buildMasterDocumentDeliveryContext(selectedTemplate);
     const isSettlementDocumentMode =
@@ -4997,9 +5049,15 @@ function masterSettlementDateFiledValue(): string {
 
     setMasterDocumentFinalizing(true);
     setMasterDocumentFinalizationResult(null);
-    setMasterSettlementUploadNotice("Uploading finalized PDF to Clio matter BRL30148");
+    setMasterSettlementUploadNotice("Waiting for Word Web autosave before finalizing...");
 
     try {
+      if (masterDocumentFinalizationResult?.workingDocument?.driveItemId) {
+        await waitForWordWebAutosaveBeforeFinalize();
+      }
+
+      setMasterSettlementUploadNotice("Uploading finalized PDF to Clio matter BRL30148");
+
       const response = await fetch("/api/settlements/documents-finalize-local", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -5008,6 +5066,10 @@ function masterSettlementDateFiledValue(): string {
           settlementRecordId,
           templateKey: selectedTemplate.key,
           templateLabel: selectedTemplate.label || context.documentLabel,
+          workingDocumentDriveItemId: masterDocumentFinalizationResult?.workingDocument?.driveItemId || "",
+          workingDocumentName: masterDocumentFinalizationResult?.workingDocument?.name || "",
+          workingDocumentWebUrl: masterDocumentFinalizationResult?.workingDocument?.webUrl || "",
+          workingDocumentKey: masterDocumentFinalizationResult?.selectedDocument?.key || selectedTemplate.key,
           confirmFinalize: true,
         }),
       });
@@ -6420,7 +6482,7 @@ function masterSettlementDateFiledValue(): string {
                     }}
                   >
                     <div>
-                      <strong>Working Word document:</strong> {masterDocumentFinalizationResult?.workingDocument?.name || displayedSelectedTemplate?.label || "Selected document"} was created in the Barsh Matters working-docs folder.  Use Word Web for editing.  Desktop Word remains available as an experimental option, but Word Web is the reliable editing path for this SharePoint/OneDrive working document.  Save your edits in Word Web, then return here and click Finalize Document.
+                      <strong>Working document ready.</strong> Open the newly created Word Web document, make your edits, wait until Word Web shows the document is saved, then return here and click Finalize Document.  Close older working-document tabs to avoid editing the wrong file.
                     </div>
 
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
@@ -6737,7 +6799,7 @@ function masterSettlementDateFiledValue(): string {
               </section>
             )}
 
-            {masterDocumentFinalizationResult && (
+            {masterDocumentWorkflowStage === "delivery" && masterDocumentFinalizationResult && (
               <section
                 style={{
                   border: masterDocumentFinalizationResult.ok ? "1px solid #86efac" : "1px solid #fecaca",
@@ -6931,7 +6993,7 @@ function masterSettlementDateFiledValue(): string {
                   {masterDocumentPrintResult.ok
                     ? masterDocumentPrintResult.action === "settlement-document-save-local-opened"
                       ? "Save Locally Opened"
-                      : masterDocumentPrintResult.action === "settlement-document-print-dialog-opened"
+                      : masterDocumentPrintResult.action === "settlement-document-print-dialog-opened" || masterDocumentPrintResult.action === "settlement-document-finalized-pdf-print-opened"
                         ? "Print Dialog Opened"
                         : "DOCX Route Opened"
                     : "Print Launch Failed"}
@@ -6940,8 +7002,10 @@ function masterSettlementDateFiledValue(): string {
                   {masterDocumentPrintResult.ok
                     ? masterDocumentPrintResult.action === "settlement-document-save-local-opened"
                       ? "The generated DOCX route was opened so the user can save the settlement document locally.  No PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent."
-                      : masterDocumentPrintResult.action === "settlement-document-print-dialog-opened"
-                        ? "A local printable settlement document view was opened and the browser print dialog was launched.  No PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent."
+                      : masterDocumentPrintResult.action === "settlement-document-finalized-pdf-print-opened"
+                        ? "The finalized settlement PDF from the mapped master Clio matter Documents tab was opened for printing.  No new PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent."
+                        : masterDocumentPrintResult.action === "settlement-document-print-dialog-opened"
+                          ? "A local printable settlement document view was opened and the browser print dialog was launched.  No PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent."
                         : "The placeholder-seeded generated DOCX route was opened.  This is not a final production template/document.  No PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent."
                     : masterDocumentPrintResult.error || "Could not open the generated settlement document route."}
                 </p>

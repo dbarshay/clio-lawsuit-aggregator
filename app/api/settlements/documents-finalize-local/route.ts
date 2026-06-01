@@ -6,6 +6,7 @@ import {
 } from "@/lib/clioDocumentUpload";
 import {
   convertWorkingDocxDriveItemToPdf,
+  downloadWorkingDocxFromGraph,
   uploadWorkingDocxToGraph,
 } from "@/lib/documents/graphWorkingDocuments";
 import { buildSettlementPlannedDocuments } from "@/lib/documents/templateRegistry";
@@ -26,6 +27,18 @@ function pdfFilenameFromDocxFilename(value: unknown): string {
   if (raw.toLowerCase().endsWith(".pdf")) return raw;
   if (raw.toLowerCase().endsWith(".docx")) return `${raw.slice(0, -5)}.pdf`;
   return `${raw.replace(/\.[^.]+$/, "") || "Settlement Document"}.pdf`;
+}
+
+function editedPdfFilenameFromDocxFilename(value: unknown): string {
+  const basePdf = pdfFilenameFromDocxFilename(value);
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[:.]/g, "-")
+    .replace(/Z$/, "Z");
+  if (basePdf.toLowerCase().endsWith(".pdf")) {
+    return `${basePdf.slice(0, -4)} - Edited ${stamp}.pdf`;
+  }
+  return `${basePdf} - Edited ${stamp}.pdf`;
 }
 
 function jsonSafe(value: unknown) {
@@ -116,6 +129,37 @@ function rowSnapshotValue(row: any, keys: string[]): string {
   return "";
 }
 
+function waitForGraphContentSync(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function downloadStableEditedWorkingDocxFromGraph(driveItemId: string) {
+  const byteLengthSequence: number[] = [];
+  let latest = await downloadWorkingDocxFromGraph(driveItemId);
+  byteLengthSequence.push(latest.byteLength);
+
+  let changedAcrossAttempts = false;
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    await waitForGraphContentSync(5000);
+    const next = await downloadWorkingDocxFromGraph(driveItemId);
+    byteLengthSequence.push(next.byteLength);
+
+    if (!Buffer.from(next.buffer).equals(Buffer.from(latest.buffer))) {
+      changedAcrossAttempts = true;
+    }
+
+    latest = next;
+  }
+
+  return {
+    ...latest,
+    downloadAttempts: byteLengthSequence.length,
+    byteLengthSequence,
+    changedAcrossAttempts,
+  };
+}
+
 function safetyLocalSettlementDocumentFinalize() {
   return {
     localFirst: true,
@@ -143,6 +187,9 @@ export async function POST(req: NextRequest) {
     const settlementRecordId = clean(body?.settlementRecordId);
     const templateKey = clean(body?.templateKey);
     const templateLabelInput = clean(body?.templateLabel);
+    const workingDocumentDriveItemId = clean(body?.workingDocumentDriveItemId);
+    const workingDocumentKey = clean(body?.workingDocumentKey);
+    const finalizeFromEditedWorkingDocument = Boolean(workingDocumentDriveItemId);
     const confirmFinalize = body?.confirmFinalize === true;
 
     if (!confirmFinalize) {
@@ -331,33 +378,69 @@ export async function POST(req: NextRequest) {
 
     const generatedDocxDownloadUrl = clean(generatedDocx.downloadUrl);
 
-    if (!generatedDocxDownloadUrl) {
-      throw new Error("Generated settlement DOCX did not expose a download URL for Clio upload.");
+    let docxBuffer = Buffer.alloc(0);
+    let workingDocx: any = null;
+
+    if (finalizeFromEditedWorkingDocument) {
+      const downloadedEditedDocx = await downloadStableEditedWorkingDocxFromGraph(workingDocumentDriveItemId);
+      docxBuffer = Buffer.from(downloadedEditedDocx.buffer);
+
+      if (!docxBuffer.length) {
+        throw new Error("Downloaded edited Word Web DOCX was empty and could not be finalized.");
+      }
+
+      const editedSnapshotFilename = `${finalFilename.replace(/\.docx$/i, "")} - Edited Snapshot ${new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-")
+        .replace(/Z$/, "Z")}.docx`;
+
+      workingDocx = await uploadWorkingDocxToGraph({
+        docxBuffer,
+        filename: editedSnapshotFilename,
+        folder: "BarshMattersSettlementFinalizationWorkingDocs",
+      });
+
+      workingDocx = {
+        ...workingDocx,
+        originalEditedDriveItemId: workingDocumentDriveItemId,
+        originalEditedWebUrl: clean(body?.workingDocumentWebUrl),
+        source: "edited-word-web-working-document-downloaded-snapshot",
+        workingDocumentKey: workingDocumentKey || templateKey,
+        editedSnapshotDownloadAttempts: downloadedEditedDocx.downloadAttempts,
+        editedSnapshotByteLengthSequence: downloadedEditedDocx.byteLengthSequence,
+        editedSnapshotChangedAcrossAttempts: downloadedEditedDocx.changedAcrossAttempts,
+      };
+    } else {
+      if (!generatedDocxDownloadUrl) {
+        throw new Error("Generated settlement DOCX did not expose a download URL for Clio upload.");
+      }
+
+      const docxUrl = new URL(generatedDocxDownloadUrl, req.nextUrl.origin);
+      const docxRes = await fetch(docxUrl);
+
+      if (!docxRes.ok) {
+        const text = await docxRes.text().catch(() => "");
+        throw new Error(
+          `Could not generate settlement DOCX for Clio upload: ${docxRes.status} ${docxRes.statusText}${text ? ` ${text.slice(0, 300)}` : ""}`
+        );
+      }
+
+      docxBuffer = Buffer.from(await docxRes.arrayBuffer());
+
+      if (!docxBuffer.length) {
+        throw new Error("Generated settlement DOCX was empty and could not be uploaded to Clio.");
+      }
+
+      workingDocx = await uploadWorkingDocxToGraph({
+        docxBuffer,
+        filename: finalFilename,
+        folder: "BarshMattersSettlementFinalizationWorkingDocs",
+      });
     }
 
-    const docxUrl = new URL(generatedDocxDownloadUrl, req.nextUrl.origin);
-    const docxRes = await fetch(docxUrl);
-
-    if (!docxRes.ok) {
-      const text = await docxRes.text().catch(() => "");
-      throw new Error(
-        `Could not generate settlement DOCX for Clio upload: ${docxRes.status} ${docxRes.statusText}${text ? ` ${text.slice(0, 300)}` : ""}`
-      );
-    }
-
-    const docxBuffer = Buffer.from(await docxRes.arrayBuffer());
-
-    if (!docxBuffer.length) {
-      throw new Error("Generated settlement DOCX was empty and could not be uploaded to Clio.");
-    }
-
-    const finalPdfFilename = pdfFilenameFromDocxFilename(finalFilename);
-
-    const workingDocx = await uploadWorkingDocxToGraph({
-      docxBuffer,
-      filename: finalFilename,
-      folder: "BarshMattersSettlementFinalizationWorkingDocs",
-    });
+    const finalPdfFilename = finalizeFromEditedWorkingDocument
+      ? editedPdfFilenameFromDocxFilename(finalFilename)
+      : pdfFilenameFromDocxFilename(finalFilename);
 
     const pdfConversion = await convertWorkingDocxDriveItemToPdf({
       driveItemId: workingDocx.driveItemId,
@@ -419,6 +502,8 @@ export async function POST(req: NextRequest) {
         uploadedAsDocx: false,
         uploadedAsPdf: false,
         workingDocumentDriveItemId: workingDocx.driveItemId,
+        finalizedFromEditedWorkingDocument: finalizeFromEditedWorkingDocument,
+        workingDocumentKey: workingDocumentKey || templateKey,
         graphPdfSourceDriveItemId: pdfConversion.sourceDriveItemId || workingDocx.driveItemId,
         printQueueRecordCreated: false,
         emailAttachmentReady: false,
@@ -437,13 +522,20 @@ export async function POST(req: NextRequest) {
         filename: finalPdfFilename,
         sourceDocxFilename: finalFilename,
         byteLength: pdfBuffer.byteLength,
-        sourceDocxByteLength: docxBuffer.byteLength,
+        sourceDocxByteLength: docxBuffer.byteLength || null,
+        originalEditedDriveItemId: workingDocx.originalEditedDriveItemId || null,
+        originalEditedWebUrl: workingDocx.originalEditedWebUrl || null,
+        editedSnapshotDownloadAttempts: workingDocx.editedSnapshotDownloadAttempts || null,
+        editedSnapshotByteLengthSequence: workingDocx.editedSnapshotByteLengthSequence || null,
+        editedSnapshotChangedAcrossAttempts: workingDocx.editedSnapshotChangedAcrossAttempts ?? null,
         contentType: PDF_CONTENT_TYPE,
         sourceDocxContentType: DOCX_CONTENT_TYPE,
         uploadedAsDocx: false,
         uploadedAsPdf: true,
         finalizedPdfGenerated: true,
         workingDocumentDriveItemId: workingDocx.driveItemId,
+        finalizedFromEditedWorkingDocument: finalizeFromEditedWorkingDocument,
+        workingDocumentKey: workingDocumentKey || templateKey,
         graphPdfSourceDriveItemId: pdfConversion.sourceDriveItemId || workingDocx.driveItemId,
         pdfFinalization: {
           provider: "microsoft_graph_driveitem_content_format_pdf",
@@ -513,6 +605,8 @@ export async function POST(req: NextRequest) {
           uploadedAsPdf: uploaded.length > 0,
           duplicateSkipped: skipped.length > 0,
           clioUploaded: uploaded.length > 0,
+          finalizedFromEditedWorkingDocument: finalizeFromEditedWorkingDocument,
+          workingDocumentDriveItemId: workingDocx.driveItemId,
           noPdfPretended: true,
         }),
         packetSummarySnapshot: jsonSafe({
@@ -536,6 +630,16 @@ export async function POST(req: NextRequest) {
           },
           selectedDocument: selectedSnapshot,
           generatedDocument: generatedDocx,
+          workingDocument: {
+            driveItemId: workingDocx.driveItemId,
+            name: workingDocx.name || finalFilename,
+            webUrl: workingDocx.webUrl || null,
+            source: finalizeFromEditedWorkingDocument ? "edited-word-web-working-document-downloaded-snapshot" : "generated-route-working-document",
+            originalEditedDriveItemId: workingDocx.originalEditedDriveItemId || null,
+            originalEditedWebUrl: workingDocx.originalEditedWebUrl || null,
+            workingDocumentKey: workingDocumentKey || templateKey,
+          },
+          finalizedFromEditedWorkingDocument: finalizeFromEditedWorkingDocument,
           plannedDocumentCount: plannedDocuments.length,
           folderPath,
         }),
@@ -555,6 +659,19 @@ export async function POST(req: NextRequest) {
       settlementRecordId: settlementRecord.id,
       selectedDocument: selectedSnapshot,
       generatedDocument: generatedDocx,
+      workingDocument: {
+        driveItemId: workingDocx.driveItemId,
+        name: workingDocx.name || finalFilename,
+        webUrl: workingDocx.webUrl || null,
+        source: finalizeFromEditedWorkingDocument ? "edited-word-web-working-document-downloaded-snapshot" : "generated-route-working-document",
+        originalEditedDriveItemId: workingDocx.originalEditedDriveItemId || null,
+        originalEditedWebUrl: workingDocx.originalEditedWebUrl || null,
+        editedSnapshotDownloadAttempts: workingDocx.editedSnapshotDownloadAttempts || null,
+        editedSnapshotByteLengthSequence: workingDocx.editedSnapshotByteLengthSequence || null,
+        editedSnapshotChangedAcrossAttempts: workingDocx.editedSnapshotChangedAcrossAttempts ?? null,
+        workingDocumentKey: workingDocumentKey || templateKey,
+      },
+      finalizedFromEditedWorkingDocument: finalizeFromEditedWorkingDocument,
       uploaded,
       skipped,
       clioUploadTarget: {

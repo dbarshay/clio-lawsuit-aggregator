@@ -230,6 +230,9 @@ function adminTicklerDetailSourceFields(tickler: any) {
     createdBy: tickler?.createdBy,
     createdFrom: tickler?.createdFrom,
     reason: tickler?.reason,
+    completedAt: tickler?.completedAt,
+    completedBy: tickler?.completedBy,
+    completedNote: tickler?.completedNote,
     metadata: tickler?.metadata,
   };
 }
@@ -285,6 +288,7 @@ export default function AdminTicklersPage() {
   const [claimStatus, setClaimStatus] = useState("");
   const [closeReason, setCloseReason] = useState("");
   const [selectedTicklerDetail, setSelectedTicklerDetail] = useState<any | null>(null);
+  const [ticklerStatusMode, setTicklerStatusMode] = useState<"open" | "completed">("open");
   const [finalStatus, setFinalStatus] = useState("");
   const [billNumber, setBillNumber] = useState("");
   const [policyNumber, setPolicyNumber] = useState("");
@@ -386,7 +390,7 @@ export default function AdminTicklersPage() {
     try {
       const params = new URLSearchParams();
       params.set("kind", kind);
-      params.set("status", "open");
+      params.set("status", ticklerStatusMode);
       params.set("limit", "100");
       if (dueBefore) params.set("dueBefore", dueBefore);
       if (dueAfter) params.set("dueAfter", dueAfter);
@@ -440,6 +444,62 @@ export default function AdminTicklersPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#f8fafc", color: "#0f172a", padding: 32 }}>
+      <div
+        data-barsh-admin-tickler-completed-history-controls="true"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 16,
+          alignItems: "center",
+          marginBottom: 12,
+          padding: 12,
+          border: "1px solid #d7e0ec",
+          borderRadius: 12,
+          background: "#f8fbff",
+        }}
+      >
+        <div>
+          <strong>Tickler Search Mode</strong>
+          <div style={{ color: "#475569", fontSize: 13 }}>
+            Open mode searches active ticklers.  Completed History is read-only audit review and does not reopen, rerun, process, complete, pay, close, or modify ticklers.
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            data-barsh-admin-tickler-open-mode-button="true"
+            onClick={() => setTicklerStatusMode("open")}
+            style={{
+              border: ticklerStatusMode === "open" ? "1px solid #1f4f73" : "1px solid #cbd5e1",
+              background: ticklerStatusMode === "open" ? "#1f4f73" : "#ffffff",
+              color: ticklerStatusMode === "open" ? "#ffffff" : "#1f2937",
+              borderRadius: 10,
+              padding: "8px 12px",
+              fontWeight: 800,
+              cursor: "pointer",
+            }}
+          >
+            Open Ticklers
+          </button>
+          <button
+            type="button"
+            data-barsh-admin-tickler-completed-history-button="true"
+            onClick={() => setTicklerStatusMode("completed")}
+            style={{
+              border: ticklerStatusMode === "completed" ? "1px solid #7f1d1d" : "1px solid #cbd5e1",
+              background: ticklerStatusMode === "completed" ? "#7f1d1d" : "#ffffff",
+              color: ticklerStatusMode === "completed" ? "#ffffff" : "#1f2937",
+              borderRadius: 10,
+              padding: "8px 12px",
+              fontWeight: 800,
+              cursor: "pointer",
+            }}
+          >
+            Completed History
+          </button>
+        </div>
+      </div>
+
       <div
         data-barsh-admin-tickler-bulk-runner-nav="true"
         style={{
@@ -684,7 +744,15 @@ export default function AdminTicklersPage() {
 
         <section style={{ border: "1px solid #e2e8f0", borderRadius: 18, background: "#fff", padding: 18 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
-            <h2 style={{ margin: 0, fontSize: 20 }}>Tickler Results</h2>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 20 }}>Tickler Results</h2>
+              <p
+                data-barsh-admin-tickler-results-mode-label="true"
+                style={{ margin: "4px 0 0", color: ticklerStatusMode === "completed" ? "#7f1d1d" : "#475569", fontSize: 13, fontWeight: 700 }}
+              >
+                {ticklerStatusMode === "completed" ? "Completed History: read-only audit results." : "Open Ticklers: active follow-up results."}
+              </p>
+            </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div style={{ fontWeight: 900, color: "#475569" }}>
                 {loading ? "Loading..." : `${result?.count ?? 0} result${(result?.count ?? 0) === 1 ? "" : "s"}`}
@@ -861,6 +929,15 @@ export default function AdminTicklersPage() {
                   lawsuit: selectedTicklerDetail?.lawsuit,
                   master: selectedTicklerDetail?.master,
                   caseDataMasterLawsuit: selectedTicklerDetail?.caseData?.masterLawsuit,
+                }}
+              />
+              <AdminTicklerDetailJsonSection
+                title="completion audit fields"
+                value={{
+                  status: selectedTicklerDetail?.status,
+                  completedAt: selectedTicklerDetail?.completedAt,
+                  completedBy: selectedTicklerDetail?.completedBy,
+                  completedNote: selectedTicklerDetail?.completedNote,
                 }}
               />
               <AdminTicklerDetailJsonSection

@@ -1073,6 +1073,9 @@ export default function Home() {
     useState<AdvancedPicklistOption[]>(FINAL_STATUS_PICKLIST_OPTIONS);
   const [serviceTypePicklistOptions, setServiceTypePicklistOptions] =
     useState<AdvancedPicklistOption[]>(SERVICE_TYPE_PICKLIST_OPTIONS);
+  const [providerReferenceOptions, setProviderReferenceOptions] = useState<any[]>([]);
+  const [insurerReferenceOptions, setInsurerReferenceOptions] = useState<any[]>([]);
+  const [courtReferenceOptions, setCourtReferenceOptions] = useState<any[]>([]);
   const [advancedFields, setAdvancedFields] = useState<AdvancedSearchFields>(() =>
     emptyAdvancedSearchFields()
   );
@@ -1292,6 +1295,38 @@ export default function Home() {
   useEffect(() => {
     advancedFieldsRef.current = advancedFields;
   }, [advancedFields]);
+
+  function referenceOptionLabel(option: any): string {
+    return clean(option?.displayName || option?.label || option?.value || option?.name || "");
+  }
+
+  async function loadSearchReferenceOptions() {
+    try {
+      const [providerResponse, insurerResponse, courtResponse] = await Promise.all([
+        fetch("/api/reference-data/options?type=provider_client", { cache: "no-store" }),
+        fetch("/api/reference-data/options?type=insurer_company", { cache: "no-store" }),
+        fetch("/api/reference-data/options?type=court_venue", { cache: "no-store" }),
+      ]);
+
+      const [providerJson, insurerJson, courtJson] = await Promise.all([
+        providerResponse.json().catch(() => ({})),
+        insurerResponse.json().catch(() => ({})),
+        courtResponse.json().catch(() => ({})),
+      ]);
+
+      setProviderReferenceOptions(Array.isArray(providerJson?.options) ? providerJson.options : []);
+      setInsurerReferenceOptions(Array.isArray(insurerJson?.options) ? insurerJson.options : []);
+      setCourtReferenceOptions(Array.isArray(courtJson?.options) ? courtJson.options : []);
+    } catch {
+      setProviderReferenceOptions([]);
+      setInsurerReferenceOptions([]);
+      setCourtReferenceOptions([]);
+    }
+  }
+
+  useEffect(() => {
+    void loadSearchReferenceOptions();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -2227,6 +2262,11 @@ export default function Home() {
             </datalist>
 
             <datalist id="barsh-search-provider-suggestions">
+              {providerReferenceOptions.map((option, index) => {
+                const value = referenceOptionLabel(option);
+                if (!value) return null;
+                return <option key={`search-provider-reference-${option.id || value}-${index}`} value={value} />;
+              })}
               {providerSearchSuggestions.map((value) => (
                 <option key={`search-provider-${value}`} value={value} />
               ))}
@@ -2422,6 +2462,7 @@ export default function Home() {
                       onChange={(e) => updateAdvancedField("provider", e.target.value)}
                       placeholder="Provider"
                       style={inputStyle}
+                      list="barsh-advanced-provider-reference-options"
                     />
                   </label>
 
@@ -2432,6 +2473,7 @@ export default function Home() {
                       onChange={(e) => updateAdvancedField("insuranceCompany", e.target.value)}
                       placeholder="Insurance company"
                       style={inputStyle}
+                      list="barsh-advanced-insurer-reference-options"
                     />
                   </label>
 
@@ -2518,6 +2560,7 @@ export default function Home() {
                       onChange={(e) => updateAdvancedField("court", e.target.value)}
                       placeholder="Court"
                       style={inputStyle}
+                      list="barsh-advanced-court-reference-options"
                     />
                   </label>
 
@@ -2606,6 +2649,30 @@ export default function Home() {
                   </label>
 
                 </div>
+
+                <datalist id="barsh-advanced-provider-reference-options">
+                  {providerReferenceOptions.map((option, index) => {
+                    const value = referenceOptionLabel(option);
+                    if (!value) return null;
+                    return <option key={`advanced-provider-reference-${option.id || value}-${index}`} value={value} />;
+                  })}
+                </datalist>
+
+                <datalist id="barsh-advanced-insurer-reference-options">
+                  {insurerReferenceOptions.map((option, index) => {
+                    const value = referenceOptionLabel(option);
+                    if (!value) return null;
+                    return <option key={`advanced-insurer-reference-${option.id || value}-${index}`} value={value} />;
+                  })}
+                </datalist>
+
+                <datalist id="barsh-advanced-court-reference-options">
+                  {courtReferenceOptions.map((option, index) => {
+                    const value = referenceOptionLabel(option);
+                    if (!value) return null;
+                    return <option key={`advanced-court-reference-${option.id || value}-${index}`} value={value} />;
+                  })}
+                </datalist>
 
                 <div style={advancedModalActionsStyle}>
                   <button type="button" onClick={runAdvancedSearch} disabled={loading} style={primaryButtonStyle(loading)}>

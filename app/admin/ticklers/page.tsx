@@ -290,6 +290,8 @@ export default function AdminTicklersPage() {
   const [selectedTicklerDetail, setSelectedTicklerDetail] = useState<any | null>(null);
   const [duplicateDiagnosticLoading, setDuplicateDiagnosticLoading] = useState(false);
   const [duplicateDiagnosticResult, setDuplicateDiagnosticResult] = useState<any | null>(null);
+  const [duplicateCleanupPreviewLoading, setDuplicateCleanupPreviewLoading] = useState(false);
+  const [duplicateCleanupPreviewResult, setDuplicateCleanupPreviewResult] = useState<any | null>(null);
 
   const [ticklerStatusMode, setTicklerStatusMode] = useState<"open" | "completed">("open");
   const [finalStatus, setFinalStatus] = useState("");
@@ -463,6 +465,24 @@ export default function AdminTicklersPage() {
     }
   }
 
+  async function previewDuplicateSettlementTicklerCleanup() {
+    setDuplicateCleanupPreviewLoading(true);
+    setDuplicateCleanupPreviewResult(null);
+
+    try {
+      const response = await fetch("/api/admin/ticklers/duplicates/cleanup-preview");
+      const json = await response.json().catch(() => ({}));
+      setDuplicateCleanupPreviewResult({ ...json, httpStatus: response.status });
+    } catch (error: any) {
+      setDuplicateCleanupPreviewResult({
+        ok: false,
+        error: error?.message || "Unable to preview duplicate settlement tickler cleanup plan.",
+      });
+    } finally {
+      setDuplicateCleanupPreviewLoading(false);
+    }
+  }
+
 
   return (
     <main style={{ minHeight: "100vh", background: "#f8fafc", color: "#0f172a", padding: 32 }}>
@@ -501,7 +521,86 @@ export default function AdminTicklersPage() {
           >
             {duplicateDiagnosticLoading ? "Checking..." : "Preview Duplicates"}
           </button>
+          <button
+            type="button"
+            data-barsh-admin-duplicate-settlement-tickler-cleanup-preview-button="true"
+            onClick={previewDuplicateSettlementTicklerCleanup}
+            disabled={duplicateCleanupPreviewLoading}
+            style={{
+              border: "1px solid #92400e",
+              background: "#ffffff",
+              color: "#92400e",
+              borderRadius: 10,
+              padding: "8px 12px",
+              fontWeight: 800,
+              cursor: duplicateCleanupPreviewLoading ? "not-allowed" : "pointer",
+              whiteSpace: "nowrap",
+              marginLeft: 8,
+            }}
+          >
+            {duplicateCleanupPreviewLoading ? "Building Plan..." : "Preview Cleanup Plan"}
+          </button>
         </div>
+
+        {duplicateCleanupPreviewResult ? (
+          <div
+            data-barsh-admin-duplicate-settlement-tickler-cleanup-preview-results="true"
+            style={{ marginTop: 12, borderTop: "1px solid #f1e2b8", paddingTop: 12 }}
+          >
+            {!duplicateCleanupPreviewResult.ok ? (
+              <p style={{ margin: 0, color: "#991b1b", fontWeight: 700 }}>
+                {duplicateCleanupPreviewResult.error || "Duplicate cleanup preview failed."}
+              </p>
+            ) : (
+              <>
+                <p style={{ margin: "0 0 8px", color: "#92400e", fontWeight: 800 }}>
+                  Cleanup preview found {duplicateCleanupPreviewResult.cleanupPreviewGroupCount || 0} duplicate group(s) and {duplicateCleanupPreviewResult.wouldRemoveTotal || 0} would-remove candidate(s).  No cleanup performed.  No write performed.
+                </p>
+                {(duplicateCleanupPreviewResult.cleanupPreviewGroups || []).length === 0 ? (
+                  <p style={{ margin: 0, color: "#64748b" }}>No duplicate cleanup candidates found.</p>
+                ) : (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {(duplicateCleanupPreviewResult.cleanupPreviewGroups || []).map((group: any) => (
+                      <div
+                        key={group.key}
+                        data-barsh-admin-duplicate-settlement-tickler-cleanup-preview-group="true"
+                        style={{
+                          border: "1px solid #fed7aa",
+                          borderRadius: 10,
+                          padding: 10,
+                          background: "#fff7ed",
+                        }}
+                      >
+                        <div style={{ fontWeight: 800 }}>
+                          {group.masterLawsuitId || "No master lawsuit"} / {group.settlementRecordId || "No settlement record"} / Due {group.dueDate || "—"}
+                        </div>
+                        <div style={{ color: "#475569", fontSize: 13, marginTop: 4 }}>
+                          Would retain: {group.wouldRetainId || "—"}.  Would remove: {(group.wouldRemoveCandidateIds || []).join(", ") || "—"}.
+                        </div>
+                        <pre
+                          style={{
+                            margin: "8px 0 0",
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word",
+                            fontSize: 12,
+                            background: "#ffffff",
+                            border: "1px solid #fed7aa",
+                            borderRadius: 8,
+                            padding: 8,
+                            maxHeight: 180,
+                            overflow: "auto",
+                          }}
+                        >
+                          {JSON.stringify(group, null, 2)}
+                        </pre>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        ) : null}
 
         {duplicateDiagnosticResult ? (
           <div

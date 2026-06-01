@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
         kind: TICKLER_KIND,
         ...(masterLawsuitId ? { masterLawsuitId } : {}),
         ...(settlementRecordId ? { settlementRecordId } : {}),
-        ...(includeCompleted ? {} : { status: { not: "completed" } }),
+        ...(includeCompleted ? {} : { status: "open" }),
       },
       orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
       take: 50,
@@ -219,7 +219,7 @@ export async function POST(req: NextRequest) {
       where: {
         kind: TICKLER_KIND,
         settlementRecordId: settlementRecord.id,
-        status: { not: "completed" },
+        status: "open",
       },
       orderBy: {
         createdAt: "desc",

@@ -288,6 +288,9 @@ export default function AdminTicklersPage() {
   const [claimStatus, setClaimStatus] = useState("");
   const [closeReason, setCloseReason] = useState("");
   const [selectedTicklerDetail, setSelectedTicklerDetail] = useState<any | null>(null);
+  const [duplicateDiagnosticLoading, setDuplicateDiagnosticLoading] = useState(false);
+  const [duplicateDiagnosticResult, setDuplicateDiagnosticResult] = useState<any | null>(null);
+
   const [ticklerStatusMode, setTicklerStatusMode] = useState<"open" | "completed">("open");
   const [finalStatus, setFinalStatus] = useState("");
   const [billNumber, setBillNumber] = useState("");
@@ -442,8 +445,125 @@ export default function AdminTicklersPage() {
     void loadReferenceOptions();
   }, []);
 
+  async function previewDuplicateSettlementTicklers() {
+    setDuplicateDiagnosticLoading(true);
+    setDuplicateDiagnosticResult(null);
+
+    try {
+      const response = await fetch("/api/admin/ticklers/duplicates");
+      const json = await response.json().catch(() => ({}));
+      setDuplicateDiagnosticResult({ ...json, httpStatus: response.status });
+    } catch (error: any) {
+      setDuplicateDiagnosticResult({
+        ok: false,
+        error: error?.message || "Unable to preview duplicate settlement ticklers.",
+      });
+    } finally {
+      setDuplicateDiagnosticLoading(false);
+    }
+  }
+
+
   return (
     <main style={{ minHeight: "100vh", background: "#f8fafc", color: "#0f172a", padding: 32 }}>
+      <section
+        data-barsh-admin-duplicate-settlement-tickler-diagnostic="true"
+        style={{
+          border: "1px solid #d7e0ec",
+          borderRadius: 12,
+          padding: 12,
+          marginBottom: 12,
+          background: "#fffdf7",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center" }}>
+          <div>
+            <strong>Duplicate Settlement Tickler Diagnostic</strong>
+            <div style={{ color: "#475569", fontSize: 13 }}>
+              Read-only preview of duplicate open settlement payment follow-up ticklers grouped by settlement record, master lawsuit, and due date.  No delete, complete, merge, reopen, rerun, payment, closure, Clio, email, print, queue, or write action is available here.
+            </div>
+          </div>
+          <button
+            type="button"
+            data-barsh-admin-duplicate-settlement-tickler-preview-button="true"
+            onClick={previewDuplicateSettlementTicklers}
+            disabled={duplicateDiagnosticLoading}
+            style={{
+              border: "1px solid #7f1d1d",
+              background: "#ffffff",
+              color: "#7f1d1d",
+              borderRadius: 10,
+              padding: "8px 12px",
+              fontWeight: 800,
+              cursor: duplicateDiagnosticLoading ? "not-allowed" : "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {duplicateDiagnosticLoading ? "Checking..." : "Preview Duplicates"}
+          </button>
+        </div>
+
+        {duplicateDiagnosticResult ? (
+          <div
+            data-barsh-admin-duplicate-settlement-tickler-results="true"
+            style={{ marginTop: 12, borderTop: "1px solid #f1e2b8", paddingTop: 12 }}
+          >
+            {!duplicateDiagnosticResult.ok ? (
+              <p style={{ margin: 0, color: "#991b1b", fontWeight: 700 }}>
+                {duplicateDiagnosticResult.error || "Duplicate diagnostic failed."}
+              </p>
+            ) : (
+              <>
+                <p style={{ margin: "0 0 8px", color: "#7f1d1d", fontWeight: 800 }}>
+                  Found {duplicateDiagnosticResult.duplicateGroupCount || 0} duplicate group(s) from {duplicateDiagnosticResult.checkedCount || 0} checked open settlement payment follow-up tickler(s).  No write performed.
+                </p>
+                {(duplicateDiagnosticResult.duplicateGroups || []).length === 0 ? (
+                  <p style={{ margin: 0, color: "#64748b" }}>No duplicate open settlement payment follow-up ticklers found.</p>
+                ) : (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {(duplicateDiagnosticResult.duplicateGroups || []).map((group: any) => (
+                      <div
+                        key={group.key}
+                        data-barsh-admin-duplicate-settlement-tickler-group="true"
+                        style={{
+                          border: "1px solid #fde68a",
+                          borderRadius: 10,
+                          padding: 10,
+                          background: "#fffbeb",
+                        }}
+                      >
+                        <div style={{ fontWeight: 800 }}>
+                          {group.masterLawsuitId || "No master lawsuit"} / {group.settlementRecordId || "No settlement record"} / Due {group.dueDate || "—"}
+                        </div>
+                        <div style={{ color: "#475569", fontSize: 13, marginTop: 4 }}>
+                          Count: {group.count}.  Retain candidate: {group.retainedCandidateId || "—"}.  Duplicate candidates: {(group.duplicateCandidateIds || []).join(", ") || "—"}.
+                        </div>
+                        <pre
+                          style={{
+                            margin: "8px 0 0",
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word",
+                            fontSize: 12,
+                            background: "#ffffff",
+                            border: "1px solid #f1e2b8",
+                            borderRadius: 8,
+                            padding: 8,
+                            maxHeight: 180,
+                            overflow: "auto",
+                          }}
+                        >
+                          {JSON.stringify(group.ticklers || [], null, 2)}
+                        </pre>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        ) : null}
+      </section>
+
       <div
         data-barsh-admin-tickler-completed-history-controls="true"
         style={{

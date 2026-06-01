@@ -2918,6 +2918,37 @@ function masterSettlementDateFiledValue(): string {
     }
   }
 
+  function formatSettlementTicklerDate(value: unknown): string {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+
+    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) return `${match[2]}/${match[3]}/${match[1]}`;
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return raw;
+
+    return parsed.toLocaleDateString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric",
+    });
+  }
+
+  function masterSettlementPaymentDueFollowUpLabel(): string {
+    if (masterSettlementTicklersLoading) return "Payment Due Follow-Up";
+
+    const ticklers = masterSettlementTicklers?.ok && Array.isArray(masterSettlementTicklers.ticklers)
+      ? masterSettlementTicklers.ticklers
+      : [];
+
+    const firstDueDate = ticklers.length > 0
+      ? formatSettlementTicklerDate(ticklers[0]?.dueDate)
+      : "";
+
+    return firstDueDate ? `Payment Due Follow-Up- ${firstDueDate}` : "Payment Due Follow-Up";
+  }
+
   async function loadMasterSettlementTicklers(settlementRecordId?: string) {
     const masterLawsuitId = currentMasterLawsuitIdForDocumentPreview();
     const query = settlementRecordId
@@ -10394,27 +10425,7 @@ function masterSettlementDateFiledValue(): string {
           <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
             <div>
               <div style={{ fontSize: 18, fontWeight: 800, color: "#172554" }}>Recorded Settlement</div>
-              <div style={{ marginTop: 4, fontSize: 13, color: "#475569" }}>
-                Barsh Matters local settlement readback.  Clio is not the source of truth for this panel.
-              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => void loadMasterSettlementHistory()}
-              disabled={masterSettlementHistoryLoading}
-              style={{
-                border: "1px solid #bfdbfe",
-                background: "#ffffff",
-                color: "#1d4ed8",
-                borderRadius: 999,
-                padding: "8px 12px",
-                fontSize: 12,
-                fontWeight: 800,
-                cursor: masterSettlementHistoryLoading ? "not-allowed" : "pointer",
-              }}
-            >
-              {masterSettlementHistoryLoading ? "Refreshing..." : "Refresh Settlement"}
-            </button>
           </div>
 
           <div
@@ -10433,47 +10444,14 @@ function masterSettlementDateFiledValue(): string {
             }}
           >
             <div>
-              <div style={{ fontSize: 13, fontWeight: 900, color: "#92400e" }}>Payment Due Follow-Up</div>
-              <div style={{ marginTop: 3, fontSize: 12, color: "#78350f" }}>
-                Generic Barsh Matters tickler system.  Settlement payment due is the first tickler kind.
-              </div>
-              <div style={{ marginTop: 6, fontSize: 12, color: "#475569" }}>
-                {masterSettlementTicklersLoading
-                  ? "Loading ticklers..."
-                  : masterSettlementTicklers?.ok && Array.isArray(masterSettlementTicklers.ticklers) && masterSettlementTicklers.ticklers.length > 0
-                    ? `${masterSettlementTicklers.ticklers.length} open payment due follow-up(s): ${masterSettlementTicklers.ticklers.map((tickler: any) => tickler.dueDate || "no due date").join(", ")}`
-                    : masterSettlementTicklers?.ok
-                      ? "No open payment due follow-up tickler yet."
-                      : masterSettlementTicklers?.error || "Ticklers not loaded yet."}
-              </div>
-              {masterSettlementTicklerCreate?.error && (
-                <div style={{ marginTop: 6, fontSize: 12, color: "#991b1b", fontWeight: 800 }}>
-                  {masterSettlementTicklerCreate.error}
-                </div>
+              <div style={{ fontSize: 13, fontWeight: 900, color: "#92400e" }}>{masterSettlementPaymentDueFollowUpLabel()}</div>
+              {!masterSettlementTicklersLoading && masterSettlementTicklers?.ok && Array.isArray(masterSettlementTicklers.ticklers) && masterSettlementTicklers.ticklers.length === 0 && (
+                <div style={{ marginTop: 6, fontSize: 12, color: "#475569" }}>No open payment due follow-up tickler yet.</div>
               )}
-              {masterSettlementTicklerCreate?.duplicatePrevented && (
-                <div style={{ marginTop: 6, fontSize: 12, color: "#166534", fontWeight: 800 }}>
-                  Existing open payment due tickler reused.
-                </div>
+              {!masterSettlementTicklersLoading && masterSettlementTicklers?.error && (
+                <div style={{ marginTop: 6, fontSize: 12, color: "#475569" }}>{masterSettlementTicklers.error}</div>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => void createMasterSettlementPaymentDueTickler(masterSettlementHistory?.activeRecordId)}
-              disabled={masterSettlementTicklerCreateLoading}
-              style={{
-                border: "1px solid #f59e0b",
-                background: "#ffffff",
-                color: "#92400e",
-                borderRadius: 999,
-                padding: "8px 12px",
-                fontSize: 12,
-                fontWeight: 900,
-                cursor: masterSettlementTicklerCreateLoading ? "not-allowed" : "pointer",
-              }}
-            >
-              {masterSettlementTicklerCreateLoading ? "Creating..." : "Create Payment Due Tickler"}
-            </button>
           </div>
           {masterSettlementHistoryLoading && !masterSettlementHistory ? (
             <div style={{ marginTop: 14, color: "#475569", fontSize: 13 }}>Loading local settlement history...</div>

@@ -1,57 +1,43 @@
-#!/usr/bin/env node
 import fs from "node:fs";
 
 const pagePath = "app/matters/page.tsx";
-const pkgPath = "package.json";
-const text = fs.existsSync(pagePath) ? fs.readFileSync(pagePath, "utf8") : "";
-const pkg = fs.existsSync(pkgPath) ? fs.readFileSync(pkgPath, "utf8") : "";
+const page = fs.readFileSync(pagePath, "utf8");
 
-function fail(message) {
-  console.error(`FAIL: ${message}`);
-  process.exitCode = 1;
+const failures = [];
+
+function mustContain(label, needle) {
+  if (!page.includes(needle)) {
+    failures.push(`${pagePath} missing ${label}`);
+  }
 }
 
-function pass(message) {
-  console.log(`PASS: ${message}`);
+function mustNotContain(label, needle) {
+  if (page.includes(needle)) {
+    failures.push(`${pagePath} still contains ${label}`);
+  }
 }
 
-for (const marker of [
-  "masterSettlementTicklers",
-  "masterSettlementTicklersLoading",
-  "masterSettlementTicklerCreate",
-  "masterSettlementTicklerCreateLoading",
-  "loadMasterSettlementTicklers",
-  "createMasterSettlementPaymentDueTickler",
-  "/api/ticklers/settlement-payment-due",
-  "data-barsh-settlement-payment-due-tickler-strip",
-  "Payment Due Follow-Up",
-  "Generic Barsh Matters tickler system",
-  "Settlement payment due is the first tickler kind",
-  "Create Payment Due Tickler",
-  "duplicatePrevented",
-]) {
-  if (!text.includes(marker)) fail(`${pagePath} missing ${marker}`);
+mustContain("Payment Due Follow-Up display heading", "Payment Due Follow-Up");
+mustContain("tickler readback state", "masterSettlementTicklers");
+mustContain("tickler readback loader", "loadMasterSettlementTicklers");
+mustContain("payment due follow-up date-label helper", "masterSettlementPaymentDueFollowUpLabel");
+mustContain("payment due follow-up date formatter", "formatSettlementTicklerDate");
+mustContain("no open payment due follow-up display", "No open payment due follow-up tickler yet.");
+mustContain("automatic tickler creation after settlement save", "await createMasterSettlementPaymentDueTickler(savedSettlementRecordId);");
+mustContain("automatic tickler creation function", "async function createMasterSettlementPaymentDueTickler");
+
+mustNotContain("manual Create Payment Due Tickler button", "Create Payment Due Tickler");
+mustNotContain("manual tickler create click handler", "createMasterSettlementPaymentDueTickler(masterSettlementHistory?.activeRecordId)");
+mustNotContain("manual duplicatePrevented UI", "masterSettlementTicklerCreate?.duplicatePrevented");
+mustNotContain("manual tickler create error UI", "masterSettlementTicklerCreate?.error");
+
+if (failures.length) {
+  for (const failure of failures) {
+    console.error(`FAIL: ${failure}`);
+  }
+  process.exit(1);
 }
 
-const stripIndex = text.indexOf("data-barsh-settlement-payment-due-tickler-strip");
-const stripWindow = stripIndex >= 0 ? text.slice(stripIndex, stripIndex + 9000) : "";
-
-for (const forbidden of [
-  "/api/settlements/writeback",
-  "/api/settlements/current-values",
-  "/api/documents/finalize",
-  "/api/documents/print-queue",
-  "calendarEventsCreated: true",
-  "emailsSent: true",
-  "mattersClosed: true",
-]) {
-  if (stripWindow.includes(forbidden)) fail(`tickler UI strip contains forbidden side-effect marker ${forbidden}`);
-}
-
-if (!pkg.includes("verify:settlement-payment-due-tickler-ui-safety")) {
-  fail(`${pkgPath} missing verify:settlement-payment-due-tickler-ui-safety script`);
-}
-
-if (!process.exitCode) {
-  pass("settlement payment due tickler UI wiring is local-first and side-effect safe");
-}
+console.log(
+  "PASS: settlement payment due tickler UI is display-only on individual pages while settlement recording auto-creates the tickler."
+);

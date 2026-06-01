@@ -151,8 +151,9 @@ export async function POST(req: Request) {
         },
       });
 
-      const ticklers = await tx.localWorkflowTickler.updateMany({
+      const ticklers = await tx.localWorkflowTickler.deleteMany({
         where: {
+          kind: "settlement-payment-due",
           OR: [
             { masterLawsuitId, settlementRecordId: existing.id },
             { settlementRecordId: existing.id },
@@ -161,17 +162,11 @@ export async function POST(req: Request) {
             notIn: ["completed", "voided", "cancelled"],
           },
         },
-        data: {
-          status: "voided",
-          completedAt: new Date(),
-          completedBy: voidedBy,
-          completedNote: `Voided with settlement record ${existing.id}. Reason: ${voidReason}`,
-        },
       });
 
       return {
         updatedRecord,
-        ticklersUpdated: ticklers.count,
+        ticklersDeleted: ticklers.count,
       };
     });
 
@@ -192,7 +187,7 @@ export async function POST(req: Request) {
       counts: {
         settlementRecordsVoided: 1,
         settlementRowsDeleted: 0,
-        workflowTicklersVoided: result.ticklersUpdated,
+        workflowTicklersDeleted: result.ticklersDeleted,
       },
       safety: {
         localOnly: true,
@@ -201,7 +196,7 @@ export async function POST(req: Request) {
         localSettlementRowsPreservedForHistory: true,
       },
       note:
-        "Voided the active local settlement record and related open workflow ticklers only. No Clio records, documents, print queue records, or email records were changed.",
+        "Voided the active local settlement record and deleted related open settlement payment-due ticklers only. No Clio records, documents, print queue records, or email records were changed.",
     });
   } catch (error: any) {
     return NextResponse.json(

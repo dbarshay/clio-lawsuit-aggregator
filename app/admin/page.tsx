@@ -4,6 +4,12 @@ import React from "react";
 
 const adminCards = [
   {
+    label: "Ticklers",
+    href: "/admin/ticklers",
+    description:
+      "Search local Barsh Matters ticklers by type, status, due date, matter, lawsuit, and workflow context.",
+  },
+  {
     label: "Reference Data Import",
     href: "/admin/reference-data",
     description:

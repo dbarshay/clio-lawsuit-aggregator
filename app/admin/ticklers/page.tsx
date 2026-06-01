@@ -440,6 +440,32 @@ export default function AdminTicklersPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#f8fafc", color: "#0f172a", padding: 32 }}>
+      <div
+        data-barsh-admin-tickler-bulk-runner-nav="true"
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          marginBottom: 12,
+        }}
+      >
+        <a
+          href="/admin/ticklers/runner"
+          data-barsh-admin-tickler-bulk-runner-link="true"
+          style={{
+            border: "1px solid #7f1d1d",
+            background: "#7f1d1d",
+            color: "#ffffff",
+            borderRadius: 10,
+            padding: "9px 14px",
+            textDecoration: "none",
+            fontWeight: 800,
+            whiteSpace: "nowrap",
+          }}
+        >
+          Open Bulk Runner
+        </a>
+      </div>
+
       <div style={{ maxWidth: 1220, margin: "0 auto", display: "grid", gap: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
           <div>

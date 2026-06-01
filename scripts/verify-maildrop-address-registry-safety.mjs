@@ -1,85 +1,94 @@
-import fs from "node:fs";
+#!/usr/bin/env node
 
-let failures = 0;
+import fs from "fs";
 
 function read(path) {
   return fs.readFileSync(path, "utf8");
 }
 
-function mustContain(path, text, marker) {
-  if (!text.includes(marker)) {
-    console.error(`FAIL ${path}: missing ${marker}`);
-    failures += 1;
-  } else {
-    console.log(`PASS ${path}: found ${marker}`);
-  }
+let failures = 0;
+
+function pass(message) {
+  console.log(`PASS ${message}`);
 }
 
-function mustNotContain(path, text, marker) {
-  if (text.includes(marker)) {
-    console.error(`FAIL ${path}: must not contain ${marker}`);
-    failures += 1;
-  } else {
-    console.log(`PASS ${path}: does not contain ${marker}`);
+function fail(message) {
+  console.error(`FAIL ${message}`);
+  failures += 1;
+}
+
+function mustContain(label, text, marker) {
+  if (!text.includes(marker)) {
+    fail(`${label}: missing ${marker}`);
+    return;
   }
+  pass(`${label}: found ${marker}`);
+}
+
+function mustNotContain(label, text, marker) {
+  if (text.includes(marker)) {
+    fail(`${label}: must not contain ${marker}`);
+    return;
+  }
+  pass(`${label}: does not contain ${marker}`);
+}
+
+function mustMatch(label, text, regex, description) {
+  if (!regex.test(text)) {
+    fail(`${label}: missing ${description}`);
+    return;
+  }
+  pass(`${label}: found ${description}`);
 }
 
 console.log("=== MAILDROP ADDRESS REGISTRY SAFETY VERIFICATION ===");
 
-const schemaPath = "prisma/schema.prisma";
-const migrationPath = "prisma/migrations/20260519150000_add_maildrop_address_registry/migration.sql";
-const helperPath = "lib/graph/maildropRegistry.ts";
-const discoveryPath = "app/api/graph/maildrop-discovery/route.ts";
-const resolvePath = "app/api/documents/clio-maildrop-resolve/route.ts";
-const packagePath = "package.json";
+const schema = read("prisma/schema.prisma");
+const migration = read("prisma/migrations/20260519150000_add_maildrop_address_registry/migration.sql");
+const registry = read("lib/graph/maildropRegistry.ts");
+const discoveryRoute = read("app/api/graph/maildrop-discovery/route.ts");
+const resolveRoute = read("app/api/documents/clio-maildrop-resolve/route.ts");
+const packageJson = read("package.json");
 
-const schema = read(schemaPath);
-const migration = read(migrationPath);
-const helper = read(helperPath);
-const discovery = read(discoveryPath);
-const resolve = read(resolvePath);
-const pkg = read(packagePath);
+console.log("");
+console.log("=== VERIFY SCHEMA AND MIGRATION ===");
+mustContain("prisma/schema.prisma", schema, "model MaildropAddress");
+mustMatch(
+  "prisma/schema.prisma",
+  schema,
+  /clioMaildropEmail\s+String\??\s+@unique/,
+  "clioMaildropEmail String/String? @unique"
+);
+mustContain("prisma/schema.prisma", schema, "lastResolvedAt");
+mustContain("prisma/schema.prisma", schema, "@@index([masterLawsuitId])");
 
-console.log("\n=== VERIFY SCHEMA AND MIGRATION ===");
-[
-  "model MaildropAddress",
-  "clioMaildropEmail   String   @unique",
-  "lastResolvedAt",
-  "@@index([masterLawsuitId])",
-].forEach((marker) => mustContain(schemaPath, schema, marker));
+mustContain("prisma/migrations/20260519150000_add_maildrop_address_registry/migration.sql", migration, 'CREATE TABLE "MaildropAddress"');
+mustContain("prisma/migrations/20260519150000_add_maildrop_address_registry/migration.sql", migration, 'CREATE UNIQUE INDEX "MaildropAddress_clioMaildropEmail_key"');
+mustContain("prisma/migrations/20260519150000_add_maildrop_address_registry/migration.sql", migration, 'FROM "EmailThread"');
+mustContain("prisma/migrations/20260519150000_add_maildrop_address_registry/migration.sql", migration, "email_thread_backfill");
+mustContain("prisma/migrations/20260519150000_add_maildrop_address_registry/migration.sql", migration, 'ON CONFLICT ("clioMaildropEmail") DO UPDATE');
 
-[
-  'CREATE TABLE "MaildropAddress"',
-  'CREATE UNIQUE INDEX "MaildropAddress_clioMaildropEmail_key"',
-  'FROM "EmailThread"',
-  'email_thread_backfill',
-  'ON CONFLICT ("clioMaildropEmail") DO UPDATE',
-].forEach((marker) => mustContain(migrationPath, migration, marker));
+console.log("");
+console.log("=== VERIFY REGISTRY HELPER ===");
+mustContain("lib/graph/maildropRegistry.ts", registry, "export async function upsertMaildropAddress");
+mustContain("lib/graph/maildropRegistry.ts", registry, "prisma.maildropAddress.upsert");
+mustContain("lib/graph/maildropRegistry.ts", registry, "export async function loadKnownMaildropAddresses");
+mustContain("lib/graph/maildropRegistry.ts", registry, "prisma.maildropAddress.findMany");
+mustContain("lib/graph/maildropRegistry.ts", registry, "prisma.emailThread.findMany");
+mustContain("lib/graph/maildropRegistry.ts", registry, "email_thread_fallback");
 
-console.log("\n=== VERIFY REGISTRY HELPER ===");
-[
-  "export async function upsertMaildropAddress",
-  "prisma.maildropAddress.upsert",
-  "export async function loadKnownMaildropAddresses",
-  "prisma.maildropAddress.findMany",
-  "prisma.emailThread.findMany",
-  "email_thread_fallback",
-].forEach((marker) => mustContain(helperPath, helper, marker));
+console.log("");
+console.log("=== VERIFY DISCOVERY USES REGISTRY HELPER ===");
+mustContain("app/api/graph/maildrop-discovery/route.ts", discoveryRoute, 'import { loadKnownMaildropAddresses } from "@/lib/graph/maildropRegistry";');
+mustContain("app/api/graph/maildrop-discovery/route.ts", discoveryRoute, "return loadKnownMaildropAddresses(limit);");
+mustContain("app/api/graph/maildrop-discovery/route.ts", discoveryRoute, "graph-maildrop-discovery");
 
-console.log("\n=== VERIFY DISCOVERY USES REGISTRY HELPER ===");
-[
-  'import { loadKnownMaildropAddresses } from "@/lib/graph/maildropRegistry";',
-  "return loadKnownMaildropAddresses(limit);",
-  "graph-maildrop-discovery",
-].forEach((marker) => mustContain(discoveryPath, discovery, marker));
-
-console.log("\n=== VERIFY CLIO MAILDROP RESOLVE UPSERTS LOCAL REGISTRY ONLY ===");
-[
-  'import { upsertMaildropAddress } from "@/lib/graph/maildropRegistry";',
-  "await upsertMaildropAddress",
-  'source: "clio_maildrop_resolve"',
-  'route: "/api/documents/clio-maildrop-resolve"',
-].forEach((marker) => mustContain(resolvePath, resolve, marker));
+console.log("");
+console.log("=== VERIFY CLIO MAILDROP RESOLVE UPSERTS LOCAL REGISTRY ONLY ===");
+mustContain("app/api/documents/clio-maildrop-resolve/route.ts", resolveRoute, 'import { upsertMaildropAddress } from "@/lib/graph/maildropRegistry";');
+mustContain("app/api/documents/clio-maildrop-resolve/route.ts", resolveRoute, "await upsertMaildropAddress");
+mustContain("app/api/documents/clio-maildrop-resolve/route.ts", resolveRoute, 'source: "clio_maildrop_resolve"');
+mustContain("app/api/documents/clio-maildrop-resolve/route.ts", resolveRoute, 'route: "/api/documents/clio-maildrop-resolve"');
 
 [
   "createDraft",
@@ -90,15 +99,18 @@ console.log("\n=== VERIFY CLIO MAILDROP RESOLVE UPSERTS LOCAL REGISTRY ONLY ==="
   "uploadDocument",
   "clioDocumentUpload",
   "settlementClioWriteback",
-].forEach((marker) => mustNotContain(helperPath, helper, marker));
+].forEach((marker) => mustNotContain("lib/graph/maildropRegistry.ts", registry, marker));
 
-console.log("\n=== VERIFY PACKAGE SCRIPT REGISTRATION ===");
-mustContain(packagePath, pkg, "verify:maildrop-address-registry-safety");
+console.log("");
+console.log("=== VERIFY PACKAGE SCRIPT REGISTRATION ===");
+mustContain("package.json", packageJson, "verify:maildrop-address-registry-safety");
 
 if (failures > 0) {
   console.error(`\n=== MAILDROP ADDRESS REGISTRY SAFETY FAILED: ${failures} failure(s) ===`);
   process.exit(1);
 }
 
-console.log("\n=== MAILDROP ADDRESS REGISTRY SAFETY PASSED ===");
-console.log("MailDrop registry stores local MailDrop metadata for discovery without draft creation, email sending, Clio writes, or document uploads.");
+console.log("");
+console.log("=== MAILDROP ADDRESS REGISTRY SAFETY PASSED ===");
+console.log("MailDrop registry schema, migration, helper, discovery usage, and Clio MailDrop resolve upsert behavior are verified.");
+console.log("No draft creation, email sending, Clio document upload, or settlement writeback is wired through the MailDrop registry helper.");

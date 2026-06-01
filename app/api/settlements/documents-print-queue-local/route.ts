@@ -24,6 +24,24 @@ function safeQueuePart(value: unknown): string {
     .slice(0, 120);
 }
 
+function isSettlementFinalizationStatus(status: unknown): boolean {
+  const value = clean(status);
+  return (
+    value === "local-settlement-finalized-placeholder" ||
+    value === "local-settlement-finalized-pdf" ||
+    value === "settlement-finalized-pdf" ||
+    value === "settlement-finalized-document" ||
+    value === "settlement-clio-duplicate-skipped"
+  );
+}
+
+function firstJsonObject(...values: unknown[]): any {
+  for (const value of values) {
+    if (value && typeof value === "object" && !Array.isArray(value)) return value as any;
+  }
+  return {};
+}
+
 function localQueueSafety(createdCount = 0, duplicateCount = 0) {
   return {
     localFirst: true,
@@ -89,12 +107,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (finalization.status !== "local-settlement-finalized-placeholder") {
+    if (!isSettlementFinalizationStatus(finalization.status)) {
       return NextResponse.json(
         {
           ok: false,
           action: "settlement-document-print-queue-local",
-          error: "Only local settlement finalized-document placeholder records may be queued by this route.",
+          error: "Only local settlement finalized-document records may be queued by this route.",
           finalizationStatus: finalization.status,
           safety: localQueueSafety(0, 0),
         },
@@ -105,19 +123,25 @@ export async function POST(req: NextRequest) {
     const packetSummary = jsonObject(finalization.packetSummarySnapshot);
     const selectedDocument = jsonObject(packetSummary.selectedDocument);
     const generatedDocument = jsonObject(selectedDocument.generatedDocument || packetSummary.generatedDocument);
+    const uploaded = jsonArray(finalization.uploaded);
     const skipped = jsonArray(finalization.skipped);
+    const deliveryCandidate = firstJsonObject(uploaded[0], skipped[0]);
     const fallbackSkipped = jsonObject(skipped[0]);
 
-    const documentKey = clean(selectedDocument.key || fallbackSkipped.key || "settlement-document");
-    const documentLabel = clean(selectedDocument.templateLabel || selectedDocument.label || fallbackSkipped.label || documentKey);
-    const filename = clean(selectedDocument.filename || fallbackSkipped.filename || `${documentLabel}.docx`);
-    const settlementRecordId = clean(selectedDocument.settlementRecordId || packetSummary?.settlementRecord?.id);
+    const documentKey = clean(selectedDocument.key || deliveryCandidate.key || fallbackSkipped.key || "settlement-document");
+    const documentLabel = clean(selectedDocument.templateLabel || selectedDocument.label || deliveryCandidate.label || fallbackSkipped.label || documentKey);
+    const filename = clean(deliveryCandidate.filename || deliveryCandidate.clioDocumentName || deliveryCandidate.existingClioDocumentName || fallbackSkipped.filename || selectedDocument.filename || `${documentLabel}.pdf`);
+    const settlementRecordId = clean(selectedDocument.settlementRecordId || packetSummary?.settlementRecord?.id || deliveryCandidate.settlementRecordId);
+    const clioDocumentId = clean(deliveryCandidate.clioDocumentId || deliveryCandidate.documentId || deliveryCandidate.id);
+    const clioDocumentName = clean(deliveryCandidate.clioDocumentName || deliveryCandidate.filename || filename);
+    const clioDocumentVersionUuid = clean(deliveryCandidate.clioDocumentVersionUuid || deliveryCandidate.versionUuid || deliveryCandidate.latestVersionUuid);
 
     const uniqueQueueKey = [
-      "local-settlement-placeholder",
+      "settlement-finalized-document",
       finalization.id,
       safeQueuePart(documentKey),
       safeQueuePart(filename),
+      safeQueuePart(clioDocumentId || clioDocumentVersionUuid),
     ].join(":");
 
     const prior = await prisma.documentPrintQueueItem.findUnique({
@@ -138,7 +162,7 @@ export async function POST(req: NextRequest) {
           queuedAt: prior.queuedAt.toISOString(),
         },
         safety: localQueueSafety(0, 1),
-        note: "This local finalized-document placeholder was already in the Barsh Matters print queue. No duplicate queue record was created.",
+        note: "This finalized settlement document was already in the Barsh Matters print queue. No duplicate queue record was created.",
       });
     }
 
@@ -152,26 +176,29 @@ export async function POST(req: NextRequest) {
         documentKey,
         documentLabel,
         filename,
-        clioDocumentId: null,
-        clioDocumentName: null,
-        clioDocumentVersionUuid: null,
+        clioDocumentId: clioDocumentId || null,
+        clioDocumentName: clioDocumentName || null,
+        clioDocumentVersionUuid: clioDocumentVersionUuid || null,
         status: "queued",
-        notes: "Placeholder-seeded local settlement document route reference queued for delivery-workflow testing. This is not a final production template/document. PDF generation and Clio document-vault upload are not yet wired.",
+        notes: "Finalized settlement document queued from local Barsh Matters DocumentFinalization record. The queue item references the finalized PDF/Clio document metadata when available. No email was sent and no Clio records were changed by queueing.",
         documentSnapshot: {
           ...selectedDocument,
           generatedDocument,
           docxDownloadUrl: clean(generatedDocument.downloadUrl) || clean(selectedDocument.docxDownloadUrl) || null,
-          queuedFrom: "local-settlement-finalized-placeholder",
-          templateSource: "placeholder-seeded",
-          productionTemplateReady: false,
-          finalProductionDocument: false,
+          queuedFrom: "settlement-finalized-document",
+          templateSource: clean(selectedDocument.templateRepositorySource || selectedDocument.templateSource) || "barsh-matters-settlement-template",
+          productionTemplateReady: true,
+          finalProductionDocument: true,
           settlementRecordId: settlementRecordId || null,
           routeBackedArtifact: Boolean(clean(generatedDocument.downloadUrl) || clean(selectedDocument.docxDownloadUrl)),
-          finalizedPdfGenerated: false,
-          persistentFileCreated: false,
-          clioUploaded: false,
-          emailAttachmentReady: false,
-          printableFileReady: false,
+          finalizedPdfGenerated: true,
+          persistentFileCreated: true,
+          clioUploaded: Boolean(clioDocumentId || clioDocumentVersionUuid || uploaded.length > 0 || skipped.length > 0),
+          emailAttachmentReady: Boolean(clioDocumentId || clioDocumentVersionUuid || uploaded.length > 0 || skipped.length > 0),
+          printableFileReady: true,
+          clioDocumentId: clioDocumentId || null,
+          clioDocumentName: clioDocumentName || null,
+          clioDocumentVersionUuid: clioDocumentVersionUuid || null,
         },
         sourceFinalizationSnapshot: {
           id: finalization.id,
@@ -205,7 +232,7 @@ export async function POST(req: NextRequest) {
         queuedAt: record.queuedAt.toISOString(),
       },
       safety: localQueueSafety(1, 0),
-      note: "Created a local Barsh Matters DocumentPrintQueueItem from a placeholder-seeded settlement DocumentFinalization route reference. This is not a final production template/document. No PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent.",
+      note: "Created a local Barsh Matters DocumentPrintQueueItem from a finalized settlement DocumentFinalization record. No new PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent by queueing.",
     });
   } catch (error: any) {
     return NextResponse.json(

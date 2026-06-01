@@ -25,14 +25,31 @@ check("old preview false guard removed", !page.includes('{false && masterDocumen
 check("old edit false guard removed", !page.includes('{false && masterDocumentWorkflowStage === "edit"'));
 check("preview copy no longer says placeholder state", !page.includes("no PDF or final file is generated in this placeholder state"));
 check("edit copy no longer says no Word integration is faked", !page.includes("No Word integration is faked here"));
-check("delivery still exposes Email Document", page.includes('actionButton("Email Document"'));
-check("delivery still exposes Print Document", page.includes('actionButton("Print Document"'));
 check(
-  "delivery still exposes Send to Print Queue",
+  "settlement delivery exposes Email Finalized Document",
+  page.includes("Email Finalized Document") &&
+    page.includes("launchSettlementFinalizedDocumentEmail")
+);
+check(
+  "settlement delivery exposes Print Finalized Document",
+  page.includes('"Print Finalized Document"') &&
+    page.includes("launchMasterDocumentPrint")
+);
+check(
+  "settlement delivery exposes Send to Print Queue",
   page.includes('"Send to Print Queue"') &&
     page.includes("sendMasterDocumentToPrintQueue")
 );
-check("print queue copy accurately says backend not yet writing records", page.includes("not yet writing queue records"));
+check(
+  "settlement delivery copy reflects finalized local delivery contract",
+  page.includes("Settlement delivery now uses the local settlement finalization record created in Step 2.") &&
+    page.includes("Send to Print Queue writes a local Barsh Matters print-queue item only.") &&
+    page.includes("Email Finalized Document creates a Microsoft Graph / Outlook draft")
+);
+check(
+  "settlement document delivery does not expose temporary void shortcut",
+  !page.slice(page.indexOf("Settlement delivery now uses the local settlement finalization record created in Step 2.") - 2500, page.indexOf("Settlement delivery now uses the local settlement finalization record created in Step 2.") + 1200).includes("Temporary Void Settlement")
+);
 
 check("document picker matches displayed settlement options", page.includes("const match = displayedTemplateOptions.find"));
 check("document picker has explicit Continue action", page.includes('"Continue"') && page.includes("Continue to preview or edit the selected document."));

@@ -33,6 +33,22 @@ function formatMoney(value: unknown): string {
   });
 }
 
+function firstMoney(...values: unknown[]): number {
+  for (const value of values) {
+    const n = money(value);
+    if (n !== 0) return n;
+  }
+  return 0;
+}
+
+function firstText(...values: unknown[]): string {
+  for (const value of values) {
+    const text = clean(value);
+    if (text) return text;
+  }
+  return "";
+}
+
 function safeFilePart(value: unknown, maxLength = 120): string {
   return clean(value)
     .replace(/[\/\\:*?"<>|#%{}~&]/g, "-")
@@ -172,19 +188,19 @@ function makeTotalsTable(summary: any) {
       }),
       new TableRow({
         children: [
-          tableCell(formatMoney(summary?.settledAmountTotal), {
+          tableCell(formatMoney(firstMoney(summary?.settledAmountTotal, summary?.principal, summary?.allocatedSettlementTotal, summary?.grossSettlementAmount)), {
             align: AlignmentType.RIGHT,
             width: 25,
           }),
-          tableCell(formatMoney(summary?.interestAmountTotal), {
+          tableCell(formatMoney(firstMoney(summary?.interestAmountTotal, summary?.interest)), {
             align: AlignmentType.RIGHT,
             width: 25,
           }),
-          tableCell(formatMoney(summary?.totalFeeTotal), {
+          tableCell(formatMoney(firstMoney(summary?.totalFeeTotal, summary?.attorneyFee)), {
             align: AlignmentType.RIGHT,
             width: 25,
           }),
-          tableCell(formatMoney(summary?.providerNetTotal), {
+          tableCell(formatMoney(firstMoney(summary?.providerNetTotal, summary?.providerNet)), {
             align: AlignmentType.RIGHT,
             width: 25,
           }),
@@ -200,19 +216,19 @@ function makeTotalsTable(summary: any) {
       }),
       new TableRow({
         children: [
-          tableCell(formatMoney(summary?.allocatedSettlementTotal), {
+          tableCell(formatMoney(firstMoney(summary?.allocatedSettlementTotal, summary?.principal, summary?.grossSettlementAmount)), {
             align: AlignmentType.RIGHT,
             width: 25,
           }),
-          tableCell(formatMoney(summary?.principalFeeTotal), {
+          tableCell(formatMoney(firstMoney(summary?.principalFeeTotal, summary?.attorneyFee)), {
             align: AlignmentType.RIGHT,
             width: 25,
           }),
-          tableCell(formatMoney(summary?.interestFeeTotal), {
+          tableCell(formatMoney(firstMoney(summary?.interestFeeTotal)), {
             align: AlignmentType.RIGHT,
             width: 25,
           }),
-          tableCell(summary?.childMatterCount, {
+          tableCell(summary?.childMatterCount ?? summary?.rowCount, {
             align: AlignmentType.RIGHT,
             width: 25,
           }),
@@ -244,16 +260,16 @@ function makeMatterTable(rows: any[]) {
         children: [
           tableCell(row?.displayNumber || row?.matterId, { width: 14 }),
           tableCell(row?.billNumber, { width: 14 }),
-          tableCell(row?.settledWith, { width: 18 }),
-          tableCell(formatMoney(row?.settledAmount), {
+          tableCell(firstText(row?.settledWith, row?.settlementWith, row?.settledWithName), { width: 18 }),
+          tableCell(formatMoney(firstMoney(row?.settledAmount, row?.principal, row?.allocatedSettlement)), {
             align: AlignmentType.RIGHT,
             width: 13,
           }),
-          tableCell(formatMoney(row?.interestAmount), {
+          tableCell(formatMoney(firstMoney(row?.interestAmount, row?.interest)), {
             align: AlignmentType.RIGHT,
             width: 13,
           }),
-          tableCell(formatMoney(row?.totalFee), {
+          tableCell(formatMoney(firstMoney(row?.totalFee, row?.attorneyFee)), {
             align: AlignmentType.RIGHT,
             width: 13,
           }),

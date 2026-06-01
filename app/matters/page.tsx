@@ -6851,23 +6851,6 @@ function masterSettlementDateFiledValue(): string {
                       >
                         Email Finalized Document
                       </button>
-                      <button
-                        onClick={() => void openTemporaryNoPasswordVoidSettlementFlow()}
-                        type="button"
-                        disabled={masterSettlementVoidLoading || !activeMasterSettlementRecordForVoid()?.id}
-                        title="Temporary local-development shortcut: void the active local settlement without the administrator password gate.  Does not require password, reason, or typed confirm."
-                        style={{
-                          border: "1px solid #f97316",
-                          background: masterSettlementVoidLoading || !activeMasterSettlementRecordForVoid()?.id ? "#f8fafc" : "#fff7ed",
-                          color: masterSettlementVoidLoading || !activeMasterSettlementRecordForVoid()?.id ? "#94a3b8" : "#9a3412",
-                          borderRadius: 999,
-                          padding: "10px 14px",
-                          fontWeight: 900,
-                          cursor: masterSettlementVoidLoading || !activeMasterSettlementRecordForVoid()?.id ? "not-allowed" : "pointer",
-                        }}
-                      >
-                        {masterSettlementVoidLoading ? "Voiding..." : "Temporary Void Settlement"}
-                      </button>
                       {masterSettlementEmailNotice && (
                         <div
                           style={{
@@ -6912,7 +6895,7 @@ function masterSettlementDateFiledValue(): string {
                         lineHeight: 1.45,
                       }}
                     >
-                      Settlement delivery now uses the local settlement finalization record created in Step 2.  Save Locally opens the generated DOCX route for desktop saving.  Print Finalized Document opens a local printable view and launches the browser print dialog.  Send to Print Queue writes a local Barsh Matters print-queue item only.  Email Finalized Document creates a Microsoft Graph / Outlook draft using the finalized PDF stored in the mapped master Clio matter Documents tab.  Review and edit the draft in Outlook before sending.  Temporary Void Settlement is a local-development shortcut only; it bypasses the administrator password gate, reason prompt, and typed confirmation while still using the local-only safe void route.
+                      Settlement delivery now uses the local settlement finalization record created in Step 2.  Save Locally opens the generated DOCX route for desktop saving.  Print Finalized Document opens a local printable view and launches the browser print dialog.  Send to Print Queue writes a local Barsh Matters print-queue item only.  Email Finalized Document creates a Microsoft Graph / Outlook draft using the finalized PDF stored in the mapped master Clio matter Documents tab.  Review and edit the draft in Outlook before sending.
                     </div>
                   </div>
                 ) : (
@@ -6997,11 +6980,6 @@ function masterSettlementDateFiledValue(): string {
                 {masterDocumentPrintQueueResult?.printQueueItem?.filename && (
                   <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
                     Queue filename: <strong>{masterDocumentPrintQueueResult.printQueueItem.filename}</strong>
-                  </p>
-                )}
-                {masterDocumentPrintQueueResult?.printQueueItem?.docxDownloadUrl && (
-                  <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
-                    Queued placeholder DOCX route: <strong></strong>
                   </p>
                 )}
               </section>

@@ -16,14 +16,14 @@ function check(label, condition) {
 }
 
 check("print result state exists", page.includes("masterDocumentPrintResult"));
-check("settlement print uses generated DOCX URL", page.includes("settlement-document-docx-open-for-print"));
-check("print reads generatedDocument downloadUrl", page.includes("masterDocumentFinalizationResult?.generatedDocument?.downloadUrl"));
-check("print opens docx route", page.includes("window.open(docxDownloadUrl"));
-check("print warns to finalize first", page.includes("Finalize the settlement document before opening the generated DOCX route."));
-check("print success panel exists", page.includes("DOCX Route Opened"));
-check("print success copy avoids fake PDF", page.includes("The placeholder-seeded generated DOCX route was opened.  This is not a final production template/document.  No PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent."));
-check("opened placeholder DOCX route displayed", page.includes("Opened placeholder DOCX route"));
-check("existing Print Document button still present", page.includes('"Print Document"') && page.includes("launchMasterDocumentPrint"));
+check("settlement print uses local finalized-document print route", page.includes("/api/settlements/documents-print-local?finalizationId="));
+check("settlement print requires finalization record id", page.includes("masterDocumentFinalizationResult?.finalizationRecord?.id"));
+check("settlement print opens printable route", page.includes("window.open(printableUrl"));
+check("print warns to finalize first", page.includes("Finalize the settlement document before opening the print dialog."));
+check("print success panel exists", page.includes("masterDocumentPrintResult"));
+check("print success copy reflects local printable view", page.includes("Opened a local printable settlement document view and launched the browser print dialog."));
+check("settlement print action marker exists", page.includes('action: "settlement-document-print-dialog-opened"'));
+check("Print Finalized Document button present", page.includes('"Print Finalized Document"') && page.includes("launchMasterDocumentPrint"));
 check("package verifier script registered", pkg.includes("verify:settlement-document-print-docx-route-ui-safety"));
 
 check("does not add Clio upload from print", !page.includes("uploadDocumentToClio"));

@@ -20,6 +20,17 @@ function escapeHtml(value: unknown): string {
     .replace(/"/g, "&quot;");
 }
 
+function isSettlementFinalizationStatus(status: unknown): boolean {
+  const value = clean(status);
+  return (
+    value === "local-settlement-finalized-placeholder" ||
+    value === "local-settlement-finalized-pdf" ||
+    value === "settlement-finalized-pdf" ||
+    value === "settlement-finalized-document" ||
+    value === "settlement-clio-duplicate-skipped"
+  );
+}
+
 function money(value: unknown): string {
   const n = Number(value);
   if (!Number.isFinite(n)) return clean(value) || "—";
@@ -59,22 +70,29 @@ export async function GET(req: NextRequest) {
       return new NextResponse(`No DocumentFinalization record exists with id ${finalizationId}.`, { status: 404 });
     }
 
-    if (finalization.status !== "local-settlement-finalized-placeholder") {
-      return new NextResponse("Only local settlement finalized-document placeholder records may be printed by this route.", { status: 400 });
+    if (!isSettlementFinalizationStatus(finalization.status)) {
+      return new NextResponse("Only local settlement finalized-document records may be printed by this route.", { status: 400 });
     }
 
     const packet = jsonObject(finalization.packetSummarySnapshot);
     const selected = jsonObject(packet.selectedDocument);
     const settlement = jsonObject(packet.settlementRecord);
     const generated = jsonObject(packet.generatedDocument || selected.generatedDocument);
+    const uploaded = Array.isArray(finalization.uploaded) ? finalization.uploaded : [];
+    const skipped = Array.isArray(finalization.skipped) ? finalization.skipped : [];
+    const finalizedCandidate = jsonObject(
+      (uploaded[0] && typeof uploaded[0] === "object" ? uploaded[0] : null) ||
+      (skipped[0] && typeof skipped[0] === "object" ? skipped[0] : null) ||
+      {}
+    );
 
     const title =
-      clean(selected.templateLabel || selected.label || selected.key) ||
+      clean(selected.templateLabel || selected.label || selected.key || finalizedCandidate.label) ||
       "Settlement Document";
 
     const filename =
-      clean(selected.filename || generated.filename) ||
-      `${title}.docx`;
+      clean(finalizedCandidate.filename || finalizedCandidate.clioDocumentName || finalizedCandidate.existingClioDocumentName || selected.filename || generated.filename) ||
+      `${title}.pdf`;
 
     const html = `<!doctype html>
 <html>
@@ -203,7 +221,7 @@ export async function GET(req: NextRequest) {
   <main class="page">
     <h1>${escapeHtml(title)}</h1>
     <div class="subtitle">
-      Printable local Barsh Matters settlement document generated from DocumentFinalization ID ${escapeHtml(finalization.id)}.
+      Printable finalized Barsh Matters settlement document generated from DocumentFinalization ID ${escapeHtml(finalization.id)}.
     </div>
 
     <section class="section">

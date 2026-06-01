@@ -4348,40 +4348,46 @@ function masterSettlementDateFiledValue(): string {
         return;
       }
 
-      const docxDownloadUrl =
-        masterDocumentFinalizationResult?.generatedDocument?.downloadUrl ||
-        masterDocumentFinalizationResult?.selectedDocument?.generatedDocument?.downloadUrl ||
-        masterDocumentFinalizationResult?.selectedDocument?.docxDownloadUrl ||
-        "";
+      const selectedCandidate =
+        masterDocumentFinalizationResult?.deliveryCandidate ||
+        masterDocumentFinalizationResult?.finalizedDocument ||
+        masterDocumentFinalizationResult?.uploaded?.[0] ||
+        masterDocumentFinalizationResult?.skipped?.[0] ||
+        masterDocumentFinalizationResult?.selectedDocument ||
+        null;
 
-      if (!docxDownloadUrl) {
-        alert("The finalized settlement document does not expose a local save/download route.");
+      const finalizedPdfDownloadUrl = selectedCandidate
+        ? selectedFinalizedDocumentUrl(selectedCandidate, "download")
+        : "";
+
+      if (!finalizedPdfDownloadUrl) {
+        alert("The finalized settlement PDF does not expose a local save/download route.");
         return;
       }
 
+      const finalizedPdfFilename =
+        selectedCandidate?.filename ||
+        selectedCandidate?.clioDocumentName ||
+        selectedCandidate?.existingClioDocumentName ||
+        masterDocumentFinalizationResult?.pdfFilename ||
+        context.documentLabel ||
+        "Settlement Document.pdf";
+
       const downloadLink = document.createElement("a");
-      downloadLink.href = docxDownloadUrl;
+      downloadLink.href = finalizedPdfDownloadUrl;
       downloadLink.target = "_blank";
       downloadLink.rel = "noopener noreferrer";
-      downloadLink.download =
-        masterDocumentFinalizationResult?.generatedDocument?.filename ||
-        masterDocumentFinalizationResult?.selectedDocument?.filename ||
-        context.documentLabel ||
-        "Settlement Document.docx";
+      downloadLink.download = finalizedPdfFilename;
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
 
       setMasterDocumentPrintResult({
         ok: true,
-        action: "settlement-document-save-local-opened",
+        action: "settlement-document-finalized-pdf-save-local-opened",
         documentLabel: context.documentLabel,
-        filename:
-          masterDocumentFinalizationResult?.generatedDocument?.filename ||
-          masterDocumentFinalizationResult?.selectedDocument?.filename ||
-          context.documentLabel ||
-          "",
-        docxDownloadUrl,
+        filename: finalizedPdfFilename,
+        finalizedPdfDownloadUrl,
         finalizationId,
         finalizedPdfGenerated: false,
         printablePdfReady: false,
@@ -6103,11 +6109,6 @@ function masterSettlementDateFiledValue(): string {
               <h2 style={{ margin: 0, fontSize: 22 }}>
                 {isSettlementDocumentMode ? "Settlement Document Generation" : "Document Generation"}
               </h2>
-              <p style={{ margin: "8px 0 0", color: "#475569", lineHeight: 1.45 }}>
-                {isSettlementDocumentMode
-                  ? "Select a settlement document, preview or edit it, then finalize.  This settlement path reads Barsh Matters local settlement records only.  It does not use Clio as the settlement source of truth."
-                  : "Select a document, preview the PDF, edit in Word if needed, or finalize directly to the mapped master Clio matter.  Delivery options are available after finalization."}
-              </p>
             </div>
             <button
               type="button"
@@ -6800,55 +6801,6 @@ function masterSettlementDateFiledValue(): string {
               </section>
             )}
 
-            {masterDocumentWorkflowStage === "delivery" && masterDocumentFinalizationResult && (
-              <section
-                style={{
-                  border: masterDocumentFinalizationResult.ok ? "1px solid #86efac" : "1px solid #fecaca",
-                  borderRadius: 18,
-                  padding: 18,
-                  background: masterDocumentFinalizationResult.ok ? "#f0fdf4" : "#fef2f2",
-                  display: "grid",
-                  gap: 8,
-                }}
-              >
-                <h3 style={{ margin: 0, fontSize: 18 }}>
-                  {masterDocumentFinalizationResult.ok ? "Finalization Record Created" : "Local Finalization Failed"}
-                </h3>
-                <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
-                  {masterDocumentFinalizationResult.ok
-                    ? isSettlementDocumentMode
-                      ? `DocumentFinalization ID ${masterDocumentFinalizationResult.finalizationRecord?.id || "created"} was saved locally.  Uploaded to Clio: ${Array.isArray(masterDocumentFinalizationResult.uploaded) ? masterDocumentFinalizationResult.uploaded.length : 0} document(s).  Skipped duplicates: ${Array.isArray(masterDocumentFinalizationResult.skipped) ? masterDocumentFinalizationResult.skipped.length : 0} document(s).  No Outlook draft was created, no email was sent, and no print queue record was written.`
-                      : `DocumentFinalization ID ${masterDocumentFinalizationResult.finalizationRecord?.id || "created"} was saved locally for this finalization/upload attempt.  Uploaded and skipped document results are shown above.  No Outlook draft was created, no email was sent, and no print queue record was written.`
-                    : masterDocumentFinalizationResult.error || "Master document finalization failed."}
-                </p>
-                {masterDocumentFinalizationResult?.selectedDocument?.filename && (
-                  <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
-                    Planned filename: <strong>{masterDocumentFinalizationResult.selectedDocument.filename}</strong>
-                  </p>
-                )}
-                {isSettlementDocumentMode && masterDocumentFinalizationResult?.clioUploadTarget?.displayNumber && (
-                  <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
-                    Uploaded finalized PDF to mapped Clio matter: <strong>{masterDocumentFinalizationResult.clioUploadTarget.displayNumber}</strong>
-                  </p>
-                )}
-                {Array.isArray(masterDocumentFinalizationResult?.uploaded) && masterDocumentFinalizationResult.uploaded.length > 0 && (
-                  <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
-                    Clio document: <strong>{masterDocumentFinalizationResult.uploaded.map((doc: any) => doc?.filename || doc?.clioDocumentName).filter(Boolean).join(", ")}</strong>
-                  </p>
-                )}
-                {Array.isArray(masterDocumentFinalizationResult?.skipped) && masterDocumentFinalizationResult.skipped.length > 0 && (
-                  <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
-                    Clio duplicate skipped: <strong>{masterDocumentFinalizationResult.skipped.map((doc: any) => doc?.filename || doc?.existingClioDocumentName).filter(Boolean).join(", ")}</strong>
-                  </p>
-                )}
-                {masterDocumentFinalizationResult?.generatedDocument?.downloadUrl && (
-                  <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
-                    Placeholder DOCX route ready: <strong>{masterDocumentFinalizationResult.generatedDocument.downloadUrl}</strong>
-                  </p>
-                )}
-              </section>
-            )}
-
             {masterDocumentWorkflowStage === "delivery" && (
               <section
                 style={{
@@ -6863,9 +6815,6 @@ function masterSettlementDateFiledValue(): string {
                 <div>
                   <h3 style={{ margin: 0, fontSize: 18 }}>Document Delivery</h3>
                   <span style={{ display: "none" }}>Document Delivery — Standalone</span>
-                  <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
-                    Delivery actions will be enabled after the finalized-document email, print, and queue workflows are wired.  Master/Lawsuit final upload to Clio is now handled in Step 3.
-                  </p>
                 </div>
                 {isSettlementDocumentMode ? (
                   <div
@@ -6887,7 +6836,7 @@ function masterSettlementDateFiledValue(): string {
                         masterDocumentPrintQueueLoading || !masterDocumentFinalizationResult?.finalizationRecord?.id
                       )}
                       {actionButton(
-                        "Save Locally",
+                        "Save Finalized PDF",
                         () => saveMasterSettlementDocumentLocally(displayedSelectedTemplate),
                         !masterDocumentFinalizationResult?.finalizationRecord?.id
                       )}
@@ -6899,17 +6848,17 @@ function masterSettlementDateFiledValue(): string {
                       <button
                         onClick={() => void launchSettlementFinalizedDocumentEmail()}
                         type="button"
-                       
                         disabled={!masterDocumentFinalizationResult?.finalizationRecord?.id}
                         title="Create an Outlook draft with the finalized settlement PDF attached from the mapped master Clio matter."
                         style={{
-                          border: "1px solid #cbd5e1",
-                          background: masterDocumentFinalizationResult?.finalizationRecord?.id ? "#ecfdf5" : "#f8fafc",
-                          color: masterDocumentFinalizationResult?.finalizationRecord?.id ? "#166534" : "#94a3b8",
-                          borderRadius: 999,
-                          padding: "10px 14px",
-                          fontWeight: 850,
+                          border: "none",
+                          background: masterDocumentFinalizationResult?.finalizationRecord?.id ? "#4f46e5" : "#c7d2fe",
+                          color: "#fff",
+                          borderRadius: 14,
+                          padding: "12px 16px",
+                          fontWeight: 900,
                           cursor: masterDocumentFinalizationResult?.finalizationRecord?.id ? "pointer" : "not-allowed",
+                          boxShadow: "0 10px 25px rgba(79,70,229,0.18)",
                         }}
                       >
                         Email Finalized Document
@@ -6930,35 +6879,6 @@ function masterSettlementDateFiledValue(): string {
                           {masterSettlementEmailNotice}
                         </div>
                       )}
-                      {masterSettlementVoidNotice && (
-                        <div
-                          style={{
-                            marginTop: 10,
-                            border: masterSettlementVoidNotice.toLowerCase().includes("failed") ? "1px solid #fecaca" : "1px solid #bbf7d0",
-                            background: masterSettlementVoidNotice.toLowerCase().includes("failed") ? "#fef2f2" : "#f0fdf4",
-                            color: masterSettlementVoidNotice.toLowerCase().includes("failed") ? "#991b1b" : "#166534",
-                            borderRadius: 12,
-                            padding: "10px 12px",
-                            fontWeight: 800,
-                            fontSize: 13,
-                          }}
-                        >
-                          {masterSettlementVoidNotice}
-                        </div>
-                      )}
-                    </div>
-                    <div
-                      style={{
-                        border: "1px solid #bbf7d0",
-                        background: "#f0fdf4",
-                        color: "#166534",
-                        borderRadius: 14,
-                        padding: 14,
-                        fontWeight: 800,
-                        lineHeight: 1.45,
-                      }}
-                    >
-                      Settlement delivery now uses the local settlement finalization record created in Step 2.  Save Locally opens the generated DOCX route for desktop saving.  Print Finalized Document opens a local printable view and launches the browser print dialog.  Send to Print Queue writes a local Barsh Matters print-queue item only.  Email Finalized Document creates a Microsoft Graph / Outlook draft using the finalized PDF stored in the mapped master Clio matter Documents tab.  Review and edit the draft in Outlook before sending.
                     </div>
                   </div>
                 ) : (
@@ -6992,8 +6912,8 @@ function masterSettlementDateFiledValue(): string {
               >
                 <h3 style={{ margin: 0, fontSize: 18 }}>
                   {masterDocumentPrintResult.ok
-                    ? masterDocumentPrintResult.action === "settlement-document-save-local-opened"
-                      ? "Save Locally Opened"
+                    ? masterDocumentPrintResult.action === "settlement-document-finalized-pdf-save-local-opened"
+                      ? "Finalized PDF Save Opened"
                       : masterDocumentPrintResult.action === "settlement-document-print-dialog-opened" || masterDocumentPrintResult.action === "settlement-document-finalized-pdf-print-opened"
                         ? "Print Dialog Opened"
                         : "DOCX Route Opened"
@@ -7001,8 +6921,8 @@ function masterSettlementDateFiledValue(): string {
                 </h3>
                 <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
                   {masterDocumentPrintResult.ok
-                    ? masterDocumentPrintResult.action === "settlement-document-save-local-opened"
-                      ? "The generated DOCX route was opened so the user can save the settlement document locally.  No PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent."
+                    ? masterDocumentPrintResult.action === "settlement-document-finalized-pdf-save-local-opened"
+                      ? "The finalized settlement PDF from the mapped master Clio matter Documents tab was opened for local saving.  No new PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent."
                       : masterDocumentPrintResult.action === "settlement-document-finalized-pdf-print-opened"
                         ? "The finalized settlement PDF from the mapped master Clio matter Documents tab was opened for printing.  No new PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent."
                         : masterDocumentPrintResult.action === "settlement-document-print-dialog-opened"

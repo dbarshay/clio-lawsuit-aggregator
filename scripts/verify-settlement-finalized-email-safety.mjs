@@ -34,8 +34,8 @@ const checks = [
     ok: page.includes("disabled={!masterDocumentFinalizationResult?.finalizationRecord?.id}"),
   },
   {
-    label: "Step 3 explanatory copy says Microsoft Graph / Outlook draft is created",
-    ok: page.includes("Email Finalized Document creates a Microsoft Graph / Outlook draft"),
+    label: "Step 3 Email Finalized Document button title describes Outlook draft with finalized PDF",
+    ok: page.includes("Create an Outlook draft with the finalized settlement PDF attached from the mapped master Clio matter."),
   },
   {
     label: "duplicate-skipped finalized PDFs expose clioDocumentId alias",

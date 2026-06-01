@@ -183,6 +183,29 @@ const checks = [
 
 
 
+
+  {
+    label: "delivery draft preview route preserves settlement finalized PDF delivery source",
+    ok:
+      fs.readFileSync("app/api/documents/delivery-draft-preview/route.ts", "utf8").includes("normalizeRawSource") &&
+      fs.readFileSync("app/api/documents/delivery-draft-preview/route.ts", "utf8").includes("settlementFinalizedPdfDelivery = rawSource === \"settlement_finalized_pdf_delivery\"") &&
+      fs.readFileSync("app/api/documents/delivery-draft-preview/route.ts", "utf8").includes("source: rawSource"),
+  },
+  {
+    label: "delivery draft preview route exposes top-level settlement attachment plan",
+    ok:
+      fs.readFileSync("app/api/documents/delivery-draft-preview/route.ts", "utf8").includes("const attachmentPlan = attachmentCandidates as any[]") &&
+      fs.readFileSync("app/api/documents/delivery-draft-preview/route.ts", "utf8").includes("attachmentPlan,") &&
+      fs.readFileSync("app/api/documents/delivery-draft-preview/route.ts", "utf8").includes("graphUploadRequired: rawSource === \"settlement_finalized_pdf_delivery\""),
+  },
+  {
+    label: "delivery draft preview route exposes top-level subject and body for settlement finalized email",
+    ok:
+      fs.readFileSync("app/api/documents/delivery-draft-preview/route.ts", "utf8").includes("subject,") &&
+      fs.readFileSync("app/api/documents/delivery-draft-preview/route.ts", "utf8").includes("body: emailBody") &&
+      fs.readFileSync("app/api/documents/delivery-draft-preview/route.ts", "utf8").includes("hasFinalizedSettlementPdfAttachment"),
+  },
+
   {
     label: "settlement finalization route still states no email is created during finalization",
     ok: finalizeRoute.includes("No Outlook draft was created, no email was sent"),

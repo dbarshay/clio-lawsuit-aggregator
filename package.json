@@ -169,7 +169,8 @@
     "verify:populated-reference-dropdown-wiring-safety": "node scripts/verify-populated-reference-dropdown-wiring-safety.mjs",
     "verify:advanced-picklists-local-reference-safety": "node scripts/verify-advanced-picklists-local-reference-safety.mjs",
     "verify:home-advanced-reference-datalists-safety": "node scripts/verify-home-advanced-reference-datalists-safety.mjs",
-    "verify:lawsuit-reference-datalists-safety": "node scripts/verify-lawsuit-reference-datalists-safety.mjs"
+    "verify:lawsuit-reference-datalists-safety": "node scripts/verify-lawsuit-reference-datalists-safety.mjs",
+    "verify:editable-reference-wiring-safety": "node scripts/verify-editable-reference-wiring-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

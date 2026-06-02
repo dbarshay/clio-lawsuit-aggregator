@@ -623,7 +623,7 @@ export default function LawsuitsPage() {
               cursor: !selectedMatters.length || running ? "not-allowed" : "pointer",
             }}
           >
-            {running ? "Working..." : "Create / Extend Lawsuit"}
+            {running ? "Working..." : "Create Lawsuit"}
           </button>
         </aside>
       </div>

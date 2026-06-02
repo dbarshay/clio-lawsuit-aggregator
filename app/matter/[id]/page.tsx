@@ -19,9 +19,17 @@ function money(v: any) {
 }
 
 function formatDate(v?: string) {
-  if (!v) return "";
-  const d = new Date(v);
-  if (isNaN(d.getTime())) return v;
+  const raw = String(v || "").trim();
+  if (!raw) return "";
+
+  const ymd = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (ymd) return `${Number(ymd[2])}/${Number(ymd[3])}/${ymd[1]}`;
+
+  const mdy = raw.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})$/);
+  if (mdy) return `${Number(mdy[1])}/${Number(mdy[2])}/${mdy[3]}`;
+
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return raw;
   return d.toLocaleDateString("en-US");
 }
 
@@ -1881,14 +1889,6 @@ const activeGroupKey =
       const month = dotMatch[1].padStart(2, "0");
       const day = dotMatch[2].padStart(2, "0");
       const year = dotMatch[3];
-      return `${year}-${month}-${day}`;
-    }
-
-    const date = new Date(raw);
-    if (!Number.isNaN(date.getTime())) {
-      const year = String(date.getFullYear());
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
       return `${year}-${month}-${day}`;
     }
 

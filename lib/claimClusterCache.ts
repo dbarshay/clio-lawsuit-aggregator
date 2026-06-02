@@ -1,3 +1,8 @@
+// ClaimClusterCache is a local performance cache only.
+// It is not a source of truth and must not be used for search correctness,
+// lawsuit membership correctness, direct matter display correctness, or Clio hydration.
+// See CLAIMCLUSTER_CACHE_CONTRACT.txt.
+
 import { prisma } from "@/lib/prisma";
 
 const TTL_MS = 2 * 60 * 1000; // 2 minutes

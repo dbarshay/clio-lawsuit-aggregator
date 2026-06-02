@@ -1,0 +1,27 @@
+CLAIMCLUSTER_CACHE_CONTRACT
+
+Purpose:
+- ClaimClusterCache is a local performance/cache helper only.
+- ClaimClusterCache is not a source of truth.
+- ClaimClusterCache must not decide whether a matter exists, whether a matter belongs to a lawsuit, or whether search has no results.
+- ClaimClusterCache must not be rebuilt from Clio or hydrated from Clio.
+- Clio must not be queried to fill or refresh ClaimClusterCache.
+
+Allowed temporary behavior:
+- ClaimClusterCache may be read only as an optimization after local ClaimIndex/local matter data is already the source.
+- ClaimClusterCache may be written only by a narrowly scoped cache helper, not by search correctness routes.
+- ClaimClusterCache may be cleared as cache maintenance.
+- app/api/claim-index/refresh-cluster is a quarantined legacy operational route and must remain blocked unless replaced by an explicitly local-only cache maintenance route.
+
+Forbidden behavior:
+- Search results must not depend on ClaimClusterCache as the correctness source.
+- Zero-result search must not fallback to Clio or ClaimClusterCache as a substitute for local database truth.
+- Lawsuit generation must not use ClaimClusterCache as the source for sibling membership.
+- Direct matter display/edit routes must not use ClaimClusterCache.
+- ClaimClusterCache must not import or call Clio helpers.
+- ClaimClusterCache must not contain Clio custom-field logic.
+
+Future migration:
+- Prefer local ClaimIndex/local matter queries directly for correctness.
+- If performance requires caching later, create a clearly named local search projection/cache with explicit invalidation.
+- Delete or rename ClaimClusterCache only in a separate schema migration after backups and restore procedures are confirmed.

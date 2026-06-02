@@ -50,8 +50,30 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
 
     const selectedMatterIds = normalizeMatterIds(body?.matterIds || body?.selectedMatterIds);
+    const rawAmountSoughtMode = text(body?.amountSoughtMode);
     const amountSoughtMode =
-      text(body?.amountSoughtMode) === "claim_amount" ? "claim_amount" : "balance_presuit";
+      rawAmountSoughtMode === "claim_amount" || rawAmountSoughtMode === "custom"
+        ? rawAmountSoughtMode
+        : "balance_presuit";
+    const customAmountSought = moneyNumber(body?.customAmountSought);
+
+    if (amountSoughtMode === "custom" && customAmountSought <= 0) {
+      return NextResponse.json(
+        {
+          ok: false,
+          canCreate: false,
+          error: "A valid Lawsuit Amount is required when Other is selected.",
+          writes: {
+            createsLawsuit: false,
+            updatesClaimIndex: false,
+            writesClio: false,
+            createsClioMasterMatter: false,
+            consumesMasterSequence: false,
+          },
+        },
+        { status: 400 }
+      );
+    }
 
     if (selectedMatterIds.length === 0) {
       return NextResponse.json(
@@ -166,11 +188,19 @@ export async function POST(req: NextRequest) {
     const amountComponents = selectedRows.map((row) => ({
       matterId: Number(row.matter_id),
       displayNumber: rowDisplayNumber(row),
-      amount: amountForMode(row, amountSoughtMode),
-      sourceField: amountSoughtMode === "claim_amount" ? "claim_amount" : "balance_presuit",
+      amount: amountSoughtMode === "custom" ? 0 : amountForMode(row, amountSoughtMode),
+      sourceField:
+        amountSoughtMode === "custom"
+          ? "custom"
+          : amountSoughtMode === "claim_amount"
+          ? "claim_amount"
+          : "balance_presuit",
     }));
 
-    const amountSought = amountComponents.reduce((sum, item) => sum + item.amount, 0);
+    const amountSought =
+      amountSoughtMode === "custom"
+        ? customAmountSought
+        : amountComponents.reduce((sum, item) => sum + item.amount, 0);
 
     const selectedPreviewRows = selectedRows.map((row) => ({
       matterId: Number(row.matter_id),

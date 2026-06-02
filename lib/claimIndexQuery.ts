@@ -195,6 +195,8 @@ export const CLAIM_INDEX_SELECT = {
   insurer_name: true,
   claim_number_normalized: true,
   claim_amount: true,
+  payment_amount: true,
+  payment_voluntary: true,
   balance_presuit: true,
   master_lawsuit_id: true,
   index_aaa_number: true,

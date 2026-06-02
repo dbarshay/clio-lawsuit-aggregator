@@ -154,12 +154,17 @@ function denialReason(m: Matter) {
   return val(m, "denialReason", "denial_reason") || "—";
 }
 
+function paymentAmount(m: Matter) {
+  return moneyValue(val(m, "paymentVoluntary", "payment_voluntary", "paymentAmount", "payment_amount"));
+}
+
 type SortKey =
   | "matter"
   | "patient"
   | "provider"
   | "insurer"
   | "claimAmount"
+  | "payment"
   | "balance"
   | "denialReason"
   | "court"
@@ -231,10 +236,22 @@ export default function LawsuitsPage() {
 
   const selectedMatters = useMemo(() => Object.values(selected), [selected]);
 
-  const selectedTotal = selectedMatters.reduce(
+  const selectedClaimTotal = selectedMatters.reduce(
+    (sum, m) => sum + moneyValue(val(m, "claimAmount", "claim_amount")),
+    0
+  );
+
+  const selectedPaymentTotal = selectedMatters.reduce(
+    (sum, m) => sum + paymentAmount(m),
+    0
+  );
+
+  const selectedBalanceTotal = selectedMatters.reduce(
     (sum, m) => sum + moneyValue(val(m, "balancePresuit", "balance_presuit", "balanceAmount", "balance_amount")),
     0
   );
+
+  const selectedTotal = selectedBalanceTotal;
 
   useEffect(() => {
     let cancelled = false;
@@ -599,6 +616,7 @@ export default function LawsuitsPage() {
     if (key === "provider") return val(m, "client_name", "clientName", "provider_name", "providerName");
     if (key === "insurer") return insurerName(m);
     if (key === "claimAmount") return moneyValue(val(m, "claimAmount", "claim_amount"));
+    if (key === "payment") return paymentAmount(m);
     if (key === "balance") return moneyValue(val(m, "balancePresuit", "balance_presuit", "balanceAmount", "balance_amount"));
     if (key === "denialReason") return denialReason(m);
     if (key === "court") return courtVenue(m);
@@ -847,6 +865,7 @@ export default function LawsuitsPage() {
                         <th style={th}>{sortableHeader("Provider", "provider")}</th>
                         <th style={th}>{sortableHeader("Insurer", "insurer")}</th>
                         <th style={thRight}>{sortableHeader("Claim Amount", "claimAmount", thRight)}</th>
+                        <th style={thRight}>{sortableHeader("Payment", "payment", thRight)}</th>
                         <th style={thRight}>{sortableHeader("Balance", "balance", thRight)}</th>
                         <th style={th}>{sortableHeader("Denial Reason", "denialReason")}</th>
                         <th style={th}>{sortableHeader("Court", "court")}</th>
@@ -916,6 +935,7 @@ export default function LawsuitsPage() {
                               </button>
                             </td>
                             <td style={tdRight}>{money(val(m, "claimAmount", "claim_amount"))}</td>
+                            <td style={tdRight}>{money(paymentAmount(m))}</td>
                             <td style={tdRight}>{money(val(m, "balancePresuit", "balance_presuit", "balanceAmount", "balance_amount"))}</td>
                             <td style={td}>{denialReason(m)}</td>
                             <td style={td}>{courtVenue(m)}</td>
@@ -966,7 +986,9 @@ export default function LawsuitsPage() {
         <aside style={panel}>
           <h3 style={{ marginTop: 0, marginBottom: 8 }}>Selected Matters</h3>
           <p style={panelLine}><strong>Count:</strong> {selectedMatters.length}</p>
-          <p style={panelLine}><strong>Total Claim Amount:</strong> {money(selectedTotal)}</p>
+          <p style={panelLine}><strong>Total Claim Amount:</strong> {money(selectedClaimTotal)}</p>
+          <p style={panelLine}><strong>Total Payments:</strong> {money(selectedPaymentTotal)}</p>
+          <p style={panelLine}><strong>Total Balance:</strong> {money(selectedBalanceTotal)}</p>
 
           <button
             onClick={openCreateLawsuitPopup}
@@ -1084,6 +1106,7 @@ export default function LawsuitsPage() {
                     <th style={th}>Provider</th>
                     <th style={th}>Insurer</th>
                     <th style={thRight}>Claim Amount</th>
+                    <th style={thRight}>Payment</th>
                     <th style={thRight}>Balance</th>
                     <th style={th}>Denial Reason</th>
                     <th style={th}>Filing Status</th>
@@ -1098,6 +1121,7 @@ export default function LawsuitsPage() {
                       <td style={td}>{val(m, "client_name", "clientName", "provider_name", "providerName") || "—"}</td>
                       <td style={td}>{insurerName(m) || "—"}</td>
                       <td style={tdRight}>{money(val(m, "claimAmount", "claim_amount"))}</td>
+                      <td style={tdRight}>{money(paymentAmount(m))}</td>
                       <td style={tdRight}>{money(val(m, "balancePresuit", "balance_presuit", "balanceAmount", "balance_amount"))}</td>
                       <td style={td}>{denialReason(m)}</td>
                       <td style={td}>{masterId(m) || "Not Filed"}</td>

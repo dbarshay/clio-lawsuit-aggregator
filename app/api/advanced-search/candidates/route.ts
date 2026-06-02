@@ -162,7 +162,7 @@ export async function GET(req: NextRequest) {
   if (indexAaaNumber) and.push(contains("index_aaa_number", indexAaaNumber));
 
   // Date Opened is intentionally not used for ClaimIndex candidate narrowing yet.
-  // It is still evaluated after Clio hydration in the client-side final matcher.
+  // It should be added to the local schema/filter contract before it is enforced.
   void dateOpenedFrom;
   void dateOpenedTo;
 
@@ -237,7 +237,7 @@ export async function GET(req: NextRequest) {
     action: "advanced-search-candidates",
     count: rows.length,
     rows,
-    source: "ClaimIndex candidate narrowing; callers must Clio-hydrate before final display.",
+    source: "ClaimIndex/local Barsh Matters candidate narrowing.  Final display uses local data only.",
     safety: {
       readOnly: true,
       noClioRecordsChanged: true,

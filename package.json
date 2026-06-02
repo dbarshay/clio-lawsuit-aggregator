@@ -191,7 +191,8 @@
     "verify:local-search-and-lawsuits-routing-safety": "node scripts/verify-local-search-and-lawsuits-routing-safety.mjs",
     "verify:direct-matter-clio-operational-callers-removed": "node scripts/verify-direct-matter-clio-operational-callers-removed.mjs",
     "verify:legacy-operational-clio-modules-deleted": "node scripts/verify-legacy-operational-clio-modules-deleted.mjs",
-    "verify:active-operational-clio-routes-removed": "node scripts/verify-active-operational-clio-routes-removed.mjs"
+    "verify:active-operational-clio-routes-removed": "node scripts/verify-active-operational-clio-routes-removed.mjs",
+    "verify:settlement-close-preview-clio-eliminated-safety": "node scripts/verify-settlement-close-preview-clio-eliminated-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

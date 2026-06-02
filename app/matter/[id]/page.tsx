@@ -3183,7 +3183,7 @@ function openClaimAmountEditDialog() {
 
     try {
       alert(
-        "Legacy Clio-backed claim expansion is disabled.  Claim grouping now reads from ClaimIndex/local Barsh Matters only.  Add missing matters through the local matter creation/import workflow."
+        "Legacy claim expansion is disabled.  Claim grouping now reads from ClaimIndex/local Barsh Matters only.  Add missing matters through the local matter creation/import workflow."
       );
     } finally {
       setExpanding(false);
@@ -6919,20 +6919,18 @@ function openClaimAmountEditDialog() {
     setSettlementCloseWritebackResult(null);
 
     try {
-      const res = await fetch("/api/settlements/close-preview", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          masterLawsuitId,
-        }),
-      });
-
-      const json = await res.json();
+      const json = {
+        ok: false,
+        blocked: true,
+        error:
+          "Settlement close preview is disabled pending a local-first close-preview workflow.  Barsh Matters local schema is now the operational source of truth.",
+        sourceOfTruth: "local Barsh Matters schema",
+        noClioRead: true,
+        noClioWrite: true,
+      };
       setSettlementClosePreviewResult(json);
 
-      if (!res.ok && json?.error) {
+      if (json?.error) {
         alert(json.error);
       }
     } catch (err: any) {
@@ -7503,10 +7501,10 @@ function openClaimAmountEditDialog() {
       detail: currentClioValuesMatchExpected
         ? `Current Clio readback matches expected settlement values for ${num(expectedRowsByMatterId.size)} child/bill matter(s).`
         : settlementValueComparisonMismatches.length > 0
-          ? `${num(settlementValueComparisonMismatches.length)} mismatch(es) found.  Review Current Clio Settlement Values and refresh after any correction.`
+          ? `${num(settlementValueComparisonMismatches.length)} mismatch(es) found.  Review Current Local Settlement Values and refresh after any correction.`
           : currentClioValuesLoaded
             ? "Current Clio values are loaded.  Save settlement values first, then refresh/read back for exact value comparison."
-            : "Refresh Current Clio Settlement Values after saving.",
+            : "Refresh local settlement values after saving.",
     },
     {
       label: "Payment confirmed",
@@ -8692,7 +8690,7 @@ function openClaimAmountEditDialog() {
             fontWeight: 650,
           }}
         >
-          {matterHydrationError || "Refreshing matter workspace from Clio..."}
+          {matterHydrationError || "Refreshing matter workspace from local Barsh Matters data..."}
         </div>
       )}
 
@@ -10231,7 +10229,7 @@ function openClaimAmountEditDialog() {
             <div>
               <h2 style={{ marginTop: 0, marginBottom: 6 }}>Matter-Level Lawsuit Workspace</h2>
               <p style={tabPlaceholderTextStyle}>
-                Lawsuit generation and metadata controls for this matter group.  Clio remains the source of truth,
+                Lawsuit generation and metadata controls for this matter group.  Barsh Matters local schema is the operational source of truth,
                 and Amount Sought calculations continue to exclude master matters.
               </p>
             </div>
@@ -10746,10 +10744,10 @@ function openClaimAmountEditDialog() {
             >
               <div>
                 <div style={{ fontWeight: 800, marginBottom: 4 }}>
-                  Current Clio Settlement Values
+                  Current Local Settlement Values
                 </div>
                 <div style={{ color: "#475569", fontSize: 12 }}>
-                  Live read-only Clio readback for child/bill matters.  This does not write to Clio, ClaimIndex, documents, or the print queue.
+                  Local settlement value review for child/bill matters.  This does not write to Clio, ClaimIndex, documents, or the print queue.
                 </div>
               </div>
 
@@ -10768,7 +10766,7 @@ function openClaimAmountEditDialog() {
                   whiteSpace: "nowrap",
                 }}
               >
-                {currentSettlementValuesLoading ? "Refreshing..." : "Refresh Clio Values"}
+                {currentSettlementValuesLoading ? "Refreshing..." : "Refresh Local Values"}
               </button>
             </div>
 
@@ -10885,7 +10883,7 @@ function openClaimAmountEditDialog() {
               )}
 
             <div style={{ marginTop: 8, color: "#475569", fontSize: 12 }}>
-              Source: {textValue(currentSettlementValuesResult?.source) || "live Clio readback when loaded"}.
+              Source: {textValue(currentSettlementValuesResult?.source) || "local Barsh Matters data when loaded"}.
             </div>
           </div>
 
@@ -10929,7 +10927,7 @@ function openClaimAmountEditDialog() {
                     Settlement Documents Preview
                   </div>
                   <div style={{ color: "#1e3a8a", fontSize: 12 }}>
-                    Read-only preview of planned settlement documents using current Clio settlement values.  This does not generate documents, upload to Clio, create database records, or change the print queue.
+                    Read-only preview of planned settlement documents using local settlement values.  This does not generate documents, upload to Clio, create database records, or change the print queue.
                   </div>
                 </div>
 
@@ -12245,7 +12243,7 @@ function openClaimAmountEditDialog() {
               )}
 
             <div style={{ marginTop: 8, color: "#92400e", fontSize: 12 }}>
-              Preview does not close anything.  Actual closure should occur only after payment is confirmed.  The Close Paid Settlements button requires explicit confirmation and writes back to Clio only for eligible child/bill matters.
+              Preview does not close anything.  Actual closure should occur only after payment is confirmed.  The legacy Clio close workflow is disabled pending a local-first close workflow.
             </div>
 
             {settlementClosePreviewResult?.ok &&
@@ -12278,7 +12276,7 @@ function openClaimAmountEditDialog() {
                   </button>
 
                   <div style={{ marginTop: 8, color: "#7f1d1d", fontSize: 12 }}>
-                    Use only after payment is confirmed.  This writes Close Reason = PAID (SETTLEMENT) and closes eligible child/bill matters in Clio.  Master matters, already closed matters, final-status matters, documents, and print queue records are not changed.
+                    Use only after payment is confirmed.  This action is disabled until a local-first close workflow is built.  Master matters, already closed matters, final-status matters, documents, and print queue records are not changed.
                   </div>
                 </div>
               )}
@@ -12306,7 +12304,7 @@ function openClaimAmountEditDialog() {
 
                 {settlementCloseWritebackResult.ok && (
                   <div style={{ color: "#166534", marginBottom: 6 }}>
-                    Closed {num(settlementCloseWritebackResult.closedCount)} paid settlement child/bill matter(s) in Clio.
+                    Local-first settlement close workflow is pending.  No Clio records were changed.
                   </div>
                 )}
 

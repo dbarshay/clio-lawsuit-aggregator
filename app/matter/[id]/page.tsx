@@ -1440,6 +1440,9 @@ const activeGroupKey =
   const [directFieldPicklists, setDirectFieldPicklists] = useState<any>(null);
   const [identityFieldEditModal, setIdentityFieldEditModal] = useState<"patient_name" | "client_name" | "insurer_name" | "claim_number_raw" | null>(null);
   const [identityFieldEditInput, setIdentityFieldEditInput] = useState("");
+  const [identityFieldEditSelectedOptionId, setIdentityFieldEditSelectedOptionId] = useState("");
+  const [identityReferenceOptions, setIdentityReferenceOptions] = useState<Record<string, any[]>>({});
+  const [identityReferenceOptionsLoading, setIdentityReferenceOptionsLoading] = useState(false);
   const [identityFieldEditLoading, setIdentityFieldEditLoading] = useState(false);
   const [identityFieldEditResult, setIdentityFieldEditResult] = useState<any>(null);
   const [dosStartInput, setDosStartInput] = useState("");
@@ -1892,6 +1895,57 @@ const activeGroupKey =
     return "";
   }
 
+  function identityFieldReferenceType(field: "patient_name" | "client_name" | "insurer_name" | "claim_number_raw" | null): string {
+    if (field === "client_name") return "provider_client";
+    if (field === "insurer_name") return "insurer_company";
+    return "";
+  }
+
+  function identityFieldUsesReferenceOptions(field: "patient_name" | "client_name" | "insurer_name" | "claim_number_raw" | null): boolean {
+    return Boolean(identityFieldReferenceType(field));
+  }
+
+  function identityReferenceOptionLabel(option: any): string {
+    return textValue(option?.displayName || option?.name || option?.value || option?.label);
+  }
+
+  function identityReferenceOptionValue(option: any): string {
+    return textValue(option?.displayName || option?.name || option?.value || option?.label);
+  }
+
+  async function loadIdentityReferenceOptions(field: "patient_name" | "client_name" | "insurer_name" | "claim_number_raw" | null) {
+    const referenceType = identityFieldReferenceType(field);
+    if (!referenceType) return [];
+
+    const existing = identityReferenceOptions[referenceType];
+    if (Array.isArray(existing) && existing.length) return existing;
+
+    setIdentityReferenceOptionsLoading(true);
+
+    try {
+      const response = await fetch(`/api/reference-data/options?type=${encodeURIComponent(referenceType)}`, {
+        cache: "no-store",
+      });
+      const json = await response.json().catch(() => ({}));
+      const options = Array.isArray(json?.options) ? json.options : [];
+
+      setIdentityReferenceOptions((prev) => ({
+        ...prev,
+        [referenceType]: options,
+      }));
+
+      return options;
+    } catch {
+      setIdentityReferenceOptions((prev) => ({
+        ...prev,
+        [referenceType]: [],
+      }));
+      return [];
+    } finally {
+      setIdentityReferenceOptionsLoading(false);
+    }
+  }
+
   function identityFieldEditLabel(field: "patient_name" | "client_name" | "insurer_name" | "claim_number_raw" | null): string {
     if (field === "patient_name") return "Patient";
     if (field === "client_name") return "Provider";
@@ -1925,9 +1979,19 @@ const activeGroupKey =
   }
 
   function openIdentityFieldEditDialog(field: "patient_name" | "client_name" | "insurer_name" | "claim_number_raw") {
+    const currentValue = identityFieldCurrentValue(field);
+
     setIdentityFieldEditResult(null);
-    setIdentityFieldEditInput(identityFieldCurrentValue(field));
+    setIdentityFieldEditInput(currentValue);
+    setIdentityFieldEditSelectedOptionId("");
     setIdentityFieldEditModal(field);
+
+    loadIdentityReferenceOptions(field).then((options) => {
+      const match = Array.isArray(options)
+        ? options.find((option: any) => identityReferenceOptionValue(option) === currentValue)
+        : null;
+      if (match?.id) setIdentityFieldEditSelectedOptionId(String(match.id));
+    });
   }
 
   function closeIdentityFieldEditDialog() {
@@ -1935,6 +1999,7 @@ const activeGroupKey =
     setIdentityFieldEditModal(null);
     setIdentityFieldEditResult(null);
     setIdentityFieldEditInput("");
+    setIdentityFieldEditSelectedOptionId("");
   }
 
   function normalizeClaimIndexMatter(row: any): any {
@@ -2127,6 +2192,7 @@ const activeGroupKey =
           matterDisplayNumber: textValue(matter?.displayNumber || matter?.display_number || matterId),
           fieldName: identityFieldEditModal,
           fieldValue: value,
+          fieldValueId: identityFieldEditSelectedOptionId,
           actorName: "Barsh Matters User",
         }),
       });
@@ -2152,6 +2218,7 @@ const activeGroupKey =
 
       setIdentityFieldEditModal(null);
       setIdentityFieldEditInput("");
+      setIdentityFieldEditSelectedOptionId("");
     } catch (error: any) {
       setIdentityFieldEditResult({
         ok: false,
@@ -8138,26 +8205,70 @@ const activeGroupKey =
               {identityFieldEditLabel(identityFieldEditModal)}
             </label>
 
-            <input
-              value={identityFieldEditInput}
-              onChange={(event) => {
-                setIdentityFieldEditInput(event.target.value);
-                setIdentityFieldEditResult(null);
-              }}
-              disabled={identityFieldEditLoading}
-              style={{
-                width: "100%",
-                minWidth: 0,
-                border: "1px solid #cbd5e1",
-                borderRadius: 12,
-                background: "#ffffff",
-                color: "#0f172a",
-                padding: "11px 12px",
-                fontSize: 14,
-                fontWeight: 800,
-                marginBottom: 12,
-              }}
-            />
+            {identityFieldUsesReferenceOptions(identityFieldEditModal) ? (
+              <select
+                value={identityFieldEditSelectedOptionId}
+                onChange={(event) => {
+                  const selectedId = event.target.value;
+                  const referenceType = identityFieldReferenceType(identityFieldEditModal);
+                  const option = (identityReferenceOptions[referenceType] || []).find((item: any) => String(item?.id) === selectedId);
+                  const selectedValue = identityReferenceOptionValue(option);
+
+                  setIdentityFieldEditSelectedOptionId(selectedId);
+                  setIdentityFieldEditInput(selectedValue);
+                  setIdentityFieldEditResult(null);
+                }}
+                disabled={identityFieldEditLoading || identityReferenceOptionsLoading}
+                style={{
+                  width: "100%",
+                  minWidth: 0,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 12,
+                  background: "#ffffff",
+                  color: "#0f172a",
+                  padding: "11px 12px",
+                  fontSize: 14,
+                  fontWeight: 800,
+                  marginBottom: 12,
+                }}
+              >
+                <option value="">
+                  {identityReferenceOptionsLoading ? "Loading..." : `Select ${identityFieldEditLabel(identityFieldEditModal)}`}
+                </option>
+                {(identityReferenceOptions[identityFieldReferenceType(identityFieldEditModal)] || []).map((option: any, index: number) => {
+                  const label = identityReferenceOptionLabel(option);
+                  if (!label) return null;
+
+                  return (
+                    <option key={`${option?.id || label}-${index}`} value={String(option?.id || "")}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </select>
+            ) : (
+              <input
+                value={identityFieldEditInput}
+                onChange={(event) => {
+                  setIdentityFieldEditInput(event.target.value);
+                  setIdentityFieldEditSelectedOptionId("");
+                  setIdentityFieldEditResult(null);
+                }}
+                disabled={identityFieldEditLoading}
+                style={{
+                  width: "100%",
+                  minWidth: 0,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 12,
+                  background: "#ffffff",
+                  color: "#0f172a",
+                  padding: "11px 12px",
+                  fontSize: 14,
+                  fontWeight: 800,
+                  marginBottom: 12,
+                }}
+              />
+            )}
 
             {identityFieldEditResult && !identityFieldEditResult.ok ? (
               <div

@@ -1441,7 +1441,7 @@ const activeGroupKey =
   const [paymentShowVoided, setPaymentShowVoided] = useState(true);
   const [expandedPaymentReceiptId, setExpandedPaymentReceiptId] = useState<number | null>(null);
   const [paymentClosePromptOpen, setPaymentClosePromptOpen] = useState(false);
-  const [directFieldEditModal, setDirectFieldEditModal] = useState<"dos" | "denialReason" | "status" | "finalStatus" | null>(null);
+  const [directFieldEditModal, setDirectFieldEditModal] = useState<"claimAmount" | "dos" | "denialReason" | "status" | "finalStatus" | null>(null);
   const [directFieldEditLoading, setDirectFieldEditLoading] = useState(false);
   const [directFieldEditResult, setDirectFieldEditResult] = useState<any>(null);
   const [directFieldPicklistsLoading, setDirectFieldPicklistsLoading] = useState(false);
@@ -1453,6 +1453,7 @@ const activeGroupKey =
   const [identityReferenceOptionsLoading, setIdentityReferenceOptionsLoading] = useState(false);
   const [identityFieldEditLoading, setIdentityFieldEditLoading] = useState(false);
   const [identityFieldEditResult, setIdentityFieldEditResult] = useState<any>(null);
+  const [claimAmountInput, setClaimAmountInput] = useState("");
   const [dosStartInput, setDosStartInput] = useState("");
   const [dosEndInput, setDosEndInput] = useState("");
   const [denialReasonInput, setDenialReasonInput] = useState("");
@@ -2245,6 +2246,118 @@ const activeGroupKey =
     padding: "3px 8px",
     cursor: identityFieldEditLoading ? "not-allowed" : "pointer",
   };
+
+  function directFieldMoneyInputValue(value: any): string {
+    const raw = String(value ?? "").replace(/[$,]/g, "").trim();
+    if (!raw) return "";
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) return "";
+    return String(parsed);
+  }
+
+  function formatMoneyInputValue(value: unknown): string {
+  const numeric = num(value);
+  if (!Number.isFinite(numeric)) return "";
+  return numeric.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function parseMoneyInputValue(value: string): string {
+  const cleaned = value.replace(/[^0-9.-]/g, "");
+  if (!cleaned) return "";
+  const numeric = Number(cleaned);
+  if (!Number.isFinite(numeric)) return "";
+  return String(numeric);
+}
+
+function formatMoneyEditingInput(value: string): string {
+  const cleaned = String(value || "").replace(/[^0-9.]/g, "");
+  if (!cleaned) return "";
+  return `$${cleaned}`;
+}
+
+function openClaimAmountEditDialog() {
+    setDirectFieldEditResult(null);
+    setClaimAmountInput(formatMoneyInputValue(matter?.claimAmount));
+    setDirectFieldEditModal("claimAmount");
+  }
+
+  async function saveClaimAmountEditDialog() {
+    const claimAmountRaw = parseMoneyInputValue(claimAmountInput);
+    const claimAmount = Number(claimAmountRaw);
+
+    if (!claimAmountRaw || !Number.isFinite(claimAmount) || claimAmount < 0) {
+      setDirectFieldEditResult({
+        ok: false,
+        error: "A valid Claim Amount is required.",
+      });
+      return;
+    }
+
+    try {
+      setDirectFieldEditLoading(true);
+      setDirectFieldEditResult(null);
+
+      const response = await fetch("/api/matters/update-direct-field", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          matterId: resolvedNumericMatterId(),
+          field: "claimAmount",
+          claimAmount,
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json?.ok) {
+        setDirectFieldEditResult({
+          ok: false,
+          error: json?.error || "Claim Amount could not be updated.",
+          details: json,
+        });
+        return;
+      }
+
+      const nextPayment =
+        num(matter?.paymentVoluntary ?? matter?.payment_voluntary ?? matter?.paymentAmount ?? matter?.payment_amount);
+      const nextBalance = Math.max(claimAmount - nextPayment, 0);
+
+      setMatter((current: any) => ({
+        ...(current || {}),
+        ...(json?.matter || {}),
+        claimAmount,
+        claim_amount: claimAmount,
+        balancePresuit: nextBalance,
+        balance_presuit: nextBalance,
+        balanceAmount: nextBalance,
+        balance_amount: nextBalance,
+      }));
+
+      setClaimAmountInput(formatMoneyInputValue(claimAmount));
+
+      setDirectFieldEditResult({
+        ok: true,
+        message: "Claim Amount updated locally.",
+        safety: json.safety,
+      });
+
+      setDirectFieldEditModal(null);
+    } catch (error: any) {
+      setDirectFieldEditResult({
+        ok: false,
+        error: error?.message || "Claim Amount could not be updated.",
+      });
+    } finally {
+      setDirectFieldEditLoading(false);
+    }
+  }
 
   function openDosEditDialog() {
     setDirectFieldEditResult(null);
@@ -7912,7 +8025,124 @@ const activeGroupKey =
         </div>
       )}
 
-{directFieldEditModal === "dos" && (
+{directFieldEditModal === "claimAmount" && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Edit Claim Amount"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            background: "rgba(15, 23, 42, 0.42)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+        >
+          <div
+            style={{
+              width: "min(520px, calc(100vw - 48px))",
+              maxHeight: "calc(100vh - 48px)",
+              overflow: "auto",
+              background: "#ffffff",
+              border: "1px solid #bfdbfe",
+              borderRadius: 22,
+              boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
+              padding: 20,
+            }}
+          >
+            <h2 style={{ marginTop: 0, marginBottom: 8 }}>Edit Claim Amount</h2>
+            <p style={{ marginTop: 0, marginBottom: 16, color: "#64748b", fontSize: 13 }}>
+              This updates Claim Amount in ClaimIndex.  Payments and Balance remain read-only.
+            </p>
+
+            <label style={{ display: "grid", gap: 6, fontWeight: 900, marginBottom: 16 }}>
+              <span>Claim Amount</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={claimAmountInput}
+                autoFocus
+                onFocus={(event) => event.currentTarget.select()}
+                onChange={(event) => setClaimAmountInput(formatMoneyEditingInput(event.target.value))}
+                onBlur={() => setClaimAmountInput(formatMoneyInputValue(parseMoneyInputValue(claimAmountInput)))}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void saveClaimAmountEditDialog();
+                  }
+                }}
+                style={{
+                  height: 40,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 10,
+                  padding: "0 10px",
+                  fontWeight: 800,
+                }}
+              />
+            </label>
+
+            {directFieldEditResult && !directFieldEditResult.ok && (
+              <div
+                style={{
+                  border: "1px solid #fecaca",
+                  background: "#fef2f2",
+                  color: "#991b1b",
+                  borderRadius: 12,
+                  padding: 10,
+                  marginBottom: 12,
+                  fontSize: 13,
+                  fontWeight: 800,
+                }}
+              >
+                {textValue(directFieldEditResult.error) || "Claim Amount could not be updated."}
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setDirectFieldEditModal(null)}
+                disabled={directFieldEditLoading}
+                style={{
+                  minWidth: 96,
+                  height: 38,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 10,
+                  background: "#f8fafc",
+                  color: "#334155",
+                  fontWeight: 900,
+                  cursor: directFieldEditLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={saveClaimAmountEditDialog}
+                disabled={directFieldEditLoading || !String(claimAmountInput || "").trim()}
+                style={{
+                  minWidth: 118,
+                  height: 38,
+                  border: "1px solid #16a34a",
+                  borderRadius: 10,
+                  background: directFieldEditLoading || !String(claimAmountInput || "").trim() ? "#bbf7d0" : "#16a34a",
+                  color: "#ffffff",
+                  fontWeight: 900,
+                  cursor: directFieldEditLoading || !String(claimAmountInput || "").trim() ? "not-allowed" : "pointer",
+                }}
+              >
+                {directFieldEditLoading ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {directFieldEditModal === "dos" && (
         <div
           role="dialog"
           aria-modal="true"
@@ -8027,7 +8257,7 @@ const activeGroupKey =
         </div>
       )}
 
-      {directFieldEditModal && directFieldEditModal !== "dos" && (
+      {directFieldEditModal && directFieldEditModal !== "claimAmount" && directFieldEditModal !== "dos" && (
         <div
           role="dialog"
           aria-modal="true"
@@ -8682,6 +8912,41 @@ const activeGroupKey =
               </div>
 
               <div className="barsh-direct-summary-column">
+                <div className="barsh-direct-summary-card">
+                  <div
+                    className="barsh-direct-summary-label"
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <span>Claim Amount</span>
+                    <button
+                      type="button"
+                      onClick={openClaimAmountEditDialog}
+                      disabled={directFieldEditLoading}
+                      title="Edit Claim Amount."
+                      style={{
+                        border: "1px solid #93c5fd",
+                        borderRadius: 999,
+                        background: "#eff6ff",
+                        color: "#1d4ed8",
+                        fontSize: 11,
+                        fontWeight: 900,
+                        padding: "3px 8px",
+                        cursor: directFieldEditLoading ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                  <div className="barsh-direct-summary-value">
+                    {money(num(matter?.claimAmount))}
+                  </div>
+                </div>
+
                 <div className="barsh-direct-summary-card">
                   <div
                     className="barsh-direct-summary-label"

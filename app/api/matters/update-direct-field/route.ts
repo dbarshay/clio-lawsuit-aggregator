@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-type DirectField = "dos" | "denialReason" | "status" | "finalStatus";
+type DirectField = "claimAmount" | "dos" | "denialReason" | "status" | "finalStatus";
 
 function textValue(value: unknown): string {
   return String(value ?? "").trim();
@@ -22,6 +22,7 @@ function jsonError(message: string, status = 400, details: Record<string, unknow
 }
 
 function labelForField(field: DirectField): string {
+  if (field === "claimAmount") return "Claim Amount";
   if (field === "dos") return "Date of Service";
   if (field === "denialReason") return "Denial Reason";
   if (field === "status") return "Status";
@@ -29,6 +30,8 @@ function labelForField(field: DirectField): string {
 }
 
 function priorValueForField(existing: any, field: DirectField) {
+  if (field === "claimAmount") return existing?.claim_amount ?? null;
+
   if (field === "dos") {
     return {
       dosStart: existing?.dos_start || null,
@@ -80,6 +83,17 @@ async function referenceDisplayNameFromSubmittedValue(referenceType: string, sub
 }
 
 async function newValueForField(field: DirectField, body: any) {
+  if (field === "claimAmount") {
+    const raw = textValue(body?.claimAmount).replace(/[$,]/g, "");
+    const claimAmount = Number(raw);
+
+    if (!raw || !Number.isFinite(claimAmount) || claimAmount < 0) {
+      throw new Error("A valid Claim Amount is required.");
+    }
+
+    return { claimAmount };
+  }
+
   if (field === "dos") {
     const dosStart = textValue(body?.dosStart);
     const dosEnd = textValue(body?.dosEnd);
@@ -115,7 +129,25 @@ async function newValueForField(field: DirectField, body: any) {
   throw new Error("Unsupported direct matter field.");
 }
 
-function claimIndexUpdateData(field: DirectField, value: any) {
+function numberValue(value: any): number {
+  const parsed = Number(String(value ?? "").replace(/[$,]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function claimIndexUpdateData(field: DirectField, value: any, existing?: any) {
+  if (field === "claimAmount") {
+    const claimAmount = numberValue(value?.claimAmount);
+    const payments = numberValue(existing?.payment_amount ?? existing?.payment_voluntary);
+    const balance = Math.max(claimAmount - payments, 0);
+
+    return {
+      claim_amount: claimAmount,
+      balance_presuit: balance,
+      balance_amount: balance,
+      indexed_at: new Date(),
+    };
+  }
+
   if (field === "dos") {
     return {
       dos_start: value.dosStart,
@@ -152,6 +184,19 @@ function claimIndexUpdateData(field: DirectField, value: any) {
 }
 
 function clientMatterPatch(field: DirectField, value: any, updated: any) {
+  if (field === "claimAmount") {
+    return {
+      claimAmount: updated.claim_amount,
+      claim_amount: updated.claim_amount,
+      balancePresuit: updated.balance_presuit,
+      balance_presuit: updated.balance_presuit,
+      balanceAmount: updated.balance_amount,
+      balance_amount: updated.balance_amount,
+      paymentVoluntary: updated.payment_voluntary,
+      payment_voluntary: updated.payment_voluntary,
+    };
+  }
+
   if (field === "dos") {
     return {
       dosStart: value.dosStart,
@@ -201,7 +246,7 @@ export async function PATCH(request: Request) {
       return jsonError("Valid matterId is required.");
     }
 
-    const supported: DirectField[] = ["dos", "denialReason", "status", "finalStatus"];
+    const supported: DirectField[] = ["claimAmount", "dos", "denialReason", "status", "finalStatus"];
     if (!supported.includes(field)) {
       return jsonError("Unsupported direct matter field.");
     }
@@ -221,6 +266,11 @@ export async function PATCH(request: Request) {
         claim_number_raw: true,
         claim_number_normalized: true,
         master_lawsuit_id: true,
+        claim_amount: true,
+        payment_amount: true,
+        payment_voluntary: true,
+        balance_presuit: true,
+        balance_amount: true,
         dos_start: true,
         dos_end: true,
         denial_reason: true,
@@ -244,7 +294,7 @@ export async function PATCH(request: Request) {
         where: {
           matter_id: matterId,
         },
-        data: claimIndexUpdateData(field, nextValue),
+        data: claimIndexUpdateData(field, nextValue, existing),
         select: {
           matter_id: true,
           display_number: true,

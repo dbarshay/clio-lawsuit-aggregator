@@ -182,11 +182,6 @@ function matterStatusStyle(m: Matter): React.CSSProperties {
   };
 }
 
-const filingExistingStyle: React.CSSProperties = {
-  color: "#ca8a04",
-  fontWeight: 900,
-};
-
 export default function LawsuitsPage() {
   const [claim, setClaim] = useState("");
   const [patient, setPatient] = useState("");
@@ -774,7 +769,6 @@ export default function LawsuitsPage() {
                             <td style={td}>
                               {hasMaster ? (
                                 <>
-                                  <span style={filingExistingStyle}>Existing</span>:{" "}
                                   <button
                                     type="button"
                                     onClick={() => searchLinkedField("masterLawsuitId", masterId(m))}

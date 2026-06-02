@@ -346,6 +346,31 @@ function filteredUrl(kind: FilterKind, value: string) {
 type WorkflowKind = "patient" | "claim" | "";
 type MasterWorkspaceTab = "documents" | "settlement" | "payments" | "email_threads" | "close_paid_settlements";
 
+const MASTER_WORKSPACE_TABS: MasterWorkspaceTab[] = [
+  "documents",
+  "settlement",
+  "payments",
+  "email_threads",
+  "close_paid_settlements",
+];
+
+function normalizeMasterWorkspaceTab(value: unknown): MasterWorkspaceTab {
+  const raw = String(value ?? "").trim();
+  return (MASTER_WORKSPACE_TABS as string[]).includes(raw) ? (raw as MasterWorkspaceTab) : "payments";
+}
+
+function masterWorkspaceTabFromUrl(): MasterWorkspaceTab {
+  if (typeof window === "undefined") return "payments";
+  return normalizeMasterWorkspaceTab(new URLSearchParams(window.location.search).get("tab"));
+}
+
+function mattersUrlWithMasterWorkspaceTab(tab: MasterWorkspaceTab) {
+  if (typeof window === "undefined") return "";
+  const url = new URL(window.location.href);
+  url.searchParams.set("tab", tab);
+  return `${url.pathname}?${url.searchParams.toString()}`;
+}
+
 function getWorkflowFromUrl(): WorkflowKind {
   if (typeof window === "undefined") return "";
 
@@ -386,7 +411,26 @@ export default function FilteredMattersPage() {
   const [masterLawsuitMetadata, setMasterLawsuitMetadata] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeMasterWorkspaceTab, setActiveMasterWorkspaceTab] = useState<MasterWorkspaceTab>("payments");
+  const [activeMasterWorkspaceTab, setActiveMasterWorkspaceTabState] =
+    useState<MasterWorkspaceTab>(() => masterWorkspaceTabFromUrl());
+
+  function setActiveMasterWorkspaceTab(tab: MasterWorkspaceTab, options: { updateUrl?: boolean; replaceUrl?: boolean } = {}) {
+    const nextTab = normalizeMasterWorkspaceTab(tab);
+    setActiveMasterWorkspaceTabState(nextTab);
+
+    if (typeof window !== "undefined" && options.updateUrl !== false) {
+      const nextUrl = mattersUrlWithMasterWorkspaceTab(nextTab);
+      const currentUrl = `${window.location.pathname}${window.location.search}`;
+
+      if (nextUrl && nextUrl !== currentUrl) {
+        if (options.replaceUrl) {
+          window.history.replaceState({ barshMattersMattersMasterTab: true }, "", nextUrl);
+        } else {
+          window.history.pushState({ barshMattersMattersMasterTab: true }, "", nextUrl);
+        }
+      }
+    }
+  }
   const [masterEmailThreadPreviewLoading, setMasterEmailThreadPreviewLoading] = useState(false);
   const [masterEmailThreadPreviewResult, setMasterEmailThreadPreviewResult] = useState<any>(null);
   const [masterGraphThreadSyncPreviewLoading, setMasterGraphThreadSyncPreviewLoading] = useState(false);
@@ -397,6 +441,21 @@ export default function FilteredMattersPage() {
   const [masterGraphThreadSyncConversationId, setMasterGraphThreadSyncConversationId] = useState<string>("");
   const [expandedMasterEmailThreadId, setExpandedMasterEmailThreadId] = useState<string | null>(null);
   const [expandedMasterEmailMessageId, setExpandedMasterEmailMessageId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    function applyMasterWorkspaceTabFromUrl() {
+      setActiveMasterWorkspaceTabState(masterWorkspaceTabFromUrl());
+    }
+
+    applyMasterWorkspaceTabFromUrl();
+    window.addEventListener("popstate", applyMasterWorkspaceTabFromUrl);
+
+    return () => {
+      window.removeEventListener("popstate", applyMasterWorkspaceTabFromUrl);
+    };
+  }, []);
 
   useEffect(() => {
     if (activeMasterWorkspaceTab !== "email_threads") return;

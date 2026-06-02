@@ -5,10 +5,12 @@ import fs from "node:fs";
 const contractPath = "BARSH_MATTERS_BROWSER_HISTORY_STATE_CONTRACT.txt";
 const lawsuitsPath = "app/lawsuits/page.tsx";
 const matterPagePath = "app/matter/[id]/page.tsx";
+const mattersPagePath = "app/matters/page.tsx";
 
 const contract = fs.readFileSync(contractPath, "utf8");
 const lawsuits = fs.readFileSync(lawsuitsPath, "utf8");
 const matterPage = fs.readFileSync(matterPagePath, "utf8");
+const mattersPage = fs.readFileSync(mattersPagePath, "utf8");
 
 const failures = [];
 
@@ -50,12 +52,20 @@ mustContain("/matter pushes tab history", matterPage, "window.history.pushState(
 mustContain("/matter listens to popstate", matterPage, 'window.addEventListener("popstate", applyMatterTabFromUrl);');
 mustContain("/matter restores tab from URL", matterPage, "setActiveWorkspaceTabState(matterWorkspaceTabFromUrl());");
 
+mustContain("/matters has master tab URL parser", mattersPage, "function masterWorkspaceTabFromUrl(): MasterWorkspaceTab");
+mustContain("/matters reads tab from URL", mattersPage, 'new URLSearchParams(window.location.search).get("tab")');
+mustContain("/matters writes tab to URL", mattersPage, 'url.searchParams.set("tab", tab);');
+mustContain("/matters pushes tab history", mattersPage, "window.history.pushState({ barshMattersMattersMasterTab: true }, \"\", nextUrl);");
+mustContain("/matters listens to popstate", mattersPage, 'window.addEventListener("popstate", applyMasterWorkspaceTabFromUrl);');
+mustContain("/matters restores tab from URL", mattersPage, "setActiveMasterWorkspaceTabState(masterWorkspaceTabFromUrl());");
+
 console.log("RESULT: verify browser history UI state contract");
 console.log("CONTRACT=" + contractPath);
 console.log("LAWSUITS_PAGE=" + lawsuitsPath);
 console.log("EXPECTS_GLOBAL_BROWSER_BACK_RULE=YES");
 console.log("EXPECTS_LAWSUITS_URL_BACKED_SEARCH=YES");
 console.log("EXPECTS_MATTER_PAGE_URL_BACKED_TABS=YES");
+console.log("EXPECTS_MATTERS_PAGE_URL_BACKED_MASTER_TABS=YES");
 console.log("FAILURES=" + failures.length);
 
 for (const failure of failures) console.log("FAIL=" + failure);

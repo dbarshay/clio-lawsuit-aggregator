@@ -150,6 +150,25 @@ function indexNumber(m: Matter) {
   return val(m, "indexAaaNumber", "index_aaa_number", "lawsuit_index_aaa_number", "indexNumber") || "—";
 }
 
+function denialReason(m: Matter) {
+  return val(m, "denialReason", "denial_reason") || "—";
+}
+
+type SortKey =
+  | "matter"
+  | "patient"
+  | "provider"
+  | "insurer"
+  | "claimAmount"
+  | "balance"
+  | "denialReason"
+  | "court"
+  | "indexNumber"
+  | "filingStatus"
+  | "matterStatus";
+
+type SortDirection = "asc" | "desc";
+
 function hasDisplayValue(value: unknown) {
   const cleaned = String(value ?? "").trim();
   return cleaned !== "" && cleaned !== "—";
@@ -189,6 +208,7 @@ export default function LawsuitsPage() {
   const [insurer, setInsurer] = useState("");
   const [providerReferenceOptions, setProviderReferenceOptions] = useState<any[]>([]);
   const [insurerReferenceOptions, setInsurerReferenceOptions] = useState<any[]>([]);
+  const [courtReferenceOptions, setCourtReferenceOptions] = useState<any[]>([]);
   const [referenceOptionsLoading, setReferenceOptionsLoading] = useState(false);
 
   const [groups, setGroups] = useState<ClaimGroup[]>([]);
@@ -198,11 +218,21 @@ export default function LawsuitsPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<any>(null);
   const [searched, setSearched] = useState(false);
+  const [tableSort, setTableSort] = useState<{ key: SortKey; direction: SortDirection }>({
+    key: "matter",
+    direction: "asc",
+  });
+  const [createPopupOpen, setCreatePopupOpen] = useState(false);
+  const [lawsuitCourt, setLawsuitCourt] = useState("");
+  const [lawsuitAmountMode, setLawsuitAmountMode] = useState<"claim_amount" | "balance_presuit" | "custom">("balance_presuit");
+  const [customLawsuitAmount, setCustomLawsuitAmount] = useState("");
+  const [lawsuitNotes, setLawsuitNotes] = useState("");
+  const [lawsuitPreview, setLawsuitPreview] = useState<any>(null);
 
   const selectedMatters = useMemo(() => Object.values(selected), [selected]);
 
   const selectedTotal = selectedMatters.reduce(
-    (sum, m) => sum + moneyValue(val(m, "claimAmount", "claim_amount")),
+    (sum, m) => sum + moneyValue(val(m, "balancePresuit", "balance_presuit", "balanceAmount", "balance_amount")),
     0
   );
 
@@ -212,24 +242,28 @@ export default function LawsuitsPage() {
     async function loadReferenceOptions() {
       setReferenceOptionsLoading(true);
       try {
-        const [providerResponse, insurerResponse] = await Promise.all([
+        const [providerResponse, insurerResponse, courtResponse] = await Promise.all([
           fetch("/api/reference-data/options?type=provider_client", { cache: "no-store" }),
           fetch("/api/reference-data/options?type=insurer_company", { cache: "no-store" }),
+          fetch("/api/reference-data/options?type=court_venue", { cache: "no-store" }),
         ]);
 
-        const [providerJson, insurerJson] = await Promise.all([
+        const [providerJson, insurerJson, courtJson] = await Promise.all([
           providerResponse.ok ? providerResponse.json() : Promise.resolve({ options: [] }),
           insurerResponse.ok ? insurerResponse.json() : Promise.resolve({ options: [] }),
+          courtResponse.ok ? courtResponse.json() : Promise.resolve({ options: [] }),
         ]);
 
         if (cancelled) return;
 
         setProviderReferenceOptions(Array.isArray(providerJson?.options) ? providerJson.options : []);
         setInsurerReferenceOptions(Array.isArray(insurerJson?.options) ? insurerJson.options : []);
+        setCourtReferenceOptions(Array.isArray(courtJson?.options) ? courtJson.options : []);
       } catch {
         if (!cancelled) {
           setProviderReferenceOptions([]);
           setInsurerReferenceOptions([]);
+          setCourtReferenceOptions([]);
         }
       } finally {
         if (!cancelled) setReferenceOptionsLoading(false);
@@ -418,12 +452,64 @@ export default function LawsuitsPage() {
     });
   }
 
-  async function createOrExtend() {
+  function lawsuitAmountForMode() {
+    if (lawsuitAmountMode === "claim_amount") {
+      return selectedMatters.reduce((sum, m) => sum + moneyValue(val(m, "claimAmount", "claim_amount")), 0);
+    }
+
+    if (lawsuitAmountMode === "custom") {
+      return moneyValue(customLawsuitAmount);
+    }
+
+    return selectedMatters.reduce(
+      (sum, m) => sum + moneyValue(val(m, "balancePresuit", "balance_presuit", "balanceAmount", "balance_amount")),
+      0
+    );
+  }
+
+  function lawsuitAmountLabel() {
+    if (lawsuitAmountMode === "claim_amount") return "Billed Amount";
+    if (lawsuitAmountMode === "custom") return "Other";
+    return "Balance";
+  }
+
+  function validateCreateLawsuitInputs() {
+    if (!lawsuitCourt.trim()) return "Court / Venue is required before creating a lawsuit.";
+
+    if (lawsuitAmountMode === "custom" && lawsuitAmountForMode() <= 0) {
+      return "A valid Lawsuit Amount is required when Other is selected.";
+    }
+
+    if (lawsuitAmountForMode() <= 0) {
+      return "A valid Lawsuit Amount is required before creating a lawsuit.";
+    }
+
+    return "";
+  }
+
+  function openCreateLawsuitPopup() {
     if (!selectedMatters.length) return;
+    setError("");
+    setResult(null);
+    setLawsuitPreview(null);
+    setLawsuitCourt("");
+    setLawsuitAmountMode("balance_presuit");
+    setCustomLawsuitAmount("");
+    setLawsuitNotes("Created from Lawsuits page local-first generation workflow.");
+    setCreatePopupOpen(true);
+  }
+
+  async function previewSelectedLawsuit() {
+    if (!selectedMatters.length) return;
+    const validationError = validateCreateLawsuitInputs();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
 
     setRunning(true);
     setError("");
-    setResult(null);
+    setLawsuitPreview(null);
 
     try {
       const matterIds = selectedMatters.map((m) => Number(matterId(m)));
@@ -434,7 +520,10 @@ export default function LawsuitsPage() {
         cache: "no-store",
         body: JSON.stringify({
           matterIds,
-          amountSoughtMode: "balance_presuit",
+          amountSoughtMode: lawsuitAmountMode,
+          customAmountSought: lawsuitAmountMode === "custom" ? lawsuitAmountForMode() : null,
+          venue: lawsuitCourt.trim(),
+          venueSelection: lawsuitCourt.trim(),
         }),
       });
 
@@ -443,10 +532,32 @@ export default function LawsuitsPage() {
         throw new Error(previewJson?.error || "Local lawsuit generation preview failed.");
       }
 
+      setLawsuitPreview(previewJson);
+
       if (!previewJson.canCreate) {
-        setResult(previewJson);
         throw new Error(previewJson.blockingReason || "Selected matters cannot be used to create a new local lawsuit.");
       }
+    } catch (e: any) {
+      setError(e?.message || "Local lawsuit generation preview failed.");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  async function confirmCreateLawsuit() {
+    if (!selectedMatters.length) return;
+    const validationError = validateCreateLawsuitInputs();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setRunning(true);
+    setError("");
+    setResult(null);
+
+    try {
+      const matterIds = selectedMatters.map((m) => Number(matterId(m)));
 
       const createRes = await fetch("/api/lawsuits/local-generation-create", {
         method: "POST",
@@ -455,8 +566,11 @@ export default function LawsuitsPage() {
         body: JSON.stringify({
           confirm: "create-local-lawsuit",
           matterIds,
-          amountSoughtMode: "balance_presuit",
-          notes: "Created from Lawsuits page local-first generation workflow.",
+          amountSoughtMode: lawsuitAmountMode,
+          customAmountSought: lawsuitAmountMode === "custom" ? lawsuitAmountForMode() : null,
+          venue: lawsuitCourt.trim(),
+          venueSelection: lawsuitCourt.trim(),
+          notes: lawsuitNotes.trim() || "Created from Lawsuits page local-first generation workflow.",
         }),
       });
 
@@ -467,14 +581,71 @@ export default function LawsuitsPage() {
 
       setResult({
         ...createJson,
-        preview: previewJson,
+        preview: lawsuitPreview,
       });
+      setCreatePopupOpen(false);
+      setLawsuitPreview(null);
       await search();
     } catch (e: any) {
       setError(e?.message || "Local lawsuit generation failed.");
     } finally {
       setRunning(false);
     }
+  }
+
+  function sortValue(m: Matter, key: SortKey) {
+    if (key === "matter") return displayNumber(m);
+    if (key === "patient") return val(m, "patientName", "patient_name");
+    if (key === "provider") return val(m, "client_name", "clientName", "provider_name", "providerName");
+    if (key === "insurer") return insurerName(m);
+    if (key === "claimAmount") return moneyValue(val(m, "claimAmount", "claim_amount"));
+    if (key === "balance") return moneyValue(val(m, "balancePresuit", "balance_presuit", "balanceAmount", "balance_amount"));
+    if (key === "denialReason") return denialReason(m);
+    if (key === "court") return courtVenue(m);
+    if (key === "indexNumber") return indexNumber(m);
+    if (key === "filingStatus") return masterId(m) || "Not Filed";
+    if (key === "matterStatus") return matterStatus(m);
+    return "";
+  }
+
+  function compareRows(a: Matter, b: Matter) {
+    const av = sortValue(a, tableSort.key);
+    const bv = sortValue(b, tableSort.key);
+
+    const direction = tableSort.direction === "asc" ? 1 : -1;
+
+    if (typeof av === "number" || typeof bv === "number") {
+      return (Number(av || 0) - Number(bv || 0)) * direction;
+    }
+
+    const primary = String(av || "").localeCompare(String(bv || ""), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+
+    if (primary !== 0) return primary * direction;
+    return displayNumber(a).localeCompare(displayNumber(b), undefined, { numeric: true, sensitivity: "base" });
+  }
+
+  function toggleSort(key: SortKey) {
+    setTableSort((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
+  }
+
+  function sortLabel(key: SortKey) {
+    if (tableSort.key !== key) return "";
+    return tableSort.direction === "asc" ? " ▲" : " ▼";
+  }
+
+  function sortableHeader(label: string, key: SortKey, style: React.CSSProperties = th) {
+    return (
+      <button type="button" onClick={() => toggleSort(key)} style={sortHeaderButton}>
+        {label}
+        {sortLabel(key)}
+      </button>
+    );
   }
 
   return (
@@ -637,13 +808,7 @@ export default function LawsuitsPage() {
             <p>No claim clusters found.</p>
           ) : (
             groups.map((group, idx) => {
-              const rows = [...getRows(group)].sort((a, b) => {
-                const aM = masterId(a);
-                const bM = masterId(b);
-                if (!aM && bM) return -1;
-                if (aM && !bM) return 1;
-                return String(aM).localeCompare(String(bM));
-              });
+              const rows = [...getRows(group)].sort(compareRows);
 
               const eligibleRows = rows.filter((m) => isSelectableMatter(m));
               const allEligibleSelected =
@@ -677,16 +842,17 @@ export default function LawsuitsPage() {
                             title="Select/deselect all eligible matters"
                           />
                         </th>
-                        <th style={th}>Matter</th>
-                        <th style={th}>Patient</th>
-                        <th style={th}>Provider</th>
-                        <th style={th}>Insurer</th>
-                        <th style={thRight}>Claim Amount</th>
-                        <th style={thRight}>Balance</th>
-                        <th style={th}>Court</th>
-                        <th style={th}>Index Number</th>
-                        <th style={th}>Filing Status</th>
-                        <th style={th}>Matter Status</th>
+                        <th style={th}>{sortableHeader("Matter", "matter")}</th>
+                        <th style={th}>{sortableHeader("Patient", "patient")}</th>
+                        <th style={th}>{sortableHeader("Provider", "provider")}</th>
+                        <th style={th}>{sortableHeader("Insurer", "insurer")}</th>
+                        <th style={thRight}>{sortableHeader("Claim Amount", "claimAmount", thRight)}</th>
+                        <th style={thRight}>{sortableHeader("Balance", "balance", thRight)}</th>
+                        <th style={th}>{sortableHeader("Denial Reason", "denialReason")}</th>
+                        <th style={th}>{sortableHeader("Court", "court")}</th>
+                        <th style={th}>{sortableHeader("Filing Status", "filingStatus")}</th>
+                        <th style={th}>{sortableHeader("Index Number", "indexNumber")}</th>
+                        <th style={th}>{sortableHeader("Matter Status", "matterStatus")}</th>
                       </tr>
                     </thead>
 
@@ -751,21 +917,8 @@ export default function LawsuitsPage() {
                             </td>
                             <td style={tdRight}>{money(val(m, "claimAmount", "claim_amount"))}</td>
                             <td style={tdRight}>{money(val(m, "balancePresuit", "balance_presuit", "balanceAmount", "balance_amount"))}</td>
+                            <td style={td}>{denialReason(m)}</td>
                             <td style={td}>{courtVenue(m)}</td>
-                            <td style={td}>
-                              {hasDisplayValue(indexNumber(m)) ? (
-                                <button
-                                  type="button"
-                                  onClick={() => searchLinkedField("indexAaaNumber", indexNumber(m))}
-                                  style={fieldLinkButton}
-                                  title="Search this index number"
-                                >
-                                  {indexNumber(m)}
-                                </button>
-                              ) : (
-                                "—"
-                              )}
-                            </td>
                             <td style={td}>
                               {hasMaster ? (
                                 <>
@@ -780,6 +933,20 @@ export default function LawsuitsPage() {
                                 </>
                               ) : (
                                 "Not Filed"
+                              )}
+                            </td>
+                            <td style={td}>
+                              {hasDisplayValue(indexNumber(m)) ? (
+                                <button
+                                  type="button"
+                                  onClick={() => searchLinkedField("indexAaaNumber", indexNumber(m))}
+                                  style={fieldLinkButton}
+                                  title="Search this index number"
+                                >
+                                  {indexNumber(m)}
+                                </button>
+                              ) : (
+                                "—"
                               )}
                             </td>
                             <td style={td}>
@@ -802,7 +969,7 @@ export default function LawsuitsPage() {
           <p style={panelLine}><strong>Total Claim Amount:</strong> {money(selectedTotal)}</p>
 
           <button
-            onClick={createOrExtend}
+            onClick={openCreateLawsuitPopup}
             disabled={!selectedMatters.length || running}
             style={{
               ...primaryBtn,
@@ -815,6 +982,180 @@ export default function LawsuitsPage() {
           </button>
         </aside>
       </div>
+
+      {createPopupOpen && (
+        <div style={modalBackdrop}>
+          <div style={createModal}>
+            <h2 style={{ marginTop: 0, marginBottom: 8 }}>Create Lawsuit</h2>
+            <p style={{ marginTop: 0, color: "#475569", fontSize: 13 }}>
+              Review selected matters, enter the required court, preview the local lawsuit, and then confirm creation.
+              No Clio read or write occurs in this workflow.
+            </p>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <label style={fieldLabel}>
+                Court / Venue <span style={{ color: "#dc2626" }}>*</span>
+                <input
+                  list="barsh-lawsuit-create-court-options"
+                  value={lawsuitCourt}
+                  onChange={(event) => setLawsuitCourt(event.target.value)}
+                  placeholder="Select or enter court / venue"
+                  style={input}
+                />
+              </label>
+
+              <label style={fieldLabel}>
+                Lawsuit Notes
+                <input
+                  value={lawsuitNotes}
+                  onChange={(event) => setLawsuitNotes(event.target.value)}
+                  placeholder="Optional notes"
+                  style={input}
+                />
+              </label>
+            </div>
+
+            <div style={amountModePanel}>
+              <div style={{ fontWeight: 900, marginBottom: 8 }}>
+                Lawsuit Amount <span style={{ color: "#dc2626" }}>*</span>
+              </div>
+
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+                <label style={radioLabel}>
+                  <input
+                    type="radio"
+                    checked={lawsuitAmountMode === "claim_amount"}
+                    onChange={() => setLawsuitAmountMode("claim_amount")}
+                  />
+                  Billed Amount ({money(selectedMatters.reduce((sum, m) => sum + moneyValue(val(m, "claimAmount", "claim_amount")), 0))})
+                </label>
+
+                <label style={radioLabel}>
+                  <input
+                    type="radio"
+                    checked={lawsuitAmountMode === "balance_presuit"}
+                    onChange={() => setLawsuitAmountMode("balance_presuit")}
+                  />
+                  Balance ({money(selectedMatters.reduce((sum, m) => sum + moneyValue(val(m, "balancePresuit", "balance_presuit", "balanceAmount", "balance_amount")), 0))})
+                </label>
+
+                <label style={radioLabel}>
+                  <input
+                    type="radio"
+                    checked={lawsuitAmountMode === "custom"}
+                    onChange={() => setLawsuitAmountMode("custom")}
+                  />
+                  Other
+                </label>
+
+                {lawsuitAmountMode === "custom" && (
+                  <input
+                    value={customLawsuitAmount}
+                    onChange={(event) => setCustomLawsuitAmount(event.target.value)}
+                    placeholder="Enter lawsuit amount"
+                    style={{ ...input, width: 180 }}
+                  />
+                )}
+              </div>
+
+              <div style={{ marginTop: 8, fontSize: 13, color: "#334155" }}>
+                Selected Lawsuit Amount: <strong>{money(lawsuitAmountForMode())}</strong> ({lawsuitAmountLabel()})
+              </div>
+            </div>
+
+            <datalist id="barsh-lawsuit-create-court-options">
+              {courtReferenceOptions.map((option, index) => {
+                const value = String(option?.displayName || option?.name || option?.value || "").trim();
+                if (!value) return null;
+                return <option key={`lawsuit-create-court-${option.id || value}-${index}`} value={value} />;
+              })}
+            </datalist>
+
+            <div style={{ marginBottom: 10, fontWeight: 900 }}>
+              Selected Matters: {selectedMatters.length} · Selected Lawsuit Amount: {money(lawsuitAmountForMode())}
+            </div>
+
+            <div style={{ maxHeight: 260, overflow: "auto", border: "1px solid #e5e7eb", borderRadius: 8, marginBottom: 12 }}>
+              <table style={table}>
+                <thead>
+                  <tr>
+                    <th style={th}>Matter</th>
+                    <th style={th}>Patient</th>
+                    <th style={th}>Provider</th>
+                    <th style={th}>Insurer</th>
+                    <th style={thRight}>Claim Amount</th>
+                    <th style={thRight}>Balance</th>
+                    <th style={th}>Denial Reason</th>
+                    <th style={th}>Filing Status</th>
+                    <th style={th}>Matter Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedMatters.map((m) => (
+                    <tr key={`create-review-${matterId(m)}`}>
+                      <td style={td}>{displayNumber(m)}</td>
+                      <td style={td}>{val(m, "patientName", "patient_name") || "—"}</td>
+                      <td style={td}>{val(m, "client_name", "clientName", "provider_name", "providerName") || "—"}</td>
+                      <td style={td}>{insurerName(m) || "—"}</td>
+                      <td style={tdRight}>{money(val(m, "claimAmount", "claim_amount"))}</td>
+                      <td style={tdRight}>{money(val(m, "balancePresuit", "balance_presuit", "balanceAmount", "balance_amount"))}</td>
+                      <td style={td}>{denialReason(m)}</td>
+                      <td style={td}>{masterId(m) || "Not Filed"}</td>
+                      <td style={td}><span style={matterStatusStyle(m)}>{matterStatus(m)}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {lawsuitPreview && (
+              <div style={successBox}>
+                <strong>Preview Ready:</strong> {lawsuitPreview.selectedMatterCount} matters · Lawsuit Amount {money(lawsuitPreview.amountSought)}
+              </div>
+            )}
+
+            <div style={modalButtonRow}>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreatePopupOpen(false);
+                  setLawsuitPreview(null);
+                }}
+                disabled={running}
+                style={secondaryBtn}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={previewSelectedLawsuit}
+                disabled={running || !selectedMatters.length || Boolean(validateCreateLawsuitInputs())}
+                style={{
+                  ...secondaryBtn,
+                  opacity: running || !selectedMatters.length || Boolean(validateCreateLawsuitInputs()) ? 0.45 : 1,
+                  cursor: running || !selectedMatters.length || Boolean(validateCreateLawsuitInputs()) ? "not-allowed" : "pointer",
+                }}
+              >
+                Preview Lawsuit
+              </button>
+
+              <button
+                type="button"
+                onClick={confirmCreateLawsuit}
+                disabled={running || !selectedMatters.length || Boolean(validateCreateLawsuitInputs())}
+                style={{
+                  ...primaryBtn,
+                  opacity: running || !selectedMatters.length || Boolean(validateCreateLawsuitInputs()) ? 0.45 : 1,
+                  cursor: running || !selectedMatters.length || Boolean(validateCreateLawsuitInputs()) ? "not-allowed" : "pointer",
+                }}
+              >
+                {running ? "Working..." : "Confirm Create Lawsuit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
@@ -907,6 +1248,83 @@ const fieldLinkButton: React.CSSProperties = {
   textUnderlineOffset: 2,
   cursor: "pointer",
   textAlign: "left",
+};
+
+const sortHeaderButton: React.CSSProperties = {
+  border: 0,
+  background: "transparent",
+  color: "inherit",
+  padding: 0,
+  margin: 0,
+  font: "inherit",
+  fontWeight: 900,
+  cursor: "pointer",
+  textAlign: "inherit",
+  whiteSpace: "nowrap",
+};
+
+const modalBackdrop: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 20000,
+  background: "rgba(15, 23, 42, 0.32)",
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "center",
+  paddingTop: 80,
+};
+
+const createModal: React.CSSProperties = {
+  width: "min(1180px, calc(100vw - 48px))",
+  maxHeight: "calc(100vh - 120px)",
+  overflow: "auto",
+  background: "#fff",
+  border: "1px solid #cbd5e1",
+  borderRadius: 12,
+  boxShadow: "0 24px 70px rgba(15, 23, 42, 0.32)",
+  padding: 18,
+};
+
+const fieldLabel: React.CSSProperties = {
+  display: "grid",
+  gap: 5,
+  fontSize: 12,
+  fontWeight: 900,
+  color: "#334155",
+};
+
+const amountModePanel: React.CSSProperties = {
+  border: "1px solid #e2e8f0",
+  borderRadius: 8,
+  padding: 12,
+  marginBottom: 12,
+  background: "#f8fafc",
+};
+
+const radioLabel: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  fontSize: 13,
+  fontWeight: 800,
+  color: "#334155",
+};
+
+const modalButtonRow: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "flex-end",
+  alignItems: "center",
+  gap: 10,
+  marginTop: 14,
+};
+
+const secondaryBtn: React.CSSProperties = {
+  padding: "8px 10px",
+  borderRadius: 6,
+  background: "#f8fafc",
+  color: "#0f172a",
+  border: "1px solid #cbd5e1",
+  cursor: "pointer",
 };
 
 const panel: React.CSSProperties = {

@@ -51,8 +51,15 @@ export async function POST(req: NextRequest) {
 
     const confirm = text(body?.confirm);
     const selectedMatterIds = normalizeMatterIds(body?.matterIds || body?.selectedMatterIds);
+    const rawAmountSoughtMode = text(body?.amountSoughtMode);
     const amountSoughtMode =
-      text(body?.amountSoughtMode) === "claim_amount" ? "claim_amount" : "balance_presuit";
+      rawAmountSoughtMode === "claim_amount" || rawAmountSoughtMode === "custom"
+        ? rawAmountSoughtMode
+        : "balance_presuit";
+    const customAmountSought = moneyNumber(body?.customAmountSought);
+    const venue = text(body?.venue || body?.court || body?.courtVenue);
+    const venueSelection = text(body?.venueSelection || venue);
+    const venueOther = text(body?.venueOther);
 
     if (confirm !== "create-local-lawsuit") {
       return NextResponse.json(
@@ -78,6 +85,42 @@ export async function POST(req: NextRequest) {
           ok: false,
           created: false,
           error: "Select at least one matter for local lawsuit generation.",
+          writes: {
+            createsLawsuit: false,
+            updatesClaimIndex: false,
+            writesClio: false,
+            createsClioMasterMatter: false,
+            consumesMasterSequence: false,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!venue) {
+      return NextResponse.json(
+        {
+          ok: false,
+          created: false,
+          error: "Court / Venue is required before creating a local lawsuit.",
+          writes: {
+            createsLawsuit: false,
+            updatesClaimIndex: false,
+            writesClio: false,
+            createsClioMasterMatter: false,
+            consumesMasterSequence: false,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    if (amountSoughtMode === "custom" && customAmountSought <= 0) {
+      return NextResponse.json(
+        {
+          ok: false,
+          created: false,
+          error: "A valid Lawsuit Amount is required when Other is selected.",
           writes: {
             createsLawsuit: false,
             updatesClaimIndex: false,
@@ -173,10 +216,18 @@ export async function POST(req: NextRequest) {
     const amountComponents = selectedRows.map((row) => ({
       matterId: Number(row.matter_id),
       displayNumber: rowDisplayNumber(row),
-      amount: amountForMode(row, amountSoughtMode),
-      sourceField: amountSoughtMode === "claim_amount" ? "claim_amount" : "balance_presuit",
+      amount: amountSoughtMode === "custom" ? 0 : amountForMode(row, amountSoughtMode),
+      sourceField:
+        amountSoughtMode === "custom"
+          ? "custom"
+          : amountSoughtMode === "claim_amount"
+          ? "claim_amount"
+          : "balance_presuit",
     }));
-    const amountSought = amountComponents.reduce((sum, item) => sum + item.amount, 0);
+    const amountSought =
+      amountSoughtMode === "custom"
+        ? customAmountSought
+        : amountComponents.reduce((sum, item) => sum + item.amount, 0);
 
     const masterLawsuitId = await buildMasterId();
 
@@ -187,9 +238,9 @@ export async function POST(req: NextRequest) {
           claimNumber,
           lawsuitMatters,
           sharedFolderPath: "",
-          venue: null,
-          venueSelection: null,
-          venueOther: null,
+          venue,
+          venueSelection: venueSelection || venue,
+          venueOther: venueOther || null,
           indexAaaNumber: null,
           lawsuitNotes: text(body?.notes) || null,
           lawsuitOptions: {
@@ -197,6 +248,10 @@ export async function POST(req: NextRequest) {
             selectedMatterIds,
             selectedDisplayNumbers: selectedRows.map(rowDisplayNumber).sort((a, b) => a.localeCompare(b)),
             amountSoughtMode,
+            customAmountSought: amountSoughtMode === "custom" ? customAmountSought : null,
+            venue,
+            venueSelection: venueSelection || venue,
+            venueOther: venueOther || null,
             noClioWrites: true,
             noClioMasterMatter: true,
             reusesExistingLawsuit: false,
@@ -204,7 +259,7 @@ export async function POST(req: NextRequest) {
           },
           amountSoughtMode,
           amountSought,
-          customAmountSought: null,
+          customAmountSought: amountSoughtMode === "custom" ? customAmountSought : null,
           amountSoughtBreakdown: {
             mode: amountSoughtMode,
             sourceField: amountSoughtMode === "claim_amount" ? "claim_amount" : "balance_presuit",
@@ -257,6 +312,9 @@ export async function POST(req: NextRequest) {
       amountSought,
       amountComponents,
       updatedClaimIndexCount: result.updatedCount,
+      venue,
+      venueSelection: venueSelection || venue,
+      venueOther: venueOther || null,
       indexAaaNumber: null,
       clioMasterMatterId: null,
       proposedNextStep: "Map or create a Clio document shell only through a separate explicit document-storage workflow.",

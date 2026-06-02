@@ -76,6 +76,9 @@ async function attachLocalLawsuitMetadata(rows: any[]) {
       venueSelection: true,
       venueOther: true,
       indexAaaNumber: true,
+      clioMasterMatterId: true,
+      clioMasterDisplayNumber: true,
+      clioMasterMatterDescription: true,
     },
   });
 
@@ -96,6 +99,12 @@ async function attachLocalLawsuitMetadata(rows: any[]) {
       lawsuit_index_aaa_number: lawsuitIndexNumber || null,
       indexAaaNumber: lawsuitIndexNumber || row.indexAaaNumber || row.index_aaa_number || null,
       index_aaa_number: row.index_aaa_number || lawsuitIndexNumber || null,
+      clioMasterMatterId: lawsuit.clioMasterMatterId || null,
+      clio_master_matter_id: lawsuit.clioMasterMatterId || null,
+      clioMasterDisplayNumber: lawsuit.clioMasterDisplayNumber || null,
+      clio_master_display_number: lawsuit.clioMasterDisplayNumber || null,
+      clioMasterMatterDescription: lawsuit.clioMasterMatterDescription || null,
+      clio_master_matter_description: lawsuit.clioMasterMatterDescription || null,
     };
   });
 }

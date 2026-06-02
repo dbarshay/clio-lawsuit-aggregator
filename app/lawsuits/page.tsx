@@ -142,6 +142,26 @@ function masterId(m: Matter) {
   return val(m, "masterLawsuitId", "master_lawsuit_id") || "";
 }
 
+function clioMasterMatterId(m: Matter) {
+  return val(m, "clioMasterMatterId", "clio_master_matter_id") || "";
+}
+
+function clioMasterDisplayNumber(m: Matter) {
+  return val(m, "clioMasterDisplayNumber", "clio_master_display_number") || "";
+}
+
+function masterTargetHref(m: Matter) {
+  const clioId = String(clioMasterMatterId(m) || "").trim();
+  const localMaster = String(masterId(m) || "").trim();
+
+  if (clioId) {
+    const params = localMaster ? `?masterLawsuitId=${encodeURIComponent(localMaster)}` : "";
+    return `/matter/${encodeURIComponent(clioId)}${params}`;
+  }
+
+  return "";
+}
+
 function courtVenue(m: Matter) {
   return val(m, "courtVenue", "court_venue", "court", "venue", "venueSelection", "venueOther") || "—";
 }
@@ -974,7 +994,15 @@ export default function LawsuitsPage() {
                             <td style={td}>{courtVenue(m)}</td>
                             <td style={td}>
                               {hasMaster ? (
-                                <>
+                                masterTargetHref(m) ? (
+                                  <a
+                                    href={masterTargetHref(m)}
+                                    style={{ ...fieldAnchor, color: "#ca8a04" }}
+                                    title={`Open master lawsuit ${masterId(m)}${clioMasterDisplayNumber(m) ? ` / ${clioMasterDisplayNumber(m)}` : ""}`}
+                                  >
+                                    {masterId(m)}
+                                  </a>
+                                ) : (
                                   <button
                                     type="button"
                                     onClick={() => searchLinkedField("masterLawsuitId", masterId(m))}
@@ -983,7 +1011,7 @@ export default function LawsuitsPage() {
                                   >
                                     {masterId(m)}
                                   </button>
-                                </>
+                                )
                               ) : (
                                 "Not Filed"
                               )}

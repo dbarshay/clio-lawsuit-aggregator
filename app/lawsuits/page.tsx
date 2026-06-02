@@ -409,44 +409,6 @@ export default function LawsuitsPage() {
             alignItems: "flex-start",
           }}
         >
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: -86,
-              display: "flex",
-              justifyContent: "flex-start",
-              alignItems: "center",
-            }}
-          >
-            <button
-                type="button"
-                onClick={() => {
-                  window.location.href = "/print-queue";
-                }}
-                title="Open Daily Print Queue."
-                style={{
-                  display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-                padding: "7px 11px",
-                border: "1px solid #cbd5e1",
-                borderRadius: 999,
-                background: "#f8fafc",
-                color: "#475569",
-                fontSize: 12,
-                fontWeight: 800,
-                whiteSpace: "nowrap",
-                cursor: "pointer",
-                opacity: 1,
-              }}
-              >
-                <span aria-hidden="true">🖨️</span>
-                <span>Print Queue</span>
-              </button>
-          </div>
-
           <a href="/" title="Return to Barsh Matters entry screen" style={{ display: "inline-flex", textDecoration: "none" }}>
             <img
               src="/barsh-matters-cropped-transparent.png"
@@ -480,24 +442,17 @@ export default function LawsuitsPage() {
           </div>
         </div>
 
-        <a
-          href="/print-queue"
-          style={{
-            fontSize: 13,
-            padding: "6px 10px",
-            border: "1px solid #94a3b8",
-            borderRadius: 6,
-            color: "#0f172a",
-            textDecoration: "none",
-            background: "#fff",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Daily Print Queue
-        </a>
       </div>
 
-      <div style={searchGrid}>
+      <form
+        style={searchGrid}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!loading && !running) {
+            void search();
+          }
+        }}
+      >
         <input placeholder="Claim number" value={claim} onChange={(e) => setClaim(e.target.value)} style={input} />
         <input placeholder="Patient" value={patient} onChange={(e) => setPatient(e.target.value)} style={input} />
         <input
@@ -528,10 +483,10 @@ export default function LawsuitsPage() {
             return <option key={`lawsuit-insurer-reference-${option.id || value}-${index}`} value={value} />;
           })}
         </datalist>
-        <button onClick={search} disabled={loading || running} style={primaryBtn}>
+        <button type="submit" disabled={loading || running} style={primaryBtn}>
           {loading ? "Searching..." : "Search"}
         </button>
-      </div>
+      </form>
 
       {error && <div style={errorBox}>{error}</div>}
 

@@ -2028,6 +2028,29 @@ export default function Home() {
                 <span aria-hidden="true">🖨️</span>
                 <span>Print Queue</span>
               </button>
+              <a
+                href="/lawsuits"
+                title="Open lawsuit aggregation and local master lawsuit management."
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  padding: "7px 11px",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 999,
+                  background: "#f8fafc",
+                  color: "#475569",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  whiteSpace: "nowrap",
+                  cursor: "pointer",
+                  textDecoration: "none",
+                }}
+              >
+                <span>Create / Manage Lawsuits</span>
+              </a>
+
             </div>
 
             <a href="/" style={bmLogoLinkStyle} title="Return to Barsh Matters entry screen">

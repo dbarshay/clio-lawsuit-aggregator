@@ -188,6 +188,21 @@ type BackupCompareRow = {
   differs: boolean;
 };
 
+type BackupAuditSummary = {
+  latestBackupCreatedAt: string;
+  latestBackupAge: string;
+  recentBackupCount: number;
+  missingManifestCount: number;
+  missingDumpCount: number;
+  missingSchemaCount: number;
+  missingArchiveListCount: number;
+  distinctGitHeadCount: number;
+  scheduledBackupWithinExpectedWindow: boolean | null;
+  retentionIntervalSeconds: number | string;
+  recentAllBackupsHours: number | string;
+  dailyBackupsDays: number | string;
+};
+
 const cardStyle: React.CSSProperties = {
   background: "#fff",
   border: "1px solid #e5e7eb",
@@ -344,6 +359,132 @@ function buildBackupCompareRows(baseline: BackupRow | null, comparison: BackupRo
   });
 }
 
+function backupAuditSummary(status: BackupStatus | null): BackupAuditSummary {
+  const backups = status?.backups || [];
+  const gitHeads = new Set(backups.map((backup) => backup.gitHead).filter(Boolean));
+
+  return {
+    latestBackupCreatedAt: status?.latestManifest?.createdAt || "",
+    latestBackupAge: formatHours(status?.scheduledBackupHealth?.latestBackupAgeHours),
+    recentBackupCount: backups.length,
+    missingManifestCount: backups.filter((backup) => !backup.hasManifest).length,
+    missingDumpCount: backups.filter((backup) => !backup.hasDatabaseDump).length,
+    missingSchemaCount: backups.filter((backup) => !backup.hasSchemaSql).length,
+    missingArchiveListCount: backups.filter((backup) => !backup.hasArchiveList).length,
+    distinctGitHeadCount: gitHeads.size,
+    scheduledBackupWithinExpectedWindow: status?.scheduledBackupHealth?.latestBackupWithinExpectedWindow ?? null,
+    retentionIntervalSeconds: status?.scheduledBackupHealth?.retentionPolicy?.intervalSeconds ?? "—",
+    recentAllBackupsHours: status?.scheduledBackupHealth?.retentionPolicy?.recentAllBackupsHours ?? "—",
+    dailyBackupsDays: status?.scheduledBackupHealth?.retentionPolicy?.dailyBackupsDays ?? "—",
+  };
+}
+
+function backupAuditFlags(backup: BackupRow): string {
+  const flags = [];
+
+  if (!backup.hasManifest) flags.push("missing manifest");
+  if (!backup.hasDatabaseDump) flags.push("missing dump");
+  if (!backup.hasSchemaSql) flags.push("missing schema");
+  if (!backup.hasArchiveList) flags.push("missing archive-list");
+
+  return flags.length ? flags.join("; ") : "OK";
+}
+
+function buildBackupAuditReport(status: BackupStatus | null): string {
+  const summary = backupAuditSummary(status);
+  const backups = status?.backups || [];
+
+  const lines = [
+    "Barsh Matters Backup Audit Report",
+    `Generated: ${new Date().toISOString()}`,
+    "",
+    "Summary",
+    `Latest backup created: ${summary.latestBackupCreatedAt || "—"}`,
+    `Latest backup age: ${summary.latestBackupAge}`,
+    `Recent backups listed: ${summary.recentBackupCount}`,
+    `Missing manifest: ${summary.missingManifestCount}`,
+    `Missing database.dump: ${summary.missingDumpCount}`,
+    `Missing schema.sql: ${summary.missingSchemaCount}`,
+    `Missing archive-list.txt: ${summary.missingArchiveListCount}`,
+    `Distinct git heads: ${summary.distinctGitHeadCount}`,
+    `Scheduled backup within expected window: ${backupCompareValue(summary.scheduledBackupWithinExpectedWindow)}`,
+    `Retention interval seconds: ${summary.retentionIntervalSeconds}`,
+    `Recent all-backups hours: ${summary.recentAllBackupsHours}`,
+    `Daily backups days: ${summary.dailyBackupsDays}`,
+    "",
+    "Backups",
+    [
+      "name",
+      "createdAt",
+      "gitHead",
+      "tables",
+      "indexes",
+      "archiveEntries",
+      "manifest",
+      "dump",
+      "schema",
+      "archiveList",
+      "flags",
+    ].join("\t"),
+  ];
+
+  for (const backup of backups) {
+    lines.push([
+      backup.name,
+      backup.createdAt || "",
+      backup.gitHead || "",
+      backup.tableCount ?? "",
+      backup.indexCount ?? "",
+      backup.archiveEntries ?? "",
+      backup.hasManifest ? "YES" : "NO",
+      backup.hasDatabaseDump ? "YES" : "NO",
+      backup.hasSchemaSql ? "YES" : "NO",
+      backup.hasArchiveList ? "YES" : "NO",
+      backupAuditFlags(backup),
+    ].join("\t"));
+  }
+
+  return lines.join("\n");
+}
+
+function csvEscape(value: unknown): string {
+  const text = String(value ?? "");
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function buildBackupAuditCsv(status: BackupStatus | null): string {
+  const backups = status?.backups || [];
+  const header = [
+    "name",
+    "createdAt",
+    "gitHead",
+    "tables",
+    "indexes",
+    "archiveEntries",
+    "manifestPresent",
+    "databaseDumpPresent",
+    "schemaSqlPresent",
+    "archiveListPresent",
+    "flags",
+  ];
+
+  const rows = backups.map((backup) => [
+    backup.name,
+    backup.createdAt || "",
+    backup.gitHead || "",
+    backup.tableCount ?? "",
+    backup.indexCount ?? "",
+    backup.archiveEntries ?? "",
+    backup.hasManifest ? "YES" : "NO",
+    backup.hasDatabaseDump ? "YES" : "NO",
+    backup.hasSchemaSql ? "YES" : "NO",
+    backup.hasArchiveList ? "YES" : "NO",
+    backupAuditFlags(backup),
+  ]);
+
+  return [header, ...rows].map((row) => row.map(csvEscape).join(",")).join("\n");
+}
+
 function backupCompareWarnings(baseline: BackupRow | null, comparison: BackupRow | null): BackupCompareWarning[] {
   const warnings: BackupCompareWarning[] = [];
 
@@ -491,6 +632,8 @@ export default function AdminBackupRestorePage() {
     [baselineBackupRow, comparisonBackupRow]
   );
 
+  const auditSummary = useMemo(() => backupAuditSummary(status), [status]);
+
   const restorePlanRows = useMemo(
     () => [
       ["Selected backup", selectedBackupRow?.displayPath || "—"],
@@ -627,6 +770,31 @@ export default function AdminBackupRestorePage() {
     } catch {
       setMessage(selectedBackup);
     }
+  }
+
+  async function copyBackupAuditReport() {
+    try {
+      await navigator.clipboard.writeText(buildBackupAuditReport(status));
+      setMessage("Backup audit report copied to clipboard.");
+    } catch {
+      setMessage(buildBackupAuditReport(status));
+    }
+  }
+
+  function downloadBackupAuditCsv() {
+    const csv = buildBackupAuditCsv(status);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = `barsh-matters-backup-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+
+    setMessage("Backup audit CSV generated in the browser.");
   }
 
   async function runRestorePreview() {
@@ -1185,6 +1353,102 @@ export default function AdminBackupRestorePage() {
                     <td style={{ padding: "10px 8px", color: "#334155", wordBreak: "break-word" }}>{row.baseline}</td>
                     <td style={{ padding: "10px 8px", color: "#334155", wordBreak: "break-word" }}>{row.comparison}</td>
                     <td style={{ padding: "10px 8px", fontWeight: 950 }}>{row.differs ? "YES" : "NO"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section
+          style={{ ...cardStyle, display: "grid", gap: 14 }}
+          data-backup-audit-report="read-only"
+          data-client-side-csv-export="true"
+          data-server-side-export-enabled="false"
+          data-restore-execution-enabled="false"
+          data-backup-deletion-enabled="false"
+        >
+          <div>
+            <h2 style={{ margin: 0, fontSize: 22 }}>Backup Audit Report</h2>
+            <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.45 }}>
+              Read-only audit report generated from the backup metadata already loaded on this page.  Copy and CSV export are client-side only.  This section does not create server-side export files, restore data, delete backups, run retention cleanup, call Clio, send email, generate documents, or change the print queue.
+            </p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+            {[
+              ["Latest backup", formatDate(auditSummary.latestBackupCreatedAt)],
+              ["Latest backup age", auditSummary.latestBackupAge],
+              ["Recent backups listed", auditSummary.recentBackupCount],
+              ["Missing manifest", auditSummary.missingManifestCount],
+              ["Missing dump", auditSummary.missingDumpCount],
+              ["Missing schema", auditSummary.missingSchemaCount],
+              ["Missing archive-list", auditSummary.missingArchiveListCount],
+              ["Distinct git heads", auditSummary.distinctGitHeadCount],
+              ["Scheduled within window", backupCompareValue(auditSummary.scheduledBackupWithinExpectedWindow)],
+              ["Retention interval seconds", auditSummary.retentionIntervalSeconds],
+              ["Recent all-backups hours", auditSummary.recentAllBackupsHours],
+              ["Daily backups days", auditSummary.dailyBackupsDays],
+            ].map(([label, value]) => (
+              <div
+                key={String(label)}
+                style={{
+                  border: "1px solid #e5e7eb",
+                  background: "#fff",
+                  borderRadius: 16,
+                  padding: 13,
+                  display: "grid",
+                  gap: 5,
+                }}
+              >
+                <div style={{ color: "#64748b", fontSize: 12, fontWeight: 950, textTransform: "uppercase" }}>{label}</div>
+                <div style={{ fontSize: 18, fontWeight: 950 }}>{String(value ?? "—")}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button type="button" onClick={() => void copyBackupAuditReport()} style={secondaryButtonStyle}>
+              Copy Audit Report
+            </button>
+            <button type="button" onClick={downloadBackupAuditCsv} style={secondaryButtonStyle}>
+              Download Audit CSV
+            </button>
+          </div>
+
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <thead>
+                <tr style={{ textAlign: "left", color: "#475569", borderBottom: "1px solid #e5e7eb" }}>
+                  <th style={{ padding: "10px 8px" }}>Backup</th>
+                  <th style={{ padding: "10px 8px" }}>Created</th>
+                  <th style={{ padding: "10px 8px" }}>Git</th>
+                  <th style={{ padding: "10px 8px" }}>Tables</th>
+                  <th style={{ padding: "10px 8px" }}>Indexes</th>
+                  <th style={{ padding: "10px 8px" }}>Archive entries</th>
+                  <th style={{ padding: "10px 8px" }}>Manifest</th>
+                  <th style={{ padding: "10px 8px" }}>Dump</th>
+                  <th style={{ padding: "10px 8px" }}>Schema</th>
+                  <th style={{ padding: "10px 8px" }}>Archive list</th>
+                  <th style={{ padding: "10px 8px" }}>Health flags</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(status?.backups || []).map((backup) => (
+                  <tr key={backup.path} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <td style={{ padding: "10px 8px", fontWeight: 950, wordBreak: "break-word" }}>{backup.name}</td>
+                    <td style={{ padding: "10px 8px", whiteSpace: "nowrap" }}>{formatDate(backup.createdAt || backup.modifiedAt)}</td>
+                    <td style={{ padding: "10px 8px", whiteSpace: "nowrap" }}>{shortHead(backup.gitHead)}</td>
+                    <td style={{ padding: "10px 8px" }}>{backup.tableCount ?? "—"}</td>
+                    <td style={{ padding: "10px 8px" }}>{backup.indexCount ?? "—"}</td>
+                    <td style={{ padding: "10px 8px" }}>{backup.archiveEntries ?? "—"}</td>
+                    <td style={{ padding: "10px 8px" }}>{backup.hasManifest ? "YES" : "NO"}</td>
+                    <td style={{ padding: "10px 8px" }}>{backup.hasDatabaseDump ? "YES" : "NO"}</td>
+                    <td style={{ padding: "10px 8px" }}>{backup.hasSchemaSql ? "YES" : "NO"}</td>
+                    <td style={{ padding: "10px 8px" }}>{backup.hasArchiveList ? "YES" : "NO"}</td>
+                    <td style={{ padding: "10px 8px", color: backupAuditFlags(backup) === "OK" ? "#166534" : "#92400e", fontWeight: 900 }}>
+                      {backupAuditFlags(backup)}
+                    </td>
                   </tr>
                 ))}
               </tbody>

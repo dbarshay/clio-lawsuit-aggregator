@@ -138,6 +138,8 @@ export async function GET() {
             hasDatabaseDump: fs.existsSync(path.join(absolutePath, "database.dump")),
             hasSchemaSql: fs.existsSync(path.join(absolutePath, "schema.sql")),
             hasArchiveList: fs.existsSync(path.join(absolutePath, "archive-list.txt")),
+            manifest,
+            manifestJson: manifest ? JSON.stringify(manifest, null, 2) : "",
           };
         })
         .sort((a, b) => b.name.localeCompare(a.name))

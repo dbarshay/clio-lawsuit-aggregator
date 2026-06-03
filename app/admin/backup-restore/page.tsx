@@ -19,6 +19,62 @@ type BackupRow = {
   hasDatabaseDump: boolean;
   hasSchemaSql: boolean;
   hasArchiveList: boolean;
+  manifest?: {
+    createdAt?: string;
+    backupDir?: string;
+    gitHead?: string;
+    hostname?: string;
+    platform?: string;
+    type?: string;
+    note?: string;
+    retentionPolicy?: {
+      intervalSeconds?: number;
+      recentAllBackupsHours?: number;
+      dailyBackupsDays?: number;
+      description?: string;
+    };
+    databasePolicy?: {
+      usesPgDump?: boolean;
+      usesPgRestoreForPreviewAndGuardedRestore?: boolean;
+      exportsAllPostgresTablesIndexesAndSchemaObjects?: boolean;
+      futurePrismaModelsIncludedAutomatically?: boolean;
+      futureDatabaseIndexesIncludedAutomatically?: boolean;
+      usesPrismaClient?: boolean;
+      excludesPostgresLargeObjects?: boolean;
+    };
+    documentFilePolicy?: {
+      backsUpActualDocumentFolders?: boolean;
+      pullsDocumentsFromClio?: boolean;
+      documentVault?: string;
+      localDocumentMetadataRowsMayBeIncluded?: boolean;
+      postgresLargeObjectsExcluded?: boolean;
+    };
+    database?: {
+      kind?: string;
+      safeConnectionInfo?: {
+        source?: string;
+        protocol?: string;
+        host?: string;
+        database?: string;
+        usernamePresent?: boolean;
+        passwordStoredInManifest?: boolean;
+      };
+      postgresArchiveCounts?: {
+        archiveEntries?: number;
+        tables?: number;
+        tableData?: number;
+        indexes?: number;
+        constraints?: number;
+        sequences?: number;
+      };
+      normalizedConnectionForPgTools?: {
+        prismaSpecificQueryParamsStripped?: boolean;
+        schemaArgUsed?: string;
+        urlStoredInManifest?: boolean;
+      };
+    };
+  } | null;
+  manifestJson?: string;
 };
 
 type BackupStatus = {
@@ -183,6 +239,15 @@ function backupNameFromPath(value: string): string {
   return String(value || "").split("/").filter(Boolean).pop() || "";
 }
 
+function detailRow(label: string, value: React.ReactNode) {
+  return (
+    <tr key={label} style={{ borderBottom: "1px solid #f1f5f9" }}>
+      <td style={{ padding: "9px 8px", fontWeight: 950, width: 260, verticalAlign: "top" }}>{label}</td>
+      <td style={{ padding: "9px 8px", color: "#334155", wordBreak: "break-word", verticalAlign: "top" }}>{value ?? "—"}</td>
+    </tr>
+  );
+}
+
 function formatHours(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
   if (value < 1) return `${Math.round(value * 60)} minutes`;
@@ -257,6 +322,7 @@ export default function AdminBackupRestorePage() {
   const [actionBusy, setActionBusy] = useState("");
   const [message, setMessage] = useState("");
   const [actionResult, setActionResult] = useState<ActionResult | null>(null);
+  const [detailBackup, setDetailBackup] = useState<BackupRow | null>(null);
 
   const latestCounts = status?.latestManifest?.database?.postgresArchiveCounts;
   const healthWarnings = useMemo(() => currentBackupHealthWarnings(status), [status]);
@@ -818,6 +884,7 @@ export default function AdminBackupRestorePage() {
                   <th style={{ padding: "10px 8px" }}>Tables</th>
                   <th style={{ padding: "10px 8px" }}>Indexes</th>
                   <th style={{ padding: "10px 8px" }}>Files</th>
+                  <th style={{ padding: "10px 8px" }}>Details</th>
                 </tr>
               </thead>
               <tbody>
@@ -833,6 +900,24 @@ export default function AdminBackupRestorePage() {
                       {backup.hasDatabaseDump ? "dump " : ""}
                       {backup.hasSchemaSql ? "schema " : ""}
                       {backup.hasArchiveList ? "archive-list" : ""}
+                    </td>
+                    <td style={{ padding: "10px 8px", whiteSpace: "nowrap" }}>
+                      <button
+                        type="button"
+                        onClick={() => setDetailBackup(backup)}
+                        data-backup-manifest-detail-open="true"
+                        style={{
+                          border: "1px solid #cbd5e1",
+                          background: "#fff",
+                          color: "#0f172a",
+                          borderRadius: 12,
+                          padding: "8px 10px",
+                          fontWeight: 950,
+                          cursor: "pointer",
+                        }}
+                      >
+                        View Details
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -870,6 +955,191 @@ export default function AdminBackupRestorePage() {
               </pre>
             )}
           </section>
+        )}
+
+        {detailBackup && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Read-only backup manifest detail"
+            data-backup-manifest-detail-modal="read-only"
+            data-restore-execution-enabled="false"
+            data-backup-deletion-enabled="false"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 9999,
+              background: "rgba(15, 23, 42, 0.46)",
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "center",
+              padding: "42px 22px",
+              overflow: "auto",
+            }}
+          >
+            <div
+              style={{
+                width: "min(1120px, 96vw)",
+                maxHeight: "calc(100vh - 84px)",
+                overflow: "auto",
+                background: "#fff",
+                borderRadius: 24,
+                border: "1px solid #e5e7eb",
+                boxShadow: "0 28px 70px rgba(15, 23, 42, 0.32)",
+                padding: 22,
+                display: "grid",
+                gap: 16,
+              }}
+            >
+              <header style={{ display: "grid", gap: 8 }}>
+                <div style={{ fontSize: 13, fontWeight: 950, color: "#4f46e5", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  Read-Only Backup Manifest Detail
+                </div>
+                <h2 style={{ margin: 0, fontSize: 26 }}>Backup Manifest Inspector</h2>
+                <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
+                  Read-only manifest inspection.  This popup does not restore data, delete backups, call Clio, send email, generate documents, or change the print queue.  Passwords and database URLs are not displayed; the manifest only reports whether a password was stored.
+                </p>
+              </header>
+
+              <section
+                style={{
+                  border: "1px solid #fecaca",
+                  background: "#fff1f2",
+                  color: "#9f1239",
+                  borderRadius: 16,
+                  padding: 13,
+                  fontWeight: 900,
+                  lineHeight: 1.45,
+                }}
+              >
+                Restore execution and backup deletion are disabled in this inspector.
+              </section>
+
+              <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14 }}>
+                <div style={{ border: "1px solid #e5e7eb", borderRadius: 16, overflow: "hidden" }}>
+                  <div style={{ padding: 12, background: "#f8fafc", borderBottom: "1px solid #e5e7eb", fontWeight: 950 }}>Manifest Summary</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                    <tbody>
+                      {[
+                        detailRow("Created", formatDate(detailBackup.manifest?.createdAt || detailBackup.createdAt || "")),
+                        detailRow("Backup directory", detailBackup.manifest?.backupDir || detailBackup.path),
+                        detailRow("Git head", detailBackup.manifest?.gitHead || detailBackup.gitHead || "—"),
+                        detailRow("Host", detailBackup.manifest?.hostname || detailBackup.hostname || "—"),
+                        detailRow("Platform", detailBackup.manifest?.platform || detailBackup.platform || "—"),
+                        detailRow("Type", detailBackup.manifest?.type || "—"),
+                      ]}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ border: "1px solid #e5e7eb", borderRadius: 16, overflow: "hidden" }}>
+                  <div style={{ padding: 12, background: "#f8fafc", borderBottom: "1px solid #e5e7eb", fontWeight: 950 }}>Database Connection Summary</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                    <tbody>
+                      {[
+                        detailRow("Database kind", detailBackup.manifest?.database?.kind || detailBackup.databaseKind || "—"),
+                        detailRow("DB source", detailBackup.manifest?.database?.safeConnectionInfo?.source || "—"),
+                        detailRow("Protocol", detailBackup.manifest?.database?.safeConnectionInfo?.protocol || "—"),
+                        detailRow("Host", detailBackup.manifest?.database?.safeConnectionInfo?.host || "—"),
+                        detailRow("Database", detailBackup.manifest?.database?.safeConnectionInfo?.database || "—"),
+                        detailRow("Username present", passFail(detailBackup.manifest?.database?.safeConnectionInfo?.usernamePresent)),
+                        detailRow("Password stored in manifest", passFail(detailBackup.manifest?.database?.safeConnectionInfo?.passwordStoredInManifest)),
+                        detailRow("URL stored in manifest", passFail(detailBackup.manifest?.database?.normalizedConnectionForPgTools?.urlStoredInManifest)),
+                      ]}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14 }}>
+                <div style={{ border: "1px solid #e5e7eb", borderRadius: 16, overflow: "hidden" }}>
+                  <div style={{ padding: 12, background: "#f8fafc", borderBottom: "1px solid #e5e7eb", fontWeight: 950 }}>Database Policy</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                    <tbody>
+                      {[
+                        detailRow("Uses pg_dump", passFail(detailBackup.manifest?.databasePolicy?.usesPgDump)),
+                        detailRow("Uses pg_restore for preview/guarded restore", passFail(detailBackup.manifest?.databasePolicy?.usesPgRestoreForPreviewAndGuardedRestore)),
+                        detailRow("Exports all tables/indexes/schema objects", passFail(detailBackup.manifest?.databasePolicy?.exportsAllPostgresTablesIndexesAndSchemaObjects)),
+                        detailRow("Future Prisma models included automatically", passFail(detailBackup.manifest?.databasePolicy?.futurePrismaModelsIncludedAutomatically)),
+                        detailRow("Future database indexes included automatically", passFail(detailBackup.manifest?.databasePolicy?.futureDatabaseIndexesIncludedAutomatically)),
+                        detailRow("Uses Prisma client", passFail(detailBackup.manifest?.databasePolicy?.usesPrismaClient)),
+                        detailRow("PostgreSQL large objects excluded", passFail(detailBackup.manifest?.databasePolicy?.excludesPostgresLargeObjects)),
+                      ]}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ border: "1px solid #e5e7eb", borderRadius: 16, overflow: "hidden" }}>
+                  <div style={{ padding: 12, background: "#f8fafc", borderBottom: "1px solid #e5e7eb", fontWeight: 950 }}>Document Policy</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                    <tbody>
+                      {[
+                        detailRow("Backs up actual document folders", passFail(detailBackup.manifest?.documentFilePolicy?.backsUpActualDocumentFolders)),
+                        detailRow("Pulls documents from Clio", passFail(detailBackup.manifest?.documentFilePolicy?.pullsDocumentsFromClio)),
+                        detailRow("Document vault", detailBackup.manifest?.documentFilePolicy?.documentVault || "—"),
+                        detailRow("Local document metadata rows may be included", passFail(detailBackup.manifest?.documentFilePolicy?.localDocumentMetadataRowsMayBeIncluded)),
+                        detailRow("PostgreSQL large objects excluded", passFail(detailBackup.manifest?.documentFilePolicy?.postgresLargeObjectsExcluded)),
+                      ]}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section style={{ border: "1px solid #e5e7eb", borderRadius: 16, overflow: "hidden" }}>
+                <div style={{ padding: 12, background: "#f8fafc", borderBottom: "1px solid #e5e7eb", fontWeight: 950 }}>Archive Counts</div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                  <tbody>
+                    {[
+                      detailRow("Archive entries", detailBackup.manifest?.database?.postgresArchiveCounts?.archiveEntries ?? detailBackup.archiveEntries ?? "—"),
+                      detailRow("Tables", detailBackup.manifest?.database?.postgresArchiveCounts?.tables ?? detailBackup.tableCount ?? "—"),
+                      detailRow("Table data", detailBackup.manifest?.database?.postgresArchiveCounts?.tableData ?? "—"),
+                      detailRow("Indexes", detailBackup.manifest?.database?.postgresArchiveCounts?.indexes ?? detailBackup.indexCount ?? "—"),
+                      detailRow("Constraints", detailBackup.manifest?.database?.postgresArchiveCounts?.constraints ?? "—"),
+                      detailRow("Sequences", detailBackup.manifest?.database?.postgresArchiveCounts?.sequences ?? "—"),
+                    ]}
+                  </tbody>
+                </table>
+              </section>
+
+              <section style={{ border: "1px solid #e5e7eb", borderRadius: 16, overflow: "hidden" }}>
+                <div style={{ padding: 12, background: "#f8fafc", borderBottom: "1px solid #e5e7eb", fontWeight: 950 }}>Raw Manifest JSON</div>
+                <pre
+                  data-raw-manifest-json="read-only"
+                  style={{
+                    margin: 0,
+                    padding: 12,
+                    maxHeight: 360,
+                    overflow: "auto",
+                    whiteSpace: "pre-wrap",
+                    background: "#0f172a",
+                    color: "#e2e8f0",
+                    fontSize: 12,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {detailBackup.manifestJson || "Manifest JSON is unavailable."}
+                </pre>
+              </section>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setDetailBackup(null)}
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    background: "#fff",
+                    color: "#0f172a",
+                    borderRadius: 14,
+                    padding: "11px 15px",
+                    fontWeight: 950,
+                    cursor: "pointer",
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         <section

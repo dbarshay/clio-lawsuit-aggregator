@@ -109,6 +109,45 @@ type BackupStatus = {
       printQueueMutation: boolean;
     };
   };
+  backupLogArchivePreview?: {
+    mode: string;
+    previewOnly: boolean;
+    archiveExecutionEnabled: boolean;
+    stdout: {
+      displayPath: string;
+      exists: boolean;
+      sizeBytes: number;
+      lineCount: number;
+      containsOldErrors: boolean;
+      lastMonitoredSuccessLine: string;
+      lastErrorLine: string;
+      proposedArchiveDisplayPath: string;
+    };
+    stderr: {
+      displayPath: string;
+      exists: boolean;
+      sizeBytes: number;
+      lineCount: number;
+      containsOldErrors: boolean;
+      lastMonitoredSuccessLine: string;
+      lastErrorLine: string;
+      proposedArchiveDisplayPath: string;
+    };
+    safety: {
+      readOnly: boolean;
+      archiveExecution: boolean;
+      truncateLog: boolean;
+      moveLog: boolean;
+      deleteLog: boolean;
+      restoreExecution: boolean;
+      backupDeletion: boolean;
+      retentionCleanup: boolean;
+      sendAlert: boolean;
+      clioWrite: boolean;
+      documentGeneration: boolean;
+      printQueueMutation: boolean;
+    };
+  };
   scheduledBackupHealth?: {
     mode: string;
     expectedIntervalSeconds: number;
@@ -326,6 +365,13 @@ function formatHours(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
   if (value < 1) return `${Math.round(value * 60)} minutes`;
   return `${value.toFixed(1)} hours`;
+}
+
+function formatBytes(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 function backupIsOlderThanHours(createdAt: string, hours: number): boolean {
@@ -946,6 +992,80 @@ export default function AdminBackupRestorePage() {
               <div><strong>Pulls docs from Clio:</strong> {passFail(status?.latestManifest?.documentFilePolicy?.pullsDocumentsFromClio)}</div>
               <div><strong>Restore execution:</strong> DISABLED</div>
             </div>
+          </div>
+        </section>
+
+        <section
+          style={{ ...cardStyle, display: "grid", gap: 14 }}
+          data-backup-log-archive-preview="read-only"
+          data-log-archive-execution-enabled="false"
+          data-log-truncate-enabled="false"
+          data-log-delete-enabled="false"
+        >
+          <div>
+            <h2 style={{ margin: 0, fontSize: 22 }}>Backup Log Archive Preview</h2>
+            <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.45 }}>
+              Read-only preview for cleaning up old scheduled-backup log noise.  This section shows log health, old-error presence, file size, line count, and proposed archive names only.  It does not archive, truncate, move, delete, restore data, send alerts, call Clio, generate documents, or change the print queue.
+            </p>
+          </div>
+
+          <div
+            style={{
+              border: "1px solid #fde68a",
+              background: "#fffbeb",
+              color: "#92400e",
+              borderRadius: 16,
+              padding: 13,
+              lineHeight: 1.45,
+              fontWeight: 850,
+            }}
+          >
+            Preview only.  Old stderr errors may remain visible even after the monitored scheduled backups are healthy.
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+            {[
+              ["stdout", status?.backupLogArchivePreview?.stdout],
+              ["stderr", status?.backupLogArchivePreview?.stderr],
+            ].map(([kind, log]: any) => (
+              <div
+                key={kind}
+                style={{
+                  border: log?.containsOldErrors ? "1px solid #fde68a" : "1px solid #bbf7d0",
+                  background: log?.containsOldErrors ? "#fffbeb" : "#f0fdf4",
+                  color: log?.containsOldErrors ? "#92400e" : "#166534",
+                  borderRadius: 16,
+                  padding: 13,
+                  display: "grid",
+                  gap: 7,
+                  lineHeight: 1.45,
+                }}
+              >
+                <div style={{ fontSize: 18, fontWeight: 950 }}>{String(kind).toUpperCase()} Log</div>
+                <div><strong>Path:</strong> {log?.displayPath || "—"}</div>
+                <div><strong>Exists:</strong> {log?.exists ? "YES" : "NO"}</div>
+                <div><strong>Size:</strong> {formatBytes(log?.sizeBytes)}</div>
+                <div><strong>Line count:</strong> {log?.lineCount ?? "—"}</div>
+                <div><strong>Old errors present:</strong> {log?.containsOldErrors ? "YES" : "NO"}</div>
+                <div><strong>Last monitored success:</strong> {log?.lastMonitoredSuccessLine || "—"}</div>
+                <div><strong>Last error line:</strong> {log?.lastErrorLine || "—"}</div>
+                <div><strong>Proposed archive:</strong> {log?.proposedArchiveDisplayPath || "—"}</div>
+              </div>
+            ))}
+          </div>
+
+          <div
+            style={{
+              border: "1px solid #dbeafe",
+              background: "#eff6ff",
+              color: "#1e3a8a",
+              borderRadius: 16,
+              padding: 13,
+              lineHeight: 1.45,
+              fontWeight: 850,
+            }}
+          >
+            Archive execution controls are disabled.  A future guarded action can archive old stderr logs only after a separate confirmation workflow is approved.
           </div>
         </section>
 

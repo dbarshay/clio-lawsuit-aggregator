@@ -104,6 +104,59 @@ function hoursSinceIso(value: string): number | null {
   return (Date.now() - timestamp) / (60 * 60 * 1000);
 }
 
+function filePreviewStats(filePath: string) {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return {
+        exists: false,
+        sizeBytes: 0,
+        lineCount: 0,
+        containsOldErrors: false,
+        lastMonitoredSuccessLine: "",
+        lastErrorLine: "",
+        proposedArchivePath: "",
+        proposedArchiveDisplayPath: "",
+      };
+    }
+
+    const text = fs.readFileSync(filePath, "utf8");
+    const lines = text.split(/\r?\n/);
+    const stat = fs.statSync(filePath);
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const proposedArchivePath = `${filePath}.archived-${stamp}`;
+
+    const lastMonitoredSuccessLine = [...lines].reverse().find((line) =>
+      line.includes("RESULT: monitored backup ok") || line.includes("ALERT_SENT=NO")
+    ) || "";
+
+    const lastErrorLine = [...lines].reverse().find((line) =>
+      /FAIL:|Error:|PrismaClient|pg_dump not found|Node\.js/i.test(line)
+    ) || "";
+
+    return {
+      exists: true,
+      sizeBytes: stat.size,
+      lineCount: lines.filter(Boolean).length,
+      containsOldErrors: Boolean(lastErrorLine),
+      lastMonitoredSuccessLine,
+      lastErrorLine,
+      proposedArchivePath,
+      proposedArchiveDisplayPath: safeDisplayPath(proposedArchivePath),
+    };
+  } catch (error: any) {
+    return {
+      exists: fs.existsSync(filePath),
+      sizeBytes: 0,
+      lineCount: 0,
+      containsOldErrors: true,
+      lastMonitoredSuccessLine: "",
+      lastErrorLine: error?.message || "Unable to inspect log file.",
+      proposedArchivePath: "",
+      proposedArchiveDisplayPath: "",
+    };
+  }
+}
+
 export async function GET() {
   const latestPointerPath = path.join(backupRoot, "LATEST_BACKUP.txt");
   const latestBackupPath = readTextIfPresent(latestPointerPath);
@@ -179,6 +232,36 @@ export async function GET() {
     },
   };
 
+  const backupLogArchivePreview = {
+    mode: "read-only-backup-log-archive-preview",
+    previewOnly: true,
+    archiveExecutionEnabled: false,
+    stdout: {
+      path: launchdOutLogPath,
+      displayPath: safeDisplayPath(launchdOutLogPath),
+      ...filePreviewStats(launchdOutLogPath),
+    },
+    stderr: {
+      path: launchdErrLogPath,
+      displayPath: safeDisplayPath(launchdErrLogPath),
+      ...filePreviewStats(launchdErrLogPath),
+    },
+    safety: {
+      readOnly: true,
+      archiveExecution: false,
+      truncateLog: false,
+      moveLog: false,
+      deleteLog: false,
+      restoreExecution: false,
+      backupDeletion: false,
+      retentionCleanup: false,
+      sendAlert: false,
+      clioWrite: false,
+      documentGeneration: false,
+      printQueueMutation: false,
+    },
+  };
+
   const scheduledBackupHealth = {
     mode: "read-only-scheduled-backup-health",
     expectedIntervalSeconds,
@@ -223,6 +306,7 @@ export async function GET() {
     latestBackupDisplay: safeDisplayPath(latestBackupPath),
     latestManifest,
     backupAlertState,
+    backupLogArchivePreview,
     scheduledBackupHealth,
     backups,
     safety: {

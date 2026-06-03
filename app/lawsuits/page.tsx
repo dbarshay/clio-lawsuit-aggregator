@@ -300,6 +300,10 @@ export default function LawsuitsPage() {
   const [lawsuitAmountMode, setLawsuitAmountMode] = useState<"claim_amount" | "balance_presuit" | "custom">("balance_presuit");
   const [customLawsuitAmount, setCustomLawsuitAmount] = useState("");
   const [lawsuitPreview, setLawsuitPreview] = useState<any>(null);
+  const [createSuccessNotice, setCreateSuccessNotice] = useState<null | {
+    masterLawsuitId: string;
+    href: string;
+  }>(null);
 
   const selectedMatters = useMemo(() => Object.values(selected), [selected]);
 
@@ -388,6 +392,18 @@ export default function LawsuitsPage() {
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [createModalDrag]);
+
+  useEffect(() => {
+    if (!createSuccessNotice) return;
+
+    const timer = window.setTimeout(() => {
+      setCreateSuccessNotice(null);
+    }, 2000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [createSuccessNotice]);
 
   async function search(
     overrides: Partial<{
@@ -648,6 +664,7 @@ export default function LawsuitsPage() {
     if (!selectedMatters.length) return;
     setError("");
     setResult(null);
+    setCreateSuccessNotice(null);
     setLawsuitPreview(null);
     setLawsuitCourt("");
     setLawsuitAmountMode("balance_presuit");
@@ -735,13 +752,35 @@ export default function LawsuitsPage() {
         throw new Error(createJson?.error || "Local lawsuit generation failed.");
       }
 
+      const createdMasterLawsuitId = String(
+        createJson?.masterLawsuitId ||
+          createJson?.lawsuit?.masterLawsuitId ||
+          createJson?.lawsuit?.master_lawsuit_id ||
+          ""
+      ).trim();
+
       setResult({
         ...createJson,
         preview: lawsuitPreview,
       });
+
+      if (createdMasterLawsuitId) {
+        setCreateSuccessNotice({
+          masterLawsuitId: createdMasterLawsuitId,
+          href: `/matters?master=${encodeURIComponent(createdMasterLawsuitId)}`,
+        });
+      }
+
       setCreatePopupOpen(false);
       setLawsuitPreview(null);
-      await search();
+
+      const urlSearchState = lawsuitsSearchStateFromUrl();
+      await search(
+        lawsuitsSearchStateHasAnyValue(urlSearchState)
+          ? urlSearchState
+          : { claim, patient, provider, insurer },
+        { replaceUrl: true }
+      );
     } catch (e: any) {
       setError(e?.message || "Local lawsuit generation failed.");
     } finally {
@@ -1151,6 +1190,21 @@ export default function LawsuitsPage() {
           </button>
         </aside>
       </div>
+
+      {createSuccessNotice && (
+        <div style={lawsuitCreatedNotice}>
+          Lawsuit Created{" "}
+          <a
+            href={createSuccessNotice.href}
+            style={lawsuitCreatedNoticeLink}
+            onClick={() => setCreateSuccessNotice(null)}
+            title={`Open master lawsuit ${createSuccessNotice.masterLawsuitId}`}
+          >
+            {createSuccessNotice.masterLawsuitId}
+          </a>
+          .
+        </div>
+      )}
 
       {createPopupOpen && (
         <div style={modalBackdrop}>
@@ -1582,4 +1636,29 @@ const successBox: React.CSSProperties = {
   background: "#eef9ee",
   border: "1px solid #9c9",
   marginBottom: 12,
+};
+
+
+const lawsuitCreatedNotice: React.CSSProperties = {
+  position: "fixed",
+  top: 86,
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 10050,
+  background: "#052e63",
+  color: "white",
+  border: "1px solid #0f3f80",
+  borderRadius: 12,
+  boxShadow: "0 18px 42px rgba(15, 23, 42, 0.28)",
+  padding: "14px 22px",
+  fontSize: 17,
+  fontWeight: 900,
+  letterSpacing: "0.01em",
+};
+
+const lawsuitCreatedNoticeLink: React.CSSProperties = {
+  color: "white",
+  textDecoration: "underline",
+  textUnderlineOffset: 3,
+  fontWeight: 950,
 };

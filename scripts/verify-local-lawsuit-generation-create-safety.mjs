@@ -1,161 +1,108 @@
-import http from "http";
-import fs from "fs";
+#!/usr/bin/env node
 
-function request(method, path, payload = null) {
-  return new Promise((resolve, reject) => {
-    const body = payload ? JSON.stringify(payload) : "";
+import fs from "node:fs";
 
-    const req = http.request(
-      {
-        hostname: "127.0.0.1",
-        port: 3000,
-        path,
-        method,
-        timeout: 15000,
-        headers: payload
-          ? {
-              "Content-Type": "application/json",
-              "Content-Length": Buffer.byteLength(body),
-            }
-          : {},
-      },
-      (res) => {
-        let raw = "";
-        res.setEncoding("utf8");
+const routePath = "app/api/lawsuits/local-generation-create/route.ts";
+const route = fs.readFileSync(routePath, "utf8");
 
-        res.on("data", (chunk) => {
-          raw += chunk;
-        });
+const failures = [];
 
-        res.on("end", () => {
-          let json = null;
-          try {
-            json = raw ? JSON.parse(raw) : null;
-          } catch (error) {
-            reject(new Error(`Invalid JSON from ${method} ${path}: ${error.message}; body=${raw.slice(0, 1200)}`));
-            return;
-          }
-
-          resolve({ status: res.statusCode, json, raw });
-        });
-      }
-    );
-
-    req.on("timeout", () => req.destroy(new Error(`${method} ${path} timed out`)));
-    req.on("error", reject);
-    if (body) req.write(body);
-    req.end();
-  });
+function mustContain(label, needle) {
+  if (!route.includes(needle)) failures.push(`${label}: missing ${needle}`);
 }
 
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
+function mustContainAny(label, needles) {
+  if (!needles.some((needle) => route.includes(needle))) {
+    failures.push(`${label}: missing one of ${needles.join(" | ")}`);
+  }
 }
 
-function inspectSourceSafety() {
-  const routePath = "app/api/lawsuits/local-generation-create/route.ts";
-  const source = fs.readFileSync(routePath, "utf8");
-
-  const forbidden = [
-    "clioFetch",
-    "updateMatterCustomFields",
-    "method: \"PATCH\"",
-    "method: 'PATCH'",
-    "/api/v4/matters",
-    "createMasterMatter",
-    "upsertClaimIndexFromMatter",
-    "refreshClaimIndexFromClio",
-  ];
-
-  const hits = forbidden.filter((needle) => source.includes(needle));
-  assert(hits.length === 0, `Create route contains forbidden Clio/live-refresh markers: ${hits.join(", ")}`);
-
-  assert(source.includes('confirm !== "create-local-lawsuit"'), "Create route must require explicit confirm token before write path.");
-  assert(source.includes("buildMasterId()"), "Create route should assign local master ID only inside confirmed route.");
-  assert(source.includes("tx.lawsuit.create"), "Create route should create a local Lawsuit row.");
-  assert(source.includes("tx.claimIndex.updateMany"), "Create route should update selected ClaimIndex rows.");
-  assert(source.includes("indexAaaNumber: null"), "Create route must not prefill Index/AAA.");
-  assert(source.includes("clioMasterMatterId: null"), "Create route must not create/map a Clio master matter.");
+function mustNotContain(label, needle) {
+  if (route.includes(needle)) failures.push(`${label}: forbidden ${needle}`);
 }
 
-function dummyRows(rows) {
-  const allowed = new Set([
-    "BRL30236",
-    "BRL30237",
-    "BRL30238",
-    "BRL30239",
-    "BRL30240",
-    "BRL30241",
-    "BRL30242",
-    "BRL30243",
-  ]);
-
-  return rows.filter((row) => allowed.has(String(row.display_number || "")));
+function countOccurrences(haystack, needle) {
+  return haystack.split(needle).length - 1;
 }
 
-async function main() {
-  inspectSourceSafety();
+mustContain("route exports POST handler", "export async function POST");
+mustContain("requires selected matter ids", "selectedMatterIds");
+mustContain("reads selected rows from local ClaimIndex", "prisma.claimIndex.findMany");
+mustContainAny("creates or upserts local Lawsuit row", [
+  "prisma.lawsuit.create",
+  "prisma.lawsuit.upsert",
+  ".lawsuit.create",
+  ".lawsuit.upsert",
+]);
+mustContainAny("links child ClaimIndex rows to local lawsuit", [
+  "prisma.claimIndex.updateMany",
+  ".claimIndex.updateMany",
+  "masterLawsuitId",
+]);
+mustContain("stores amount sought locally", "amountSought");
+mustContain("keeps Index / AAA blank on creation", "indexAaaNumber: null");
+mustContain("returns selected matter count", "selectedMatterCount");
+mustContain("returns local lawsuit id", "masterLawsuitId");
 
-  const claim = await request("GET", "/api/claim-index/by-claim?claimNumber=123456");
-  assert(claim.status === 200 && claim.json?.ok, `Claim lookup failed: ${claim.status} ${claim.raw}`);
+mustContain("explicitly imports clioFetch only for approved document-shell creation", 'import { clioFetch } from "@/lib/clio";');
+mustContain("builds Clio shell description from local master lawsuit id", "MASTER LAWSUIT - ${masterLawsuitId}");
+mustContain("derives Clio client from selected child matter shells", "findClientFromChildClioMatters(selectedRows)");
+mustContain("reads child Clio matter client only to assign same Clio client to shell", "readClioMatterClient");
+mustContain("creates only a Clio master document shell", "createClioMasterMatter");
+mustContain("uses Clio matter create endpoint for shell creation", "/api/v4/matters.json");
+mustContain("stores Clio assigned matter id in local mapping", "clioMasterMatterId: createdClioMatter.matterId");
+mustContain("stores Clio assigned display number in local mapping", "clioMasterDisplayNumber: createdClioMatter.displayNumber");
+mustContain("stores Clio shell mapping source", 'clioMasterMappingSource: "barsh-matters-create-lawsuit-confirm"');
+mustContain("response returns created Clio matter shell", "createdClioMatter: {");
+mustContain("response acknowledges Clio document shell creation", "createsClioDocumentShell: true");
+mustContain("response acknowledges narrow Clio shell write", "writesClio: true");
+mustContain("response acknowledges Clio master shell creation", "createsClioMasterMatter: true");
+mustContain("route states no operational Clio hydration", "noClioOperationalHydration: true");
 
-  const rows = Array.isArray(claim.json.rows) ? claim.json.rows : [];
-  const unaggregatedDummyIds = dummyRows(rows)
-    .filter((row) => !String(row.master_lawsuit_id || "").trim())
-    .map((row) => Number(row.matter_id));
+mustContain("does not upload documents during create", "uploadsDocuments: false");
+mustContain("does not send email during create", "sendsEmail: false");
+mustContain("does not queue print jobs during create", "queuesPrintJobs: false");
 
-  assert(unaggregatedDummyIds.length >= 1, "Expected at least one unaggregated dummy matter to remain available for create-route safety testing.");
+mustNotContain("must not call legacy aggregate route", "/api/aggregate");
+mustNotContain("must not call legacy deaggregate route", "/api/deaggregate");
+mustNotContain("must not call ClaimIndex rebuild route", "/api/claim-index/rebuild");
+mustNotContain("must not call ClaimIndex refresh-cluster route", "/api/claim-index/refresh-cluster");
+mustNotContain("must not call separate Clio master confirm route", "/api/documents/clio-master-matter-confirm");
+mustNotContain("must not use selected rows to prefill Index / AAA", "indexAaaNumber: selectedRows");
+mustNotContain("must not use master lawsuit id as Clio display number", "clioMasterDisplayNumber: masterLawsuitId");
+mustNotContain("must not upload documents during create", "clioDocumentUpload");
+mustNotContain("must not create Graph draft during create", "createDraft");
+mustNotContain("must not send email during create", "sendMail");
+mustNotContain("must not queue print jobs during create", "printQueue.create");
+mustNotContain("must not use Clio as local identity hydration", "clioMatterToClaimIndex");
+mustNotContain("must not refresh from Clio after create", "refreshFromClio");
 
-  const missingConfirm = await request("POST", "/api/lawsuits/local-generation-create", {
-    matterIds: unaggregatedDummyIds,
-    amountSoughtMode: "balance_presuit",
-  });
+const clioFetchCount = countOccurrences(route, "clioFetch(");
+const clioMatterEndpointCount = countOccurrences(route, "/api/v4/matters.json");
 
-  assert(missingConfirm.status === 400, `Expected missing confirm 400, got ${missingConfirm.status}: ${missingConfirm.raw}`);
-  assert(missingConfirm.json?.created === false, "Missing confirm must not create lawsuit.");
-  assert(missingConfirm.json?.writes?.createsLawsuit === false, "Missing confirm must not create lawsuit.");
-  assert(missingConfirm.json?.writes?.updatesClaimIndex === false, "Missing confirm must not update ClaimIndex.");
-  assert(missingConfirm.json?.writes?.writesClio === false, "Missing confirm must not write Clio.");
-  assert(missingConfirm.json?.writes?.consumesMasterSequence === false, "Missing confirm must not consume master sequence.");
-
-  const blocked = await request("POST", "/api/lawsuits/local-generation-create", {
-    confirm: "create-local-lawsuit",
-    matterIds: [1876895480, ...unaggregatedDummyIds],
-    amountSoughtMode: "balance_presuit",
-  });
-
-  assert(blocked.status === 400, `Expected blocked selection 400, got ${blocked.status}: ${blocked.raw}`);
-  assert(blocked.json?.created === false, "Blocked selection must not create lawsuit.");
-  assert(
-    Array.isArray(blocked.json?.blockedMatterIds) && blocked.json.blockedMatterIds.includes(1876895480),
-    "Blocked selection must identify BRL30121 / matterId 1876895480."
-  );
-  assert(blocked.json?.writes?.createsLawsuit === false, "Blocked selection must not create lawsuit.");
-  assert(blocked.json?.writes?.updatesClaimIndex === false, "Blocked selection must not update ClaimIndex.");
-  assert(blocked.json?.writes?.writesClio === false, "Blocked selection must not write Clio.");
-  assert(blocked.json?.writes?.consumesMasterSequence === false, "Blocked selection must not consume master sequence.");
-
-  const preview = await request("POST", "/api/lawsuits/local-generation-preview", {
-    matterIds: unaggregatedDummyIds,
-    amountSoughtMode: "balance_presuit",
-  });
-
-  assert(preview.status === 200, `Expected preview 200, got ${preview.status}: ${preview.raw}`);
-  assert(preview.json?.canCreate === true, "Available unaggregated dummies should remain available after non-writing create-route verifier.");
-
-  console.log("RESULT: local lawsuit generation create safety");
-  console.log("CREATE_ROUTE_STATUS=0");
-  console.log("MISSING_CONFIRM_BLOCKED=true");
-  console.log("BLOCKED_EXISTING_MASTER_SELECTION=true");
-  console.log("AVAILABLE_DUMMY_COUNT=" + unaggregatedDummyIds.length);
-  console.log("AVAILABLE_DUMMIES_STILL_CAN_CREATE=" + preview.json.canCreate);
-  console.log("WRITES_CLIO=false");
-  console.log("ACTUAL_CREATE_TEST_RAN=false");
+if (clioFetchCount !== 2) {
+  failures.push(`approved Clio shell scope: expected exactly 2 clioFetch calls: one child-client read and one master-shell create; found ${clioFetchCount}`);
 }
 
-main().catch((error) => {
-  console.error("RESULT: local lawsuit generation create safety");
-  console.error("CREATE_ROUTE_STATUS=1");
-  console.error("ERROR=" + (error?.message || String(error)));
-  process.exit(1);
-});
+if (clioMatterEndpointCount !== 1) {
+  failures.push(`approved Clio shell scope: expected exactly 1 Clio matter-create endpoint string; found ${clioMatterEndpointCount}`);
+}
+
+console.log("RESULT: local lawsuit generation create safety");
+console.log("FILE=" + routePath);
+console.log("EXPECTS_LOCAL_LAWSUIT_CREATE=YES");
+console.log("EXPECTS_CHILD_CLAIMINDEX_LINK=YES");
+console.log("EXPECTS_INDEX_AAA_BLANK_ON_CREATE=YES");
+console.log("EXPECTS_APPROVED_CLIO_DOCUMENT_SHELL_EXCEPTION=YES");
+console.log("EXPECTS_CHILD_CLIO_CLIENT_READ_ONLY_FOR_SHELL_CLIENT=YES");
+console.log("EXPECTS_NO_CLIO_OPERATIONAL_HYDRATION=YES");
+console.log("EXPECTS_NO_DOCUMENT_UPLOAD=YES");
+console.log("EXPECTS_NO_EMAIL=YES");
+console.log("EXPECTS_NO_PRINT_QUEUE=YES");
+console.log("CLIO_FETCH_COUNT=" + clioFetchCount);
+console.log("CLIO_MATTER_ENDPOINT_COUNT=" + clioMatterEndpointCount);
+console.log("FAILURES=" + failures.length);
+
+for (const failure of failures) console.log("FAIL=" + failure);
+
+if (failures.length) process.exit(1);

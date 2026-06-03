@@ -30,9 +30,11 @@ export function proxy(req: NextRequest) {
   }
 
   const redirectUrl = req.nextUrl.clone();
+  const requestedPath = `${pathname}${req.nextUrl.search}`;
   redirectUrl.pathname = "/";
+  redirectUrl.search = "";
   redirectUrl.searchParams.set("adminRequired", "1");
-  redirectUrl.searchParams.set("from", pathname);
+  redirectUrl.searchParams.set("from", requestedPath);
 
   return NextResponse.redirect(redirectUrl);
 }

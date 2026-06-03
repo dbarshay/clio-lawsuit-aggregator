@@ -81,6 +81,11 @@ type ActionResult = {
   error?: string;
 };
 
+type BackupHealthWarning = {
+  level: "warning" | "danger";
+  message: string;
+};
+
 const cardStyle: React.CSSProperties = {
   background: "#fff",
   border: "1px solid #e5e7eb",
@@ -125,6 +130,86 @@ function passFail(value: boolean | undefined): string {
   return "—";
 }
 
+function backupNameFromUrl(): string {
+  if (typeof window === "undefined") return "";
+  return new URLSearchParams(window.location.search).get("backup") || "";
+}
+
+function adminBackupRestoreUrlForBackup(backupName: string): string {
+  const params = new URLSearchParams();
+
+  if (backupName) {
+    params.set("backup", backupName);
+  }
+
+  return params.toString() ? `/admin/backup-restore?${params.toString()}` : "/admin/backup-restore";
+}
+
+function backupNameFromPath(value: string): string {
+  return String(value || "").split("/").filter(Boolean).pop() || "";
+}
+
+function backupIsOlderThanHours(createdAt: string, hours: number): boolean {
+  if (!createdAt) return true;
+
+  const created = new Date(createdAt).getTime();
+  if (!Number.isFinite(created)) return true;
+
+  return Date.now() - created > hours * 60 * 60 * 1000;
+}
+
+function currentBackupHealthWarnings(status: BackupStatus | null): BackupHealthWarning[] {
+  if (!status) return [];
+
+  const warnings: BackupHealthWarning[] = [];
+  const latest = status.latestManifest;
+  const latestBackup = status.backups.find((backup) => backup.path === status.latestBackupPath) || status.backups[0] || null;
+
+  if (!status.latestBackupPath) {
+    warnings.push({ level: "danger", message: "No latest-backup pointer was found." });
+  }
+
+  if (!latest) {
+    warnings.push({ level: "danger", message: "Latest backup manifest is missing or unreadable." });
+  }
+
+  if (latest?.createdAt && backupIsOlderThanHours(latest.createdAt, 2)) {
+    warnings.push({ level: "warning", message: "Latest backup is more than 2 hours old." });
+  }
+
+  if (!latest?.database?.postgresArchiveCounts?.tables || !latest?.database?.postgresArchiveCounts?.indexes) {
+    warnings.push({ level: "warning", message: "Latest backup table/index counts are missing." });
+  }
+
+  if (latestBackup) {
+    if (!latestBackup.hasDatabaseDump) {
+      warnings.push({ level: "danger", message: "Latest backup database.dump is missing." });
+    }
+
+    if (!latestBackup.hasSchemaSql) {
+      warnings.push({ level: "danger", message: "Latest backup schema.sql is missing." });
+    }
+
+    if (!latestBackup.hasArchiveList) {
+      warnings.push({ level: "warning", message: "Latest backup archive-list.txt is missing." });
+    }
+  }
+
+  if (latest?.databasePolicy?.usesPgDump !== true) {
+    warnings.push({ level: "danger", message: "Latest backup manifest does not confirm pg_dump usage." });
+  }
+
+  if (latest?.databasePolicy?.usesPrismaClient !== false) {
+    warnings.push({ level: "warning", message: "Latest backup manifest does not confirm Prisma client is unused." });
+  }
+
+  if (latest?.documentFilePolicy?.pullsDocumentsFromClio !== false) {
+    warnings.push({ level: "warning", message: "Latest backup manifest does not confirm Clio document pulling is disabled." });
+  }
+
+  return warnings;
+}
+
 export default function AdminBackupRestorePage() {
   const [status, setStatus] = useState<BackupStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -134,6 +219,7 @@ export default function AdminBackupRestorePage() {
   const [actionResult, setActionResult] = useState<ActionResult | null>(null);
 
   const latestCounts = status?.latestManifest?.database?.postgresArchiveCounts;
+  const healthWarnings = useMemo(() => currentBackupHealthWarnings(status), [status]);
 
   const selectedBackupRow = useMemo(
     () => status?.backups.find((backup) => backup.path === selectedBackup) || null,
@@ -150,7 +236,14 @@ export default function AdminBackupRestorePage() {
 
       setStatus(data);
 
-      if (!selectedBackup && data.backups?.[0]?.path) {
+      const urlBackupName = backupNameFromUrl();
+      const urlBackup = urlBackupName
+        ? data.backups?.find((backup) => backup.name === urlBackupName)
+        : null;
+
+      if (urlBackup?.path) {
+        setSelectedBackup(urlBackup.path);
+      } else if (!selectedBackup && data.backups?.[0]?.path) {
         setSelectedBackup(data.backups[0].path);
       }
     } catch (error) {
@@ -182,6 +275,28 @@ export default function AdminBackupRestorePage() {
     }
   }
 
+  function updateSelectedBackup(nextPath: string) {
+    setSelectedBackup(nextPath);
+
+    const nextName = backupNameFromPath(nextPath);
+    const nextUrl = adminBackupRestoreUrlForBackup(nextName);
+    window.history.pushState({ barshMattersAdminBackupRestoreBackup: true }, "", nextUrl);
+  }
+
+  async function copySelectedBackupPath() {
+    if (!selectedBackup) {
+      setMessage("No backup path is selected.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(selectedBackup);
+      setMessage("Selected backup path copied to clipboard.");
+    } catch {
+      setMessage(selectedBackup);
+    }
+  }
+
   async function runRestorePreview() {
     setActionBusy("restore-preview");
     setMessage("Running restore preview only...");
@@ -206,6 +321,26 @@ export default function AdminBackupRestorePage() {
 
   useEffect(() => {
     void loadStatus();
+
+    function applySelectedBackupFromUrl() {
+      const urlBackupName = backupNameFromUrl();
+      if (!urlBackupName) return;
+
+      setStatus((current) => {
+        const urlBackup = current?.backups.find((backup) => backup.name === urlBackupName);
+        if (urlBackup?.path) {
+          setSelectedBackup(urlBackup.path);
+        }
+
+        return current;
+      });
+    }
+
+    window.addEventListener("popstate", applySelectedBackupFromUrl);
+
+    return () => {
+      window.removeEventListener("popstate", applySelectedBackupFromUrl);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -277,6 +412,48 @@ export default function AdminBackupRestorePage() {
           </div>
         </section>
 
+        <section style={{ ...cardStyle, display: "grid", gap: 14 }} data-backup-health-warnings="display-only">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 22 }}>Backup Health</h2>
+            <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.45 }}>
+              Display-only warnings based on the latest local backup manifest and backup files.  These warnings do not run restores or modify data.
+            </p>
+          </div>
+          {healthWarnings.length === 0 ? (
+            <div
+              style={{
+                border: "1px solid #bbf7d0",
+                background: "#f0fdf4",
+                color: "#166534",
+                borderRadius: 16,
+                padding: 13,
+                fontWeight: 900,
+              }}
+            >
+              No backup health warnings detected.
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 8 }}>
+              {healthWarnings.map((warning, index) => (
+                <div
+                  key={`${warning.level}-${index}-${warning.message}`}
+                  style={{
+                    border: warning.level === "danger" ? "1px solid #fecaca" : "1px solid #fde68a",
+                    background: warning.level === "danger" ? "#fff1f2" : "#fffbeb",
+                    color: warning.level === "danger" ? "#9f1239" : "#92400e",
+                    borderRadius: 16,
+                    padding: 13,
+                    fontWeight: 900,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {warning.message}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         <section style={{ ...cardStyle, display: "grid", gap: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <div>
@@ -309,7 +486,7 @@ export default function AdminBackupRestorePage() {
             <select
               id="backup-select"
               value={selectedBackup}
-              onChange={(event) => setSelectedBackup(event.target.value)}
+              onChange={(event) => updateSelectedBackup(event.target.value)}
               style={{
                 border: "1px solid #cbd5e1",
                 borderRadius: 14,
@@ -332,7 +509,10 @@ export default function AdminBackupRestorePage() {
             )}
           </div>
 
-          <div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button type="button" onClick={() => void copySelectedBackupPath()} style={secondaryButtonStyle} disabled={!selectedBackup || Boolean(actionBusy)}>
+              Copy Backup Path
+            </button>
             <button type="button" onClick={() => void runRestorePreview()} style={buttonStyle} disabled={!selectedBackup || Boolean(actionBusy)}>
               {actionBusy === "restore-preview" ? "Running Preview..." : "Run Restore Preview"}
             </button>

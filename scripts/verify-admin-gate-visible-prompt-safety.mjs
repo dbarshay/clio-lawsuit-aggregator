@@ -33,8 +33,12 @@ if (!proxy.includes('redirectUrl.searchParams.set("adminRequired", "1")')) {
   failures.push('proxy.ts: expected adminRequired redirect marker');
 }
 
-if (!proxy.includes('redirectUrl.searchParams.set("from", pathname)')) {
-  failures.push('proxy.ts: expected from pathname redirect marker');
+if (!proxy.includes('redirectUrl.searchParams.set("from", requestedPath)')) {
+  failures.push('proxy.ts: expected from requestedPath redirect marker');
+}
+
+if (!proxy.includes('redirectUrl.search = "";')) {
+  failures.push('proxy.ts: expected clean redirect query reset');
 }
 
 if (pkg.scripts?.['verify:admin-gate-visible-prompt-safety'] !== 'node scripts/verify-admin-gate-visible-prompt-safety.mjs') {

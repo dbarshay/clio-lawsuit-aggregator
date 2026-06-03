@@ -4,6 +4,12 @@ import React from "react";
 
 const adminCards = [
   {
+    label: "Lawsuit Cleanup / Deaggregate",
+    href: "/admin/lawsuit-cleanup",
+    description:
+      "Preview extra local lawsuits, child matter links, and mapped Clio document shells before any separately approved cleanup.",
+  },
+  {
     label: "Ticklers",
     href: "/admin/ticklers",
     description:

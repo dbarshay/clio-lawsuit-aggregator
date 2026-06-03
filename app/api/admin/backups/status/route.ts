@@ -13,6 +13,12 @@ type BackupManifest = {
   type?: string;
   note?: string;
   backupDir?: string;
+  retentionPolicy?: {
+    intervalSeconds?: number;
+    recentAllBackupsHours?: number;
+    dailyBackupsDays?: number;
+    description?: string;
+  };
   database?: {
     kind?: string;
     postgresDumpFile?: string;
@@ -80,6 +86,24 @@ function safeDisplayPath(filePath: string): string {
   return filePath.replace(repoRoot, ".");
 }
 
+function tailLines(filePath: string, maxLines = 50): string[] {
+  try {
+    if (!fs.existsSync(filePath)) return [];
+    return fs.readFileSync(filePath, "utf8").split(/\r?\n/).slice(-maxLines).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function hoursSinceIso(value: string): number | null {
+  if (!value) return null;
+
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return null;
+
+  return (Date.now() - timestamp) / (60 * 60 * 1000);
+}
+
 export async function GET() {
   const latestPointerPath = path.join(backupRoot, "LATEST_BACKUP.txt");
   const latestBackupPath = readTextIfPresent(latestPointerPath);
@@ -121,6 +145,48 @@ export async function GET() {
     : [];
 
   const latestManifest = readJsonIfPresent<BackupManifest>(latestManifestPath);
+  const latestBackupAgeHours = hoursSinceIso(latestManifest?.createdAt || "");
+  const backupLogRoot = path.join(backupRoot, "logs");
+  const launchdOutLogPath = path.join(backupLogRoot, "launchd.out.log");
+  const launchdErrLogPath = path.join(backupLogRoot, "launchd.err.log");
+  const expectedIntervalSeconds = latestManifest?.retentionPolicy?.intervalSeconds ?? 900;
+  const scheduledWarningThresholdMinutes = Math.max(30, Math.ceil((expectedIntervalSeconds * 2) / 60));
+  const latestBackupWithinExpectedWindow =
+    latestBackupAgeHours === null
+      ? false
+      : latestBackupAgeHours <= scheduledWarningThresholdMinutes / 60;
+
+  const scheduledBackupHealth = {
+    mode: "read-only-scheduled-backup-health",
+    expectedIntervalSeconds,
+    scheduledWarningThresholdMinutes,
+    latestBackupAgeHours,
+    latestBackupWithinExpectedWindow,
+    retentionPolicy: latestManifest?.retentionPolicy || null,
+    logs: {
+      out: {
+        path: launchdOutLogPath,
+        displayPath: safeDisplayPath(launchdOutLogPath),
+        exists: fs.existsSync(launchdOutLogPath),
+        tail: tailLines(launchdOutLogPath, 50),
+      },
+      err: {
+        path: launchdErrLogPath,
+        displayPath: safeDisplayPath(launchdErrLogPath),
+        exists: fs.existsSync(launchdErrLogPath),
+        tail: tailLines(launchdErrLogPath, 50),
+      },
+    },
+    safety: {
+      readOnly: true,
+      retentionDeletion: false,
+      restoreExecution: false,
+      clioWrite: false,
+      email: false,
+      documentGeneration: false,
+      printQueueMutation: false,
+    },
+  };
 
   return NextResponse.json({
     ok: true,
@@ -133,6 +199,7 @@ export async function GET() {
     latestBackupPath,
     latestBackupDisplay: safeDisplayPath(latestBackupPath),
     latestManifest,
+    scheduledBackupHealth,
     backups,
     safety: {
       clioWrite: false,

@@ -28,6 +28,40 @@ type BackupStatus = {
   backupRootDisplay: string;
   latestBackupPath: string;
   latestBackupDisplay: string;
+  scheduledBackupHealth?: {
+    mode: string;
+    expectedIntervalSeconds: number;
+    scheduledWarningThresholdMinutes: number;
+    latestBackupAgeHours: number | null;
+    latestBackupWithinExpectedWindow: boolean;
+    retentionPolicy: {
+      intervalSeconds?: number;
+      recentAllBackupsHours?: number;
+      dailyBackupsDays?: number;
+      description?: string;
+    } | null;
+    logs: {
+      out: {
+        displayPath: string;
+        exists: boolean;
+        tail: string[];
+      };
+      err: {
+        displayPath: string;
+        exists: boolean;
+        tail: string[];
+      };
+    };
+    safety: {
+      readOnly: boolean;
+      retentionDeletion: boolean;
+      restoreExecution: boolean;
+      clioWrite: boolean;
+      email: boolean;
+      documentGeneration: boolean;
+      printQueueMutation: boolean;
+    };
+  };
   latestManifest: {
     createdAt?: string;
     gitHead?: string;
@@ -147,6 +181,12 @@ function adminBackupRestoreUrlForBackup(backupName: string): string {
 
 function backupNameFromPath(value: string): string {
   return String(value || "").split("/").filter(Boolean).pop() || "";
+}
+
+function formatHours(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  if (value < 1) return `${Math.round(value * 60)} minutes`;
+  return `${value.toFixed(1)} hours`;
 }
 
 function backupIsOlderThanHours(createdAt: string, hours: number): boolean {
@@ -438,6 +478,137 @@ export default function AdminBackupRestorePage() {
               <div><strong>Pulls docs from Clio:</strong> {passFail(status?.latestManifest?.documentFilePolicy?.pullsDocumentsFromClio)}</div>
               <div><strong>Restore execution:</strong> DISABLED</div>
             </div>
+          </div>
+        </section>
+
+        <section
+          style={{ ...cardStyle, display: "grid", gap: 14 }}
+          data-scheduled-backup-health="read-only"
+          data-retention-deletion-enabled="false"
+        >
+          <div>
+            <h2 style={{ margin: 0, fontSize: 22 }}>Scheduled Backup Health</h2>
+            <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.45 }}>
+              Read-only visibility for the scheduled local database/index backup system.  This section reads backup status, retention policy, and recent backup logs only.  It does not delete backups, execute restores, call Clio, send email, generate documents, or change the print queue.
+            </p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
+            <div
+              style={{
+                border: status?.scheduledBackupHealth?.latestBackupWithinExpectedWindow ? "1px solid #bbf7d0" : "1px solid #fde68a",
+                background: status?.scheduledBackupHealth?.latestBackupWithinExpectedWindow ? "#f0fdf4" : "#fffbeb",
+                color: status?.scheduledBackupHealth?.latestBackupWithinExpectedWindow ? "#166534" : "#92400e",
+                borderRadius: 16,
+                padding: 13,
+                fontWeight: 900,
+                lineHeight: 1.45,
+              }}
+            >
+              <div>Latest backup age</div>
+              <div style={{ fontSize: 20, marginTop: 4 }}>
+                {formatHours(status?.scheduledBackupHealth?.latestBackupAgeHours)}
+              </div>
+              <div style={{ marginTop: 4, fontSize: 13 }}>
+                Warning threshold: {status?.scheduledBackupHealth?.scheduledWarningThresholdMinutes ?? "—"} minutes.
+              </div>
+            </div>
+
+            <div
+              style={{
+                border: "1px solid #dbeafe",
+                background: "#eff6ff",
+                color: "#1e3a8a",
+                borderRadius: 16,
+                padding: 13,
+                fontWeight: 900,
+                lineHeight: 1.45,
+              }}
+            >
+              <div>Expected interval</div>
+              <div style={{ fontSize: 20, marginTop: 4 }}>
+                {status?.scheduledBackupHealth?.expectedIntervalSeconds ?? "—"} seconds
+              </div>
+              <div style={{ marginTop: 4, fontSize: 13 }}>
+                Based on the backup manifest retention policy.
+              </div>
+            </div>
+
+            <div
+              style={{
+                border: "1px solid #e5e7eb",
+                background: "#fff",
+                color: "#334155",
+                borderRadius: 16,
+                padding: 13,
+                fontWeight: 900,
+                lineHeight: 1.45,
+              }}
+            >
+              <div>Retention policy</div>
+              <div style={{ marginTop: 6, display: "grid", gap: 3, fontSize: 13 }}>
+                <div>Recent all-backups hours: {status?.scheduledBackupHealth?.retentionPolicy?.recentAllBackupsHours ?? "—"}</div>
+                <div>Daily backups days: {status?.scheduledBackupHealth?.retentionPolicy?.dailyBackupsDays ?? "—"}</div>
+                <div>Deletion controls: DISABLED</div>
+              </div>
+            </div>
+          </div>
+
+          {status?.scheduledBackupHealth?.retentionPolicy?.description && (
+            <div
+              style={{
+                border: "1px solid #e0e7ff",
+                background: "#eef2ff",
+                color: "#3730a3",
+                borderRadius: 16,
+                padding: 13,
+                lineHeight: 1.45,
+                fontWeight: 850,
+              }}
+            >
+              {status.scheduledBackupHealth.retentionPolicy.description}
+            </div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+            {[
+              ["Scheduled backup stdout log", status?.scheduledBackupHealth?.logs?.out],
+              ["Scheduled backup stderr log", status?.scheduledBackupHealth?.logs?.err],
+            ].map(([title, log]: any) => (
+              <div key={title} style={{ border: "1px solid #e5e7eb", borderRadius: 16, overflow: "hidden" }}>
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    borderBottom: "1px solid #e5e7eb",
+                    padding: 12,
+                    fontWeight: 950,
+                    display: "grid",
+                    gap: 4,
+                  }}
+                >
+                  <span>{title}</span>
+                  <span style={{ color: "#64748b", fontSize: 12, wordBreak: "break-word" }}>
+                    {log?.displayPath || "—"}; exists: {log?.exists ? "YES" : "NO"}
+                  </span>
+                </div>
+                <pre
+                  style={{
+                    margin: 0,
+                    padding: 12,
+                    minHeight: 160,
+                    maxHeight: 260,
+                    overflow: "auto",
+                    whiteSpace: "pre-wrap",
+                    background: "#0f172a",
+                    color: "#e2e8f0",
+                    fontSize: 12,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {(log?.tail || []).length ? log.tail.join("\n") : "No recent log lines found."}
+                </pre>
+              </div>
+            ))}
           </div>
         </section>
 

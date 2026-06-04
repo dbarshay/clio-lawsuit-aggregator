@@ -26,7 +26,7 @@ function mustNotContain(label, text, needle) {
 const lawsuits = read("app/lawsuits/page.tsx");
 const grouped = read("app/api/claim-index/search-grouped/route.ts");
 
-console.log("RESULT: verify adversary attorney clickable table/export safety");
+console.log("RESULT: verify lawsuit clickable metadata table/export safety");
 
 mustContain("lawsuits page has adversary helper", lawsuits, "function adversaryAttorneyName");
 mustContain("lawsuits page exports adversary attorney column", lawsuits, '"Adversary Attorney"');
@@ -39,6 +39,12 @@ mustContain(
 mustContain("lawsuits result adversary value is clickable", lawsuits, 'searchLinkedField("adversaryAttorney", adversaryAttorneyName(m))');
 mustContain("lawsuits result adversary link title exists", lawsuits, "Show all matters for this adversary attorney");
 mustContain("lawsuits sends adversary query param only through linked search", lawsuits, 'params.set("adversaryAttorney", nextAdversaryAttorney.trim())');
+mustContain("lawsuits URL state includes court", lawsuits, 'court: params.get("court") || ""');
+mustContain("lawsuits search overrides include court", lawsuits, "court: string;");
+mustContain("lawsuits sends court query param only through linked search", lawsuits, 'params.set("court", nextCourt.trim())');
+mustContain("lawsuits linked field supports court", lawsuits, '"court" | "indexAaaNumber"');
+mustContain("lawsuits result court value is clickable", lawsuits, 'searchLinkedField("court", courtVenue(m))');
+mustContain("lawsuits result court link title exists", lawsuits, "Show all matters for this court");
 
 mustNotContain("lawsuits page must not have adversary search state", lawsuits, 'const [adversaryAttorney, setAdversaryAttorney] = useState("")');
 mustNotContain("lawsuits page must not have adversary reference options state", lawsuits, "adversaryAttorneyReferenceOptions");
@@ -49,6 +55,9 @@ mustContain("search-grouped selects lawsuitOptions", grouped, "lawsuitOptions: t
 mustContain("search-grouped attaches adversary attorney metadata from lawsuitOptions", grouped, "adversary_attorney: lawsuitOptions.adversaryAttorney || null");
 mustContain("search-grouped accepts adversary linked filter", grouped, 'const adversaryAttorneyFilter = clean(req.nextUrl.searchParams.get("adversaryAttorney"));');
 mustContain("search-grouped filters adversary attorney locally", grouped, "includesText(row.adversaryAttorney || row.adversary_attorney, adversaryAttorneyFilter)");
+mustContain("search-grouped accepts court linked filter", grouped, 'const courtFilter = clean(req.nextUrl.searchParams.get("court"));');
+mustContain("search-grouped includes court filter in selector check", grouped, "Boolean(courtFilter)");
+mustContain("search-grouped filters court locally", grouped, "includesText(row.court || row.courtVenue || row.court_venue, courtFilter)");
 mustContain("search-grouped remains local-only", grouped, 'source: "claim-index-local-only"');
 mustContain("search-grouped remains no Clio hydration", grouped, "noClioHydration: true");
 mustNotContain("search-grouped must not call Clio fetch", grouped, "clioFetch");

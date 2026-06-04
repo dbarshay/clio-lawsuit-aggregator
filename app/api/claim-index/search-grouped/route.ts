@@ -139,7 +139,8 @@ export async function GET(req: NextRequest) {
   };
 
   const adversaryAttorneyFilter = clean(req.nextUrl.searchParams.get("adversaryAttorney"));
-  const hasAnySelector = Object.values(params).some(Boolean) || Boolean(adversaryAttorneyFilter);
+  const courtFilter = clean(req.nextUrl.searchParams.get("court"));
+  const hasAnySelector = Object.values(params).some(Boolean) || Boolean(adversaryAttorneyFilter) || Boolean(courtFilter);
 
   if (!hasAnySelector) {
     return NextResponse.json(
@@ -163,11 +164,19 @@ export async function GET(req: NextRequest) {
   });
 
   const rowsWithMetadata = attachMasterFlags(await attachLocalLawsuitMetadata(claimIndexRows));
-  const rows = adversaryAttorneyFilter
-    ? rowsWithMetadata.filter((row: any) =>
-        includesText(row.adversaryAttorney || row.adversary_attorney, adversaryAttorneyFilter)
-      )
-    : rowsWithMetadata;
+  let rows = rowsWithMetadata;
+
+  if (adversaryAttorneyFilter) {
+    rows = rows.filter((row: any) =>
+      includesText(row.adversaryAttorney || row.adversary_attorney, adversaryAttorneyFilter)
+    );
+  }
+
+  if (courtFilter) {
+    rows = rows.filter((row: any) =>
+      includesText(row.court || row.courtVenue || row.court_venue, courtFilter)
+    );
+  }
 
   const groups = groupByClaim(rows);
 

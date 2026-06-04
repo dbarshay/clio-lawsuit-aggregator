@@ -245,6 +245,7 @@ function lawsuitsSearchStateFromUrl() {
       provider: "",
       insurer: "",
       adversaryAttorney: "",
+      court: "",
       indexAaaNumber: "",
       masterLawsuitId: "",
     };
@@ -258,6 +259,7 @@ function lawsuitsSearchStateFromUrl() {
     provider: params.get("provider") || "",
     insurer: params.get("insurer") || "",
     adversaryAttorney: params.get("adversaryAttorney") || "",
+    court: params.get("court") || "",
     indexAaaNumber: params.get("indexAaaNumber") || "",
     masterLawsuitId: params.get("masterLawsuitId") || "",
   };
@@ -269,6 +271,7 @@ function lawsuitsSearchStateHasAnyValue(state: {
   provider?: string;
   insurer?: string;
   adversaryAttorney?: string;
+  court?: string;
   indexAaaNumber?: string;
   masterLawsuitId?: string;
 }) {
@@ -278,6 +281,7 @@ function lawsuitsSearchStateHasAnyValue(state: {
     String(state.provider || "").trim() ||
     String(state.insurer || "").trim() ||
     String(state.adversaryAttorney || "").trim() ||
+    String(state.court || "").trim() ||
     String(state.indexAaaNumber || "").trim() ||
     String(state.masterLawsuitId || "").trim()
   );
@@ -428,6 +432,7 @@ export default function LawsuitsPage() {
       provider: string;
       insurer: string;
       adversaryAttorney: string;
+      court: string;
       indexAaaNumber: string;
       masterLawsuitId: string;
     }> = {},
@@ -440,6 +445,7 @@ export default function LawsuitsPage() {
     const nextProvider = hasOverride("provider") ? String(overrides.provider ?? "") : provider;
     const nextInsurer = hasOverride("insurer") ? String(overrides.insurer ?? "") : insurer;
     const nextAdversaryAttorney = hasOverride("adversaryAttorney") ? String(overrides.adversaryAttorney ?? "") : "";
+    const nextCourt = hasOverride("court") ? String(overrides.court ?? "") : "";
     const nextIndexAaaNumber = hasOverride("indexAaaNumber") ? String(overrides.indexAaaNumber ?? "") : "";
     const nextMasterLawsuitId = hasOverride("masterLawsuitId") ? String(overrides.masterLawsuitId ?? "") : "";
 
@@ -461,6 +467,7 @@ export default function LawsuitsPage() {
       if (nextProvider.trim()) params.set("provider", nextProvider.trim());
       if (nextInsurer.trim()) params.set("insurer", nextInsurer.trim());
       if (nextAdversaryAttorney.trim()) params.set("adversaryAttorney", nextAdversaryAttorney.trim());
+      if (nextCourt.trim()) params.set("court", nextCourt.trim());
       if (nextIndexAaaNumber.trim()) params.set("indexAaaNumber", nextIndexAaaNumber.trim());
       if (nextMasterLawsuitId.trim()) params.set("masterLawsuitId", nextMasterLawsuitId.trim());
 
@@ -532,7 +539,7 @@ export default function LawsuitsPage() {
   }, []);
 
   function searchLinkedField(
-    field: "claim" | "patient" | "provider" | "insurer" | "adversaryAttorney" | "indexAaaNumber" | "masterLawsuitId",
+    field: "claim" | "patient" | "provider" | "insurer" | "adversaryAttorney" | "court" | "indexAaaNumber" | "masterLawsuitId",
     value: unknown
   ) {
     const cleaned = String(value ?? "").trim();
@@ -567,6 +574,11 @@ export default function LawsuitsPage() {
 
     if (field === "adversaryAttorney") {
       void search({ ...clearedVisibleFields, adversaryAttorney: cleaned });
+      return;
+    }
+
+    if (field === "court") {
+      void search({ ...clearedVisibleFields, court: cleaned });
       return;
     }
 
@@ -1156,7 +1168,25 @@ export default function LawsuitsPage() {
                             <td style={tdRight}>{money(paymentAmount(m))}</td>
                             <td style={tdRight}>{money(val(m, "balancePresuit", "balance_presuit", "balanceAmount", "balance_amount"))}</td>
                             <td style={td}>{denialReason(m)}</td>
-                            <td style={td}>{courtVenue(m)}</td>
+                            <td style={td}>
+                              <button
+                                type="button"
+                                onClick={() => searchLinkedField("court", courtVenue(m))}
+                                title="Show all matters for this court"
+                                style={{
+                                  border: 0,
+                                  background: "transparent",
+                                  color: "#2563eb",
+                                  cursor: "pointer",
+                                  padding: 0,
+                                  font: "inherit",
+                                  fontWeight: 800,
+                                  textAlign: "left",
+                                }}
+                              >
+                                {courtVenue(m)}
+                              </button>
+                            </td>
                             <td style={td}>
                               <button
                                 type="button"

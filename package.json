@@ -242,7 +242,8 @@
     "verify:create-lawsuit-success-notice-history-safety": "node scripts/verify-create-lawsuit-success-notice-history-safety.mjs",
     "verify:admin-lawsuit-cleanup-preview-safety": "node scripts/verify-admin-lawsuit-cleanup-preview-safety.mjs",
     "verify:admin-lawsuit-cleanup-confirm-safety": "node scripts/verify-admin-lawsuit-cleanup-confirm-safety.mjs",
-    "verify:admin-lawsuit-cleanup-history-safety": "node scripts/verify-admin-lawsuit-cleanup-history-safety.mjs"
+    "verify:admin-lawsuit-cleanup-history-safety": "node scripts/verify-admin-lawsuit-cleanup-history-safety.mjs",
+    "verify:direct-matter-create-lawsuit-routing-safety": "node scripts/verify-direct-matter-create-lawsuit-routing-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

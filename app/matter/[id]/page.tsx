@@ -3189,11 +3189,19 @@ function openClaimAmountEditDialog() {
 
       setShowLawsuitOptionsModal(false);
 
-      alert(
-        `LOCAL LAWSUIT CREATED\n\nMaster Lawsuit ID: ${createJson.masterLawsuitId}\nSelected Matters: ${createJson.selectedMatterCount}\nAmount Sought: $${Number(createJson.amountSought || 0).toFixed(2)}\n\nNo Clio records were changed.`
-      );
+      const createdMasterLawsuitId = String(createJson.masterLawsuitId || "").trim();
 
-      window.location.reload();
+      if (!createdMasterLawsuitId) {
+        alert("Local lawsuit was created, but no Master Lawsuit ID was returned.");
+        return;
+      }
+
+      const createdMasterLawsuitUrl = new URL("/matters", window.location.origin);
+      createdMasterLawsuitUrl.searchParams.set("master", createdMasterLawsuitId);
+      createdMasterLawsuitUrl.searchParams.set("createdMasterLawsuitId", createdMasterLawsuitId);
+      createdMasterLawsuitUrl.searchParams.set("from", "create-lawsuit");
+
+      window.location.assign(`${createdMasterLawsuitUrl.pathname}${createdMasterLawsuitUrl.search}`);
     } catch (err: any) {
       alert(err?.message || "Local lawsuit generation failed.");
     } finally {

@@ -3211,27 +3211,42 @@ function openClaimAmountEditDialog() {
 
   
 
-  function openLawsuitOptionsModal() {
+  function openStartLawsuitModalFromMatter() {
     if (submitting) return;
 
-    const selectedRows = rows.filter((r) => selected.includes(Number(r.id)));
+    const currentMatterId = Number(matter?.id || matterId || 0);
 
-    if (selectedRows.length === 0) {
-      alert("Select at least one matter.");
+    if (!Number.isFinite(currentMatterId) || currentMatterId <= 0) {
+      alert("No valid matter is loaded for lawsuit generation.");
       return;
     }
 
-    const invalid = selectedRows.filter(
-      (r) => isAggregated(r) || !isSelectable(r)
-    );
+    const currentMatterRow =
+      rows.find((r) => Number(r.id) === currentMatterId) ||
+      matter;
 
-    if (invalid.length > 0) {
-      alert("One or more selected matters are not eligible for lawsuit generation.");
+    if (!currentMatterRow) {
+      alert("No matter row is loaded for lawsuit generation.");
       return;
     }
 
+    if (isAggregated(currentMatterRow)) {
+      alert("This matter is already part of a lawsuit.");
+      return;
+    }
+
+    if (!isSelectable(currentMatterRow)) {
+      alert("This matter is not eligible for lawsuit generation.");
+      return;
+    }
+
+    setSelected([currentMatterId]);
     setLawsuitOptions(defaultLawsuitOptions());
     setShowLawsuitOptionsModal(true);
+  }
+
+  function openLawsuitOptionsModal() {
+    openStartLawsuitModalFromMatter();
   }
 
   async function deaggregateCluster() {
@@ -9195,20 +9210,27 @@ function openClaimAmountEditDialog() {
 
                     <button
                       type="button"
-                      disabled
-                      title="Start Lawsuit action will be wired later."
+                      onClick={openStartLawsuitModalFromMatter}
+                      disabled={submitting || matterIsClosedForPayment() || alreadyAggregated}
+                      title={
+                        alreadyAggregated
+                          ? "This matter is already part of a lawsuit."
+                          : matterIsClosedForPayment()
+                          ? "Closed matters are not eligible for lawsuit generation."
+                          : "Start a lawsuit from this individual matter."
+                      }
                       style={{
                         width: "100%",
                         minWidth: 0,
                         height: 44,
                         border: "1px solid #93c5fd",
                         borderRadius: 999,
-                        background: "#eff6ff",
-                        color: "#1d4ed8",
+                        background: submitting || matterIsClosedForPayment() || alreadyAggregated ? "#f3f4f6" : "#eff6ff",
+                        color: submitting || matterIsClosedForPayment() || alreadyAggregated ? "#64748b" : "#1d4ed8",
                         fontSize: 12,
                         fontWeight: 950,
-                        cursor: "pointer",
-                        opacity: 0.82,
+                        cursor: submitting || matterIsClosedForPayment() || alreadyAggregated ? "not-allowed" : "pointer",
+                        opacity: submitting || matterIsClosedForPayment() || alreadyAggregated ? 0.7 : 1,
                       }}
                     >
                       Start Lawsuit
@@ -10278,7 +10300,7 @@ function openClaimAmountEditDialog() {
         </section>
       )}
 
-      {activeWorkspaceTab === "lawsuit" && !alreadyAggregated && (
+      {false && activeWorkspaceTab === "lawsuit" && !alreadyAggregated && (
         <section style={tabPlaceholderPanelStyle}>
           <div
             style={{
@@ -10386,28 +10408,19 @@ function openClaimAmountEditDialog() {
               marginBottom: 12,
             }}
           >
-            <button
-              type="button"
-              onClick={openLawsuitOptionsModal}
-              disabled={submitting || selected.length === 0}
+            <div
               style={{
                 padding: "8px 12px",
-                border: "1px solid #0070f3",
-                background: submitting || selected.length === 0 ? "#f3f4f6" : "#0070f3",
-                color: submitting || selected.length === 0 ? "#666" : "#fff",
+                border: "1px solid #cbd5e1",
+                background: "#f8fafc",
+                color: "#475569",
                 borderRadius: 4,
-                cursor: submitting || selected.length === 0 ? "not-allowed" : "pointer",
-                fontWeight: 700,
+                fontWeight: 800,
+                fontSize: 13,
               }}
             >
-              {submitting
-                ? "Generating..."
-                : selected.length === 1
-                ? "Generate Lawsuit"
-                : selected.length > 1
-                ? "Aggregate / Generate Lawsuit"
-                : "Select Matters to Generate"}
-            </button>
+              Use the Start Lawsuit button in Matter Actions to create a lawsuit from this individual matter.
+            </div>
 
             {alreadyAggregated && (
               <button
@@ -10484,14 +10497,15 @@ function openClaimAmountEditDialog() {
             <div
               style={{
                 padding: 10,
-                background: "#fffbeb",
-                border: "1px solid #f59e0b",
+                background: "#f8fafc",
+                border: "1px solid #cbd5e1",
                 borderRadius: 8,
-                color: "#92400e",
+                color: "#475569",
                 fontSize: 13,
+                fontWeight: 800,
               }}
             >
-              Select one or more eligible matters, then generate the lawsuit.  Single-matter lawsuit generation remains supported.
+              Lawsuit creation for this individual matter starts from the Start Lawsuit button in Matter Actions.
             </div>
           )}
 

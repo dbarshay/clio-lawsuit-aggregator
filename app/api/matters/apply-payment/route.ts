@@ -156,7 +156,9 @@ async function mirrorLocalPaymentTotalsToClaimIndex(params: {
   const result = await prisma.claimIndex.updateMany({
     where: { matter_id: matterId },
     data: {
+      payment_amount: totals.after.paymentVoluntary,
       payment_voluntary: totals.after.paymentVoluntary,
+      balance_amount: totals.after.balancePresuit,
       balance_presuit: totals.after.balancePresuit,
     },
   });

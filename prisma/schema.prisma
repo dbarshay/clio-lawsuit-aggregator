@@ -91,6 +91,7 @@ model ClaimIndex {
   master_lawsuit_id      String?
   status                 String?
   close_reason           String?
+  final_status           String?
   raw_json               String?
   indexed_at             DateTime @default(now())
   matter_stage_name      String?
@@ -109,6 +110,7 @@ model ClaimIndex {
   @@index([master_lawsuit_id])
   @@index([index_aaa_number])
   @@index([close_reason])
+  @@index([final_status])
   @@index([matter_stage_name])
   @@index([status])
   @@index([denial_reason])

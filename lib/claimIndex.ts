@@ -45,6 +45,10 @@ export async function upsertRow(row: any) {
     master_lawsuit_id: row.master_lawsuit_id,
     index_aaa_number: row.index_aaa_number,
     status: row.status,
+    close_reason: row.close_reason,
+    final_status: row.final_status,
+    matter_stage_name: row.matter_stage_name,
+    treating_provider: row.treating_provider,
     raw_json: row.raw_json,
     indexed_at: new Date(),
   };

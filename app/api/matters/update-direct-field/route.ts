@@ -41,7 +41,7 @@ function priorValueForField(existing: any, field: DirectField) {
 
   if (field === "denialReason") return existing?.denial_reason || null;
   if (field === "status") return existing?.matter_stage_name || existing?.status || null;
-  if (field === "finalStatus") return existing?.close_reason || null;
+  if (field === "finalStatus") return existing?.final_status || existing?.close_reason || null;
 
   return null;
 }
@@ -174,6 +174,7 @@ function claimIndexUpdateData(field: DirectField, value: any, existing?: any) {
   if (field === "finalStatus") {
     return {
       close_reason: String(value),
+      final_status: String(value),
       indexed_at: new Date(),
     };
   }
@@ -227,6 +228,8 @@ function clientMatterPatch(field: DirectField, value: any, updated: any) {
     return {
       closeReason: String(value),
       close_reason: String(value),
+      finalStatus: String(value),
+      final_status: String(value),
     };
   }
 
@@ -277,6 +280,7 @@ export async function PATCH(request: Request) {
         matter_stage_name: true,
         status: true,
         close_reason: true,
+        final_status: true,
       },
     });
 
@@ -310,6 +314,7 @@ export async function PATCH(request: Request) {
           matter_stage_name: true,
           status: true,
           close_reason: true,
+          final_status: true,
         },
       });
 

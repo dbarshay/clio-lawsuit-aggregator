@@ -131,6 +131,9 @@ export async function upsertClaimIndexFromMatter(matter: any) {
 
     // --- LEGAL / STATUS ---
     denial_reason: getDenialReasonLabel(rawDenialReason),
+    service_type: str(cf(SERVICE_TYPE)),
+    policy_number: str(cf(POLICY_NUMBER)),
+    date_of_loss: str(cf(DATE_OF_LOSS)),
     payment_voluntary: paymentAmount,
     balance_presuit: num(cf(MATTER_CF.BALANCE_PRESUIT)),
 
@@ -140,6 +143,7 @@ export async function upsertClaimIndexFromMatter(matter: any) {
     matter_stage_name: str(matter?.matter_stage?.name),
     status: str(matter.status),
     close_reason: str(closeReasonRaw),
+    final_status: str(closeReasonRaw),
 
     // --- RAW SNAPSHOT ---
     raw_json: JSON.stringify(matter),

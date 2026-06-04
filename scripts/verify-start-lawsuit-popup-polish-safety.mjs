@@ -43,6 +43,16 @@ mustContain("popup mirrors top-level amount panel", popup, "startLawsuitAmountMo
 mustContain("popup has review table", popup, "startLawsuitTableStyle");
 mustContain("popup has Preview-equivalent selected matter review", popup, "Matter Status");
 mustContain("popup uses Working label", popup, 'submitting ? "Working..." : "Confirm Create Lawsuit"');
+mustContain("preview state exists", page, "const [startLawsuitPreview, setStartLawsuitPreview] = useState<any>(null);");
+mustContain("preview error state exists", page, 'const [startLawsuitError, setStartLawsuitError] = useState("");');
+mustContain("preview function exists", page, "async function previewStartLawsuitFromMatter()");
+mustContain("preview calls local-generation-preview", page, 'fetch("/api/lawsuits/local-generation-preview"');
+mustContain("popup has Preview Lawsuit button", popup, "Preview Lawsuit");
+mustContain("popup has Preview Ready feedback", popup, "<strong>Preview Ready:</strong>");
+mustContain("popup confirm uses shared validation", popup, "disabled={submitting || Boolean(validateStartLawsuitInputs())}");
+mustContain("popup cancel clears preview", popup, "setStartLawsuitPreview(null);");
+mustContain("popup cancel clears error", popup, 'setStartLawsuitError("");');
+
 mustNotContain("old compact centered popup removed", popup, 'width: 560');
 mustNotContain("old compact white-box shadow removed", popup, 'boxShadow: "0 10px 30px rgba(0,0,0,0.25)"');
 
@@ -60,6 +70,7 @@ console.log("EXPECTS_CHOOSE_COURT_LABEL=YES");
 console.log("EXPECTS_SELECTED_MATTER_SUMMARY=YES");
 console.log("EXPECTS_NO_PREFILING_INDEX_AAA_FIELD_IN_POPUP=YES");
 console.log("EXPECTS_MIRRORED_TOP_LEVEL_POPUP_STYLE=YES");
+console.log("EXPECTS_PREVIEW_LAWSUIT_STEP=YES");
 console.log("FAILURES=" + failures.length);
 
 for (const failure of failures) console.log("FAIL=" + failure);

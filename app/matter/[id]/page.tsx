@@ -613,6 +613,8 @@ const activeGroupKey =
   const [lawsuitOptions, setLawsuitOptions] = useState<LawsuitOptions>(() =>
     defaultLawsuitOptions()
   );
+  const [startLawsuitPreview, setStartLawsuitPreview] = useState<any>(null);
+  const [startLawsuitError, setStartLawsuitError] = useState("");
   const [packetPreview, setPacketPreview] = useState<any>(null);
   const [packetPreviewOpen, setPacketPreviewOpen] = useState(false);
   const [packetLoading, setPacketLoading] = useState(false);
@@ -3117,6 +3119,76 @@ function openClaimAmountEditDialog() {
     }
   }
 
+  async function previewStartLawsuitFromMatter() {
+    if (submitting) return;
+
+    const validationError = validateStartLawsuitInputs();
+    if (validationError) {
+      setStartLawsuitError(validationError);
+      return;
+    }
+
+    const selectedRows = startLawsuitSelectedRowsForCreate();
+    const invalid = selectedRows.filter(
+      (row: any) => isAggregated(row) || !isSelectable(row)
+    );
+
+    if (invalid.length > 0) {
+      setStartLawsuitError("One or more selected matters are not eligible for lawsuit generation.");
+      return;
+    }
+
+    setSubmitting(true);
+    setStartLawsuitError("");
+    setStartLawsuitPreview(null);
+
+    try {
+      const selectedMatterIds = selectedRows.map((row: any) => Number(row.id));
+      const amountSoughtMode =
+        lawsuitOptions.amountSoughtMode === "custom"
+          ? "custom"
+          : lawsuitOptions.amountSoughtMode === "claim_amount"
+          ? "claim_amount"
+          : "balance_presuit";
+      const selectedVenue = selectedStartLawsuitCourt();
+      const customAmountSought =
+        amountSoughtMode === "custom" ? parseMoneyInput(lawsuitOptions.customAmountSought) : null;
+
+      const previewRes = await fetch("/api/lawsuits/local-generation-preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+        body: JSON.stringify({
+          matterIds: selectedMatterIds,
+          amountSoughtMode,
+          customAmountSought,
+          venue: selectedVenue,
+          venueSelection: selectedVenue,
+        }),
+      });
+
+      const previewJson = await previewRes.json();
+
+      if (!previewRes.ok || !previewJson?.ok) {
+        setStartLawsuitError(previewJson?.error || "Local lawsuit generation preview failed.");
+        return;
+      }
+
+      setStartLawsuitPreview(previewJson);
+
+      if (!previewJson.canCreate) {
+        setStartLawsuitError(previewJson.blockingReason || "Selected matters cannot be used to create a new local lawsuit.");
+        return;
+      }
+    } catch (err: any) {
+      setStartLawsuitError(err?.message || "Local lawsuit generation preview failed.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function submitAggregationWithOptions() {
     if (submitting) return;
 
@@ -3259,6 +3331,8 @@ function openClaimAmountEditDialog() {
 
     setSelected([currentMatterId]);
     setLawsuitOptions(defaultLawsuitOptions());
+    setStartLawsuitPreview(null);
+    setStartLawsuitError("");
     setShowLawsuitOptionsModal(true);
   }
 
@@ -7447,6 +7521,28 @@ function openClaimAmountEditDialog() {
       return parseMoneyInput(lawsuitOptions.customAmountSought) ?? 0;
     }
     return startLawsuitSelectedMatterSummary.balanceTotal;
+  }
+
+  function startLawsuitSelectedRowsForCreate() {
+    return rows.filter((row: any) => selected.includes(Number(row.id)));
+  }
+
+  function selectedStartLawsuitCourt(): string {
+    return lawsuitOptions.venue === "Other"
+      ? lawsuitOptions.venueOther.trim()
+      : lawsuitOptions.venue.trim();
+  }
+
+  function validateStartLawsuitInputs(): string {
+    if (startLawsuitSelectedMatterSummary.count === 0) return "Select at least one matter.";
+    if (!selectedStartLawsuitCourt()) return "Court / Venue is required before creating a lawsuit.";
+    if (lawsuitOptions.amountSoughtMode === "custom" && startLawsuitAmountForMode() <= 0) {
+      return "A valid Lawsuit Amount is required when Other is selected.";
+    }
+    if (startLawsuitAmountForMode() <= 0) {
+      return "A valid Lawsuit Amount is required before creating a lawsuit.";
+    }
+    return "";
   }
 
   const settlementPreviewReady =
@@ -14258,10 +14354,48 @@ function openClaimAmountEditDialog() {
             />
           </label>
 
+          {startLawsuitError && (
+            <div
+              style={{
+                border: "1px solid #fecaca",
+                background: "#fef2f2",
+                color: "#991b1b",
+                borderRadius: 8,
+                padding: 10,
+                marginBottom: 12,
+                fontSize: 13,
+                fontWeight: 850,
+              }}
+            >
+              {startLawsuitError}
+            </div>
+          )}
+
+          {startLawsuitPreview && (
+            <div
+              style={{
+                border: "1px solid #bbf7d0",
+                background: "#f0fdf4",
+                color: "#166534",
+                borderRadius: 8,
+                padding: 10,
+                marginBottom: 12,
+                fontSize: 13,
+                fontWeight: 850,
+              }}
+            >
+              <strong>Preview Ready:</strong> {startLawsuitPreview.selectedMatterCount} matters · Lawsuit Amount {money(startLawsuitPreview.amountSought)}
+            </div>
+          )}
+
           <div style={startLawsuitModalButtonRowStyle}>
             <button
               type="button"
-              onClick={() => setShowLawsuitOptionsModal(false)}
+              onClick={() => {
+                setShowLawsuitOptionsModal(false);
+                setStartLawsuitPreview(null);
+                setStartLawsuitError("");
+              }}
               disabled={submitting}
               style={startLawsuitSecondaryButtonStyle}
             >
@@ -14270,26 +14404,25 @@ function openClaimAmountEditDialog() {
 
             <button
               type="button"
+              onClick={previewStartLawsuitFromMatter}
+              disabled={submitting || Boolean(validateStartLawsuitInputs())}
+              style={{
+                ...startLawsuitSecondaryButtonStyle,
+                opacity: submitting || Boolean(validateStartLawsuitInputs()) ? 0.45 : 1,
+                cursor: submitting || Boolean(validateStartLawsuitInputs()) ? "not-allowed" : "pointer",
+              }}
+            >
+              Preview Lawsuit
+            </button>
+
+            <button
+              type="button"
               onClick={submitAggregationWithOptions}
-              disabled={
-                submitting ||
-                (lawsuitOptions.amountSoughtMode === "custom" &&
-                  parseMoneyInput(lawsuitOptions.customAmountSought) === null)
-              }
+              disabled={submitting || Boolean(validateStartLawsuitInputs())}
               style={{
                 ...startLawsuitPrimaryButtonStyle,
-                opacity:
-                  submitting ||
-                  (lawsuitOptions.amountSoughtMode === "custom" &&
-                    parseMoneyInput(lawsuitOptions.customAmountSought) === null)
-                    ? 0.45
-                    : 1,
-                cursor:
-                  submitting ||
-                  (lawsuitOptions.amountSoughtMode === "custom" &&
-                    parseMoneyInput(lawsuitOptions.customAmountSought) === null)
-                    ? "not-allowed"
-                    : "pointer",
+                opacity: submitting || Boolean(validateStartLawsuitInputs()) ? 0.45 : 1,
+                cursor: submitting || Boolean(validateStartLawsuitInputs()) ? "not-allowed" : "pointer",
               }}
             >
               {submitting ? "Working..." : "Confirm Create Lawsuit"}

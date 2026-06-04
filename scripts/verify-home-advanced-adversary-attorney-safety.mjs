@@ -31,7 +31,7 @@ console.log("RESULT: verify home advanced adversary attorney safety");
 mustContain("AdvancedSearchFields includes adversaryAttorney", home, "adversaryAttorney: string;");
 mustContain("empty advanced fields includes adversaryAttorney", home, 'adversaryAttorney: ""');
 mustContain("advanced actual values includes adversaryAttorney", home, "adversaryAttorney: supportedFieldValueFromMatter");
-mustContain("advanced readback includes adversary attorney", home, '["Adversary Attorney", values.adversaryAttorney]');
+mustContain("inline results table includes adversary attorney value", home, 'advancedDisplayValue("Adversary Attorney", values.adversaryAttorney)');
 mustContain("advanced candidate params include adversaryAttorney", home, '["adversaryAttorney", fields.adversaryAttorney]');
 mustContain("home loads adversary reference options", home, "/api/reference-data/options?type=adversary_attorney");
 mustContain("advanced UI input uses adversaryAttorney", home, "value={advancedFields.adversaryAttorney}");

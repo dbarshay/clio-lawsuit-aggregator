@@ -584,27 +584,6 @@ function advancedActualValuesFromMatter(row: any) {
   };
 }
 
-function compactAdvancedActualValueSummary(row: any) {
-  const values = advancedActualValuesFromMatter(row);
-
-  const pairs = [
-    ["Court", values.court],
-    ["Adversary Attorney", values.adversaryAttorney],
-    ["Date Opened", values.dateOpened],
-    ["Policy", values.policyNumber],
-    ["Date of Loss", values.dateOfLoss],
-    ["Service Type", values.serviceType],
-    ["DOS", values.dosStart || values.dosEnd ? `${values.dosStart || "—"} – ${values.dosEnd || "—"}` : ""],
-    ["Denial", values.denialReason],
-    ["Status", values.status],
-    ["Final", values.finalStatus],
-  ].filter(([, value]) => clean(value));
-
-  if (pairs.length === 0) return "";
-
-  return pairs.map(([label, value]) => `${label}: ${value}`).join("  •  ");
-}
-
 function advancedDisplayValue(label: string, value: any) {
   const raw = clean(value);
 
@@ -1122,7 +1101,6 @@ export default function Home() {
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
   const [results, setResults] = useState<MatterResult[]>([]);
-  const [resultsModalOpen, setResultsModalOpen] = useState(false);
   const [checkedLabel, setCheckedLabel] = useState("");
   const [suggestions, setSuggestions] = useState<MatterResult[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
@@ -1447,7 +1425,6 @@ export default function Home() {
     setSearched(true);
     setError("");
     setResults([]);
-    setResultsModalOpen(false);
     setCheckedLabel("");
     setSuggestions([]);
     setSuggestionLabel("");
@@ -1484,7 +1461,6 @@ export default function Home() {
     setSearched(false);
     setError("");
     setResults([]);
-    setResultsModalOpen(false);
     setCheckedLabel("");
     setSuggestions([]);
     setDirectPatientSuggestions([]);
@@ -1496,19 +1472,6 @@ export default function Home() {
 
     if (typeof window !== "undefined" && options.updateUrl !== false) {
       window.history.pushState({ barshMattersHomeSearch: true }, "", "/");
-    }
-  }
-
-  function closeHomeResults(options: { updateUrl?: boolean } = {}) {
-    setResultsModalOpen(false);
-
-    if (typeof window !== "undefined" && options.updateUrl !== false) {
-      const nextUrl = homeSearchUrlForState({
-        patient: clean(patientSearchInput),
-        claim: clean(claimSearchInput),
-        provider: clean(providerSearchInput),
-      });
-      window.history.pushState({ barshMattersHomeSearch: true }, "", nextUrl);
     }
   }
 
@@ -2062,10 +2025,8 @@ export default function Home() {
         if (mappedRow) mapped.push(mappedRow);
       }
 
-      setResultsModalOpen(true);
       setResults(dedupeMatterResults(mapped));
     } catch (e: any) {
-      setResultsModalOpen(true);
       setError(e?.message || "Combined search failed.");
     } finally {
       setLoading(false);
@@ -2106,11 +2067,9 @@ export default function Home() {
         if (mappedRow) mapped.push(mappedRow);
       }
 
-      setResultsModalOpen(true);
       setResults(dedupeMatterResults(mapped));
       setAdvancedOpen(false);
     } catch (e: any) {
-      setResultsModalOpen(true);
       setError(e?.message || "Advanced search failed.");
     } finally {
       setLoading(false);
@@ -2139,8 +2098,7 @@ export default function Home() {
         </section>
 
           <style jsx global>{`
-            .barsh-suggestion-row:hover,
-            .barsh-result-row:hover {
+            .barsh-suggestion-row:hover {
               background: #f8fbff !important;
               border-color: #c7d7ef !important;
               box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06) !important;
@@ -2992,18 +2950,6 @@ const emptyStyle: React.CSSProperties = {
   fontSize: 14,
 };
 
-const resultRowStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  gap: 16,
-  alignItems: "center",
-  padding: 14,
-  border: "1px solid " + colors.lineSoft,
-  borderRadius: 16,
-  background: "#ffffff",
-  color: colors.ink,
-  transition: "background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease",
-};
 
 const matterTitleStyle: React.CSSProperties = {
   fontSize: 17,
@@ -3156,12 +3102,6 @@ const typeaheadTopLineStyle: React.CSSProperties = {
   marginBottom: 8,
 };
 
-const resultTopLineStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  marginBottom: 8,
-};
 
 const typeaheadTitleLinkStyle: React.CSSProperties = {
   display: "inline-flex",
@@ -3502,26 +3442,7 @@ const mainPageSearchGridStyle: React.CSSProperties = {
 };
 
 
-const searchResultsOverlayStyle: React.CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  zIndex: 520,
-  display: "grid",
-  placeItems: "center",
-  padding: 24,
-  background: "rgba(15, 23, 42, 0.42)",
-};
 
-const searchResultsModalStyle: React.CSSProperties = {
-  width: "calc(100vw - 32px)",
-  maxHeight: "calc(100vh - 70px)",
-  overflow: "auto",
-  padding: 22,
-  border: "1px solid #cbd5e1",
-  borderRadius: 24,
-  background: "#ffffff",
-  boxShadow: "0 28px 80px rgba(15, 23, 42, 0.32)",
-};
 
 const searchResultsHeaderStyle: React.CSSProperties = {
   display: "flex",
@@ -3556,24 +3477,7 @@ const searchResultsSubTitleStyle: React.CSSProperties = {
   fontWeight: 750,
 };
 
-const searchResultsCloseButtonStyle: React.CSSProperties = {
-  appearance: "none",
-  width: 42,
-  height: 42,
-  border: "1px solid #cbd5e1",
-  borderRadius: 14,
-  background: "#ffffff",
-  color: colors.ink,
-  fontSize: 28,
-  fontWeight: 900,
-  lineHeight: 1,
-  cursor: "pointer",
-};
 
-const searchResultsListStyle: React.CSSProperties = {
-  display: "grid",
-  gap: 10,
-};
 
 const homeResultsTablePanelStyle: React.CSSProperties = {
   marginTop: 22,
@@ -3633,72 +3537,11 @@ const homeResultsMatterLinkStyle: React.CSSProperties = {
 };
 
 
-const advancedActualValuesStyle: React.CSSProperties = {
-  margin: "6px 0 8px",
-  padding: "8px 10px",
-  border: "1px solid #e2e8f0",
-  borderRadius: 12,
-  background: "#f8fafc",
-  color: "#334155",
-  fontSize: 12,
-  fontWeight: 750,
-  lineHeight: 1.45,
-};
 
 
-const advancedFieldDetailsStyle: React.CSSProperties = {
-  margin: "8px 0 10px",
-  padding: "10px 12px",
-  border: "1px solid #e2e8f0",
-  borderRadius: 14,
-  background: "#ffffff",
-};
 
-const advancedFieldSummaryStyle: React.CSSProperties = {
-  color: "#1e3a8a",
-  fontSize: 12,
-  fontWeight: 900,
-  cursor: "pointer",
-};
 
-const advancedFieldGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-  gap: 8,
-  marginTop: 10,
-};
 
-const advancedFieldGridItemStyle: React.CSSProperties = {
-  minWidth: 0,
-  padding: "8px 9px",
-  border: "1px solid #e5e7eb",
-  borderRadius: 10,
-  background: "#f8fafc",
-};
 
-const advancedFieldGridLabelStyle: React.CSSProperties = {
-  display: "block",
-  color: "#64748b",
-  fontSize: 10,
-  fontWeight: 950,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-};
 
-const advancedFieldGridValueStyle: React.CSSProperties = {
-  display: "block",
-  marginTop: 3,
-  color: "#0f172a",
-  fontSize: 12,
-  fontWeight: 850,
-  overflowWrap: "anywhere",
-};
 
-const advancedFieldGridMissingStyle: React.CSSProperties = {
-  display: "block",
-  marginTop: 3,
-  color: "#991b1b",
-  fontSize: 12,
-  fontWeight: 850,
-  overflowWrap: "anywhere",
-};

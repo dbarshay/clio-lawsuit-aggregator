@@ -62,6 +62,22 @@ mustNotContain("Home results search must not write modal results", home, 'modal:
 mustNotContain("Home inline results must not depend on modal open state", home, "resultsModalOpen || loading || error || searched");
 mustContain("Home inline results render depends on searched state", home, "{(loading || error || searched) && (");
 
+mustNotContain("Home results must not keep resultsModalOpen state", home, "resultsModalOpen");
+mustNotContain("Home results must not keep setResultsModalOpen calls", home, "setResultsModalOpen");
+mustNotContain("Home results must not keep closeHomeResults helper", home, "function closeHomeResults");
+mustNotContain("Home results must not keep old card hover selector", home, ".barsh-result-row:hover");
+mustNotContain("Home results must not keep old modal overlay style", home, "const searchResultsOverlayStyle");
+mustNotContain("Home results must not keep old modal style", home, "const searchResultsModalStyle");
+mustNotContain("Home results must not keep old modal close style", home, "const searchResultsCloseButtonStyle");
+mustNotContain("Home results must not keep old list style", home, "const searchResultsListStyle");
+mustNotContain("Home results must not keep old result row style", home, "const resultRowStyle");
+mustNotContain("Home results must not keep old result top-line style", home, "const resultTopLineStyle");
+mustNotContain("Home results must not keep compact advanced summary helper", home, "function compactAdvancedActualValueSummary");
+mustNotContain("Home results must not keep old advanced actual value bubble style", home, "const advancedActualValuesStyle");
+mustNotContain("Home results must not keep old advanced details style", home, "const advancedFieldDetailsStyle");
+mustNotContain("Home results must not keep old advanced grid style", home, "const advancedFieldGridStyle");
+
+
 
 if (process.exitCode) {
   console.error("FAILURES=1");

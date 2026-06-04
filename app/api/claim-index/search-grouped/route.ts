@@ -140,7 +140,12 @@ export async function GET(req: NextRequest) {
 
   const adversaryAttorneyFilter = clean(req.nextUrl.searchParams.get("adversaryAttorney"));
   const courtFilter = clean(req.nextUrl.searchParams.get("court"));
-  const hasAnySelector = Object.values(params).some(Boolean) || Boolean(adversaryAttorneyFilter) || Boolean(courtFilter);
+  const denialReasonFilter = clean(req.nextUrl.searchParams.get("denialReason"));
+  const hasAnySelector =
+    Object.values(params).some(Boolean) ||
+    Boolean(adversaryAttorneyFilter) ||
+    Boolean(courtFilter) ||
+    Boolean(denialReasonFilter);
 
   if (!hasAnySelector) {
     return NextResponse.json(
@@ -175,6 +180,12 @@ export async function GET(req: NextRequest) {
   if (courtFilter) {
     rows = rows.filter((row: any) =>
       includesText(row.court || row.courtVenue || row.court_venue, courtFilter)
+    );
+  }
+
+  if (denialReasonFilter) {
+    rows = rows.filter((row: any) =>
+      includesText(row.denialReason || row.denial_reason, denialReasonFilter)
     );
   }
 

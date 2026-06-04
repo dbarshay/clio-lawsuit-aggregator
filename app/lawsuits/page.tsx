@@ -246,6 +246,7 @@ function lawsuitsSearchStateFromUrl() {
       insurer: "",
       adversaryAttorney: "",
       court: "",
+      denialReason: "",
       indexAaaNumber: "",
       masterLawsuitId: "",
     };
@@ -260,6 +261,7 @@ function lawsuitsSearchStateFromUrl() {
     insurer: params.get("insurer") || "",
     adversaryAttorney: params.get("adversaryAttorney") || "",
     court: params.get("court") || "",
+    denialReason: params.get("denialReason") || "",
     indexAaaNumber: params.get("indexAaaNumber") || "",
     masterLawsuitId: params.get("masterLawsuitId") || "",
   };
@@ -272,6 +274,7 @@ function lawsuitsSearchStateHasAnyValue(state: {
   insurer?: string;
   adversaryAttorney?: string;
   court?: string;
+  denialReason?: string;
   indexAaaNumber?: string;
   masterLawsuitId?: string;
 }) {
@@ -282,6 +285,7 @@ function lawsuitsSearchStateHasAnyValue(state: {
     String(state.insurer || "").trim() ||
     String(state.adversaryAttorney || "").trim() ||
     String(state.court || "").trim() ||
+    String(state.denialReason || "").trim() ||
     String(state.indexAaaNumber || "").trim() ||
     String(state.masterLawsuitId || "").trim()
   );
@@ -433,6 +437,7 @@ export default function LawsuitsPage() {
       insurer: string;
       adversaryAttorney: string;
       court: string;
+      denialReason: string;
       indexAaaNumber: string;
       masterLawsuitId: string;
     }> = {},
@@ -446,6 +451,7 @@ export default function LawsuitsPage() {
     const nextInsurer = hasOverride("insurer") ? String(overrides.insurer ?? "") : insurer;
     const nextAdversaryAttorney = hasOverride("adversaryAttorney") ? String(overrides.adversaryAttorney ?? "") : "";
     const nextCourt = hasOverride("court") ? String(overrides.court ?? "") : "";
+    const nextDenialReason = hasOverride("denialReason") ? String(overrides.denialReason ?? "") : "";
     const nextIndexAaaNumber = hasOverride("indexAaaNumber") ? String(overrides.indexAaaNumber ?? "") : "";
     const nextMasterLawsuitId = hasOverride("masterLawsuitId") ? String(overrides.masterLawsuitId ?? "") : "";
 
@@ -468,6 +474,7 @@ export default function LawsuitsPage() {
       if (nextInsurer.trim()) params.set("insurer", nextInsurer.trim());
       if (nextAdversaryAttorney.trim()) params.set("adversaryAttorney", nextAdversaryAttorney.trim());
       if (nextCourt.trim()) params.set("court", nextCourt.trim());
+      if (nextDenialReason.trim()) params.set("denialReason", nextDenialReason.trim());
       if (nextIndexAaaNumber.trim()) params.set("indexAaaNumber", nextIndexAaaNumber.trim());
       if (nextMasterLawsuitId.trim()) params.set("masterLawsuitId", nextMasterLawsuitId.trim());
 
@@ -539,7 +546,7 @@ export default function LawsuitsPage() {
   }, []);
 
   function searchLinkedField(
-    field: "claim" | "patient" | "provider" | "insurer" | "adversaryAttorney" | "court" | "indexAaaNumber" | "masterLawsuitId",
+    field: "claim" | "patient" | "provider" | "insurer" | "adversaryAttorney" | "court" | "denialReason" | "masterLawsuitId",
     value: unknown
   ) {
     const cleaned = String(value ?? "").trim();
@@ -582,8 +589,8 @@ export default function LawsuitsPage() {
       return;
     }
 
-    if (field === "indexAaaNumber") {
-      void search({ ...clearedVisibleFields, indexAaaNumber: cleaned });
+    if (field === "denialReason") {
+      void search({ ...clearedVisibleFields, denialReason: cleaned });
       return;
     }
 
@@ -1099,7 +1106,7 @@ export default function LawsuitsPage() {
                         <th style={th}>{sortableHeader("Denial Reason", "denialReason")}</th>
                         <th style={th}>{sortableHeader("Court", "court")}</th>
                         <th style={th}>{sortableHeader("Adversary Attorney", "adversaryAttorney")}</th>
-                        <th style={th}>{sortableHeader("Filing Status", "filingStatus")}</th>
+                        <th style={th}>{sortableHeader("Lawsuit ID", "filingStatus")}</th>
                         <th style={th}>{sortableHeader("Index Number", "indexNumber")}</th>
                         <th style={th}>{sortableHeader("Matter Status", "matterStatus")}</th>
                       </tr>
@@ -1167,7 +1174,25 @@ export default function LawsuitsPage() {
                             <td style={tdRight}>{money(val(m, "claimAmount", "claim_amount"))}</td>
                             <td style={tdRight}>{money(paymentAmount(m))}</td>
                             <td style={tdRight}>{money(val(m, "balancePresuit", "balance_presuit", "balanceAmount", "balance_amount"))}</td>
-                            <td style={td}>{denialReason(m)}</td>
+                            <td style={td}>
+                              <button
+                                type="button"
+                                onClick={() => searchLinkedField("denialReason", denialReason(m))}
+                                title="Show all matters for this denial reason"
+                                style={{
+                                  border: 0,
+                                  background: "transparent",
+                                  color: "#2563eb",
+                                  cursor: "pointer",
+                                  padding: 0,
+                                  font: "inherit",
+                                  fontWeight: 800,
+                                  textAlign: "left",
+                                }}
+                              >
+                                {denialReason(m)}
+                              </button>
+                            </td>
                             <td style={td}>
                               <button
                                 type="button"
@@ -1221,20 +1246,7 @@ export default function LawsuitsPage() {
                                 "Not Filed"
                               )}
                             </td>
-                            <td style={td}>
-                              {hasDisplayValue(indexNumber(m)) ? (
-                                <button
-                                  type="button"
-                                  onClick={() => searchLinkedField("indexAaaNumber", indexNumber(m))}
-                                  style={fieldTextFilterLink}
-                                  title="Show all matters for this index number"
-                                >
-                                  {indexNumber(m)}
-                                </button>
-                              ) : (
-                                "—"
-                              )}
-                            </td>
+                            <td style={td}>{indexNumber(m)}</td>
                             <td style={td}>
                               <span style={matterStatusStyle(m)}>{matterStatus(m)}</span>
                             </td>
@@ -1395,7 +1407,7 @@ export default function LawsuitsPage() {
                     <th style={thRight}>Balance</th>
                     <th style={th}>Denial Reason</th>
                     <th style={th}>Adversary Attorney</th>
-                    <th style={th}>Filing Status</th>
+                    <th style={th}>Lawsuit ID</th>
                     <th style={th}>Matter Status</th>
                   </tr>
                 </thead>

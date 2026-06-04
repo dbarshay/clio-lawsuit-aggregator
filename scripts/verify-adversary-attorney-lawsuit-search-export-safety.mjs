@@ -34,7 +34,7 @@ mustContain("lawsuits page exports adversary attorney cell", lawsuits, "safeExpo
 mustContain(
   "lawsuits result table places adversary between court and filing status",
   lawsuits,
-  'sortableHeader("Court", "court")}</th>\n                        <th style={th}>{sortableHeader("Adversary Attorney", "adversaryAttorney")}</th>\n                        <th style={th}>{sortableHeader("Filing Status", "filingStatus")'
+  'sortableHeader("Court", "court")}</th>\n                        <th style={th}>{sortableHeader("Adversary Attorney", "adversaryAttorney")}</th>\n                        <th style={th}>{sortableHeader("Lawsuit ID", "filingStatus")'
 );
 mustContain("lawsuits result adversary value is clickable", lawsuits, 'searchLinkedField("adversaryAttorney", adversaryAttorneyName(m))');
 mustContain("lawsuits result adversary link title exists", lawsuits, "Show all matters for this adversary attorney");
@@ -42,9 +42,15 @@ mustContain("lawsuits sends adversary query param only through linked search", l
 mustContain("lawsuits URL state includes court", lawsuits, 'court: params.get("court") || ""');
 mustContain("lawsuits search overrides include court", lawsuits, "court: string;");
 mustContain("lawsuits sends court query param only through linked search", lawsuits, 'params.set("court", nextCourt.trim())');
-mustContain("lawsuits linked field supports court", lawsuits, '"court" | "indexAaaNumber"');
+mustContain("lawsuits linked field supports court", lawsuits, '"court" | "denialReason" | "masterLawsuitId"');
 mustContain("lawsuits result court value is clickable", lawsuits, 'searchLinkedField("court", courtVenue(m))');
 mustContain("lawsuits result court link title exists", lawsuits, "Show all matters for this court");
+mustContain("lawsuits URL state includes denial reason", lawsuits, 'denialReason: params.get("denialReason") || ""');
+mustContain("lawsuits search overrides include denial reason", lawsuits, "denialReason: string;");
+mustContain("lawsuits sends denial reason query param only through linked search", lawsuits, 'params.set("denialReason", nextDenialReason.trim())');
+mustContain("lawsuits linked field supports denial reason", lawsuits, '"denialReason" | "masterLawsuitId"');
+mustContain("lawsuits result denial reason value is clickable", lawsuits, 'searchLinkedField("denialReason", denialReason(m))');
+mustContain("lawsuits result denial reason link title exists", lawsuits, "Show all matters for this denial reason");
 
 mustNotContain("lawsuits page must not have adversary search state", lawsuits, 'const [adversaryAttorney, setAdversaryAttorney] = useState("")');
 mustNotContain("lawsuits page must not have adversary reference options state", lawsuits, "adversaryAttorneyReferenceOptions");
@@ -58,6 +64,9 @@ mustContain("search-grouped filters adversary attorney locally", grouped, "inclu
 mustContain("search-grouped accepts court linked filter", grouped, 'const courtFilter = clean(req.nextUrl.searchParams.get("court"));');
 mustContain("search-grouped includes court filter in selector check", grouped, "Boolean(courtFilter)");
 mustContain("search-grouped filters court locally", grouped, "includesText(row.court || row.courtVenue || row.court_venue, courtFilter)");
+mustContain("search-grouped accepts denial reason linked filter", grouped, 'const denialReasonFilter = clean(req.nextUrl.searchParams.get("denialReason"));');
+mustContain("search-grouped includes denial reason filter in selector check", grouped, "Boolean(denialReasonFilter)");
+mustContain("search-grouped filters denial reason locally", grouped, "includesText(row.denialReason || row.denial_reason, denialReasonFilter)");
 mustContain("search-grouped remains local-only", grouped, 'source: "claim-index-local-only"');
 mustContain("search-grouped remains no Clio hydration", grouped, "noClioHydration: true");
 mustNotContain("search-grouped must not call Clio fetch", grouped, "clioFetch");

@@ -117,3 +117,24 @@ Documents remain in Clio.
 Repo/code is recoverable from GitHub.
 
 Secrets/env must be backed up separately and securely.
+
+## Restore drill result - 2026-06-05
+
+A non-production Neon restore-drill database was created separately from the production/Vercel-managed database.
+
+Restore-drill safety checks confirmed:
+
+- `RESTORE_DATABASE_URL` was set.
+- The restore target host differed from the production database host.
+- The latest backup folder existed.
+- `manifest.json`, `database.dump`, `schema.sql`, and `archive-list.txt` existed.
+- `restore:indexes-preview` completed successfully.
+- The guarded restore command completed successfully with `RESTORE_COMPLETE=YES`.
+
+Successful restore command pattern:
+
+    CONFIRM_RESTORE=YES_RESTORE_LOCAL_POSTGRES_DATABASE npm run restore:indexes-postgres-guarded -- /path/to/backup-folder
+
+The successful drill confirmed that the PostgreSQL-native backup can be restored into a clean non-production Neon database. This validates the disaster-recovery path for local Barsh Matters database state. Actual documents remain intentionally outside this restore path because Clio is the document vault.
+
+Important: do not store the restore-drill database URL in Git or documentation.

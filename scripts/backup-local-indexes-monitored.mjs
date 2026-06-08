@@ -8,6 +8,8 @@ const repo = process.cwd();
 const backupRoot = path.join(repo, 'backups', 'indexes');
 const statePath = path.join(backupRoot, 'backup-alert-state.json');
 const latestPath = path.join(backupRoot, 'LATEST_BACKUP.txt');
+const lockPath = path.join(backupRoot, 'backup-monitored.lock.json');
+const DEFAULT_STALE_LOCK_MINUTES = 120;
 
 const args = new Set(process.argv.slice(2));
 const DRY_RUN = args.has('--dry-run') || process.env.BARSH_BACKUP_ALERT_DRY_RUN === '1';
@@ -150,6 +152,92 @@ function staleThresholdMinutes(manifest) {
   return Math.max(30, expectedIntervalMinutes(manifest) * 2);
 }
 
+function staleLockMinutes() {
+  const explicit = Number(envValue('BARSH_BACKUP_LOCK_STALE_MINUTES', 'BACKUP_LOCK_STALE_MINUTES'));
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  return DEFAULT_STALE_LOCK_MINUTES;
+}
+
+function lockAgeMinutes(lock) {
+  const startedAt = clean(lock?.startedAt);
+  if (!startedAt) return null;
+
+  const timestamp = new Date(startedAt).getTime();
+  if (!Number.isFinite(timestamp)) return null;
+
+  return (Date.now() - timestamp) / (60 * 1000);
+}
+
+function readLock() {
+  return readJson(lockPath, null);
+}
+
+function removeLock(reason) {
+  try {
+    if (fs.existsSync(lockPath)) fs.rmSync(lockPath, { force: true });
+  } catch (err) {
+    console.error(`WARN: could not remove backup lock (${reason}): ${err?.message || err}`);
+  }
+}
+
+function acquireRunLock() {
+  fs.mkdirSync(backupRoot, { recursive: true });
+
+  const existing = readLock();
+  const age = lockAgeMinutes(existing);
+  const staleMinutes = staleLockMinutes();
+
+  if (existing && age !== null && age <= staleMinutes) {
+    return {
+      acquired: false,
+      staleRecovered: false,
+      staleMinutes,
+      existing,
+      ageMinutes: age,
+      message: `Another monitored backup appears to be running. Existing lock age ${age.toFixed(1)} minute(s); stale threshold ${staleMinutes} minute(s).`,
+    };
+  }
+
+  if (existing) {
+    removeLock('stale-lock-recovery');
+  }
+
+  const lock = {
+    pid: process.pid,
+    hostname: os.hostname(),
+    repo,
+    startedAt: new Date().toISOString(),
+    staleThresholdMinutes: staleMinutes,
+    command: process.argv.join(' '),
+  };
+
+  try {
+    fs.writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n', { flag: 'wx' });
+    return {
+      acquired: true,
+      staleRecovered: Boolean(existing),
+      staleMinutes,
+      existing,
+      ageMinutes: age,
+      lock,
+      message: existing
+        ? `Recovered stale monitored backup lock before starting a new run. Previous lock age ${age === null ? 'UNKNOWN' : age.toFixed(1)} minute(s).`
+        : 'Acquired monitored backup run lock.',
+    };
+  } catch (err) {
+    const current = readLock();
+    const currentAge = lockAgeMinutes(current);
+    return {
+      acquired: false,
+      staleRecovered: false,
+      staleMinutes,
+      existing: current,
+      ageMinutes: currentAge,
+      message: `Could not acquire monitored backup run lock: ${err?.message || err}`,
+    };
+  }
+}
+
 function currentStatus() {
   const { latestDir, manifest, manifestPath } = readLatestManifest();
   const ageMinutes = latestBackupAgeMinutes(manifest);
@@ -251,6 +339,12 @@ function buildAlert(kind, status, backupResult) {
     lines.push('Backup run result:');
     lines.push(`Exit status: ${backupResult.status}`);
     lines.push(`Signal: ${backupResult.signal || ''}`);
+    if (backupResult.signal) {
+      lines.push(`Interpretation: backup process was terminated by signal ${backupResult.signal}; latest complete backup may be stale until a later run succeeds.`);
+    } else if (backupResult.status !== 0) {
+      lines.push('Interpretation: backup process exited non-zero; inspect stdout/stderr tails below.');
+    }
+    if (backupResult.lockMessage) lines.push(`Lock note: ${backupResult.lockMessage}`);
     lines.push('');
     lines.push('STDOUT tail:');
     lines.push((backupResult.stdout || '').split(/\r?\n/).slice(-60).join('\n'));
@@ -417,7 +511,7 @@ function runBackup() {
     cwd: repo,
     encoding: 'utf8',
     env: process.env,
-    timeout: 180_000,
+    timeout: 600_000,
   });
 }
 
@@ -457,13 +551,62 @@ async function main() {
     return;
   }
 
-  const backupResult = runBackup();
+  const lockResult = DRY_RUN
+    ? {
+        acquired: true,
+        staleRecovered: false,
+        message: 'Lock skipped for dry-run mode.',
+      }
+    : acquireRunLock();
+
+  if (!lockResult.acquired) {
+    const statusAfter = currentStatus();
+    const lockBackupResult = {
+      status: 75,
+      signal: null,
+      stdout: '',
+      stderr: lockResult.message,
+      lockMessage: lockResult.message,
+    };
+    const result = await alertIfNeeded('backup-failed', statusAfter, lockBackupResult);
+    console.log('RESULT: monitored backup lock blocked');
+    console.log(`LOCK_ACQUIRED=NO`);
+    console.log(`LOCK_MESSAGE=${lockResult.message}`);
+    console.log(`ALERT_SENT=${!result.suppressed && !result.dryRun ? 'YES' : 'NO'}`);
+    console.log(`ALERT_DRY_RUN=${result.dryRun ? 'YES' : 'NO'}`);
+    console.log(`ALERT_SUPPRESSED=${result.suppressed ? 'YES' : 'NO'}`);
+    if (result.bodyPreview) {
+      console.log('');
+      console.log('BODY_PREVIEW:');
+      console.log(result.bodyPreview);
+    }
+    process.exit(75);
+  }
+
+  let backupResult;
+  try {
+    backupResult = runBackup();
+  } finally {
+    if (!DRY_RUN) {
+      removeLock('run-complete');
+    }
+  }
+
+  if (lockResult.staleRecovered) {
+    backupResult = {
+      ...backupResult,
+      stdout: `${backupResult?.stdout || ''}\nWARN: ${lockResult.message}\n`,
+      lockMessage: lockResult.message,
+    };
+  }
+
   const statusAfter = currentStatus();
 
-  if (backupResult.status !== 0) {
+  if (backupResult.status !== 0 || backupResult.signal) {
     const result = await alertIfNeeded('backup-failed', statusAfter, backupResult);
     console.log('RESULT: monitored backup failed');
     console.log(`BACKUP_STATUS=${backupResult.status}`);
+    console.log(`BACKUP_SIGNAL=${backupResult.signal || ''}`);
     console.log(`ALERT_SENT=${!result.suppressed && !result.dryRun ? 'YES' : 'NO'}`);
     console.log(`ALERT_DRY_RUN=${result.dryRun ? 'YES' : 'NO'}`);
     console.log(`ALERT_SUPPRESSED=${result.suppressed ? 'YES' : 'NO'}`);
@@ -478,6 +621,8 @@ async function main() {
   if (statusAfter.stale) {
     const result = await alertIfNeeded('backup-stale', statusAfter, backupResult);
     console.log('RESULT: monitored backup completed but latest backup is stale');
+    console.log(`BACKUP_STATUS=${backupResult.status}`);
+    console.log(`BACKUP_SIGNAL=${backupResult.signal || ''}`);
     console.log(`ALERT_SENT=${!result.suppressed && !result.dryRun ? 'YES' : 'NO'}`);
     console.log(`ALERT_DRY_RUN=${result.dryRun ? 'YES' : 'NO'}`);
     console.log(`ALERT_SUPPRESSED=${result.suppressed ? 'YES' : 'NO'}`);

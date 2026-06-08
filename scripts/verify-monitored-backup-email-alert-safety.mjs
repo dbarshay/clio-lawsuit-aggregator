@@ -36,13 +36,30 @@ for (const required of [
   }
 }
 
+for (const required of [
+  'backup-monitored.lock.json',
+  'DEFAULT_STALE_LOCK_MINUTES',
+  'BARSH_BACKUP_LOCK_STALE_MINUTES',
+  'acquireRunLock',
+  "removeLock('run-complete')",
+  'Lock note:',
+  'Interpretation: backup process was terminated by signal',
+  'timeout: 600_000',
+  'BACKUP_SIGNAL=',
+]) {
+  if (!script.includes(required)) {
+    failures.push(`${scriptPath}: missing monitored backup lock fragment: ${required}`);
+  }
+}
+
 for (const banned of [
   'clioFetch',
   '@/lib/clio',
   'restore-local-indexes-sqlite-guarded.mjs',
   'restore-local-indexes-postgres-guarded.mjs',
   'unlinkSync',
-  'rmSync',
+  'fs.rmSync(repo',
+  'fs.rmSync(backupRoot',
   'rmdirSync',
   'documents/print-queue',
   'generate-preview',

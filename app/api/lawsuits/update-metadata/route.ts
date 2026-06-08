@@ -1,6 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+const costEntryMetadataFields = [
+  "filingFee",
+  "indexFee",
+  "filingFeeEntryDate",
+  "filingFeeEntryAmount",
+  "filingFeeEntryHistory",
+  "serviceFee",
+  "serviceFeeEntryDate",
+  "serviceFeeEntryAmount",
+  "serviceFeeEntryHistory",
+  "otherCourtCosts",
+  "otherCourtFees",
+  "otherCourtCostsEntryDate",
+  "otherCourtCostsEntryAmount",
+  "otherCourtCostsEntryHistory",
+];
+
+function costEntryMetadataFromBody(body: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const field of costEntryMetadataFields) {
+    if (field in body) out[field] = body[field];
+  }
+  return out;
+}
+
 function text(value: unknown): string {
   if (value === null || value === undefined) return "";
   return String(value).trim();
@@ -217,6 +242,7 @@ export async function POST(req: NextRequest) {
     const lawsuitOptions = {
       ...existingOptions,
       source: "local-lawsuit-metadata-update",
+      ...costEntryMetadataFromBody(body),
       noClioRead: true,
       noClioWrite: true,
       status: nextStatus,

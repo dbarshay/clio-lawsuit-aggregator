@@ -1571,45 +1571,36 @@ export default function FilteredMattersPage() {
   }
 
   function masterLocalMetadataValue(field: string): string {
-    const local = masterLawsuitMetadata || {};
-    const options = masterLawsuitOptions();
+    const local: any = masterLawsuitMetadata || {};
+    const options = local?.lawsuitOptions && typeof local.lawsuitOptions === "object" && !Array.isArray(local.lawsuitOptions)
+      ? local.lawsuitOptions
+      : {};
 
-    if (field === "indexAaaNumber") {
-      return clean(local?.indexAaaNumber) || clean(options?.indexAaaNumber);
+    const candidatesByField: Record<string, string[]> = {
+      filingFee: ["filingFee", "indexFee", "filing_fee", "index_fee"],
+      filingFeeEntryDate: ["filingFeeEntryDate", "filing_fee_entry_date", "indexFeeEntryDate", "index_fee_entry_date"],
+      filingFeeEntryAmount: ["filingFeeEntryAmount", "filing_fee_entry_amount", "indexFeeEntryAmount", "index_fee_entry_amount"],
+      filingFeeEntryHistory: ["filingFeeEntryHistory", "filing_fee_entry_history", "indexFeeEntryHistory", "index_fee_entry_history"],
+      serviceFee: ["serviceFee", "service_fee"],
+      serviceFeeEntryDate: ["serviceFeeEntryDate", "service_fee_entry_date"],
+      serviceFeeEntryAmount: ["serviceFeeEntryAmount", "service_fee_entry_amount"],
+      serviceFeeEntryHistory: ["serviceFeeEntryHistory", "service_fee_entry_history"],
+      otherCourtCosts: ["otherCourtCosts", "otherCourtFees", "other_court_costs", "other_court_fees"],
+      otherCourtCostsEntryDate: ["otherCourtCostsEntryDate", "otherCourtFeesEntryDate", "other_court_costs_entry_date", "other_court_fees_entry_date"],
+      otherCourtCostsEntryAmount: ["otherCourtCostsEntryAmount", "otherCourtFeesEntryAmount", "other_court_costs_entry_amount", "other_court_fees_entry_amount"],
+      otherCourtCostsEntryHistory: ["otherCourtCostsEntryHistory", "otherCourtFeesEntryHistory", "other_court_costs_entry_history", "other_court_fees_entry_history"],
+    };
+
+    const candidates = candidatesByField[field] || [field];
+
+    for (const key of candidates) {
+      const optionValue = clean(options?.[key]);
+      if (optionValue) return optionValue;
     }
 
-    if (field === "dateOfLoss") {
-      return clean(options?.dateOfLoss);
-    }
-
-    if (field === "dateFiled") {
-      return clean(options?.dateFiled);
-    }
-
-    if (field === "adversaryAttorney") {
-      return clean(options?.adversaryAttorney);
-    }
-
-    if (field === "filingFee") {
-      return clean(options?.filingFee);
-    }
-
-    if (field === "serviceFee") {
-      return clean(options?.serviceFee);
-    }
-
-    if (field === "otherCourtCosts") {
-      return clean(options?.otherCourtCosts);
-    }
-
-    if (field === "status") {
-      return (
-        clean(options?.status) ||
-        clean(options?.matterStatus) ||
-        clean(options?.matter_status) ||
-        clean(options?.workflowStatus) ||
-        clean(options?.workflow_status)
-      );
+    for (const key of candidates) {
+      const localValue = clean(local?.[key]);
+      if (localValue) return localValue;
     }
 
     return "";
@@ -1658,7 +1649,99 @@ export default function FilteredMattersPage() {
     return masterInfoDisplayValue("adversaryAttorney", masterLocalMetadataValue("adversaryAttorney") || "—");
   }
 
-  function masterMetadataMoneyDisplayValue(field: "filingFee" | "serviceFee" | "otherCourtCosts"): string {
+  function masterCostEntryDateField(field: string): string {
+  if (field === "filingFee") return "filingFeeEntryDate";
+  if (field === "serviceFee") return "serviceFeeEntryDate";
+  if (field === "otherCourtCosts") return "otherCourtCostsEntryDate";
+  return "";
+}
+
+function masterCostEntryAmountField(field: string): string {
+  if (field === "filingFee") return "filingFeeEntryAmount";
+  if (field === "serviceFee") return "serviceFeeEntryAmount";
+  if (field === "otherCourtCosts") return "otherCourtCostsEntryAmount";
+  return "";
+}
+
+function masterCostEntryHistoryField(field: string): string {
+  if (field === "filingFee") return "filingFeeEntryHistory";
+  if (field === "serviceFee") return "serviceFeeEntryHistory";
+  if (field === "otherCourtCosts") return "otherCourtCostsEntryHistory";
+  return "";
+}
+
+function masterCostRecordAmountNumber(value: unknown): number {
+  const numeric = Number(String(value ?? "").replace(/[$,%\s,]/g, ""));
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function parseMasterCostEntryHistory(value: unknown): { amount: string; date: string }[] {
+  const text = clean(value);
+  if (!text) return [];
+
+  try {
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .map((row) => ({
+        amount: clean(row?.amount),
+        date: clean(row?.date),
+      }))
+      .filter((row) => row.amount && row.date);
+  } catch {
+    return [];
+  }
+}
+
+function todayIsoDateOnly(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function costEntryDateDisplay(value: unknown): string {
+  const text = clean(value);
+  if (!text) return "";
+
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) {
+    const [, year, month, day] = iso;
+    return `${Number(month)}/${Number(day)}/${year}`;
+  }
+
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return text;
+  return parsed.toLocaleDateString();
+}
+
+function masterCostEntryRecordDisplay(field: "filingFee" | "serviceFee" | "otherCourtCosts"): string {
+  const entryDateField = masterCostEntryDateField(field);
+  const entryAmountField = masterCostEntryAmountField(field);
+  const entryHistoryField = masterCostEntryHistoryField(field);
+
+  const historyText = clean(masterInfoOverrides[entryHistoryField] ?? masterLocalMetadataValue(entryHistoryField));
+  let history = parseMasterCostEntryHistory(historyText);
+
+  if (!history.length) {
+    const legacyDate = clean(masterInfoOverrides[entryDateField] ?? masterLocalMetadataValue(entryDateField));
+    const legacyAmount = clean(masterInfoOverrides[entryAmountField] ?? masterLocalMetadataValue(entryAmountField));
+    if (legacyDate && legacyAmount) {
+      history = [{ amount: legacyAmount, date: legacyDate }];
+    }
+  }
+
+  return history
+    .map((row) => `${money(masterCostRecordAmountNumber(row.amount))} added ${costEntryDateDisplay(row.date)}.`)
+    .join("\n");
+}
+
+function masterCostEntryRecordLines(field: "filingFee" | "serviceFee" | "otherCourtCosts"): string[] {
+  return masterCostEntryRecordDisplay(field)
+    .split("\n")
+    .map((line) => clean(line))
+    .filter(Boolean);
+}
+
+function masterMetadataMoneyDisplayValue(field: "filingFee" | "serviceFee" | "otherCourtCosts"): string {
     const override = masterInfoOverrides[field];
     if (override !== undefined) return override || "$0.00";
 
@@ -1780,11 +1863,63 @@ export default function FilteredMattersPage() {
     if (field === "serviceFee") payload.serviceFee = after;
     if (field === "otherCourtCosts") payload.otherCourtCosts = after;
 
+    const costEntryDateField = masterCostEntryDateField(field);
+    const costEntryAmountField = masterCostEntryAmountField(field);
+    const costEntryHistoryField = masterCostEntryHistoryField(field);
+    const costEntryDateValue = clean(after) ? todayIsoDateOnly() : "";
+    const costEntryAmountValue = clean(after) ? after : "";
+    const existingCostEntryHistory = costEntryHistoryField
+      ? parseMasterCostEntryHistory(masterInfoOverrides[costEntryHistoryField] ?? masterLocalMetadataValue(costEntryHistoryField))
+      : [];
+    const costEntryHistoryValue =
+      costEntryHistoryField && costEntryAmountValue && costEntryDateValue
+        ? JSON.stringify([...existingCostEntryHistory, { amount: costEntryAmountValue, date: costEntryDateValue }])
+        : costEntryHistoryField
+          ? JSON.stringify(existingCostEntryHistory)
+          : "";
+
+    if (costEntryDateField) {
+      payload[costEntryDateField] = costEntryDateValue;
+    }
+    if (costEntryAmountField) {
+      payload[costEntryAmountField] = costEntryAmountValue;
+    }
+    if (costEntryHistoryField) {
+      payload[costEntryHistoryField] = costEntryHistoryValue;
+    }
+
+    setMasterInfoOverrides((current) => ({
+      ...current,
+      [field]: after,
+      ...(costEntryDateField ? { [costEntryDateField]: costEntryDateValue } : {}),
+      ...(costEntryAmountField ? { [costEntryAmountField]: costEntryAmountValue } : {}),
+      ...(costEntryHistoryField ? { [costEntryHistoryField]: costEntryHistoryValue } : {}),
+    }));
+
     return payload;
   }
 
   function masterInfoFieldPersistsLocally(field: string): boolean {
-    return ["court", "status", "indexAaaNumber", "dateOfLoss", "dateFiled", "adversaryAttorney", "filingFee", "serviceFee", "otherCourtCosts"].includes(field);
+    return [
+      "court",
+      "status",
+      "indexAaaNumber",
+      "dateOfLoss",
+      "dateFiled",
+      "adversaryAttorney",
+      "filingFee",
+      "serviceFee",
+      "otherCourtCosts",
+      "filingFeeEntryDate",
+      "filingFeeEntryAmount",
+      "serviceFeeEntryDate",
+      "serviceFeeEntryAmount",
+      "otherCourtCostsEntryDate",
+      "otherCourtCostsEntryAmount",
+      "filingFeeEntryHistory",
+      "serviceFeeEntryHistory",
+      "otherCourtCostsEntryHistory",
+    ].includes(field);
   }
 
   function masterInfoMoneyNumber(field: string, fallback: any): number {
@@ -9607,6 +9742,13 @@ function masterSettlementDateFiledValue(): string {
                       <div style={masterInfoCardStyle}>
                         <span style={masterSummaryCardTitleStyle}>Index Fee</span>
                         <strong style={masterSummaryCardValueStyle}>{masterMetadataMoneyDisplayValue("filingFee")}</strong>
+                        {masterCostEntryRecordLines("filingFee").length > 0 && (
+                          <div style={{ marginTop: 6, display: "grid", gap: 2, fontSize: 11, color: "#64748b", fontWeight: 800, lineHeight: 1.25 }}>
+                            {masterCostEntryRecordLines("filingFee").map((line) => (
+                              <div key={line}>{line}</div>
+                            ))}
+                          </div>
+                        )}
                         <button
                           type="button"
                           onClick={() => openMasterInfoEditDialog("filingFee", "Index Fee", masterMetadataMoneyDisplayValue("filingFee"))}
@@ -9626,6 +9768,13 @@ function masterSettlementDateFiledValue(): string {
                       <div style={masterInfoCardStyle}>
                         <span style={masterSummaryCardTitleStyle}>Service Fee</span>
                         <strong style={masterSummaryCardValueStyle}>{masterMetadataMoneyDisplayValue("serviceFee")}</strong>
+                        {masterCostEntryRecordLines("serviceFee").length > 0 && (
+                          <div style={{ marginTop: 6, display: "grid", gap: 2, fontSize: 11, color: "#64748b", fontWeight: 800, lineHeight: 1.25 }}>
+                            {masterCostEntryRecordLines("serviceFee").map((line) => (
+                              <div key={line}>{line}</div>
+                            ))}
+                          </div>
+                        )}
                         <button
                           type="button"
                           onClick={() => openMasterInfoEditDialog("serviceFee", "Service Fee", masterMetadataMoneyDisplayValue("serviceFee"))}
@@ -9645,6 +9794,13 @@ function masterSettlementDateFiledValue(): string {
                       <div style={masterInfoCardStyle}>
                         <span style={masterSummaryCardTitleStyle}>Other Court Costs</span>
                         <strong style={masterSummaryCardValueStyle}>{masterMetadataMoneyDisplayValue("otherCourtCosts")}</strong>
+                        {masterCostEntryRecordLines("otherCourtCosts").length > 0 && (
+                          <div style={{ marginTop: 6, display: "grid", gap: 2, fontSize: 11, color: "#64748b", fontWeight: 800, lineHeight: 1.25 }}>
+                            {masterCostEntryRecordLines("otherCourtCosts").map((line) => (
+                              <div key={line}>{line}</div>
+                            ))}
+                          </div>
+                        )}
                         <button
                           type="button"
                           onClick={() => openMasterInfoEditDialog("otherCourtCosts", "Other Court Costs", masterMetadataMoneyDisplayValue("otherCourtCosts"))}

@@ -10,6 +10,51 @@ function lower(value: unknown): string {
   return clean(value).toLowerCase();
 }
 
+function compactProviderName(value: unknown): string {
+  const stopWords = new Set(["and", "the", "pc", "p", "c", "pllc", "llc", "md", "m", "d", "dc", "do"]);
+  return clean(value)
+    .replace(/&/g, " and ")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter((part) => part && !stopWords.has(part))
+    .join("");
+}
+
+function providerSearchTerms(values: unknown[]): string[] {
+  const stopWords = new Set(["and", "the", "pc", "p", "c", "pllc", "llc", "md", "m", "d", "dc", "do"]);
+  const terms = new Set<string>();
+
+  for (const value of values) {
+    const cleaned = clean(value);
+    if (!cleaned) continue;
+
+    for (const part of cleaned.replace(/&/g, " and ").replace(/[^a-zA-Z0-9]+/g, " ").split(/\s+/)) {
+      const term = part.trim();
+      if (term.length < 3) continue;
+      if (stopWords.has(term.toLowerCase())) continue;
+      terms.add(term);
+      terms.add(term.toUpperCase());
+      terms.add(term.toLowerCase());
+    }
+  }
+
+  return Array.from(terms);
+}
+
+function claimMatchesProviderCandidate(row: any, candidates: string[]): boolean {
+  const rowValues = [row.provider_name, row.client_name, row.treating_provider]
+    .map(compactProviderName)
+    .filter(Boolean);
+
+  const candidateValues = candidates.map(compactProviderName).filter(Boolean);
+
+  return rowValues.some((rowValue) =>
+    candidateValues.some((candidateValue) => rowValue === candidateValue || rowValue.includes(candidateValue) || candidateValue.includes(rowValue))
+  );
+}
+
 function json(data: unknown, init?: ResponseInit) {
   return NextResponse.json(data, init);
 }
@@ -113,6 +158,26 @@ function formatDateValue(value: unknown): string {
   return clean(value);
 }
 
+function isoDateOnly(value: unknown): string {
+  const text = clean(value);
+  if (!text) return "";
+
+  const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+
+  const dotMatch = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if (dotMatch) {
+    const month = dotMatch[1].padStart(2, "0");
+    const day = dotMatch[2].padStart(2, "0");
+    return `${dotMatch[3]}-${month}-${day}`;
+  }
+
+  const parsed = new Date(text);
+  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+
+  return "";
+}
+
 function claimDisplay(row: any): string {
   return clean(row.display_number || row.displayNumber || row.matter_display_number || row.matterDisplayNumber || row.matterId || row.id);
 }
@@ -135,6 +200,94 @@ function claimBillAmount(row: any): number {
 
 function claimBalance(row: any): number {
   return moneyNumber(row.balance ?? row.current_balance ?? row.currentBalance);
+}
+
+function claimDateOfLoss(row: any): string {
+  return formatDateValue(row.date_of_loss || row.dateOfLoss || row.dol);
+}
+
+function claimDateOfService(row: any): string {
+  return formatDateValue(row.date_of_service || row.dateOfService || row.dos_start || row.dosStart || row.dos);
+}
+
+function claimDateOfServiceEnd(row: any): string {
+  return formatDateValue(row.dos_end || row.dosEnd || row.date_of_service_end || row.dateOfServiceEnd);
+}
+
+function plainObject(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
+}
+
+function optionValue(options: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = clean(options[key]);
+    if (value) return value;
+  }
+  return "";
+}
+
+function optionAmount(options: Record<string, unknown>, keys: string[]): number {
+  for (const key of keys) {
+    const amount = moneyNumber(options[key]);
+    if (amount) return amount;
+  }
+  return 0;
+}
+
+function parseCostEntryHistory(value: unknown): { amount: number; date: string }[] {
+  const text = clean(value);
+  if (!text) return [];
+
+  try {
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .map((row) => ({
+        amount: moneyNumber(row?.amount),
+        date: formatDateValue(row?.date),
+      }))
+      .filter((row) => row.amount && row.date);
+  } catch {
+    return [];
+  }
+}
+
+function costEntryHistoryFromOptions(options: Record<string, unknown>, field: "filingFee" | "serviceFee" | "otherCourtCosts"): { amount: number; date: string }[] {
+  if (field === "filingFee") return parseCostEntryHistory(options.filingFeeEntryHistory);
+  if (field === "serviceFee") return parseCostEntryHistory(options.serviceFeeEntryHistory);
+  return parseCostEntryHistory(options.otherCourtCostsEntryHistory);
+}
+
+function costEntryDateFromOptions(options: Record<string, unknown>, field: "filingFee" | "serviceFee" | "otherCourtCosts"): string {
+  if (field === "filingFee") {
+    return formatDateValue(optionValue(options, ["filingFeeEntryDate", "filing_fee_entry_date", "indexFeeEntryDate", "index_fee_entry_date"]));
+  }
+  if (field === "serviceFee") {
+    return formatDateValue(optionValue(options, ["serviceFeeEntryDate", "service_fee_entry_date"]));
+  }
+  return formatDateValue(optionValue(options, ["otherCourtCostsEntryDate", "other_court_costs_entry_date", "otherCourtFeesEntryDate", "other_court_fees_entry_date"]));
+}
+
+function costEntryDateInSelectedPeriod(entryDate: string, dateFrom: string, dateTo: string): boolean {
+  const rowDate = isoDateOnly(entryDate);
+  if (!rowDate) return false;
+  if (dateFrom && rowDate < dateFrom) return false;
+  if (dateTo && rowDate > dateTo) return false;
+  return true;
+}
+
+function splitMetadataList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(clean).filter(Boolean);
+
+  const text = clean(value);
+  if (!text) return [];
+
+  return text
+    .split(/[,\\n;|]+/g)
+    .map((part) => clean(part))
+    .filter(Boolean);
 }
 
 function receiptMatterKey(row: any): string {
@@ -177,14 +330,16 @@ function isVoided(row: any): boolean {
 function buildReceiptWhere(keys: string[]) {
   const unique = Array.from(new Set(keys.map(clean).filter(Boolean)));
   const OR: any[] = [];
+
   for (const key of unique) {
-    OR.push({ matterId: key });
-    OR.push({ matter_id: key });
-    OR.push({ claimIndexId: key });
-    OR.push({ claimIndexMatterId: key });
+    const numeric = Number(key);
+    if (Number.isInteger(numeric) && Number.isSafeInteger(numeric)) {
+      OR.push({ matterId: numeric });
+    }
+
     OR.push({ displayNumber: key });
-    OR.push({ display_number: key });
   }
+
   return OR.length ? { OR } : {};
 }
 
@@ -457,19 +612,21 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     );
 
     const claimOr: any[] = [];
-    for (const name of nameCandidates) {
-      claimOr.push({ provider_name: { contains: name } });
-      claimOr.push({ client_name: { contains: name } });
-      claimOr.push({ treating_provider: { contains: name } });
+    for (const term of providerSearchTerms(nameCandidates)) {
+      claimOr.push({ provider_name: { contains: term } });
+      claimOr.push({ client_name: { contains: term } });
+      claimOr.push({ treating_provider: { contains: term } });
     }
 
-    const claimRows = claimOr.length
+    const rawClaimRows = claimOr.length
       ? await (prisma as any).claimIndex.findMany({
           where: { OR: claimOr },
           orderBy: [{ display_number: "asc" }],
-          take: 1000,
+          take: 2000,
         })
       : [];
+
+    const claimRows = rawClaimRows.filter((row: any) => claimMatchesProviderCandidate(row, nameCandidates));
 
     const matterKeys: string[] = Array.from(
       new Set<string>(
@@ -481,6 +638,10 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
             row.clio_matter_id,
             row.displayNumber,
             row.display_number,
+            row.masterLawsuitId,
+            row.master_lawsuit_id,
+            row.masterDisplayNumber,
+            row.master_display_number,
             row.id,
           ])
           .map((value: unknown) => clean(value))
@@ -511,6 +672,10 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
         claim.clio_matter_id,
         claim.displayNumber,
         claim.display_number,
+        claim.masterLawsuitId,
+        claim.master_lawsuit_id,
+        claim.masterDisplayNumber,
+        claim.master_display_number,
         claim.id,
       ]) {
         const cleaned = clean(key);
@@ -526,13 +691,18 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
           matter: claimDisplay(claim) || receiptMatterKey(receipt),
           patient: claimPatient(claim),
           provider: claimProvider(claim),
+          dateOfLoss: claimDateOfLoss(claim),
+          dateOfService: claimDateOfService(claim),
+          dateOfServiceEnd: claimDateOfServiceEnd(claim),
           insurer: claimInsurer(claim),
           lawsuit: clean(claim.master_lawsuit_id || claim.masterLawsuitId || receipt.masterLawsuitId || receipt.master_lawsuit_id),
+          caseType: "NF",
           transactionDate: receiptTransactionDate(receipt),
           transactionType: receiptType(receipt),
           transactionStatus: receiptStatus(receipt),
           postingContext: receiptPostingContext(receipt),
           amount: receiptAmount(receipt),
+          billedAmount: claimBillAmount(claim),
           checkDate: receiptCheckDate(receipt),
           checkNumber: receiptCheckNumber(receipt),
           isVoided: isVoided(receipt),
@@ -546,11 +716,139 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
         if (transactionTypeFilter && !lower(row.transactionType).includes(transactionTypeFilter)) return false;
         if (checkNumberFilter && !lower(row.checkNumber).includes(checkNumberFilter)) return false;
         if (postingContextFilter && !lower(row.postingContext).includes(postingContextFilter)) return false;
-        const rowDate = row.transactionDate.slice(0, 10);
+        const rowDate = isoDateOnly(row.transactionDate);
         if (dateFrom && rowDate && rowDate < dateFrom) return false;
         if (dateTo && rowDate && rowDate > dateTo) return false;
         return true;
       });
+
+    const matterKeySet = new Set(matterKeys.map((key: string) => clean(key)).filter(Boolean));
+    const expendedCostRows: any[] = [];
+
+    try {
+      const lawsuitRows = await (prisma as any).lawsuit.findMany({ take: 2000 });
+
+      for (const lawsuit of lawsuitRows) {
+        const options = plainObject(lawsuit.lawsuitOptions || lawsuit.lawsuit_options || lawsuit.options);
+        const possibleKeys = [
+          lawsuit.id,
+          lawsuit.matterId,
+          lawsuit.matter_id,
+          lawsuit.masterMatterId,
+          lawsuit.master_matter_id,
+          lawsuit.displayNumber,
+          lawsuit.display_number,
+          lawsuit.masterDisplayNumber,
+          lawsuit.master_display_number,
+          lawsuit.masterLawsuitId,
+          lawsuit.master_lawsuit_id,
+          options.matterId,
+          options.matter_id,
+          options.masterMatterId,
+          options.master_matter_id,
+          options.masterLawsuitId,
+          options.master_lawsuit_id,
+          options.indexAaaNumber,
+          options.index_aaa_number,
+          options.indexNumber,
+          options.index_number,
+          options.masterIndexNumber,
+          options.master_index_number,
+          options.displayNumber,
+          options.display_number,
+          options.masterDisplayNumber,
+          options.master_display_number,
+          ...(Array.isArray(options.matterIds) ? options.matterIds : []),
+          ...(Array.isArray(options.matter_ids) ? options.matter_ids : []),
+          ...(Array.isArray(options.childMatterIds) ? options.childMatterIds : []),
+          ...(Array.isArray(options.childDisplayNumbers) ? options.childDisplayNumbers : []),
+          ...splitMetadataList(options.lawsuitMatterDisplayNumbers),
+          ...splitMetadataList(options.lawsuit_matter_display_numbers),
+          ...splitMetadataList(options.childMatterDisplayNumbers),
+          ...splitMetadataList(options.child_matter_display_numbers),
+          ...splitMetadataList(options.lawsuitMatterIds),
+          ...splitMetadataList(options.lawsuit_matter_ids),
+          ...splitMetadataList(options.indexAaaNumberClioMatterIds),
+          ...splitMetadataList(options.index_aaa_number_clio_matter_ids),
+          ...splitMetadataList(options.lawsuitMatterDisplayNumbersWrittenToClio),
+          ...splitMetadataList(options.lawsuit_matter_display_numbers_written_to_clio),
+          ...splitMetadataList(options.lawsuitMatterDisplayNumbersMissingFieldMatterIds),
+          ...splitMetadataList(options.lawsuit_matter_display_numbers_missing_field_matter_ids),
+        ].map(clean).filter(Boolean);
+
+        const matchedKey = possibleKeys.find((key) => matterKeySet.has(key));
+        if (!matchedKey) continue;
+
+        const claim = claimByKey.get(matchedKey) || {};
+
+        const costCandidates = [
+          {
+            metadataField: "filingFee" as const,
+            costType: "Index Fee",
+            amount: optionAmount(options, ["filingFeeEntryAmount", "filing_fee_entry_amount", "indexFeeEntryAmount", "index_fee_entry_amount", "indexFee", "index_fee", "filingFee", "filing_fee"]),
+          },
+          {
+            metadataField: "serviceFee" as const,
+            costType: "Service Fee",
+            amount: optionAmount(options, ["serviceFeeEntryAmount", "service_fee_entry_amount", "serviceFee", "service_fee"]),
+          },
+          {
+            metadataField: "otherCourtCosts" as const,
+            costType: "Other Court Costs",
+            amount: optionAmount(options, ["otherCourtCostsEntryAmount", "other_court_costs_entry_amount", "otherCourtCosts", "other_court_costs", "otherCourtFees", "other_court_fees"]),
+          },
+        ];
+
+        for (const candidate of costCandidates) {
+          const historyRows = costEntryHistoryFromOptions(options, candidate.metadataField);
+
+          if (historyRows.length) {
+            for (const historyRow of historyRows) {
+              if (!costEntryDateInSelectedPeriod(historyRow.date, dateFrom, dateTo)) continue;
+
+              expendedCostRows.push({
+                id: `${clean(lawsuit.id) || matchedKey}-${candidate.metadataField}-${historyRow.date}-${historyRow.amount}`,
+                matter: claimDisplay(claim) || matchedKey,
+                patient: claimPatient(claim),
+                provider: claimProvider(claim),
+                dateOfLoss: claimDateOfLoss(claim),
+                dateOfService: claimDateOfService(claim),
+                dateOfServiceEnd: claimDateOfServiceEnd(claim),
+                insurer: claimInsurer(claim),
+                caseType: "NF",
+                costType: candidate.costType,
+                dateEntered: historyRow.date,
+                amount: historyRow.amount,
+                source: "Lawsuit.lawsuitOptions cost entry history",
+              });
+            }
+            continue;
+          }
+
+          const entryDate = costEntryDateFromOptions(options, candidate.metadataField);
+          if (!candidate.amount) continue;
+          if (!costEntryDateInSelectedPeriod(entryDate, dateFrom, dateTo)) continue;
+
+          expendedCostRows.push({
+            id: `${clean(lawsuit.id) || matchedKey}-${candidate.metadataField}`,
+            matter: claimDisplay(claim) || matchedKey,
+            patient: claimPatient(claim),
+            provider: claimProvider(claim),
+            dateOfLoss: claimDateOfLoss(claim),
+            dateOfService: claimDateOfService(claim),
+            dateOfServiceEnd: claimDateOfServiceEnd(claim),
+            insurer: claimInsurer(claim),
+            caseType: "NF",
+            costType: candidate.costType,
+            dateEntered: entryDate,
+            amount: candidate.amount,
+            source: "Lawsuit.lawsuitOptions cost entry date",
+          });
+        }
+      }
+    } catch {
+      // If lawsuit cost metadata is unavailable, payment reporting still loads.
+    }
 
     const matterRows = claimRows.map((claim: any) => ({
       id: clean(claim.id),
@@ -583,7 +881,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     return json({
       action: "admin-client-detail",
       sourceOfTruth:
-        "Local Barsh Matters ProviderClientInfo source-of-truth table, ReferenceEntity/ReferenceAlias identity records, ClaimIndex child matters, and MatterPaymentReceipt child-ledger rows.",
+        "Local Barsh Matters ProviderClientInfo source-of-truth table, ReferenceEntity/ReferenceAlias identity records, ClaimIndex child matters, MatterPaymentReceipt child-ledger rows, and Lawsuit.lawsuitOptions cost metadata with per-cost entry dates.",
       safety:
         "Read-only Admin Client detail/remittance preview. This route reads local tables only. It does not call Clio, write payments, edit ClaimIndex, generate documents, send email, print, queue, or export files.",
       client: {
@@ -620,6 +918,11 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
           amount,
         })),
         rows: receiptReportRows,
+      },
+      costsExpended: {
+        count: expendedCostRows.length,
+        total: expendedCostRows.reduce((sum: number, row: any) => sum + Number(row.amount || 0), 0),
+        rows: expendedCostRows,
       },
     });
   } catch (error: any) {

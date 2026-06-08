@@ -750,24 +750,23 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
             Launch provider/client workflows from this hub.
           </p>
           <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
-            <button
-              type="button"
-              onClick={() => setActiveWorkflowPanel(activeWorkflowPanel === "remittance" ? "" : "remittance")}
-              style={{ width: "100%", textAlign: "left", padding: "13px 16px", borderRadius: 12, border: "1px solid #1d4ed8", background: activeWorkflowPanel === "remittance" ? "#1d4ed8" : "#dbeafe", color: activeWorkflowPanel === "remittance" ? "#fff" : "#0f172a", fontWeight: 950 }}
+            <Link
+              href={`/admin/clients/${encodeURIComponent(id)}/invoice`}
+              style={{ width: "100%", textAlign: "center", padding: "13px 16px", borderRadius: 12, border: "1px solid #1d4ed8", background: "#dbeafe", color: "#0f172a", fontWeight: 950, textDecoration: "none", boxSizing: "border-box" }}
             >
               Invoicing / Remittance
-            </button>
+            </Link>
             <button
               type="button"
               onClick={() => setActiveWorkflowPanel(activeWorkflowPanel === "individual" ? "" : "individual")}
-              style={{ width: "100%", textAlign: "left", padding: "13px 16px", borderRadius: 12, border: "1px solid #047857", background: activeWorkflowPanel === "individual" ? "#047857" : "#d1fae5", color: activeWorkflowPanel === "individual" ? "#fff" : "#0f172a", fontWeight: 950 }}
+              style={{ width: "100%", textAlign: "center", padding: "13px 16px", borderRadius: 12, border: "1px solid #047857", background: activeWorkflowPanel === "individual" ? "#047857" : "#d1fae5", color: activeWorkflowPanel === "individual" ? "#fff" : "#0f172a", fontWeight: 950 }}
             >
               Individual Matters
             </button>
             <button
               type="button"
               onClick={() => setActiveWorkflowPanel(activeWorkflowPanel === "lawsuits" ? "" : "lawsuits")}
-              style={{ width: "100%", textAlign: "left", padding: "13px 16px", borderRadius: 12, border: "1px solid #7c3aed", background: activeWorkflowPanel === "lawsuits" ? "#7c3aed" : "#ede9fe", color: activeWorkflowPanel === "lawsuits" ? "#fff" : "#0f172a", fontWeight: 950 }}
+              style={{ width: "100%", textAlign: "center", padding: "13px 16px", borderRadius: 12, border: "1px solid #7c3aed", background: activeWorkflowPanel === "lawsuits" ? "#7c3aed" : "#ede9fe", color: activeWorkflowPanel === "lawsuits" ? "#fff" : "#0f172a", fontWeight: 950 }}
             >
               Lawsuit Matters
             </button>

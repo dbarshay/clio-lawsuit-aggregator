@@ -244,6 +244,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
   const [checkNumber, setCheckNumber] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [activeWorkflowPanel, setActiveWorkflowPanel] = useState<"" | "remittance" | "individual" | "lawsuits">("");
   const [editingField, setEditingField] = useState<keyof typeof clientForm | null>(null);
   const [savingClient, setSavingClient] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
@@ -291,6 +292,39 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
   const client = data?.client;
   const remittanceRows = data?.remittance?.rows || [];
   const matterRows = data?.matters?.rows || [];
+  const lawsuitRows = useMemo(() => {
+    const byLawsuit = new Map<string, any>();
+    for (const row of matterRows) {
+      const lawsuit = String(row?.lawsuit ?? "").trim();
+      if (!lawsuit) continue;
+      const existing = byLawsuit.get(lawsuit) || {
+        lawsuit,
+        childMatterCount: 0,
+        billAmount: 0,
+        balance: 0,
+        providers: new Set<string>(),
+        patients: new Set<string>(),
+        insurers: new Set<string>(),
+      };
+      existing.childMatterCount += 1;
+      existing.billAmount += Number(row?.billAmount || 0);
+      existing.balance += Number(row?.balance || 0);
+      if (row?.provider) existing.providers.add(String(row.provider));
+      if (row?.patient) existing.patients.add(String(row.patient));
+      if (row?.insurer) existing.insurers.add(String(row.insurer));
+      byLawsuit.set(lawsuit, existing);
+    }
+
+    return Array.from(byLawsuit.values()).map((row) => ({
+      lawsuit: row.lawsuit,
+      childMatterCount: row.childMatterCount,
+      billAmount: row.billAmount,
+      balance: row.balance,
+      providers: Array.from(row.providers).join(", "),
+      patients: Array.from(row.patients).join(", "),
+      insurers: Array.from(row.insurers).join(", "),
+    }));
+  }, [matterRows]);
 
   useEffect(() => {
     if (!client) return;
@@ -708,192 +742,237 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
         </div>
 
         <div style={cardStyle}>
-          <h2 style={{ marginTop: 0 }}>Notes</h2>
-          <dl style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8, margin: 0 }}>
-            {editableTextRow("", "notes", clientNotes(client?.details), {
-              multiline: true,
-              addLabel: "Add Notes",
-            })}
-          </dl>
-          {saveMessage && <div style={{ marginTop: 10, color: "#166534", fontWeight: 800 }}>{saveMessage}</div>}
-        </div>
-      </section>
-
-
-      <section style={{ ...cardStyle, marginBottom: 18 }}>
-        <h2 style={{ marginTop: 0 }}>Invoicing / Remittance Filters</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(150px, 1fr))", gap: 12, alignItems: "end" }}>
-          <label style={{ display: "grid", gap: 6, fontWeight: 700 }}>
-            Status
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={{ padding: 10, border: "1px solid #cbd5e1", borderRadius: 10 }}>
-              <option value="posted">Posted only</option>
-              <option value="voided">Voided only</option>
-              <option value="all">All</option>
-            </select>
-          </label>
-          <label style={{ display: "grid", gap: 6, fontWeight: 700 }}>
-            Transaction Type
-            <input value={transactionType} onChange={(event) => setTransactionType(event.target.value)} placeholder="Collection Payment" style={{ padding: 10, border: "1px solid #cbd5e1", borderRadius: 10 }} />
-          </label>
-          <label style={{ display: "grid", gap: 6, fontWeight: 700 }}>
-            Posting Context
-            <input value={postingContext} onChange={(event) => setPostingContext(event.target.value)} placeholder="lawsuit-allocation" style={{ padding: 10, border: "1px solid #cbd5e1", borderRadius: 10 }} />
-          </label>
-          <label style={{ display: "grid", gap: 6, fontWeight: 700 }}>
-            Check Number
-            <input value={checkNumber} onChange={(event) => setCheckNumber(event.target.value)} style={{ padding: 10, border: "1px solid #cbd5e1", borderRadius: 10 }} />
-          </label>
-          <label style={{ display: "grid", gap: 6, fontWeight: 700 }}>
-            Date From
-            <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} style={{ padding: 10, border: "1px solid #cbd5e1", borderRadius: 10 }} />
-          </label>
-          <label style={{ display: "grid", gap: 6, fontWeight: 700 }}>
-            Date To
-            <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} style={{ padding: 10, border: "1px solid #cbd5e1", borderRadius: 10 }} />
-          </label>
-        </div>
-
-        <div style={{ display: "flex", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
-          <button
-            type="button"
-            onClick={() => id && loadDetail(id).catch((err) => setError(err?.message || "Could not refresh remittance."))}
-            style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #0f172a", background: "#0f172a", color: "#fff", fontWeight: 800 }}
-          >
-            Preview
-          </button>
-          <button
-            type="button"
-            onClick={() => downloadCsv(`${client?.displayName || "Client"} - Remittance Preview.csv`, remittanceCsvRows)}
-            disabled={!remittanceCsvRows.length}
-            style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #cbd5e1", background: remittanceCsvRows.length ? "#fff" : "#f1f5f9", fontWeight: 800 }}
-          >
-            Export CSV
-          </button>
+          <div style={{ color: "#64748b", fontSize: 12, fontWeight: 900, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 6 }}>
+            Workflow Actions
+          </div>
+          <h2 style={{ margin: "0 0 6px", fontSize: 22 }}>Provider Hub</h2>
+          <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
+            Launch provider/client workflows from this hub.
+          </p>
+          <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
+            <button
+              type="button"
+              onClick={() => setActiveWorkflowPanel(activeWorkflowPanel === "remittance" ? "" : "remittance")}
+              style={{ width: "100%", textAlign: "left", padding: "13px 16px", borderRadius: 12, border: "1px solid #1d4ed8", background: activeWorkflowPanel === "remittance" ? "#1d4ed8" : "#dbeafe", color: activeWorkflowPanel === "remittance" ? "#fff" : "#0f172a", fontWeight: 950 }}
+            >
+              Invoicing / Remittance
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveWorkflowPanel(activeWorkflowPanel === "individual" ? "" : "individual")}
+              style={{ width: "100%", textAlign: "left", padding: "13px 16px", borderRadius: 12, border: "1px solid #047857", background: activeWorkflowPanel === "individual" ? "#047857" : "#d1fae5", color: activeWorkflowPanel === "individual" ? "#fff" : "#0f172a", fontWeight: 950 }}
+            >
+              Individual Matters
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveWorkflowPanel(activeWorkflowPanel === "lawsuits" ? "" : "lawsuits")}
+              style={{ width: "100%", textAlign: "left", padding: "13px 16px", borderRadius: 12, border: "1px solid #7c3aed", background: activeWorkflowPanel === "lawsuits" ? "#7c3aed" : "#ede9fe", color: activeWorkflowPanel === "lawsuits" ? "#fff" : "#0f172a", fontWeight: 950 }}
+            >
+              Lawsuit Matters
+            </button>
+          </div>
         </div>
       </section>
 
       <section style={{ ...cardStyle, marginBottom: 18 }}>
-        <h2 style={{ marginTop: 0 }}>Transaction Type Totals</h2>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Transaction Type</th>
-                <th style={thStyle}>Active Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(data?.remittance?.totalsByType || []).map((row) => (
-                <tr key={row.transactionType}>
-                  <td style={tdStyle}>{row.transactionType}</td>
-                  <td style={tdStyle}>{money(row.amount)}</td>
-                </tr>
-              ))}
-              {!data?.remittance?.totalsByType?.length && (
-                <tr>
-                  <td style={tdStyle} colSpan={2}>
-                    No active receipt totals found for the selected filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12, marginBottom: 10 }}>
+          <div>
+            <div style={{ color: "#64748b", fontSize: 12, fontWeight: 900, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 6 }}>
+              Notes
+            </div>
+            <h2 style={{ margin: 0, fontSize: 22 }}>Provider Notes</h2>
+          </div>
         </div>
+        <dl style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8, margin: 0 }}>
+          {editableTextRow("", "notes", clientNotes(client?.details), {
+            multiline: true,
+            addLabel: "Add Notes",
+          })}
+        </dl>
+        {saveMessage && <div style={{ marginTop: 10, color: "#166534", fontWeight: 800 }}>{saveMessage}</div>}
       </section>
 
-      <section style={{ ...cardStyle, marginBottom: 18 }}>
-        <h2 style={{ marginTop: 0 }}>Child Matters</h2>
-        <div style={{ overflowX: "auto", maxHeight: 420 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1120 }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Matter</th>
-                <th style={thStyle}>Patient</th>
-                <th style={thStyle}>Provider</th>
-                <th style={thStyle}>Insurer</th>
-                <th style={thStyle}>Lawsuit</th>
-                <th style={thStyle}>Claim #</th>
-                <th style={thStyle}>DOS</th>
-                <th style={thStyle}>Bill Amount</th>
-                <th style={thStyle}>Balance</th>
-                <th style={thStyle}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {matterRows.map((row: any) => (
-                <tr key={row.id || row.matter}>
-                  <td style={tdStyle}>{row.matter}</td>
-                  <td style={tdStyle}>{row.patient}</td>
-                  <td style={tdStyle}>{row.provider}</td>
-                  <td style={tdStyle}>{row.insurer}</td>
-                  <td style={tdStyle}>{row.lawsuit}</td>
-                  <td style={tdStyle}>{row.claimNumber}</td>
-                  <td style={tdStyle}>{dateOnly(row.dateOfService)}</td>
-                  <td style={tdStyle}>{money(row.billAmount)}</td>
-                  <td style={tdStyle}>{money(row.balance)}</td>
-                  <td style={tdStyle}>{row.finalStatus}</td>
-                </tr>
-              ))}
-              {!matterRows.length && (
-                <tr>
-                  <td style={tdStyle} colSpan={10}>
-                    No child matters matched this client/provider reference name or aliases.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      {activeWorkflowPanel === "remittance" && (
+        <>
+          <section style={{ ...cardStyle, marginBottom: 18 }}>
+            <h2 style={{ marginTop: 0 }}>Invoicing / Remittance Preview</h2>
+            <p style={{ marginTop: -4, color: "#475569", lineHeight: 1.45 }}>
+              Child-matter-based local payment reporting. Lawsuit-page payments appear here only through allocated child MatterPaymentReceipt rows.
+              This preview does not create invoices, write remittances, or update Clio.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(150px, 1fr))", gap: 12, alignItems: "end" }}>
+              <label style={{ display: "grid", gap: 6, fontWeight: 700 }}>
+                Status
+                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={{ padding: 10, border: "1px solid #cbd5e1", borderRadius: 10 }}>
+                  <option value="posted">Posted only</option>
+                  <option value="voided">Voided only</option>
+                  <option value="all">All</option>
+                </select>
+              </label>
+              <label style={{ display: "grid", gap: 6, fontWeight: 700 }}>
+                Transaction Type
+                <input value={transactionType} onChange={(event) => setTransactionType(event.target.value)} placeholder="Collection Payment" style={{ padding: 10, border: "1px solid #cbd5e1", borderRadius: 10 }} />
+              </label>
+              <label style={{ display: "grid", gap: 6, fontWeight: 700 }}>
+                Posting Context
+                <input value={postingContext} onChange={(event) => setPostingContext(event.target.value)} placeholder="lawsuit-allocation" style={{ padding: 10, border: "1px solid #cbd5e1", borderRadius: 10 }} />
+              </label>
+              <label style={{ display: "grid", gap: 6, fontWeight: 700 }}>
+                Check Number
+                <input value={checkNumber} onChange={(event) => setCheckNumber(event.target.value)} style={{ padding: 10, border: "1px solid #cbd5e1", borderRadius: 10 }} />
+              </label>
+              <label style={{ display: "grid", gap: 6, fontWeight: 700 }}>
+                Date From
+                <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} style={{ padding: 10, border: "1px solid #cbd5e1", borderRadius: 10 }} />
+              </label>
+              <label style={{ display: "grid", gap: 6, fontWeight: 700 }}>
+                Date To
+                <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} style={{ padding: 10, border: "1px solid #cbd5e1", borderRadius: 10 }} />
+              </label>
+            </div>
 
-      <section style={cardStyle}>
-        <h2 style={{ marginTop: 0 }}>Payment Receipt Rows</h2>
-        <div style={{ overflowX: "auto", maxHeight: 520 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1320 }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Matter</th>
-                <th style={thStyle}>Patient</th>
-                <th style={thStyle}>Insurer</th>
-                <th style={thStyle}>Lawsuit</th>
-                <th style={thStyle}>Transaction Date</th>
-                <th style={thStyle}>Type</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Posting Context</th>
-                <th style={thStyle}>Amount</th>
-                <th style={thStyle}>Check Date</th>
-                <th style={thStyle}>Check #</th>
-                <th style={thStyle}>Void</th>
-              </tr>
-            </thead>
-            <tbody>
-              {remittanceRows.map((row: any) => (
-                <tr key={row.id || `${row.matter}-${row.createdAt}-${row.amount}`}>
-                  <td style={tdStyle}>{row.matter}</td>
-                  <td style={tdStyle}>{row.patient}</td>
-                  <td style={tdStyle}>{row.insurer}</td>
-                  <td style={tdStyle}>{row.lawsuit}</td>
-                  <td style={tdStyle}>{dateOnly(row.transactionDate)}</td>
-                  <td style={tdStyle}>{row.transactionType}</td>
-                  <td style={tdStyle}>{row.transactionStatus}</td>
-                  <td style={tdStyle}>{row.postingContext}</td>
-                  <td style={tdStyle}>{money(row.amount)}</td>
-                  <td style={tdStyle}>{dateOnly(row.checkDate)}</td>
-                  <td style={tdStyle}>{row.checkNumber}</td>
-                  <td style={tdStyle}>{row.isVoided ? row.voidReason || "Voided" : ""}</td>
-                </tr>
-              ))}
-              {!remittanceRows.length && (
+            <div style={{ display: "flex", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => id && loadDetail(id).catch((err) => setError(err?.message || "Could not refresh remittance."))}
+                style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #0f172a", background: "#0f172a", color: "#fff", fontWeight: 800 }}
+              >
+                Preview
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadCsv(`${client?.displayName || "Client"} - Remittance Preview.csv`, remittanceCsvRows)}
+                disabled={!remittanceCsvRows.length}
+                style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #cbd5e1", background: remittanceCsvRows.length ? "#fff" : "#f1f5f9", fontWeight: 800 }}
+              >
+                Export CSV
+              </button>
+            </div>
+          </section>
+
+          <section style={{ ...cardStyle, marginBottom: 18 }}>
+            <h2 style={{ marginTop: 0 }}>Transaction Type Totals</h2>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>Transaction Type</th>
+                    <th style={thStyle}>Active Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(data?.remittance?.totalsByType || []).map((row) => (
+                    <tr key={row.transactionType}>
+                      <td style={tdStyle}>{row.transactionType}</td>
+                      <td style={tdStyle}>{money(row.amount)}</td>
+                    </tr>
+                  ))}
+                  {!data?.remittance?.totalsByType?.length && (
+                    <tr>
+                      <td style={tdStyle} colSpan={2}>
+                        No active receipt totals found for the selected filters.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      )}
+
+      {activeWorkflowPanel === "individual" && (
+        <section style={{ ...cardStyle, marginBottom: 18 }}>
+          <h2 style={{ marginTop: 0 }}>Individual Matters</h2>
+          <div style={{ overflowX: "auto", maxHeight: 420 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1120 }}>
+              <thead>
                 <tr>
-                  <td style={tdStyle} colSpan={12}>
-                    No payment receipt rows found for the selected filters.
-                  </td>
+                  <th style={thStyle}>Matter</th>
+                  <th style={thStyle}>Patient</th>
+                  <th style={thStyle}>Provider</th>
+                  <th style={thStyle}>Insurer</th>
+                  <th style={thStyle}>Lawsuit</th>
+                  <th style={thStyle}>Claim #</th>
+                  <th style={thStyle}>DOS</th>
+                  <th style={thStyle}>Bill Amount</th>
+                  <th style={thStyle}>Balance</th>
+                  <th style={thStyle}>Status</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </thead>
+              <tbody>
+                {matterRows.map((row: any) => (
+                  <tr key={row.id || row.matter}>
+                    <td style={tdStyle}>{row.matter}</td>
+                    <td style={tdStyle}>{row.patient}</td>
+                    <td style={tdStyle}>{row.provider}</td>
+                    <td style={tdStyle}>{row.insurer}</td>
+                    <td style={tdStyle}>{row.lawsuit}</td>
+                    <td style={tdStyle}>{row.claimNumber}</td>
+                    <td style={tdStyle}>{dateOnly(row.dateOfService)}</td>
+                    <td style={tdStyle}>{money(row.billAmount)}</td>
+                    <td style={tdStyle}>{money(row.balance)}</td>
+                    <td style={tdStyle}>{row.finalStatus}</td>
+                  </tr>
+                ))}
+                {!matterRows.length && (
+                  <tr>
+                    <td style={tdStyle} colSpan={10}>
+                      No individual matters matched this client/provider reference name or aliases.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {activeWorkflowPanel === "lawsuits" && (
+        <section style={{ ...cardStyle, marginBottom: 18 }}>
+          <h2 style={{ marginTop: 0 }}>Lawsuit Matters</h2>
+          <p style={{ marginTop: -4, color: "#475569", lineHeight: 1.45 }}>
+            Lawsuit matters are summarized from this provider/client's matched individual matters. Payment reporting remains child-matter based.
+          </p>
+          <div style={{ overflowX: "auto", maxHeight: 420 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Lawsuit</th>
+                  <th style={thStyle}>Individual Matter Count</th>
+                  <th style={thStyle}>Providers</th>
+                  <th style={thStyle}>Patients</th>
+                  <th style={thStyle}>Insurers</th>
+                  <th style={thStyle}>Bill Amount</th>
+                  <th style={thStyle}>Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lawsuitRows.map((row: any) => (
+                  <tr key={row.lawsuit}>
+                    <td style={tdStyle}>{row.lawsuit}</td>
+                    <td style={tdStyle}>{row.childMatterCount}</td>
+                    <td style={tdStyle}>{row.providers}</td>
+                    <td style={tdStyle}>{row.patients}</td>
+                    <td style={tdStyle}>{row.insurers}</td>
+                    <td style={tdStyle}>{money(row.billAmount)}</td>
+                    <td style={tdStyle}>{money(row.balance)}</td>
+                  </tr>
+                ))}
+                {!lawsuitRows.length && (
+                  <tr>
+                    <td style={tdStyle} colSpan={7}>
+                      No lawsuit matters matched this client/provider through individual matters.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
     </main>
   );
 }

@@ -1869,6 +1869,21 @@ const activeGroupKey =
     return paymentEditingReceipt ? entered - paymentFormOriginalAmountValue() : entered;
   }
 
+  function paymentFormRequiredFieldsComplete(): boolean {
+    return (
+      paymentFormAmountValue() > 0 &&
+      !!textValue(paymentDateInput) &&
+      !!textValue(paymentTransactionTypeInput) &&
+      !!textValue(paymentTransactionStatusInput) &&
+      !!textValue(paymentCheckDateInput) &&
+      !!textValue(paymentCheckNumberInput)
+    );
+  }
+
+  function paymentFormSubmitDisabled(): boolean {
+    return paymentApplyLoading || matterPaymentControlsDisabled() || !paymentFormRequiredFieldsComplete();
+  }
+
   function signedMoneyValue(value: number): string {
     const amount = Number(value || 0);
     return `${amount >= 0 ? "+" : "-"}${money(Math.abs(amount))}`;
@@ -1911,6 +1926,20 @@ const activeGroupKey =
     if (rawFinalStatus === "closed") return true;
     if (rawFinalStatus === "open") return false;
     return !!textValue(matter?.closeReason || matter?.close_reason);
+  }
+
+  function matterIsAggregatedForPayment(): boolean {
+    return !!textValue(matter?.masterLawsuitId || matter?.master_lawsuit_id);
+  }
+
+  function matterPaymentDisabledReason(): string {
+    if (matterIsAggregatedForPayment()) return "Payments must be posted in Lawsuit Screen";
+    if (matterIsClosedForPayment()) return "Disabled because this matter is Closed.";
+    return "";
+  }
+
+  function matterPaymentControlsDisabled(): boolean {
+    return matterIsClosedForPayment() || matterIsAggregatedForPayment();
   }
 
   function matterHasFinalStatusForPayment(): boolean {
@@ -2736,21 +2765,11 @@ function openClaimAmountEditDialog() {
     setPaymentEditingReceipt(null);
   }
 
-  function beginEditPaymentReceipt(receipt: any) {
-    if (receipt?.voided) {
-      setPaymentApplyResult({ ok: false, error: "Cannot edit a voided payment receipt." });
-      return;
-    }
-
-    setPaymentApplyResult(null);
-    setPaymentEditingReceipt(receipt);
-    setPaymentAmountInput(String(num(receipt?.paymentAmount).toFixed(2)));
-    setPaymentDateInput(formatPaymentDateYYYYMMDD(receipt?.paymentDate));
-    setPaymentTransactionTypeInput(textValue(receipt?.transactionType) || "Collection Payment");
-    setPaymentTransactionStatusInput(textValue(receipt?.transactionStatus) || "Show on Remittance");
-    setPaymentCheckDateInput(receipt?.checkDate ? formatPaymentDateYYYYMMDD(receipt.checkDate) : "");
-    setPaymentCheckNumberInput(textValue(receipt?.checkNumber));
-    setPaymentFormOpen(true);
+  function beginEditPaymentReceipt(_receipt: any) {
+    setPaymentApplyResult({
+      ok: false,
+      error: "Posted payments cannot be edited. Void the payment and post a corrected payment.",
+    });
   }
 
   async function handleVoidPaymentReceipt(receipt: any) {
@@ -2859,9 +2878,36 @@ function openClaimAmountEditDialog() {
       return;
     }
 
-    const editingReceipt = paymentEditingReceipt;
-    const previousPaymentAmount = editingReceipt ? num(editingReceipt?.paymentAmount) : 0;
-    const paymentDelta = editingReceipt ? paymentAmount - previousPaymentAmount : paymentAmount;
+    const editingReceipt = null;
+    const paymentDelta = paymentAmount;
+
+    if (matterIsAggregatedForPayment()) {
+      setPaymentApplyResult({
+        ok: false,
+        error: "Payments must be posted in Lawsuit Screen",
+      });
+      return;
+    }
+
+    if (!textValue(paymentTransactionTypeInput)) {
+      setPaymentApplyResult({ ok: false, error: "Transaction Type is required." });
+      return;
+    }
+
+    if (!textValue(paymentTransactionStatusInput)) {
+      setPaymentApplyResult({ ok: false, error: "Transaction Status is required." });
+      return;
+    }
+
+    if (!textValue(paymentCheckDateInput)) {
+      setPaymentApplyResult({ ok: false, error: "Check Date is required." });
+      return;
+    }
+
+    if (!textValue(paymentCheckNumberInput)) {
+      setPaymentApplyResult({ ok: false, error: "Check Number is required." });
+      return;
+    }
 
     const claimAmount = num(matter?.claimAmount);
     const currentPaymentVoluntary = num(matter?.paymentVoluntary);
@@ -2882,12 +2928,11 @@ function openClaimAmountEditDialog() {
 
     try {
       const response = await fetch("/api/matters/apply-payment", {
-        method: editingReceipt ? "PATCH" : "POST",
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          receiptId: editingReceipt?.id,
           matterId: Number(matter?.matterId || matter?.matter_id || matter?.id || matterId),
           expectedDisplayNumber: textValue(matter?.displayNumber),
           paymentAmount,
@@ -2896,9 +2941,8 @@ function openClaimAmountEditDialog() {
           transactionStatus: paymentTransactionStatusInput,
           checkDate: paymentCheckDateInput,
           checkNumber: paymentCheckNumberInput,
-          description: editingReceipt ? textValue(editingReceipt?.description) || paymentTransactionTypeInput : undefined,
-          editedBy: "Barsh Matters UI",
-          editReason: editingReceipt ? "Edited from individual payment form" : undefined,
+          description: paymentTransactionTypeInput,
+          postingContext: "direct-matter",
           claimAmount: num(matter?.claimAmount),
         }),
       });
@@ -2906,7 +2950,7 @@ function openClaimAmountEditDialog() {
       const json = await response.json();
 
       if (!response.ok || !json?.ok) {
-        throw new Error(json?.error || (editingReceipt ? "Payment edit failed." : "Payment save failed."));
+        throw new Error(json?.error || "Payment save failed.");
       }
 
       setPaymentApplyResult(json);
@@ -9473,29 +9517,29 @@ function openClaimAmountEditDialog() {
                         setPaymentFormOpen((open) => !open);
                         setPaymentDateInput((current) => current || formatPaymentDateYYYYMMDD(new Date()));
                       }}
-                      disabled={paymentApplyLoading || matterIsClosedForPayment()}
-                      title={matterIsClosedForPayment() ? "Payment controls are locked because this matter is Closed." : "Open payment entry form."}
+                      disabled={paymentApplyLoading || matterPaymentControlsDisabled()}
+                      title={matterPaymentDisabledReason() || "Open payment entry form."}
                       style={{
                         width: "100%",
                         minWidth: 0,
                         height: 44,
                         border: "1px solid #16a34a",
                         borderRadius: 999,
-                        background: matterIsClosedForPayment() ? "#f3f4f6" : "#16a34a",
-                        color: matterIsClosedForPayment() ? "#64748b" : "#fff",
+                        background: matterPaymentControlsDisabled() ? "#f3f4f6" : "#16a34a",
+                        color: matterPaymentControlsDisabled() ? "#64748b" : "#fff",
                         fontSize: 12,
                         fontWeight: 950,
-                        cursor: matterIsClosedForPayment() ? "not-allowed" : "pointer",
-                        boxShadow: matterIsClosedForPayment() ? "none" : "0 8px 24px rgba(22, 163, 74, 0.22)",
+                        cursor: matterPaymentControlsDisabled() ? "not-allowed" : "pointer",
+                        boxShadow: matterPaymentControlsDisabled() ? "none" : "0 8px 24px rgba(22, 163, 74, 0.22)",
                       }}
                     >
-                      {paymentApplyLoading ? (paymentEditingReceipt ? "Saving Edit..." : "Saving Payment...") : paymentFormOpen ? "Close Payment Form" : "Apply Payment"}
+                      {paymentApplyLoading ? "Posting Payment..." : paymentFormOpen ? "Close Payment Form" : "Post Payment"}
                     </button>
 
                     <div style={{ display: "grid", alignContent: "start" }}>
-                      {matterIsClosedForPayment() && (
+                      {matterPaymentControlsDisabled() && (
                         <div style={{ color: "#991b1b", fontSize: 11, fontWeight: 850, textAlign: "center" }}>
-                          Disabled because this matter is Closed.
+                          {matterPaymentDisabledReason()}
                         </div>
                       )}
                     </div>
@@ -9817,7 +9861,7 @@ function openClaimAmountEditDialog() {
                   <div
                     role="dialog"
                     aria-modal="true"
-                    aria-label={paymentEditingReceipt ? "Edit Payment" : "Post Payment"}
+                    aria-label="Post Payment"
                     style={{
                       position: "fixed",
                       inset: 0,
@@ -9858,7 +9902,7 @@ function openClaimAmountEditDialog() {
                     >
                       <div>
                         <div style={{ fontSize: 20, fontWeight: 900, color: "#0f172a" }}>
-                          {paymentEditingReceipt ? "Edit Payment" : "Post Payment"}
+                          Post Payment
                         </div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", marginTop: 3 }}>
                           This posts only to {textValue(matter?.displayNumber) || "this bill/matter"}.
@@ -10019,7 +10063,7 @@ function openClaimAmountEditDialog() {
                       </label>
 
                       <label className="barsh-direct-payment-field">
-                        <span>Check Date</span>
+                        <span>Check Date *</span>
                         <input
                           type="date"
                           value={paymentCheckDateInput}
@@ -10038,7 +10082,7 @@ function openClaimAmountEditDialog() {
                       </label>
 
                       <label className="barsh-direct-payment-field">
-                        <span>Check Number</span>
+                        <span>Check Number *</span>
                         <input
                           value={paymentCheckNumberInput}
                           onChange={(event) => setPaymentCheckNumberInput(event.target.value)}
@@ -10063,14 +10107,14 @@ function openClaimAmountEditDialog() {
                         style={{
                           margin: "0 18px 18px",
                           display: "grid",
-                          gridTemplateColumns: paymentEditingReceipt ? "1fr 1fr 1fr 1fr 1fr" : "1fr 1fr 1fr",
+                          gridTemplateColumns: "1fr 1fr 1fr",
                           gap: 10,
                         }}
                       >
                         {paymentEditingReceipt && (
                           <div>Original Amount: {money(paymentFormOriginalAmountValue())}</div>
                         )}
-                        <div>{paymentEditingReceipt ? "New Amount" : "Payment Amount"}: {money(paymentFormAmountValue())}</div>
+                        <div>Payment Amount: {money(paymentFormAmountValue())}</div>
                         {paymentEditingReceipt && (
                           <div>Local Payment Delta: {signedMoneyValue(paymentFormDeltaValue())}</div>
                         )}
@@ -10166,25 +10210,31 @@ function openClaimAmountEditDialog() {
                         type="button"
                         className="barsh-direct-payment-submit-button"
                         onClick={applyVoluntaryPaymentFromSummary}
-                        disabled={paymentApplyLoading}
+                        disabled={paymentFormSubmitDisabled()}
+                        title={
+                          paymentFormSubmitDisabled() && !paymentApplyLoading
+                            ? "Complete all required payment fields before posting."
+                            : "Post payment."
+                        }
                         style={{
                           minWidth: 150,
                           height: 44,
                           border: "1px solid #16a34a",
                           borderRadius: 12,
-                          background: paymentApplyLoading ? "#bbf7d0" : "#16a34a",
+                          background: paymentFormSubmitDisabled() ? "#bbf7d0" : "#16a34a",
                           color: "#fff",
                           fontWeight: 900,
                           fontSize: 15,
-                          cursor: paymentApplyLoading ? "not-allowed" : "pointer",
+                          cursor: paymentFormSubmitDisabled() ? "not-allowed" : "pointer",
+                          opacity: paymentFormSubmitDisabled() ? 0.72 : 1,
                         }}
                       >
-                        {paymentApplyLoading ? "Applying..." : "Apply Payment"}
+                        {paymentApplyLoading ? "Posting..." : "Post Payment"}
                       </button>
                     </div>
 
                     <div style={{ padding: "0 18px 16px", fontSize: 12, color: "#64748b", fontWeight: 700 }}>
-                      Payment amount changes update Barsh Matters local payment totals and Balance.  Other receipt fields are stored locally for posting history and remittance workflows.
+                      Post Payment records a local check payment, updates Barsh Matters local payment totals, and updates Balance. Posted payments cannot be edited; void and repost if correction is needed.
                     </div>
                     </div>
                   </div>
@@ -10193,18 +10243,14 @@ function openClaimAmountEditDialog() {
                 {paymentApplyResult?.ok && (
                   <div className="barsh-direct-payment-confirmation">
                     <div>
-                      {paymentApplyResult?.action === "edit-payment"
-                        ? `Receipt #${paymentApplyResult?.receipt?.id || "—"} edited.`
-                        : paymentApplyResult?.action === "void-payment"
-                          ? `Receipt #${paymentApplyResult?.receipt?.id || "—"} voided.`
-                          : `Receipt #${paymentApplyResult?.receipt?.id || "—"} posted.`}
+                      {paymentApplyResult?.action === "void-payment"
+                        ? `Receipt #${paymentApplyResult?.receipt?.id || "—"} voided.`
+                        : `Receipt #${paymentApplyResult?.receipt?.id || "—"} posted.`}
                     </div>
                     <div>
-                      {paymentApplyResult?.action === "edit-payment"
-                        ? `Edit delta: ${Number.isFinite(Number(paymentApplyResult?.amountDelta)) ? signedMoneyValue(paymentApplyResult.amountDelta) : "$0.00"}.  Payments Posted: ${money(paymentApplyResult.after?.paymentVoluntary)}.  Balance Presuit: ${money(paymentApplyResult.after?.balancePresuit)}.`
-                        : paymentApplyResult?.action === "void-payment"
-                          ? `Payment voided by ${money(paymentApplyResult.paymentVoided || paymentApplyResult.paymentApplied || 0)}.  Payments Posted: ${money(paymentApplyResult.after?.paymentVoluntary)}.  Balance Presuit: ${money(paymentApplyResult.after?.balancePresuit)}.`
-                          : `Payment: ${money(paymentApplyResult.paymentApplied)}.  Payments Posted: ${money(paymentApplyResult.after?.paymentVoluntary)}.  Balance Presuit: ${money(paymentApplyResult.after?.balancePresuit)}.`}
+                      {paymentApplyResult?.action === "void-payment"
+                        ? `Payment voided by ${money(paymentApplyResult.paymentVoided || paymentApplyResult.paymentApplied || 0)}.  Payments Posted: ${money(paymentApplyResult.after?.paymentVoluntary)}.  Balance: ${money(paymentApplyResult.after?.balancePresuit)}.`
+                        : `Payment: ${money(paymentApplyResult.paymentApplied)}.  Payments Posted: ${money(paymentApplyResult.after?.paymentVoluntary)}.  Balance: ${money(paymentApplyResult.after?.balancePresuit)}.`}
                     </div>
 
                   </div>
@@ -10212,7 +10258,7 @@ function openClaimAmountEditDialog() {
 
                 {paymentApplyResult && !paymentApplyResult.ok && (
                   <div className="barsh-direct-payment-error">
-                    {textValue(paymentApplyResult.error) || "Payment could not be applied."}
+                    {textValue(paymentApplyResult.error) || "Payment could not be posted."}
                   </div>
                 )}
 
@@ -10459,27 +10505,7 @@ function openClaimAmountEditDialog() {
                     </span>
                   ) : (
                     <>
-                      <button
-                        type="button"
-                        disabled={paymentApplyLoading}
-                        onClick={() => beginEditPaymentReceipt(receipt)}
-                        title="Edit payment receipt."
-                        style={{
-                          marginRight: 6,
-                          minWidth: 48,
-                          height: 30,
-                          border: "1px solid #0891b2",
-                          borderRadius: 8,
-                          background: "#06b6d4",
-                          color: "#fff",
-                          fontSize: 12,
-                          fontWeight: 900,
-                          cursor: paymentApplyLoading ? "not-allowed" : "pointer",
-                          opacity: paymentApplyLoading ? 0.65 : 1,
-                        }}
-                      >
-                        Edit
-                      </button>
+                      
                       <button
                         type="button"
                         disabled={paymentVoidLoadingId === Number(receipt.id) || matterIsClosedForPayment()}
@@ -10624,7 +10650,7 @@ function openClaimAmountEditDialog() {
 
           {!paymentReceiptsLoading && paymentReceipts.length > 0 && (
             <div style={{ marginTop: 8, fontSize: 11, color: "#64748b", fontWeight: 700 }}>
-              Edit updates payment receipt details; amount edits apply only the difference to local payment totals.  Void reverses the local payment total and keeps the receipt as an audit record.
+              Void reverses the local payment total and keeps the receipt as an audit record. Posted payments cannot be edited; void and repost if correction is needed.
             </div>
           )}
         </div>

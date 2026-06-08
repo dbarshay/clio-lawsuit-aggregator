@@ -717,6 +717,7 @@ export default function FilteredMattersPage() {
             transactionStatus: masterPaymentTransactionStatusInput,
             checkDate: masterPaymentCheckDateInput,
             checkNumber: masterPaymentCheckNumberInput,
+            postingContext: "lawsuit-allocation",
             description: "Lawsuit Payment",
           }),
         });
@@ -9754,7 +9755,7 @@ function masterSettlementDateFiledValue(): string {
                           boxShadow: "0 8px 24px rgba(22, 163, 74, 0.22)",
                         }}
                       >
-                        Apply Payment
+                        Post Payment
                       </button>
 
                       <div style={{ display: "grid", alignContent: "start" }} />

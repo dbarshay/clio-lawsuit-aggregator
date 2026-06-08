@@ -117,6 +117,7 @@
     "verify:direct-closed-header-display-safety": "node scripts/verify-direct-closed-header-display-safety.mjs",
     "verify:direct-finalize-master-id-resolution-safety": "node scripts/verify-direct-finalize-master-id-resolution-safety.mjs",
     "verify:direct-financial-section-readonly-safety": "node scripts/verify-direct-financial-section-readonly-safety.mjs",
+    "verify:direct-post-payment-workflow-safety": "node scripts/verify-direct-post-payment-workflow-safety.mjs",
     "verify:direct-identity-reference-dropdowns-safety": "node scripts/verify-direct-identity-reference-dropdowns-safety.mjs",
     "verify:direct-matter-clio-operational-callers-removed": "node scripts/verify-direct-matter-clio-operational-callers-removed.mjs",
     "verify:direct-matter-create-lawsuit-routing-safety": "node scripts/verify-direct-matter-create-lawsuit-routing-safety.mjs",

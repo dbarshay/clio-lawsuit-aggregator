@@ -75,8 +75,9 @@ const requiredRoutePatterns = [
     pattern: /payment\.add/,
   },
   {
-    label: "payment.edit audit action",
+    label: "payment.edit audit action removed by void-and-repost rule",
     pattern: /payment\.edit/,
+    forbidden: true,
   },
   {
     label: "payment.void audit action",
@@ -97,7 +98,14 @@ const requiredRoutePatterns = [
 ];
 
 for (const item of requiredRoutePatterns) {
-  if (!item.pattern.test(route)) {
+  const matched = item.pattern.test(route);
+  if (item.forbidden) {
+    if (matched) {
+      fail(`Local-first payment route still contains forbidden ${item.label}.`);
+    }
+    continue;
+  }
+  if (!matched) {
     fail(`Local-first payment route is missing required ${item.label}.`);
   }
 }
@@ -143,5 +151,14 @@ for (const item of requiredUiPatterns) {
 }
 
 pass("matter payment UI uses local-first payment language.");
+
+
+if (!/Posted payments cannot be edited\. Void the payment and post a corrected payment\./.test(route)) {
+  fail("Local-first payment route must enforce void-and-repost correction workflow.");
+}
+
+if (/action:\s*["']payment\.edit["']/.test(route) || /action:\s*["']edit-payment["']/.test(route)) {
+  fail("Local-first payment route must not retain payment edit actions.");
+}
 
 console.log("✅ Local-first individual payment safety verifier passed.");

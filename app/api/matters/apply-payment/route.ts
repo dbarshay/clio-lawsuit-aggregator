@@ -50,6 +50,44 @@ function cleanOptionalDate(value: any): string {
   return cleanDate(raw);
 }
 
+function isLawsuitAllocationContext(value: any): boolean {
+  return cleanText(value).toLowerCase() === "lawsuit-allocation";
+}
+
+async function matterHasLawsuitAggregation(matterId: number, expectedDisplayNumber?: string): Promise<{
+  aggregated: boolean;
+  masterLawsuitId: string;
+}> {
+  const numericMatterId = Number(matterId);
+  const displayNumber = cleanText(expectedDisplayNumber);
+
+  if (!Number.isFinite(numericMatterId) || numericMatterId <= 0) {
+    return { aggregated: false, masterLawsuitId: "" };
+  }
+
+  const claimRows = await prisma.claimIndex.findMany({
+    where: {
+      OR: [
+        { matter_id: numericMatterId },
+        ...(displayNumber ? [{ display_number: displayNumber }] : []),
+      ],
+    },
+    select: {
+      master_lawsuit_id: true,
+    },
+    take: 5,
+  });
+
+  const masterLawsuitId = cleanText(
+    claimRows.find((row) => cleanText(row.master_lawsuit_id))?.master_lawsuit_id
+  );
+
+  return {
+    aggregated: !!masterLawsuitId,
+    masterLawsuitId,
+  };
+}
+
 function paymentReceiptView(row: any) {
   const safetySnapshot = row?.safetySnapshot || {};
   const posting = safetySnapshot?.posting || {};
@@ -295,12 +333,19 @@ export async function POST(request: Request) {
 
     const matterId = Number(body?.matterId || "");
     const expectedDisplayNumber = cleanText(body?.expectedDisplayNumber);
+    const postingContext = cleanText(body?.postingContext || "direct-matter");
+    const isLawsuitAllocation = isLawsuitAllocationContext(postingContext);
+    const rawPaymentDate = cleanText(body?.paymentDate);
+    const rawTransactionType = cleanText(body?.transactionType);
+    const rawTransactionStatus = cleanText(body?.transactionStatus);
+    const rawCheckDate = cleanText(body?.checkDate);
+    const rawCheckNumber = cleanText(body?.checkNumber);
     const paymentAmount = num(body?.paymentAmount);
-    const paymentDate = cleanDate(body?.paymentDate);
-    const transactionType = cleanText(body?.transactionType) || "Collection Payment";
-    const transactionStatus = cleanText(body?.transactionStatus) || "Show on Remittance";
-    const checkDate = cleanOptionalDate(body?.checkDate);
-    const checkNumber = cleanText(body?.checkNumber);
+    const paymentDate = cleanDate(rawPaymentDate);
+    const transactionType = rawTransactionType;
+    const transactionStatus = rawTransactionStatus;
+    const checkDate = cleanOptionalDate(rawCheckDate);
+    const checkNumber = rawCheckNumber;
     const invoiceId = cleanText(body?.invoiceId);
     const description = cleanText(body?.description) || transactionType;
     const transactionFee =
@@ -323,6 +368,54 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!rawTransactionType) {
+      return NextResponse.json(
+        { ok: false, error: "Transaction Type is required." },
+        { status: 400 }
+      );
+    }
+
+    if (!rawTransactionStatus) {
+      return NextResponse.json(
+        { ok: false, error: "Transaction Status is required." },
+        { status: 400 }
+      );
+    }
+
+    if (!rawPaymentDate) {
+      return NextResponse.json(
+        { ok: false, error: "Transaction Date is required." },
+        { status: 400 }
+      );
+    }
+
+    if (!rawCheckDate) {
+      return NextResponse.json(
+        { ok: false, error: "Check Date is required." },
+        { status: 400 }
+      );
+    }
+
+    if (!rawCheckNumber) {
+      return NextResponse.json(
+        { ok: false, error: "Check Number is required." },
+        { status: 400 }
+      );
+    }
+
+    const lawsuitAggregation = await matterHasLawsuitAggregation(matterId, expectedDisplayNumber);
+
+    if (lawsuitAggregation.aggregated && !isLawsuitAllocation) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Payments must be posted in Lawsuit Screen",
+          masterLawsuitId: lawsuitAggregation.masterLawsuitId,
+        },
+        { status: 409 }
+      );
+    }
+
     const beforeTotals = await paymentTotalsForMatter(matterId, claimAmount);
     const before = beforeTotals.after;
     const after = afterSnapshot({
@@ -330,11 +423,11 @@ export async function POST(request: Request) {
       paymentVoluntary: beforeTotals.localPaymentTotal + paymentAmount,
     });
 
-    if (claimAmount > 0 && after.balancePresuit < -0.005) {
+    if (claimAmount > 0 && paymentAmount > before.balancePresuit + 0.005) {
       return NextResponse.json(
         {
           ok: false,
-          error: "Payment amount exceeds the current Barsh Matters local balance.",
+          error: "Payment amount exceeds the current Balance.",
           before,
           paymentAmount,
         },
@@ -365,8 +458,9 @@ export async function POST(request: Request) {
         balancePresuitAfter: after.balancePresuit,
         clioReadback: Prisma.JsonNull,
         safetySnapshot: {
-          action: "apply-payment",
-          sourceOfPaymentIntent: "Barsh Matters UI",
+          action: "post-payment",
+          postingContext,
+          sourceOfPaymentIntent: isLawsuitAllocation ? "Barsh Matters Lawsuit Screen" : "Barsh Matters UI",
           systemOfRecordAfterPosting: "Barsh Matters local DB",
           clioWriteConfirmed: false,
           clioWriteAttempted: false,
@@ -411,7 +505,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      action: "apply-payment",
+      action: "post-payment",
+      postingContext,
       matterId: String(matterId),
       displayNumber: expectedDisplayNumber || "",
       paymentDate,
@@ -447,259 +542,19 @@ export async function POST(request: Request) {
   }
 }
 
-export async function PATCH(request: Request) {
-  try {
-    const body = await request.json();
-
-    const receiptId = Number(body?.receiptId || body?.id || "");
-    const expectedMatterId = Number(body?.matterId || "");
-    const expectedDisplayNumber = cleanText(body?.expectedDisplayNumber);
-    const editedBy = cleanText(body?.editedBy || "Barsh Matters UI");
-    const editReason = cleanText(body?.editReason || "Edited from Barsh Matters UI");
-    const claimAmount = num(body?.claimAmount);
-
-    if (!Number.isFinite(receiptId) || receiptId <= 0) {
-      return NextResponse.json(
-        { ok: false, error: "Valid receiptId is required." },
-        { status: 400 }
-      );
-    }
-
-    const receipt = await prisma.matterPaymentReceipt.findUnique({
-      where: { id: receiptId },
-    });
-
-    if (!receipt) {
-      return NextResponse.json(
-        { ok: false, error: "Payment receipt not found." },
-        { status: 404 }
-      );
-    }
-
-    if (receipt.voided) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "Cannot edit a voided payment receipt.",
-          receipt: paymentReceiptView(receipt),
-        },
-        { status: 409 }
-      );
-    }
-
-    const guard = receiptIdentityGuard({
-      receipt,
-      expectedMatterId,
-      expectedDisplayNumber,
-      actionLabel: "edit",
-    });
-
-    if (!guard.ok) {
-      return NextResponse.json(guard.body, { status: guard.status });
-    }
-
-    const matterId = Number(receipt.matterId);
-    const oldPaymentAmount = num(receipt.paymentAmount);
-    const requestedPaymentAmount =
-      body?.paymentAmount === undefined || body?.paymentAmount === null || String(body?.paymentAmount).trim() === ""
-        ? oldPaymentAmount
-        : num(body?.paymentAmount);
-
-    if (!Number.isFinite(requestedPaymentAmount) || requestedPaymentAmount <= 0) {
-      return NextResponse.json(
-        { ok: false, error: "Edited payment amount must be greater than $0.00." },
-        { status: 400 }
-      );
-    }
-
-    const paymentDate =
-      body?.paymentDate === undefined || body?.paymentDate === null || String(body?.paymentDate).trim() === ""
-        ? receipt.paymentDate
-        : cleanDate(body?.paymentDate);
-
-    const transactionType =
-      body?.transactionType === undefined
-        ? cleanText(receipt.transactionType) || "Collection Payment"
-        : cleanText(body?.transactionType) || "Collection Payment";
-
-    const transactionStatus =
-      body?.transactionStatus === undefined
-        ? cleanText(receipt.transactionStatus) || "Show on Remittance"
-        : cleanText(body?.transactionStatus) || "Show on Remittance";
-
-    const checkDate =
-      body?.checkDate === undefined
-        ? cleanText(receipt.checkDate)
-        : cleanOptionalDate(body?.checkDate);
-
-    const checkNumber =
-      body?.checkNumber === undefined
-        ? cleanText(receipt.checkNumber)
-        : cleanText(body?.checkNumber);
-
-    const invoiceId =
-      body?.invoiceId === undefined
-        ? cleanText(receipt.invoiceId)
-        : cleanText(body?.invoiceId);
-
-    const description =
-      body?.description === undefined
-        ? cleanText(receipt.description || transactionType)
-        : cleanText(body?.description) || transactionType;
-
-    const transactionFee =
-      body?.transactionFee === undefined || body?.transactionFee === null || String(body?.transactionFee).trim() === ""
-        ? receipt.transactionFee
-        : num(body?.transactionFee);
-
-    const beforeTotals = await paymentTotalsForMatter(matterId, claimAmount);
-    const before = beforeTotals.after;
-    const amountDelta = requestedPaymentAmount - oldPaymentAmount;
-    const after = afterSnapshot({
-      claimAmount,
-      paymentVoluntary: beforeTotals.localPaymentTotal + amountDelta,
-    });
-
-    if (claimAmount > 0 && after.balancePresuit < -0.005) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "Edited payment amount exceeds the current Barsh Matters local balance.",
-          oldPaymentAmount,
-          requestedPaymentAmount,
-          amountDelta,
-          before,
-          receipt: paymentReceiptView(receipt),
-        },
-        { status: 400 }
-      );
-    }
-
-    const priorEditSnapshot = receipt.editSnapshot || null;
-    const editedAt = new Date();
-
-    const editedReceipt = await prisma.matterPaymentReceipt.update({
-      where: { id: receipt.id },
-      data: {
-        paymentAmount: requestedPaymentAmount,
-        paymentDate,
-        transactionType,
-        transactionStatus,
-        transactionDate: paymentDate,
-        checkDate,
-        checkNumber,
-        invoiceId,
-        description,
-        transactionFee,
-        editedAt,
-        editedBy,
-        editReason,
-        paymentVoluntaryAfter: after.paymentVoluntary,
-        balancePresuitAfter: after.balancePresuit,
-        clioReadback: Prisma.JsonNull,
-        editSnapshot: {
-          action: "edit-payment",
-          sourceOfEditIntent: "Barsh Matters UI",
-          systemOfRecordAfterEdit: "Barsh Matters local DB",
-          clioWriteConfirmed: false,
-          clioWriteAttempted: false,
-          claimIndexRefreshAttempted: false,
-          receiptId: receipt.id,
-          matterId: receipt.matterId,
-          displayNumber: receipt.displayNumber || "",
-          editedAt: editedAt.toISOString(),
-          editedBy,
-          editReason,
-          amountChanged: Math.abs(amountDelta) >= 0.005,
-          amountDelta,
-          beforeReceipt: paymentReceiptView(receipt),
-          afterReceiptInput: {
-            paymentAmount: requestedPaymentAmount,
-            paymentDate,
-            transactionType,
-            transactionStatus,
-            transactionDate: paymentDate,
-            checkDate,
-            checkNumber,
-            invoiceId,
-            description,
-            transactionFee,
-          },
-          before,
-          after,
-          priorEditSnapshot,
-        },
-      },
-    });
-
-    const claimIndexMirror = await mirrorLocalPaymentTotalsToClaimIndex({ matterId, claimAmount });
-
-    await writePaymentAudit({
-      action: "payment.edit",
-      summary: `Edited local payment receipt #${editedReceipt.id}.`,
-      receipt: editedReceipt,
-      priorValue: {
-        receipt: paymentReceiptView(receipt),
-        totals: before,
-      },
-      newValue: {
-        receipt: paymentReceiptView(editedReceipt),
-        totals: after,
-      },
-      details: {
-        receiptId: editedReceipt.id,
-        oldPaymentAmount,
-        requestedPaymentAmount,
-        amountDelta,
-        paymentDate,
-        transactionType,
-        transactionStatus,
-        checkNumber,
-        checkDate,
-        editReason,
-        localOnly: true,
-        clioWriteAttempted: false,
-      },
-    });
-
-    return NextResponse.json({
-      ok: true,
-      action: "edit-payment",
-      matterId: String(matterId),
-      displayNumber: editedReceipt.displayNumber || "",
-      receiptId: editedReceipt.id,
-      amountChanged: Math.abs(amountDelta) >= 0.005,
-      amountDelta,
-      before,
-      after,
-      receipt: paymentReceiptView(editedReceipt),
-      clioWriteConfirmed: false,
-      clioReadback: Prisma.JsonNull,
-      refreshedIndex: {
-        ok: true,
-        skipped: true,
-        reason: "local-first-payment-edit-no-clio-refresh",
-      },
-      claimIndexMirror,
+export async function PATCH() {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: "Posted payments cannot be edited. Void the payment and post a corrected payment.",
       safety: {
-        sourceOfEditIntent: "Barsh Matters UI",
-        systemOfRecordAfterEdit: "Barsh Matters local DB",
-        clioWriteConfirmed: false,
-        clioWriteAttempted: false,
-        claimIndexRefreshAttempted: false,
         hardDelete: false,
-        editRecordedLocally: true,
+        editDisabled: true,
+        correctionWorkflow: "void-and-repost",
       },
-    });
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: error?.message || String(error),
-      },
-      { status: 500 }
-    );
-  }
+    },
+    { status: 405 }
+  );
 }
 
 export async function DELETE(request: Request) {

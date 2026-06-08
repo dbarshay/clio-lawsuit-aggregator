@@ -1494,7 +1494,7 @@ const activeGroupKey =
   const [paymentFormOpen, setPaymentFormOpen] = useState(false);
   const [paymentAmountInput, setPaymentAmountInput] = useState("");
   const [paymentDateInput, setPaymentDateInput] = useState(() => formatPaymentDateYYYYMMDD(new Date()));
-  const [paymentTransactionTypeInput, setPaymentTransactionTypeInput] = useState("Collection Payment");
+  const [paymentTransactionTypeInput, setPaymentTransactionTypeInput] = useState("Voluntary Payment");
   const [paymentTransactionStatusInput, setPaymentTransactionStatusInput] = useState("Show on Remittance");
   const [paymentTransactionTypeOptions, setPaymentTransactionTypeOptions] = useState<any[]>([]);
   const [paymentTransactionStatusOptions, setPaymentTransactionStatusOptions] = useState<any[]>([]);
@@ -1543,7 +1543,7 @@ const activeGroupKey =
   }
 
   const fallbackPaymentTransactionTypeOptions = [
-    "Collection Payment",
+    "Voluntary Payment",
     "Voluntary Payment",
     "Attorney Fee",
     "Filing Fee Collected",
@@ -1556,6 +1556,12 @@ const activeGroupKey =
     "Other Court Fees Billed",
   ];
 
+  const paymentTransactionTypeFallbackOptions = [
+    "Voluntary Payment",
+    "Interest",
+    "PreC to Provider",
+  ];
+
   const fallbackPaymentTransactionStatusOptions = [
     "Show on Remittance",
     "Do Not Show on Remittance",
@@ -1566,8 +1572,7 @@ const activeGroupKey =
   }
 
   function paymentTransactionTypeDropdownOptions(): string[] {
-    const loaded = paymentTransactionTypeOptions.map(referenceOptionDisplayName).filter(Boolean);
-    return loaded.length ? loaded : fallbackPaymentTransactionTypeOptions;
+    return paymentTransactionTypeFallbackOptions;
   }
 
   function paymentTransactionStatusDropdownOptions(): string[] {
@@ -2758,7 +2763,7 @@ function openClaimAmountEditDialog() {
   function resetPaymentFormInputs() {
     setPaymentAmountInput("");
     setPaymentDateInput(formatPaymentDateYYYYMMDD(new Date()));
-    setPaymentTransactionTypeInput("Collection Payment");
+    setPaymentTransactionTypeInput("Voluntary Payment");
     setPaymentTransactionStatusInput("Show on Remittance");
     setPaymentCheckDateInput("");
     setPaymentCheckNumberInput("");
@@ -10184,7 +10189,7 @@ function openClaimAmountEditDialog() {
                         onClick={() => {
                           setPaymentAmountInput("");
                           setPaymentDateInput(formatPaymentDateYYYYMMDD(new Date()));
-                          setPaymentTransactionTypeInput("Collection Payment");
+                          setPaymentTransactionTypeInput("Voluntary Payment");
                           setPaymentTransactionStatusInput("Show on Remittance");
                           setPaymentCheckDateInput("");
                           setPaymentCheckNumberInput("");

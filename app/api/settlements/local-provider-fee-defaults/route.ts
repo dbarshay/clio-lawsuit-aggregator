@@ -29,6 +29,45 @@ function compactKey(value: string): string {
   return normalizeName(value).replace(/\s+/g, "");
 }
 
+function providerClientInfoDetails(info: any, fallback: unknown): Record<string, unknown> {
+  const base =
+    fallback && typeof fallback === "object" && !Array.isArray(fallback)
+      ? { ...(fallback as Record<string, unknown>) }
+      : {};
+  if (!info) return base;
+
+  const existingHidden = base._hiddenImportFields;
+  const hidden =
+    existingHidden && typeof existingHidden === "object" && !Array.isArray(existingHidden)
+      ? { ...(existingHidden as Record<string, unknown>) }
+      : {};
+
+  const hiddenPairs: Array<[string, unknown]> = [
+    ["hidden_owner", info.owner],
+    ["hidden_group_name", info.providerGroup],
+    ["hidden_retainer_principal_nf_percent", info.retainerNFPrincipal],
+    ["hidden_retainer_interest_percent", info.retainerNFInterest],
+    ["hidden_retainer_wc_principal_percent", info.retainerWCPrincipal],
+    ["hidden_retainer_wc_interest_percent", info.retainerWCInterest],
+    ["hidden_retainer_liens_principal_percent", info.retainerLiensPrincipal],
+    ["hidden_retainer_liens_interest_percent", info.retainerLiensInterest],
+    ["hidden_pull_costs", info.pullCosts],
+    ["hidden_remit", info.remit],
+  ];
+
+  for (const [key, value] of hiddenPairs) {
+    const cleaned = clean(value);
+    if (cleaned) hidden[key] = cleaned;
+  }
+
+  return {
+    ...base,
+    address: clean(info.address) || base.address,
+    notes: clean(info.notes) || base.notes,
+    _hiddenImportFields: hidden,
+  };
+}
+
 function detailEntries(details: unknown): [string, unknown][] {
   if (!details || typeof details !== "object" || Array.isArray(details)) return [];
 
@@ -116,7 +155,15 @@ export async function GET(req: NextRequest) {
         },
       }));
 
-    const principalRaw = findDetailValue(entity?.details, [
+    const providerClientInfo = entity?.id
+      ? await (prisma as any).providerClientInfo.findUnique({
+          where: { referenceEntityId: clean(entity.id) },
+        })
+      : null;
+
+    const sourceDetails = providerClientInfoDetails(providerClientInfo, entity?.details);
+
+    const principalRaw = findDetailValue(sourceDetails, [
       "hidden_retainer_principal_nf_percent",
       "Retainer Principal NF",
       "Retainer Principal",
@@ -125,7 +172,7 @@ export async function GET(req: NextRequest) {
       "Principal Fee",
     ]);
 
-    const interestRaw = findDetailValue(entity?.details, [
+    const interestRaw = findDetailValue(sourceDetails, [
       "hidden_retainer_interest_percent",
       "Retainer Interest",
       "Interest Fee Percent",
@@ -140,7 +187,7 @@ export async function GET(req: NextRequest) {
       ok: true,
       action: "local-provider-fee-defaults",
       localFirst: true,
-      sourceOfTruth: "barsh-matters-local-reference-data",
+      sourceOfTruth: "barsh-matters-local-provider-client-info",
       providerName,
       matchedProvider: entity
         ? {

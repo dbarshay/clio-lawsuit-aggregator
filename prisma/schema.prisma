@@ -415,6 +415,7 @@ model ReferenceEntity {
   updatedAt      DateTime @updatedAt
 
   aliases ReferenceAlias[]
+  providerClientInfo ProviderClientInfo?
 
   @@unique([type, normalizedName])
   @@index([type])
@@ -422,6 +423,41 @@ model ReferenceEntity {
   @@index([displayName])
   @@index([normalizedName])
   @@index([createdAt])
+}
+
+model ProviderClientInfo {
+  id                String   @id @default(cuid())
+  referenceEntityId String   @unique
+
+  displayNameSnapshot String?
+  address             String?
+  owner               String?
+  providerGroup       String?
+
+  retainerNFPrincipal    String?
+  retainerNFInterest     String?
+  retainerWCPrincipal    String?
+  retainerWCInterest     String?
+  retainerLiensPrincipal String?
+  retainerLiensInterest  String?
+
+  pullCosts String?
+  remit     String?
+  notes     String?
+
+  source    String   @default("admin-client-info")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  referenceEntity ReferenceEntity @relation(fields: [referenceEntityId], references: [id], onDelete: Restrict)
+
+  @@index([referenceEntityId])
+  @@index([displayNameSnapshot])
+  @@index([owner])
+  @@index([providerGroup])
+  @@index([pullCosts])
+  @@index([remit])
+  @@index([updatedAt])
 }
 
 model ReferenceAlias {

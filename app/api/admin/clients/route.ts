@@ -32,6 +32,37 @@ function detailObject(entity: any): Record<string, unknown> {
   return {};
 }
 
+function infoDetailsObject(entity: any): Record<string, unknown> {
+  const fallback = detailObject(entity);
+  const info = entity?.providerClientInfo;
+  if (!info) return fallback;
+
+  const hidden: Record<string, unknown> = {
+    ...(fallback._hiddenImportFields && typeof fallback._hiddenImportFields === "object" && !Array.isArray(fallback._hiddenImportFields)
+      ? (fallback._hiddenImportFields as Record<string, unknown>)
+      : {}),
+    hidden_owner: info.owner || undefined,
+    hidden_group_name: info.providerGroup || undefined,
+    hidden_retainer_principal_nf_percent: info.retainerNFPrincipal || undefined,
+    hidden_retainer_interest_percent: info.retainerNFInterest || undefined,
+    hidden_retainer_wc_principal_percent: info.retainerWCPrincipal || undefined,
+    hidden_retainer_wc_interest_percent: info.retainerWCInterest || undefined,
+    hidden_retainer_liens_principal_percent: info.retainerLiensPrincipal || undefined,
+    hidden_retainer_liens_interest_percent: info.retainerLiensInterest || undefined,
+    hidden_pull_costs: info.pullCosts || undefined,
+    hidden_remit: info.remit || undefined,
+  };
+
+  Object.keys(hidden).forEach((key) => hidden[key] === undefined && delete hidden[key]);
+
+  return {
+    ...fallback,
+    address: info.address || fallback.address,
+    notes: info.notes || fallback.notes,
+    _hiddenImportFields: hidden,
+  };
+}
+
 function primaryName(entity: any): string {
   return clean(
     entity?.displayName ||
@@ -53,7 +84,7 @@ function pickDetail(details: Record<string, unknown>, keys: string[]): string {
 }
 
 function clientSummary(entity: any) {
-  const details = detailObject(entity);
+  const details = infoDetailsObject(entity);
   const name = primaryName(entity);
   return {
     id: String(entity?.id ?? ""),
@@ -109,7 +140,14 @@ export async function GET(req: NextRequest) {
       take,
     });
 
-    const rows = entities.map(clientSummary).filter((row: any) => {
+    const infoRows = entities.length
+      ? await (prisma as any).providerClientInfo.findMany({
+          where: { referenceEntityId: { in: entities.map((entity: any) => clean(entity.id)).filter(Boolean) } },
+        })
+      : [];
+    const infoByReferenceEntityId = new Map(infoRows.map((info: any) => [clean(info.referenceEntityId), info]));
+
+    const rows = entities.map((entity: any) => clientSummary({ ...entity, providerClientInfo: infoByReferenceEntityId.get(clean(entity.id)) })).filter((row: any) => {
       if (!q) return true;
       const haystack = [
         row.displayName,
@@ -128,7 +166,7 @@ export async function GET(req: NextRequest) {
 
     return json({
       action: "admin-clients-list",
-      sourceOfTruth: "Local Barsh Matters ReferenceEntity/ReferenceAlias provider_client records",
+      sourceOfTruth: "Local Barsh Matters ProviderClientInfo plus ReferenceEntity/ReferenceAlias provider_client records",
       safety:
         "Read-only Admin Clients list. This route reads local reference data only. It does not call Clio, write payments, generate documents, send email, print, or queue anything.",
       count: rows.length,

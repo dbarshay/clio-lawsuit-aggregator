@@ -109,11 +109,48 @@ function findDetailValue(details: unknown, keys: string[]) {
   return "";
 }
 
+function titleCaseAddressSegment(value: string) {
+  const preserveUpper = new Set(["NY", "NJ", "CT", "PA", "US", "USA", "LLC", "PC", "PLLC", "MD", "DO"]);
+  const smallWords = new Set(["of", "and", "the"]);
+
+  return value
+    .toLowerCase()
+    .replace(/\b([a-z])([a-z']*)\b/g, (match, first, rest, offset) => {
+      const original = match.toUpperCase();
+      if (preserveUpper.has(original)) return original;
+      if (offset > 0 && smallWords.has(match)) return match;
+      return `${first.toUpperCase()}${rest}`;
+    })
+    .replace(/\bMc([a-z])/g, (_match, letter) => `Mc${letter.toUpperCase()}`)
+    .replace(/\bO'([a-z])/g, (_match, letter) => `O'${letter.toUpperCase()}`)
+    .replace(/\bPo Box\b/gi, "PO Box")
+    .replace(/\bSte\b/gi, "Ste")
+    .replace(/\bSuite\b/gi, "Suite")
+    .replace(/\bApt\b/gi, "Apt")
+    .replace(/\bFl\b/gi, "Fl");
+}
+
+function normalizeAddressLineDisplay(line: string) {
+  const trimmed = line.trim();
+  if (!trimmed) return "";
+
+  const zipMatch = trimmed.match(/^(.*?)(?:,)?\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/i);
+  if (zipMatch) {
+    return `${titleCaseAddressSegment(zipMatch[1])}, ${zipMatch[2].toUpperCase()} ${zipMatch[3]}`;
+  }
+
+  return titleCaseAddressSegment(trimmed);
+}
+
 function normalizeAddressDisplay(value: unknown) {
   return String(value ?? "")
     .trim()
     .replace(/\s*•\s*/g, "\n")
-    .replace(/,\s*(\d{5}(?:-\d{4})?)\s*$/gm, " $1");
+    .replace(/,\s*(\d{5}(?:-\d{4})?)\s*$/gm, " $1")
+    .split(/\r?\n/)
+    .map(normalizeAddressLineDisplay)
+    .filter(Boolean)
+    .join("\n");
 }
 
 function clientAddress(details: unknown) {
@@ -129,7 +166,7 @@ function clientAddress(details: unknown) {
   const cityState = [city, state].filter(Boolean).join(", ");
   const cityStateZip = cityState && zip ? `${cityState} ${zip}` : cityState || zip;
 
-  return [street, street2, cityStateZip].filter(Boolean).join("\n");
+  return normalizeAddressDisplay([street, street2, cityStateZip].filter(Boolean).join("\n"));
 }
 
 function percentDisplay(value: unknown) {
@@ -682,66 +719,6 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
         </div>
       </section>
 
-      <section style={{ ...cardStyle, marginBottom: 18 }}>
-        <h2 style={{ marginTop: 0 }}>Client Imported Fields / Defaults</h2>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(180px, 1fr))", gap: 12, marginBottom: 16 }}>
-          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
-            <div style={{ color: "#64748b", fontSize: 12, fontWeight: 800 }}>Provider Group</div>
-            <div style={{ fontWeight: 900 }}>
-              {findDetailValue(client?.details, ["hidden_group_name", "group_name", "provider_group", "Provider Group", "Group Name"]) || "—"}
-            </div>
-          </div>
-          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
-            <div style={{ color: "#64748b", fontSize: 12, fontWeight: 800 }}>Retainer Principal NF %</div>
-            <div style={{ fontWeight: 900 }}>
-              {percentDisplay(findDetailValue(client?.details, ["hidden_retainer_principal_nf_percent", "Retainer Principal NF", "Retainer Principal", "Principal Fee Percent", "Principal Fee %"])) || "—"}
-            </div>
-          </div>
-          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
-            <div style={{ color: "#64748b", fontSize: 12, fontWeight: 800 }}>Retainer Interest %</div>
-            <div style={{ fontWeight: 900 }}>
-              {percentDisplay(findDetailValue(client?.details, ["hidden_retainer_interest_percent", "Retainer Interest", "Interest Fee Percent", "Interest Fee %"])) || "—"}
-            </div>
-          </div>
-          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
-            <div style={{ color: "#64748b", fontSize: 12, fontWeight: 800 }}>Original Imported Name</div>
-            <div style={{ fontWeight: 900 }}>
-              {findDetailValue(client?.details, ["providerClientOriginalDisplayName", "original_display_name", "reference_name", "provider_name"]) || "—"}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ overflowX: "auto", maxHeight: 420 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Field</th>
-                <th style={thStyle}>Value</th>
-                <th style={thStyle}>Source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {detailEntries(client?.details).map((row) => (
-                <tr key={`${row.source}-${row.field}`}>
-                  <td style={tdStyle}>
-                    <strong>{row.field}</strong>
-                  </td>
-                  <td style={tdStyle}>{row.value}</td>
-                  <td style={tdStyle}>{row.source}</td>
-                </tr>
-              ))}
-              {!detailEntries(client?.details).length && (
-                <tr>
-                  <td style={tdStyle} colSpan={3}>
-                    No imported client/default fields found for this client.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
 
       <section style={{ ...cardStyle, marginBottom: 18 }}>
         <h2 style={{ marginTop: 0 }}>Invoicing / Remittance Filters</h2>

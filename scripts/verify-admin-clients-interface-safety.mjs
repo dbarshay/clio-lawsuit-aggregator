@@ -2,6 +2,13 @@ import fs from "fs";
 
 const checks = [
   {
+    file: "prisma/schema.prisma",
+    tests: [
+      ["model ProviderClientInfo", "Prisma has ProviderClientInfo source-of-truth model"],
+      ["providerClientInfo ProviderClientInfo?", "ReferenceEntity links to ProviderClientInfo"],
+    ],
+  },
+  {
     file: "app/admin/page.tsx",
     tests: [
       ['href: "/admin/clients"', "Admin Home links to Clients"],
@@ -27,10 +34,11 @@ const checks = [
       ["Save", "Client detail page includes save button"],
       ["Edit", "Client detail page includes edit button"],
       ["Address", "Client detail page includes client address field"],
+      ["titleCaseAddressSegment", "Client detail page normalizes address capitalization"],
+      ["normalizeAddressLineDisplay", "Client detail page normalizes address lines"],
       ["Child Matters", "Client detail page includes child matters"],
       ["Payment Receipt Rows", "Client detail page includes receipt rows"],
       ["Export CSV", "Client detail page includes CSV export"],
-      ["Client Imported Fields / Defaults", "Client detail page includes imported fields/defaults"],
       ["Owner", "Client detail page surfaces owner field"],
       ["Provider Group", "Client detail page surfaces provider group"],
       ["Retainer NF Principal", "Client detail page surfaces NF principal retainer"],
@@ -42,8 +50,6 @@ const checks = [
       ["Pull Costs", "Client detail page surfaces pull costs field"],
       ["Remit", "Client detail page surfaces remit field"],
       ["editableSelectRow", "Client detail page uses select rows for controlled defaults"],
-      ["Retainer Principal NF %", "Client detail page surfaces retainer principal default"],
-      ["Retainer Interest %", "Client detail page surfaces retainer interest default"],
     ],
   },
   {
@@ -63,6 +69,8 @@ const checks = [
       ["does not call Clio", "Client detail API safety copy blocks Clio"],
       ["child-ledger", "Client detail API describes child-ledger source"],
       ["editableClientDetails", "Client detail API updates local editable details"],
+      ["providerClientInfo.upsert", "Client detail API writes ProviderClientInfo source table"],
+      ["ProviderClientInfo source-of-truth", "Client detail API declares ProviderClientInfo as source of truth"],
       ["hidden_owner", "Client detail API stores owner locally"],
       ["hidden_pull_costs", "Client detail API stores pull costs locally"],
       ["hidden_remit", "Client detail API stores remit locally"],
@@ -118,3 +126,11 @@ if (failures) {
 }
 
 console.log("PASS admin clients interface safety verifier");
+
+const feeDefaultsRoute = fs.readFileSync("app/api/settlements/local-provider-fee-defaults/route.ts", "utf8");
+if (!feeDefaultsRoute.includes("providerClientInfo")) {
+  console.error("FAIL provider fee defaults route reads ProviderClientInfo");
+  failures++;
+} else {
+  console.log("PASS provider fee defaults route reads ProviderClientInfo");
+}

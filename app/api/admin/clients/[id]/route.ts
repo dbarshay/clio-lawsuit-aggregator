@@ -22,6 +22,66 @@ function detailObject(entity: any): Record<string, unknown> {
   return {};
 }
 
+function providerClientInfoDetails(info: any, fallbackDetails: Record<string, unknown>): Record<string, unknown> {
+  if (!info) return fallbackDetails;
+
+  const existingHidden = fallbackDetails._hiddenImportFields;
+  const hidden =
+    existingHidden && typeof existingHidden === "object" && !Array.isArray(existingHidden)
+      ? { ...(existingHidden as Record<string, unknown>) }
+      : {};
+
+  const hiddenPairs: Array<[string, unknown]> = [
+    ["hidden_owner", info.owner],
+    ["hidden_group_name", info.providerGroup],
+    ["hidden_retainer_principal_nf_percent", info.retainerNFPrincipal],
+    ["hidden_retainer_interest_percent", info.retainerNFInterest],
+    ["hidden_retainer_wc_principal_percent", info.retainerWCPrincipal],
+    ["hidden_retainer_wc_interest_percent", info.retainerWCInterest],
+    ["hidden_retainer_liens_principal_percent", info.retainerLiensPrincipal],
+    ["hidden_retainer_liens_interest_percent", info.retainerLiensInterest],
+    ["hidden_pull_costs", info.pullCosts],
+    ["hidden_remit", info.remit],
+  ];
+
+  for (const [key, value] of hiddenPairs) {
+    const cleaned = clean(value);
+    if (cleaned) hidden[key] = cleaned;
+  }
+
+  return {
+    ...fallbackDetails,
+    address: clean(info.address) || fallbackDetails.address,
+    notes: clean(info.notes) || fallbackDetails.notes,
+    _hiddenImportFields: hidden,
+  };
+}
+
+function providerClientInfoDataFromDetails(referenceEntityId: string, displayName: unknown, details: Record<string, unknown>) {
+  const hidden =
+    details._hiddenImportFields && typeof details._hiddenImportFields === "object" && !Array.isArray(details._hiddenImportFields)
+      ? (details._hiddenImportFields as Record<string, unknown>)
+      : {};
+
+  return {
+    referenceEntityId,
+    displayNameSnapshot: clean(displayName) || null,
+    address: clean(details.address) || null,
+    owner: clean(hidden.hidden_owner) || null,
+    providerGroup: clean(hidden.hidden_group_name) || null,
+    retainerNFPrincipal: clean(hidden.hidden_retainer_principal_nf_percent) || null,
+    retainerNFInterest: clean(hidden.hidden_retainer_interest_percent) || null,
+    retainerWCPrincipal: clean(hidden.hidden_retainer_wc_principal_percent) || null,
+    retainerWCInterest: clean(hidden.hidden_retainer_wc_interest_percent) || null,
+    retainerLiensPrincipal: clean(hidden.hidden_retainer_liens_principal_percent) || null,
+    retainerLiensInterest: clean(hidden.hidden_retainer_liens_interest_percent) || null,
+    pullCosts: clean(hidden.hidden_pull_costs) || null,
+    remit: clean(hidden.hidden_remit) || null,
+    notes: clean(details.notes) || null,
+    source: "admin-client-info",
+  };
+}
+
 function aliasTexts(entity: any): string[] {
   const aliases = Array.isArray(entity?.aliases) ? entity.aliases : [];
   return aliases
@@ -267,25 +327,28 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       );
     }
 
-    const currentDetails = detailObject(entity);
+    const currentInfo = await (prisma as any).providerClientInfo.findUnique({
+      where: { referenceEntityId: id },
+    });
+    const currentDetails = providerClientInfoDetails(currentInfo, detailObject(entity));
     const nextDetails = editableClientDetails(currentDetails, body);
     const changedFields = clientEditFieldNames(body);
     const auditAction = clientAuditAction(body);
 
-    const updated = await (prisma as any).referenceEntity.update({
+    const updatedInfo = await (prisma as any).providerClientInfo.upsert({
+      where: { referenceEntityId: id },
+      create: providerClientInfoDataFromDetails(id, entity.displayName, nextDetails),
+      update: providerClientInfoDataFromDetails(id, entity.displayName, nextDetails),
+    });
+
+    const updated = await (prisma as any).referenceEntity.findUnique({
       where: { id },
-      data: {
-        details: nextDetails,
-      },
-      select: {
-        id: true,
-        displayName: true,
-        normalizedName: true,
-        active: true,
-        details: true,
-        updatedAt: true,
+      include: {
+        aliases: { orderBy: { alias: "asc" } },
       },
     });
+
+    const updatedDetails = providerClientInfoDetails(updatedInfo, detailObject(updated));
 
     await createMatterAuditLogEntry({
       action: auditAction,
@@ -296,11 +359,11 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       entityType: "provider_client",
       fieldName: changedFields.length === 1 ? changedFields[0] : "Client Details",
       priorValue: jsonSafeValue(currentDetails),
-      newValue: jsonSafeValue(nextDetails),
+      newValue: jsonSafeValue(updatedDetails),
       details: jsonSafeValue({
         clientId: id,
-        displayName: clean(updated.displayName),
-        normalizedName: clean(updated.normalizedName),
+        displayName: clean(updated?.displayName),
+        normalizedName: clean(updated?.normalizedName),
         changedFields,
         appendedNote: "appendNote" in body ? clean(body.appendNote) : null,
         localOnly: true,
@@ -317,7 +380,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     return json({
       ok: true,
       action: "admin-client-detail-update",
-      sourceOfTruth: "Local Barsh Matters ReferenceEntity.details provider_client record",
+      sourceOfTruth: "Local Barsh Matters ProviderClientInfo source-of-truth table linked to ReferenceEntity",
       safety: {
         localOnly: true,
         noClioRecordsChanged: true,
@@ -328,11 +391,11 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       },
       client: {
         id: clean(updated.id),
-        displayName: clean(updated.displayName),
-        normalizedName: clean(updated.normalizedName),
-        isActive: updated.active !== false,
-        details: updated.details || {},
-        updatedAt: updated.updatedAt ?? null,
+        displayName: clean(updated?.displayName),
+        normalizedName: clean(updated?.normalizedName),
+        isActive: updated?.active !== false,
+        details: updatedDetails,
+        updatedAt: updated?.updatedAt ?? null,
       },
     });
   } catch (error: any) {
@@ -379,7 +442,10 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       );
     }
 
-    const details = detailObject(entity);
+    const providerClientInfo = await (prisma as any).providerClientInfo.findUnique({
+      where: { referenceEntityId: id },
+    });
+    const details = providerClientInfoDetails(providerClientInfo, detailObject(entity));
     const displayName = primaryName(entity);
     const aliases = aliasTexts(entity);
     const nameCandidates: string[] = Array.from(
@@ -517,7 +583,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     return json({
       action: "admin-client-detail",
       sourceOfTruth:
-        "Local Barsh Matters ReferenceEntity/ReferenceAlias provider_client records, ClaimIndex child matters, and MatterPaymentReceipt child-ledger rows.",
+        "Local Barsh Matters ProviderClientInfo source-of-truth table, ReferenceEntity/ReferenceAlias identity records, ClaimIndex child matters, and MatterPaymentReceipt child-ledger rows.",
       safety:
         "Read-only Admin Client detail/remittance preview. This route reads local tables only. It does not call Clio, write payments, edit ClaimIndex, generate documents, send email, print, queue, or export files.",
       client: {

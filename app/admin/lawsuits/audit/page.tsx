@@ -6,9 +6,32 @@ import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
 import React, { useEffect, useMemo, useState } from "react";
 
 type Severity = "critical" | "warning" | "info";
-type AuditStatus = "pass" | "review";
 
-type SampleRow = {
+type LawsuitAuditRow = {
+  id: number;
+  masterLawsuitId: string;
+  claimNumber?: string | null;
+  lawsuitMatters?: string | null;
+  venue?: string | null;
+  venueSelection?: string | null;
+  venueOther?: string | null;
+  indexAaaNumber?: string | null;
+  amountSoughtMode?: string | null;
+  amountSought?: number | null;
+  customAmountSought?: number | null;
+  clioMasterMatterId?: number | null;
+  clioMasterDisplayNumber?: string | null;
+  clioMasterMappedAt?: string | null;
+  clioMasterMappingSource?: string | null;
+  finalStatus?: string | null;
+  closeReason?: string | null;
+  parsedChildMatterIds?: number[];
+  parsedChildDisplayNumbers?: string[];
+  linkedClaimIndexChildCount?: number;
+  issue_detail?: string | null;
+};
+
+type ClaimIndexChildRow = {
   matter_id: number;
   display_number?: string | null;
   patient_name?: string | null;
@@ -16,26 +39,22 @@ type SampleRow = {
   client_name?: string | null;
   insurer_name?: string | null;
   claim_number_raw?: string | null;
-  claim_number_normalized?: string | null;
   claim_amount?: number | null;
-  payment_amount?: number | null;
   balance_amount?: number | null;
-  status?: string | null;
   final_status?: string | null;
   close_reason?: string | null;
   master_lawsuit_id?: string | null;
-  indexed_at?: string | null;
-  issue_detail?: string | null;
 };
 
 type AuditCheck = {
   id: string;
   label: string;
   severity: Severity;
-  status: AuditStatus;
+  status: "pass" | "review";
   count: number;
   description: string;
-  sampleRows: SampleRow[];
+  sampleRows: LawsuitAuditRow[];
+  sampleChildRows?: ClaimIndexChildRow[];
 };
 
 type CountBucket = {
@@ -48,12 +67,13 @@ type AuditResult = {
   readOnly?: boolean;
   sourceOfTruth?: string;
   generatedAt?: string;
-  staleIndexedAtDays?: number;
   summary?: {
-    totalRows: number;
-    linkedRows: number;
     localLawsuitCount: number;
-    closedLocalLawsuitCount: number;
+    linkedClaimIndexChildCount: number;
+    localLawsuitsWithLinkedChildren: number;
+    localLawsuitsWithoutLinkedChildren: number;
+    mappedMasterClioShellCount: number;
+    unmappedMasterClioShellCount: number;
     checksRun: number;
     checksWithFindings: number;
     criticalIssues: number;
@@ -61,10 +81,12 @@ type AuditResult = {
     infoIssues: number;
   };
   counts?: {
-    status: CountBucket[];
     finalStatus: CountBucket[];
     closeReason: CountBucket[];
-    masterLawsuitPresence: CountBucket[];
+    amountSoughtMode: CountBucket[];
+    venue: CountBucket[];
+    masterClioShellMapping: CountBucket[];
+    childLinkPresence: CountBucket[];
   };
   checks?: AuditCheck[];
   safety?: string;
@@ -144,7 +166,7 @@ function dateText(value: unknown): string {
 }
 
 function csvCell(value: unknown): string {
-  const text = clean(value).replace(/\r?\n/g, " ");
+  const text = Array.isArray(value) ? value.join(" | ") : clean(value).replace(/\r?\n/g, " ");
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
@@ -159,8 +181,7 @@ function severityStyle(severity: Severity): React.CSSProperties {
 }
 
 function statusText(check: AuditCheck): string {
-  if (check.count > 0) return "Review";
-  return "Pass";
+  return check.count > 0 ? "Review" : "Pass";
 }
 
 function exportAuditCsv(result: AuditResult) {
@@ -171,26 +192,33 @@ function exportAuditCsv(result: AuditResult) {
     "Status",
     "Count",
     "Description",
-    "Matter ID",
-    "Display Number",
-    "Patient",
-    "Provider",
-    "Client",
-    "Insurer",
-    "Claim Number",
-    "Claim Number Normalized",
-    "Claim Amount",
-    "Payment Amount",
-    "Balance Amount",
-    "Final Status",
-    "Closed Reason",
     "Master Lawsuit ID",
+    "Venue",
+    "Amount Mode",
+    "Amount Sought",
+    "Custom Amount",
+    "Final Status",
+    "Close Reason",
+    "Clio Master Matter ID",
+    "Clio Master Display Number",
+    "Linked ClaimIndex Child Count",
+    "Parsed Child Matter IDs",
+    "Parsed Child Display Numbers",
     "Issue Detail",
+    "Child Matter ID",
+    "Child Display Number",
+    "Child Patient",
+    "Child Provider",
+    "Child Final Status",
+    "Child Close Reason",
   ];
 
   const rows = (result.checks || []).flatMap((check) => {
-    if (!check.sampleRows?.length) {
-      return [[
+    const lawsuitRows = check.sampleRows?.length ? check.sampleRows : [null];
+    const childRows = check.sampleChildRows?.length ? check.sampleChildRows : [null];
+
+    if (check.sampleChildRows?.length && !check.sampleRows?.length) {
+      return childRows.map((child) => [
         check.id,
         check.label,
         check.severity,
@@ -209,34 +237,41 @@ function exportAuditCsv(result: AuditResult) {
         "",
         "",
         "",
-        "",
-        "",
-        "",
-      ]];
+        child?.matter_id,
+        child?.display_number,
+        child?.patient_name,
+        child?.provider_name || child?.client_name,
+        child?.final_status,
+        child?.close_reason,
+      ]);
     }
 
-    return check.sampleRows.map((row) => [
+    return lawsuitRows.map((row) => [
       check.id,
       check.label,
       check.severity,
       statusText(check),
       check.count,
       check.description,
-      row.matter_id,
-      row.display_number,
-      row.patient_name,
-      row.provider_name,
-      row.client_name,
-      row.insurer_name,
-      row.claim_number_raw,
-      row.claim_number_normalized,
-      row.claim_amount,
-      row.payment_amount,
-      row.balance_amount,
-      row.final_status,
-      row.close_reason,
-      row.master_lawsuit_id,
-      row.issue_detail,
+      row?.masterLawsuitId,
+      row?.venueSelection || row?.venue,
+      row?.amountSoughtMode,
+      row?.amountSought,
+      row?.customAmountSought,
+      row?.finalStatus,
+      row?.closeReason,
+      row?.clioMasterMatterId,
+      row?.clioMasterDisplayNumber,
+      row?.linkedClaimIndexChildCount,
+      row?.parsedChildMatterIds || [],
+      row?.parsedChildDisplayNumbers || [],
+      row?.issue_detail,
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
     ]);
   });
 
@@ -245,7 +280,7 @@ function exportAuditCsv(result: AuditResult) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `claimindex-data-quality-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+  anchor.download = `lawsuit-master-data-quality-audit-${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
@@ -295,26 +330,26 @@ function CountTable({ title, rows }: { title: string; rows: CountBucket[] }) {
   );
 }
 
-export default function AdminClaimIndexAuditPage() {
+export default function AdminLawsuitAuditPage() {
   const [result, setResult] = useState<AuditResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("Loading ClaimIndex data-quality audit...");
+  const [message, setMessage] = useState("Loading Lawsuit/master data-quality audit...");
 
   async function loadAudit() {
     setLoading(true);
-    setMessage("Auditing local ClaimIndex data quality...");
+    setMessage("Auditing local Lawsuit/master data quality...");
     try {
-      const response = await fetch("/api/admin/claim-index/audit", { cache: "no-store" });
+      const response = await fetch("/api/admin/lawsuits/audit", { cache: "no-store" });
       const data = (await response.json()) as AuditResult;
       if (!response.ok || !data.ok) {
-        throw new Error(data.error || "Admin ClaimIndex data-quality audit failed.");
+        throw new Error(data.error || "Admin Lawsuit/master data-quality audit failed.");
       }
       setResult(data);
       setMessage(
         `Audit complete: ${data.summary?.checksWithFindings ?? 0} of ${data.summary?.checksRun ?? 0} check(s) have findings.`
       );
     } catch (err: any) {
-      setMessage(err?.message || "Admin ClaimIndex data-quality audit failed.");
+      setMessage(err?.message || "Admin Lawsuit/master data-quality audit failed.");
       setResult(null);
     } finally {
       setLoading(false);
@@ -329,7 +364,7 @@ export default function AdminClaimIndexAuditPage() {
   const checksWithFindings = checks.filter((check) => check.count > 0);
 
   return (
-    <main data-barsh-admin-claim-index-audit="read-only" style={pageStyle}>
+    <main data-barsh-admin-lawsuit-audit="read-only" style={pageStyle}>
       <div style={{ maxWidth: 1360, margin: "0 auto", display: "grid", gap: 18 }}>
         <section style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
           <BarshHeaderQuickNav />
@@ -340,11 +375,11 @@ export default function AdminClaimIndexAuditPage() {
           <div style={{ fontSize: 13, fontWeight: 950, color: "#4f46e5", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Administrator · Read-only
           </div>
-          <h1 style={{ margin: 0, fontSize: 32, lineHeight: 1.1 }}>ClaimIndex Data-Quality Audit</h1>
+          <h1 style={{ margin: 0, fontSize: 32, lineHeight: 1.1 }}>Lawsuit / Master Data-Quality Audit</h1>
           <p style={{ margin: 0, color: "#475569", lineHeight: 1.45, maxWidth: 980 }}>
-            Read-only restore-confidence audit of the local ClaimIndex table. This page identifies missing identity fields,
-            close-status inconsistencies, lawsuit grouping issues, and financial review flags. It does not edit matters,
-            restore data, call Clio, generate documents, send email, print, queue, or write to the database.
+            Read-only restore-confidence audit of local Lawsuit/master metadata and linked ClaimIndex child rows.
+            This page checks master IDs, child membership, amount/venue metadata, master Clio shell mapping, and close-status consistency.
+            It does not edit, restore, deaggregate, delete, call Clio, generate documents, send email, print, queue, or write to the database.
           </p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button type="button" onClick={() => void loadAudit()} disabled={loading} style={buttonStyle}>
@@ -358,11 +393,8 @@ export default function AdminClaimIndexAuditPage() {
             >
               Export Audit CSV
             </button>
-            <a href="/admin/lawsuits/audit" style={secondaryButtonStyle}>
-              Lawsuit / Master Audit
-            </a>
-            <a href="/admin/claim-index" style={secondaryButtonStyle}>
-              Open ClaimIndex Viewer
+            <a href="/admin/claim-index/audit" style={secondaryButtonStyle}>
+              ClaimIndex Audit
             </a>
             <a href="/admin" style={secondaryButtonStyle}>
               Back to Admin Home
@@ -380,19 +412,21 @@ export default function AdminClaimIndexAuditPage() {
         {result ? (
           <>
             <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12 }}>
-              <SummaryCard label="ClaimIndex rows" value={result.summary?.totalRows ?? 0} />
+              <SummaryCard label="Local lawsuits" value={result.summary?.localLawsuitCount ?? 0} />
+              <SummaryCard label="Linked child rows" value={result.summary?.linkedClaimIndexChildCount ?? 0} note="ClaimIndex rows with master_lawsuit_id" />
               <SummaryCard label="Checks with findings" value={result.summary?.checksWithFindings ?? 0} note={`${result.summary?.checksRun ?? 0} checks run`} />
               <SummaryCard label="Critical issues" value={result.summary?.criticalIssues ?? 0} />
               <SummaryCard label="Warnings" value={result.summary?.warningIssues ?? 0} />
-              <SummaryCard label="Linked rows" value={result.summary?.linkedRows ?? 0} note="Rows with master_lawsuit_id" />
-              <SummaryCard label="Local lawsuits" value={result.summary?.localLawsuitCount ?? 0} note={`${result.summary?.closedLocalLawsuitCount ?? 0} closed by local options`} />
+              <SummaryCard label="Mapped Clio shells" value={result.summary?.mappedMasterClioShellCount ?? 0} note={`${result.summary?.unmappedMasterClioShellCount ?? 0} unmapped`} />
             </section>
 
             <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
-              <CountTable title="Counts by final_status" rows={result.counts?.finalStatus || []} />
-              <CountTable title="Counts by close_reason" rows={result.counts?.closeReason || []} />
-              <CountTable title="Counts by status" rows={result.counts?.status || []} />
-              <CountTable title="Master lawsuit link presence" rows={result.counts?.masterLawsuitPresence || []} />
+              <CountTable title="Counts by lawsuit finalStatus" rows={result.counts?.finalStatus || []} />
+              <CountTable title="Counts by lawsuit closeReason" rows={result.counts?.closeReason || []} />
+              <CountTable title="Counts by amountSoughtMode" rows={result.counts?.amountSoughtMode || []} />
+              <CountTable title="Counts by venue" rows={result.counts?.venue || []} />
+              <CountTable title="Master Clio shell mapping" rows={result.counts?.masterClioShellMapping || []} />
+              <CountTable title="Child link presence" rows={result.counts?.childLinkPresence || []} />
             </section>
 
             <section style={cardStyle}>
@@ -401,7 +435,7 @@ export default function AdminClaimIndexAuditPage() {
                 {checks.map((check) => (
                   <article
                     key={check.id}
-                    data-barsh-admin-claim-index-audit-check={check.id}
+                    data-barsh-admin-lawsuit-audit-check={check.id}
                     style={{
                       border: "1px solid #e5e7eb",
                       borderRadius: 18,
@@ -428,40 +462,71 @@ export default function AdminClaimIndexAuditPage() {
 
                     {check.sampleRows?.length ? (
                       <div style={{ overflowX: "auto", border: "1px solid #e5e7eb", borderRadius: 14 }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1180 }}>
                           <thead>
                             <tr>
-                              <th style={thStyle}>Matter ID</th>
-                              <th style={thStyle}>Display #</th>
-                              <th style={thStyle}>Patient</th>
-                              <th style={thStyle}>Provider / Client</th>
-                              <th style={thStyle}>Insurer</th>
-                              <th style={thStyle}>Claim #</th>
-                              <th style={thStyle}>Final Status</th>
-                              <th style={thStyle}>Closed Reason</th>
                               <th style={thStyle}>Master Lawsuit</th>
-                              <th style={thStyle}>Claim</th>
-                              <th style={thStyle}>Payment</th>
-                              <th style={thStyle}>Balance</th>
+                              <th style={thStyle}>Venue</th>
+                              <th style={thStyle}>Amount Mode</th>
+                              <th style={thStyle}>Amount</th>
+                              <th style={thStyle}>Final Status</th>
+                              <th style={thStyle}>Close Reason</th>
+                              <th style={thStyle}>Clio Shell</th>
+                              <th style={thStyle}>Linked Children</th>
+                              <th style={thStyle}>Parsed Child IDs</th>
+                              <th style={thStyle}>Parsed Display #s</th>
                               <th style={thStyle}>Detail</th>
                             </tr>
                           </thead>
                           <tbody>
                             {check.sampleRows.map((row) => (
-                              <tr key={`${check.id}-${row.matter_id}-${row.issue_detail || ""}`}>
+                              <tr key={`${check.id}-${row.id}-${row.issue_detail || ""}`}>
+                                <td style={tdStyle}>{row.masterLawsuitId}</td>
+                                <td style={tdStyle}>{row.venueSelection || row.venue || ""}</td>
+                                <td style={tdStyle}>{row.amountSoughtMode || ""}</td>
+                                <td style={tdStyle}>{money(row.amountSought || row.customAmountSought)}</td>
+                                <td style={tdStyle}>{row.finalStatus || ""}</td>
+                                <td style={tdStyle}>{row.closeReason || ""}</td>
+                                <td style={tdStyle}>{row.clioMasterDisplayNumber || row.clioMasterMatterId || ""}</td>
+                                <td style={tdStyle}>{row.linkedClaimIndexChildCount ?? ""}</td>
+                                <td style={tdStyle}>{(row.parsedChildMatterIds || []).join(", ")}</td>
+                                <td style={tdStyle}>{(row.parsedChildDisplayNumbers || []).join(", ")}</td>
+                                <td style={tdStyle}>{row.issue_detail || ""}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : check.sampleChildRows?.length ? (
+                      <div style={{ overflowX: "auto", border: "1px solid #e5e7eb", borderRadius: 14 }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+                          <thead>
+                            <tr>
+                              <th style={thStyle}>Matter ID</th>
+                              <th style={thStyle}>Display #</th>
+                              <th style={thStyle}>Master Lawsuit</th>
+                              <th style={thStyle}>Patient</th>
+                              <th style={thStyle}>Provider</th>
+                              <th style={thStyle}>Claim #</th>
+                              <th style={thStyle}>Final Status</th>
+                              <th style={thStyle}>Close Reason</th>
+                              <th style={thStyle}>Claim Amount</th>
+                              <th style={thStyle}>Balance</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {check.sampleChildRows.map((row) => (
+                              <tr key={`${check.id}-${row.matter_id}`}>
                                 <td style={tdStyle}>{row.matter_id}</td>
                                 <td style={tdStyle}>{row.display_number || ""}</td>
+                                <td style={tdStyle}>{row.master_lawsuit_id || ""}</td>
                                 <td style={tdStyle}>{row.patient_name || ""}</td>
                                 <td style={tdStyle}>{row.provider_name || row.client_name || ""}</td>
-                                <td style={tdStyle}>{row.insurer_name || ""}</td>
-                                <td style={tdStyle}>{row.claim_number_raw || row.claim_number_normalized || ""}</td>
+                                <td style={tdStyle}>{row.claim_number_raw || ""}</td>
                                 <td style={tdStyle}>{row.final_status || ""}</td>
                                 <td style={tdStyle}>{row.close_reason || ""}</td>
-                                <td style={tdStyle}>{row.master_lawsuit_id || ""}</td>
                                 <td style={tdStyle}>{money(row.claim_amount)}</td>
-                                <td style={tdStyle}>{money(row.payment_amount)}</td>
                                 <td style={tdStyle}>{money(row.balance_amount)}</td>
-                                <td style={tdStyle}>{row.issue_detail || ""}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -478,12 +543,12 @@ export default function AdminClaimIndexAuditPage() {
             {checksWithFindings.length ? (
               <section style={{ ...cardStyle, borderColor: "#fde68a", background: "#fffbeb" }}>
                 <strong>Review note:</strong> This page reports findings only. It intentionally provides no fix, restore,
-                edit, delete, Clio, document, email, print, or queue controls.
+                edit, delete, deaggregate, Clio, document, email, print, or queue controls.
               </section>
             ) : null}
 
             <section style={{ ...cardStyle, color: "#475569", lineHeight: 1.45 }}>
-              API safety message: {result.safety || "Read-only ClaimIndex data-quality audit. No write actions are available."}
+              API safety message: {result.safety || "Read-only Lawsuit/master data-quality audit. No write actions are available."}
             </section>
           </>
         ) : null}

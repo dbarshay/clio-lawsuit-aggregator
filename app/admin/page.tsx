@@ -21,6 +21,13 @@ const adminCards = [
     icon: "🧪",
   },
   {
+    label: "Lawsuit / Master Audit",
+    href: "/admin/lawsuits/audit",
+    description:
+      "Read-only restore-confidence audit for local Lawsuit/master metadata, child links, close status, and document-generation readiness.",
+    icon: "⚖️",
+  },
+  {
     label: "Lawsuit Cleanup / Deaggregate",
     href: "/admin/lawsuit-cleanup",
     description:

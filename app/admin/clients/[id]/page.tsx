@@ -60,10 +60,123 @@ function dateOnly(value: unknown) {
   return date.toLocaleDateString();
 }
 
-function detailEntries(details: Record<string, unknown> | undefined) {
-  if (!details || typeof details !== "object") return [];
-  return Object.entries(details).sort(([a], [b]) => a.localeCompare(b));
+function asPlainObject(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
 }
+
+function detailEntries(details: unknown): { field: string; value: string; source: string }[] {
+  const root = asPlainObject(details);
+  const hidden = asPlainObject(root._hiddenImportFields);
+
+  const rows: { field: string; value: string; source: string }[] = [];
+
+  for (const [key, value] of Object.entries(root)) {
+    if (key === "_hiddenImportFields") continue;
+    const text = String(value ?? "").trim();
+    if (!text) continue;
+    rows.push({ field: key, value: text, source: "Imported" });
+  }
+
+  for (const [key, value] of Object.entries(hidden)) {
+    const text = String(value ?? "").trim();
+    if (!text) continue;
+    rows.push({ field: key, value: text, source: "Hidden Import" });
+  }
+
+  return rows.sort((a, b) => {
+    const sourceCompare = a.source.localeCompare(b.source);
+    if (sourceCompare) return sourceCompare;
+    return a.field.localeCompare(b.field);
+  });
+}
+
+function findDetailValue(details: unknown, keys: string[]) {
+  const entries = detailEntries(details);
+  const compact = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const wanted = keys.map(compact);
+
+  for (const key of wanted) {
+    const exact = entries.find((entry) => compact(entry.field) === key);
+    if (exact) return exact.value;
+  }
+
+  for (const key of wanted) {
+    const fuzzy = entries.find((entry) => compact(entry.field).includes(key));
+    if (fuzzy) return fuzzy.value;
+  }
+
+  return "";
+}
+
+function normalizeAddressDisplay(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s*•\s*/g, "\n")
+    .replace(/,\s*(\d{5}(?:-\d{4})?)\s*$/gm, " $1");
+}
+
+function clientAddress(details: unknown) {
+  const direct = findDetailValue(details, ["address", "full_address", "mailing_address"]);
+  if (direct) return normalizeAddressDisplay(direct);
+
+  const street = findDetailValue(details, ["hidden_street", "street", "address_line_1", "address1"]);
+  const street2 = findDetailValue(details, ["hidden_suite", "suite", "address_line_2", "address2"]);
+  const city = findDetailValue(details, ["hidden_city", "city"]);
+  const state = findDetailValue(details, ["hidden_state", "state"]);
+  const zip = findDetailValue(details, ["hidden_zipcode", "hidden_zip", "zip", "zipcode", "postal_code"]);
+
+  const cityState = [city, state].filter(Boolean).join(", ");
+  const cityStateZip = cityState && zip ? `${cityState} ${zip}` : cityState || zip;
+
+  return [street, street2, cityStateZip].filter(Boolean).join("\n");
+}
+
+function percentDisplay(value: unknown) {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  if (text.includes("%")) return text;
+  const numeric = Number(text.replace(/[$,%\s,]/g, ""));
+  if (!Number.isFinite(numeric)) return text;
+  return `${numeric}%`;
+}
+
+function statusBadge(isActive?: boolean) {
+  const active = isActive !== false;
+  return (
+    <span
+      style={{
+        color: active ? "#166534" : "#b91c1c",
+        background: active ? "#dcfce7" : "#fee2e2",
+        border: `1px solid ${active ? "#86efac" : "#fecaca"}`,
+        borderRadius: 999,
+        padding: "3px 9px",
+        fontWeight: 900,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {active ? "Active" : "Inactive"}
+    </span>
+  );
+}
+
+function clientNotes(details: unknown) {
+  return (
+    findDetailValue(details, [
+      "notes",
+      "note",
+      "comments",
+      "comment",
+      "remarks",
+      "remark",
+      "memo",
+      "internal_notes",
+      "hidden_notes",
+    ]) || ""
+  );
+}
+
+
 
 function csvEscape(value: unknown) {
   const text = String(value ?? "");
@@ -94,6 +207,23 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
   const [checkNumber, setCheckNumber] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [editingField, setEditingField] = useState<keyof typeof clientForm | null>(null);
+  const [savingClient, setSavingClient] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+  const [clientForm, setClientForm] = useState({
+    address: "",
+    owner: "",
+    providerGroup: "",
+    retainerNFPrincipal: "",
+    retainerNFInterest: "",
+    retainerWCPrincipal: "",
+    retainerWCInterest: "",
+    retainerLiensPrincipal: "",
+    retainerLiensInterest: "",
+    pullCosts: "",
+    remit: "",
+    notes: "",
+  });
 
   useEffect(() => {
     Promise.resolve(params).then((resolved) => setId(resolved.id));
@@ -125,6 +255,60 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
   const remittanceRows = data?.remittance?.rows || [];
   const matterRows = data?.matters?.rows || [];
 
+  useEffect(() => {
+    if (!client) return;
+    setClientForm({
+      address: clientAddress(client.details),
+      owner: findDetailValue(client.details, ["hidden_owner", "owner", "Owner", "assigned_owner", "account_owner", "client_owner"]),
+      providerGroup: findDetailValue(client.details, ["hidden_group_name", "group_name", "provider_group", "Provider Group", "Group Name"]),
+      retainerNFPrincipal: percentDisplay(findDetailValue(client.details, ["hidden_retainer_principal_nf_percent", "retainer_nf_principal_percent", "Retainer NF Principal", "Retainer Principal NF", "NF Principal", "Principal Fee Percent", "Principal Fee %"])),
+      retainerNFInterest: percentDisplay(findDetailValue(client.details, ["hidden_retainer_interest_percent", "hidden_retainer_nf_interest_percent", "retainer_nf_interest_percent", "Retainer NF Interest", "Retainer Interest", "NF Interest", "Interest Fee Percent", "Interest Fee %"])),
+      retainerWCPrincipal: percentDisplay(findDetailValue(client.details, ["hidden_retainer_wc_principal_percent", "retainer_wc_principal_percent", "Retainer WC Principal", "WC Principal"])),
+      retainerWCInterest: percentDisplay(findDetailValue(client.details, ["hidden_retainer_wc_interest_percent", "retainer_wc_interest_percent", "Retainer WC Interest", "WC Interest"])),
+      retainerLiensPrincipal: percentDisplay(findDetailValue(client.details, ["hidden_retainer_liens_principal_percent", "hidden_retainer_lien_principal_percent", "retainer_liens_principal_percent", "retainer_lien_principal_percent", "Retainer Liens Principal", "Retainer Lien Principal", "Liens Principal", "Lien Principal"])),
+      retainerLiensInterest: percentDisplay(findDetailValue(client.details, ["hidden_retainer_liens_interest_percent", "hidden_retainer_lien_interest_percent", "retainer_liens_interest_percent", "retainer_lien_interest_percent", "Retainer Liens Interest", "Retainer Lien Interest", "Liens Interest", "Lien Interest"])),
+      pullCosts: findDetailValue(client.details, ["hidden_pull_costs", "pull_costs", "Pull Costs", "Pull Cost"]),
+      remit: findDetailValue(client.details, ["hidden_remit", "remit", "Remit", "remit_type", "remit_account"]),
+      notes: clientNotes(client.details),
+    });
+  }, [client]);
+
+  function updateClientForm(field: keyof typeof clientForm, value: string) {
+    setClientForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function saveClientDefaults() {
+    if (!id) return;
+    setSavingClient(true);
+    setSaveMessage("");
+    setError("");
+
+    try {
+      const body =
+        editingField === "notes"
+          ? { appendNote: clientForm.notes }
+          : editingField === "address"
+            ? { address: clientForm.address }
+            : clientForm;
+
+      const res = await fetch(`/api/admin/clients/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok || json?.ok === false) throw new Error(json?.error || "Could not save client info.");
+
+      await loadDetail(id);
+      setEditingField(null);
+      setSaveMessage(editingField === "notes" ? "Note added." : "Saved.");
+    } catch (err: any) {
+      setError(err?.message || "Could not save client info.");
+    } finally {
+      setSavingClient(false);
+    }
+  }
+
   const remittanceCsvRows = useMemo(
     () =>
       remittanceRows.map((row: any) => ({
@@ -145,6 +329,127 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
       })),
     [remittanceRows]
   );
+
+  function beginEdit(field: keyof typeof clientForm) {
+    setSaveMessage("");
+    setError("");
+    if (field === "notes") {
+      setClientForm((current) => ({ ...current, notes: "" }));
+    }
+    setEditingField(field);
+  }
+
+  function cancelEdit() {
+    setEditingField(null);
+    if (client) {
+      setClientForm({
+        address: clientAddress(client.details),
+        owner: findDetailValue(client.details, ["hidden_owner", "owner", "Owner", "assigned_owner", "account_owner", "client_owner"]),
+        providerGroup: findDetailValue(client.details, ["hidden_group_name", "group_name", "provider_group", "Provider Group", "Group Name"]),
+        retainerNFPrincipal: percentDisplay(findDetailValue(client.details, ["hidden_retainer_principal_nf_percent", "retainer_nf_principal_percent", "Retainer NF Principal", "Retainer Principal NF", "NF Principal", "Principal Fee Percent", "Principal Fee %"])),
+        retainerNFInterest: percentDisplay(findDetailValue(client.details, ["hidden_retainer_interest_percent", "hidden_retainer_nf_interest_percent", "retainer_nf_interest_percent", "Retainer NF Interest", "Retainer Interest", "NF Interest", "Interest Fee Percent", "Interest Fee %"])),
+        retainerWCPrincipal: percentDisplay(findDetailValue(client.details, ["hidden_retainer_wc_principal_percent", "retainer_wc_principal_percent", "Retainer WC Principal", "WC Principal"])),
+        retainerWCInterest: percentDisplay(findDetailValue(client.details, ["hidden_retainer_wc_interest_percent", "retainer_wc_interest_percent", "Retainer WC Interest", "WC Interest"])),
+        retainerLiensPrincipal: percentDisplay(findDetailValue(client.details, ["hidden_retainer_liens_principal_percent", "hidden_retainer_lien_principal_percent", "retainer_liens_principal_percent", "retainer_lien_principal_percent", "Retainer Liens Principal", "Retainer Lien Principal", "Liens Principal", "Lien Principal"])),
+        retainerLiensInterest: percentDisplay(findDetailValue(client.details, ["hidden_retainer_liens_interest_percent", "hidden_retainer_lien_interest_percent", "retainer_liens_interest_percent", "retainer_lien_interest_percent", "Retainer Liens Interest", "Retainer Lien Interest", "Liens Interest", "Lien Interest"])),
+        pullCosts: findDetailValue(client.details, ["hidden_pull_costs", "pull_costs", "Pull Costs", "Pull Cost"]),
+        remit: findDetailValue(client.details, ["hidden_remit", "remit", "Remit", "remit_type", "remit_account"]),
+        notes: clientNotes(client.details),
+      });
+    }
+  }
+
+  function rowButtons(field: keyof typeof clientForm, addLabel?: string) {
+    if (editingField !== field) {
+      return (
+        <button
+          type="button"
+          onClick={() => beginEdit(field)}
+          style={{ padding: "1px 6px", borderRadius: 6, border: "1px solid #cbd5e1", background: "#fff", fontSize: 12, fontWeight: 800, lineHeight: 1.1, alignSelf: "start", marginTop: 0 }}
+        >
+          {addLabel || "Edit"}
+        </button>
+      );
+    }
+
+    return (
+      <span style={{ display: "inline-flex", gap: 6, alignSelf: "start" }}>
+        <button
+          type="button"
+          disabled={savingClient}
+          onClick={saveClientDefaults}
+          style={{ padding: "1px 6px", borderRadius: 6, border: "1px solid #2563eb", background: "#2563eb", color: "#fff", fontSize: 12, fontWeight: 800, lineHeight: 1.1, alignSelf: "start", marginTop: 0 }}
+        >
+          {savingClient ? "Saving..." : "Save"}
+        </button>
+        <button
+          type="button"
+          disabled={savingClient}
+          onClick={cancelEdit}
+          style={{ padding: "1px 6px", borderRadius: 6, border: "1px solid #cbd5e1", background: "#fff", fontSize: 12, fontWeight: 800, lineHeight: 1.1, alignSelf: "start", marginTop: 0 }}
+        >
+          Cancel
+        </button>
+      </span>
+    );
+  }
+
+  function editableTextRow(label: string, field: keyof typeof clientForm, displayValue: string, options?: { multiline?: boolean; addLabel?: string }) {
+    const isEditing = editingField === field;
+    return (
+      <>
+        <dt style={{ fontWeight: 800 }}>{label}</dt>
+        <dd style={{ margin: 0, display: "grid", gridTemplateColumns: "1fr auto", gap: 6, alignItems: options?.multiline ? "start" : "center", lineHeight: 1.2 }}>
+          {isEditing ? (
+            options?.multiline ? (
+              <textarea
+                value={clientForm[field]}
+                onChange={(event) => updateClientForm(field, event.target.value)}
+                style={{ width: "100%", minHeight: 70, padding: 8, border: "1px solid #cbd5e1", borderRadius: 8 }}
+              />
+            ) : (
+              <input
+                value={clientForm[field]}
+                onChange={(event) => updateClientForm(field, event.target.value)}
+                style={{ width: "100%", padding: 8, border: "1px solid #cbd5e1", borderRadius: 8 }}
+              />
+            )
+          ) : (
+            <span style={options?.multiline ? { whiteSpace: "pre-wrap" } : undefined}>{displayValue || "—"}</span>
+          )}
+          {rowButtons(field, options?.addLabel)}
+        </dd>
+      </>
+    );
+  }
+
+  function editableSelectRow(label: string, field: keyof typeof clientForm, displayValue: string, options: string[]) {
+    const isEditing = editingField === field;
+    return (
+      <>
+        <dt style={{ fontWeight: 800 }}>{label}</dt>
+        <dd style={{ margin: 0, display: "grid", gridTemplateColumns: "1fr auto", gap: 6, alignItems: "center", lineHeight: 1.2 }}>
+          {isEditing ? (
+            <select
+              value={clientForm[field]}
+              onChange={(event) => updateClientForm(field, event.target.value)}
+              style={{ width: "100%", padding: 8, border: "1px solid #cbd5e1", borderRadius: 8, background: "#fff" }}
+            >
+              <option value="">—</option>
+              {options.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span>{displayValue || "—"}</span>
+          )}
+          {rowButtons(field)}
+        </dd>
+      </>
+    );
+  }
 
   return (
     <main style={pageStyle}>
@@ -168,70 +473,268 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
           Client
         </div>
         <h1 style={{ margin: "6px 0 8px", fontSize: 34 }}>{client?.displayName || "Loading client..."}</h1>
-        <p style={{ margin: 0, color: "#475569", maxWidth: 1040, lineHeight: 1.6 }}>
-          Client information is read from local provider/client reference data. Invoicing/remittance reporting is
-          child-matter based only, including child allocation receipts created from the Lawsuit payment workflow.
-        </p>
       </section>
 
-      <section style={{ display: "grid", gridTemplateColumns: "minmax(320px, 1fr) minmax(320px, 1fr)", gap: 18, marginBottom: 18 }}>
-        <div style={cardStyle}>
-          <h2 style={{ marginTop: 0 }}>Client Info</h2>
-          <dl style={{ display: "grid", gridTemplateColumns: "150px 1fr", gap: "8px 12px", margin: 0 }}>
+      <section
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(260px, 0.9fr) minmax(260px, 0.9fr) minmax(260px, 0.8fr)",
+          gap: 18,
+          marginBottom: 18,
+          alignItems: "start",
+        }}
+      >
+        <div style={{ ...cardStyle, position: "relative", paddingTop: 22 }}>
+          <div style={{ position: "absolute", top: 10, right: 12 }}>
+            {editingField === "address" ? (
+              <span style={{ display: "inline-flex", gap: 6 }}>
+                <button
+                  type="button"
+                  disabled={savingClient}
+                  onClick={saveClientDefaults}
+                  style={{ padding: "1px 6px", borderRadius: 6, border: "1px solid #2563eb", background: "#2563eb", color: "#fff", fontSize: 12, fontWeight: 800, lineHeight: 1.1 }}
+                >
+                  {savingClient ? "Saving..." : "Save"}
+                </button>
+                <button
+                  type="button"
+                  disabled={savingClient}
+                  onClick={cancelEdit}
+                  style={{ padding: "1px 6px", borderRadius: 6, border: "1px solid #cbd5e1", background: "#fff", fontSize: 12, fontWeight: 800, lineHeight: 1.1 }}
+                >
+                  Cancel
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => beginEdit("address")}
+                style={{ padding: "1px 6px", borderRadius: 6, border: "1px solid #cbd5e1", background: "#fff", fontSize: 12, fontWeight: 800, lineHeight: 1.1 }}
+              >
+                Edit
+              </button>
+            )}
+          </div>
+          <dl style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: "8px 12px", margin: 0 }}>
             <dt style={{ fontWeight: 800 }}>Name</dt>
             <dd style={{ margin: 0 }}>{client?.displayName || ""}</dd>
-            <dt style={{ fontWeight: 800 }}>Normalized</dt>
-            <dd style={{ margin: 0 }}>{client?.normalizedName || ""}</dd>
+            <dt style={{ fontWeight: 800 }}>Address</dt>
+            <dd style={{ margin: 0 }}>
+              {editingField === "address" ? (
+                <textarea
+                  value={clientForm.address}
+                  onChange={(event) => updateClientForm("address", event.target.value)}
+                  style={{ width: "100%", minHeight: 70, padding: 8, border: "1px solid #cbd5e1", borderRadius: 8 }}
+                />
+              ) : (
+                <span style={{ whiteSpace: "pre-wrap", display: "block" }}>{clientAddress(client?.details) || "—"}</span>
+              )}
+            </dd>
             <dt style={{ fontWeight: 800 }}>Status</dt>
-            <dd style={{ margin: 0 }}>{client?.isActive === false ? "Inactive" : "Active"}</dd>
-            <dt style={{ fontWeight: 800 }}>Source</dt>
-            <dd style={{ margin: 0 }}>{client?.source || ""}</dd>
+            <dd style={{ margin: 0 }}>{statusBadge(client?.isActive)}</dd>
             <dt style={{ fontWeight: 800 }}>Aliases</dt>
             <dd style={{ margin: 0 }}>{client?.aliases?.length ? client.aliases.join(", ") : "—"}</dd>
           </dl>
         </div>
 
         <div style={cardStyle}>
-          <h2 style={{ marginTop: 0 }}>Invoicing / Remittance Summary</h2>
-          <dl style={{ display: "grid", gridTemplateColumns: "190px 1fr", gap: "8px 12px", margin: 0 }}>
-            <dt style={{ fontWeight: 800 }}>Child matters</dt>
-            <dd style={{ margin: 0 }}>{data?.matters?.count ?? 0}</dd>
-            <dt style={{ fontWeight: 800 }}>Receipt rows</dt>
-            <dd style={{ margin: 0 }}>{data?.remittance?.count ?? 0}</dd>
-            <dt style={{ fontWeight: 800 }}>Active total</dt>
-            <dd style={{ margin: 0 }}>{money(data?.remittance?.activeTotal || 0)}</dd>
-            <dt style={{ fontWeight: 800 }}>Voided total</dt>
-            <dd style={{ margin: 0 }}>{money(data?.remittance?.voidedTotal || 0)}</dd>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+            {editingField === "providerGroup" ? (
+              <span style={{ display: "inline-flex", gap: 6, alignSelf: "start" }}>
+                <button
+                  type="button"
+                  disabled={savingClient}
+                  onClick={saveClientDefaults}
+                  style={{ padding: "1px 6px", borderRadius: 6, border: "1px solid #2563eb", background: "#2563eb", color: "#fff", fontSize: 12, fontWeight: 800, lineHeight: 1.1, alignSelf: "start", marginTop: 0 }}
+                >
+                  {savingClient ? "Saving..." : "Save"}
+                </button>
+                <button
+                  type="button"
+                  disabled={savingClient}
+                  onClick={cancelEdit}
+                  style={{ padding: "1px 6px", borderRadius: 6, border: "1px solid #cbd5e1", background: "#fff", fontSize: 12, fontWeight: 800, lineHeight: 1.1, alignSelf: "start", marginTop: 0 }}
+                >
+                  Cancel
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => beginEdit("providerGroup")}
+                style={{ padding: "1px 6px", borderRadius: 6, border: "1px solid #cbd5e1", background: "#fff", fontSize: 12, fontWeight: 800, lineHeight: 1.1, alignSelf: "start", marginTop: 0 }}
+              >
+                Edit
+              </button>
+            )}
+          </div>
+
+          <dl style={{ display: "grid", gridTemplateColumns: "190px 1fr", gap: "4px 10px", margin: 0 }}>
+            <dt style={{ fontWeight: 800 }}>Owner</dt>
+            <dd style={{ margin: 0 }}>
+              {editingField === "providerGroup" ? (
+                <input value={clientForm.owner} onChange={(event) => updateClientForm("owner", event.target.value)} style={{ width: "100%", padding: 6, border: "1px solid #cbd5e1", borderRadius: 8 }} />
+              ) : (
+                findDetailValue(client?.details, ["hidden_owner", "owner", "Owner", "assigned_owner", "account_owner", "client_owner"]) || "—"
+              )}
+            </dd>
+
+            <dt style={{ fontWeight: 800 }}>Provider Group</dt>
+            <dd style={{ margin: 0 }}>
+              {editingField === "providerGroup" ? (
+                <input value={clientForm.providerGroup} onChange={(event) => updateClientForm("providerGroup", event.target.value)} style={{ width: "100%", padding: 6, border: "1px solid #cbd5e1", borderRadius: 8 }} />
+              ) : (
+                findDetailValue(client?.details, ["hidden_group_name", "group_name", "provider_group", "Provider Group", "Group Name"]) || "—"
+              )}
+            </dd>
+
+            <dt style={{ fontWeight: 800 }}>Retainer NF Principal</dt>
+            <dd style={{ margin: 0 }}>
+              {editingField === "providerGroup" ? (
+                <input value={clientForm.retainerNFPrincipal} onChange={(event) => updateClientForm("retainerNFPrincipal", event.target.value)} style={{ width: "100%", padding: 6, border: "1px solid #cbd5e1", borderRadius: 8 }} />
+              ) : (
+                percentDisplay(findDetailValue(client?.details, ["hidden_retainer_principal_nf_percent", "retainer_nf_principal_percent", "Retainer NF Principal", "Retainer Principal NF", "NF Principal", "Principal Fee Percent", "Principal Fee %"])) || "—"
+              )}
+            </dd>
+
+            <dt style={{ fontWeight: 800 }}>Retainer NF Interest</dt>
+            <dd style={{ margin: 0 }}>
+              {editingField === "providerGroup" ? (
+                <input value={clientForm.retainerNFInterest} onChange={(event) => updateClientForm("retainerNFInterest", event.target.value)} style={{ width: "100%", padding: 6, border: "1px solid #cbd5e1", borderRadius: 8 }} />
+              ) : (
+                percentDisplay(findDetailValue(client?.details, ["hidden_retainer_interest_percent", "hidden_retainer_nf_interest_percent", "retainer_nf_interest_percent", "Retainer NF Interest", "Retainer Interest", "NF Interest", "Interest Fee Percent", "Interest Fee %"])) || "—"
+              )}
+            </dd>
+
+            <dt style={{ fontWeight: 800 }}>Retainer WC Principal</dt>
+            <dd style={{ margin: 0 }}>
+              {editingField === "providerGroup" ? (
+                <input value={clientForm.retainerWCPrincipal} onChange={(event) => updateClientForm("retainerWCPrincipal", event.target.value)} style={{ width: "100%", padding: 6, border: "1px solid #cbd5e1", borderRadius: 8 }} />
+              ) : (
+                percentDisplay(findDetailValue(client?.details, ["hidden_retainer_wc_principal_percent", "retainer_wc_principal_percent", "Retainer WC Principal", "WC Principal"])) || "—"
+              )}
+            </dd>
+
+            <dt style={{ fontWeight: 800 }}>Retainer WC Interest</dt>
+            <dd style={{ margin: 0 }}>
+              {editingField === "providerGroup" ? (
+                <input value={clientForm.retainerWCInterest} onChange={(event) => updateClientForm("retainerWCInterest", event.target.value)} style={{ width: "100%", padding: 6, border: "1px solid #cbd5e1", borderRadius: 8 }} />
+              ) : (
+                percentDisplay(findDetailValue(client?.details, ["hidden_retainer_wc_interest_percent", "retainer_wc_interest_percent", "Retainer WC Interest", "WC Interest"])) || "—"
+              )}
+            </dd>
+
+            <dt style={{ fontWeight: 800 }}>Retainer Liens Principal</dt>
+            <dd style={{ margin: 0 }}>
+              {editingField === "providerGroup" ? (
+                <input value={clientForm.retainerLiensPrincipal} onChange={(event) => updateClientForm("retainerLiensPrincipal", event.target.value)} style={{ width: "100%", padding: 6, border: "1px solid #cbd5e1", borderRadius: 8 }} />
+              ) : (
+                percentDisplay(findDetailValue(client?.details, ["hidden_retainer_liens_principal_percent", "hidden_retainer_lien_principal_percent", "retainer_liens_principal_percent", "retainer_lien_principal_percent", "Retainer Liens Principal", "Retainer Lien Principal", "Liens Principal", "Lien Principal"])) || "—"
+              )}
+            </dd>
+
+            <dt style={{ fontWeight: 800 }}>Retainer Liens Interest</dt>
+            <dd style={{ margin: 0 }}>
+              {editingField === "providerGroup" ? (
+                <input value={clientForm.retainerLiensInterest} onChange={(event) => updateClientForm("retainerLiensInterest", event.target.value)} style={{ width: "100%", padding: 6, border: "1px solid #cbd5e1", borderRadius: 8 }} />
+              ) : (
+                percentDisplay(findDetailValue(client?.details, ["hidden_retainer_liens_interest_percent", "hidden_retainer_lien_interest_percent", "retainer_liens_interest_percent", "retainer_lien_interest_percent", "Retainer Liens Interest", "Retainer Lien Interest", "Liens Interest", "Lien Interest"])) || "—"
+              )}
+            </dd>
+
+            <dt style={{ fontWeight: 800 }}>Pull Costs</dt>
+            <dd style={{ margin: 0 }}>
+              {editingField === "providerGroup" ? (
+                <select value={clientForm.pullCosts} onChange={(event) => updateClientForm("pullCosts", event.target.value)} style={{ width: "100%", padding: 6, border: "1px solid #cbd5e1", borderRadius: 8, background: "#fff" }}>
+                  <option value="">—</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              ) : (
+                findDetailValue(client?.details, ["hidden_pull_costs", "pull_costs", "Pull Costs", "Pull Cost"]) || "—"
+              )}
+            </dd>
+
+            <dt style={{ fontWeight: 800 }}>Remit</dt>
+            <dd style={{ margin: 0 }}>
+              {editingField === "providerGroup" ? (
+                <select value={clientForm.remit} onChange={(event) => updateClientForm("remit", event.target.value)} style={{ width: "100%", padding: 6, border: "1px solid #cbd5e1", borderRadius: 8, background: "#fff" }}>
+                  <option value="">—</option>
+                  <option value="Live">Live</option>
+                  <option value="Escrow">Escrow</option>
+                </select>
+              ) : (
+                findDetailValue(client?.details, ["hidden_remit", "remit", "Remit", "remit_type", "remit_account"]) || "—"
+              )}
+            </dd>
           </dl>
-          {data?.remittance?.receiptError && (
-            <p style={{ color: "#b91c1c", fontWeight: 700 }}>{data.remittance.receiptError}</p>
-          )}
+        </div>
+
+        <div style={cardStyle}>
+          <h2 style={{ marginTop: 0 }}>Notes</h2>
+          <dl style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8, margin: 0 }}>
+            {editableTextRow("", "notes", clientNotes(client?.details), {
+              multiline: true,
+              addLabel: "Add Notes",
+            })}
+          </dl>
+          {saveMessage && <div style={{ marginTop: 10, color: "#166534", fontWeight: 800 }}>{saveMessage}</div>}
         </div>
       </section>
 
       <section style={{ ...cardStyle, marginBottom: 18 }}>
-        <h2 style={{ marginTop: 0 }}>Imported Client Detail Fields</h2>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
+        <h2 style={{ marginTop: 0 }}>Client Imported Fields / Defaults</h2>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(180px, 1fr))", gap: 12, marginBottom: 16 }}>
+          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
+            <div style={{ color: "#64748b", fontSize: 12, fontWeight: 800 }}>Provider Group</div>
+            <div style={{ fontWeight: 900 }}>
+              {findDetailValue(client?.details, ["hidden_group_name", "group_name", "provider_group", "Provider Group", "Group Name"]) || "—"}
+            </div>
+          </div>
+          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
+            <div style={{ color: "#64748b", fontSize: 12, fontWeight: 800 }}>Retainer Principal NF %</div>
+            <div style={{ fontWeight: 900 }}>
+              {percentDisplay(findDetailValue(client?.details, ["hidden_retainer_principal_nf_percent", "Retainer Principal NF", "Retainer Principal", "Principal Fee Percent", "Principal Fee %"])) || "—"}
+            </div>
+          </div>
+          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
+            <div style={{ color: "#64748b", fontSize: 12, fontWeight: 800 }}>Retainer Interest %</div>
+            <div style={{ fontWeight: 900 }}>
+              {percentDisplay(findDetailValue(client?.details, ["hidden_retainer_interest_percent", "Retainer Interest", "Interest Fee Percent", "Interest Fee %"])) || "—"}
+            </div>
+          </div>
+          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
+            <div style={{ color: "#64748b", fontSize: 12, fontWeight: 800 }}>Original Imported Name</div>
+            <div style={{ fontWeight: 900 }}>
+              {findDetailValue(client?.details, ["providerClientOriginalDisplayName", "original_display_name", "reference_name", "provider_name"]) || "—"}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ overflowX: "auto", maxHeight: 420 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
             <thead>
               <tr>
                 <th style={thStyle}>Field</th>
                 <th style={thStyle}>Value</th>
+                <th style={thStyle}>Source</th>
               </tr>
             </thead>
             <tbody>
-              {detailEntries(client?.details).map(([key, value]) => (
-                <tr key={key}>
+              {detailEntries(client?.details).map((row) => (
+                <tr key={`${row.source}-${row.field}`}>
                   <td style={tdStyle}>
-                    <strong>{key}</strong>
+                    <strong>{row.field}</strong>
                   </td>
-                  <td style={tdStyle}>{String(value ?? "")}</td>
+                  <td style={tdStyle}>{row.value}</td>
+                  <td style={tdStyle}>{row.source}</td>
                 </tr>
               ))}
               {!detailEntries(client?.details).length && (
                 <tr>
-                  <td style={tdStyle} colSpan={2}>
-                    No stored imported detail fields found for this client.
+                  <td style={tdStyle} colSpan={3}>
+                    No imported client/default fields found for this client.
                   </td>
                 </tr>
               )}

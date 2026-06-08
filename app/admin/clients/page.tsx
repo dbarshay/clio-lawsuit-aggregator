@@ -16,6 +16,9 @@ type ClientRow = {
   updatedAt?: string | null;
 };
 
+type SortKey = "client" | "aliases" | "status" | "updated";
+type SortDirection = "asc" | "desc";
+
 const pageStyle: React.CSSProperties = {
   maxWidth: 1500,
   margin: "0 auto",
@@ -34,19 +37,22 @@ const cardStyle: React.CSSProperties = {
 const thStyle: React.CSSProperties = {
   textAlign: "left",
   borderBottom: "1px solid #e5e7eb",
-  padding: "10px 8px",
+  padding: "8px 8px",
   fontSize: 12,
   color: "#475569",
   background: "#f8fafc",
   position: "sticky",
   top: 0,
+  whiteSpace: "nowrap",
 };
 
 const tdStyle: React.CSSProperties = {
   borderBottom: "1px solid #f1f5f9",
-  padding: "10px 8px",
-  verticalAlign: "top",
+  padding: "7px 8px",
+  verticalAlign: "middle",
   fontSize: 13,
+  lineHeight: 1.2,
+  whiteSpace: "nowrap",
 };
 
 function formatDate(value?: string | null) {
@@ -61,10 +67,41 @@ function clientLabel(row: ClientRow) {
   return `${row.displayName || "(Unnamed client)"}${aliasText}`;
 }
 
+function statusBadge(isActive?: boolean) {
+  const active = isActive !== false;
+  return (
+    <span
+      style={{
+        color: active ? "#166534" : "#b91c1c",
+        background: active ? "#dcfce7" : "#fee2e2",
+        border: `1px solid ${active ? "#86efac" : "#fecaca"}`,
+        borderRadius: 999,
+        padding: "3px 9px",
+        fontWeight: 900,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {active ? "Active" : "Inactive"}
+    </span>
+  );
+}
+
+function sortText(value: unknown) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function sortDate(value?: string | null) {
+  if (!value) return 0;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
 export default function AdminClientsPage() {
   const [active, setActive] = useState("active");
   const [rows, setRows] = useState<ClientRow[]>([]);
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("client");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [count, setCount] = useState(0);
   const [status, setStatus] = useState("Loading clients...");
   const [error, setError] = useState("");
@@ -98,10 +135,74 @@ export default function AdminClientsPage() {
     [rows, selectedClientId]
   );
 
-  const visibleRows = useMemo(
-    () => (selectedClientId ? rows.filter((row) => row.id === selectedClientId) : rows),
-    [rows, selectedClientId]
-  );
+  const visibleRows = useMemo(() => {
+    const filteredRows = selectedClientId ? rows.filter((row) => row.id === selectedClientId) : rows;
+    const direction = sortDirection === "asc" ? 1 : -1;
+
+    return [...filteredRows].sort((a, b) => {
+      if (sortKey === "updated") {
+        return (sortDate(a.updatedAt) - sortDate(b.updatedAt)) * direction;
+      }
+
+      const aValue =
+        sortKey === "client"
+          ? sortText(a.displayName)
+          : sortKey === "aliases"
+            ? sortText(a.aliases?.join(" "))
+            : sortKey === "status"
+              ? sortText(a.isActive === false ? "inactive" : "active")
+              : "";
+
+      const bValue =
+        sortKey === "client"
+          ? sortText(b.displayName)
+          : sortKey === "aliases"
+            ? sortText(b.aliases?.join(" "))
+            : sortKey === "status"
+              ? sortText(b.isActive === false ? "inactive" : "active")
+              : "";
+
+      return aValue.localeCompare(bValue) * direction;
+    });
+  }, [rows, selectedClientId, sortDirection, sortKey]);
+
+  function sortIndicator(key: SortKey) {
+    if (sortKey !== key) return "";
+    return sortDirection === "asc" ? " ▲" : " ▼";
+  }
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortKey(key);
+    setSortDirection("asc");
+  }
+
+  function sortableHeader(label: string, key: SortKey) {
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSort(key)}
+        style={{
+          border: 0,
+          background: "transparent",
+          padding: 0,
+          margin: 0,
+          color: "inherit",
+          font: "inherit",
+          fontWeight: 800,
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {label}
+        {sortIndicator(key)}
+      </button>
+    );
+  }
 
   return (
     <main style={pageStyle}>
@@ -184,13 +285,13 @@ export default function AdminClientsPage() {
         </div>
 
         <div style={{ overflowX: "auto", maxHeight: "68vh" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 620 }}>
             <thead>
               <tr>
-                <th style={thStyle}>Client</th>
-                <th style={thStyle}>Aliases</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Updated</th>
+                <th style={thStyle}>{sortableHeader("Client", "client")}</th>
+                <th style={thStyle}>{sortableHeader("Aliases", "aliases")}</th>
+                <th style={thStyle}>{sortableHeader("Status", "status")}</th>
+                <th style={thStyle}>{sortableHeader("Updated", "updated")}</th>
               </tr>
             </thead>
             <tbody>
@@ -203,10 +304,11 @@ export default function AdminClientsPage() {
                     >
                       {row.displayName || "(Unnamed client)"}
                     </Link>
-                    <div style={{ color: "#64748b", fontSize: 12 }}>{row.normalizedName || ""}</div>
                   </td>
-                  <td style={tdStyle}>{row.aliases?.length ? row.aliases.join(", ") : "—"}</td>
-                  <td style={tdStyle}>{row.isActive === false ? "Inactive" : "Active"}</td>
+                  <td style={{ ...tdStyle, maxWidth: 520, overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {row.aliases?.length ? row.aliases.join(", ") : "—"}
+                  </td>
+                  <td style={tdStyle}>{statusBadge(row.isActive)}</td>
                   <td style={tdStyle}>{formatDate(row.updatedAt)}</td>
                 </tr>
               ))}

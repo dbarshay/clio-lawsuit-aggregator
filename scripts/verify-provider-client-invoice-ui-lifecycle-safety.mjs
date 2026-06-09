@@ -39,12 +39,19 @@ console.log("");
 console.log("=== VERIFY PROVIDER CLIENT INVOICE UI LIFECYCLE ===");
 mustContain("invoice page", invoicePage, "Provider Client Invoice Workflow");
 mustContain("invoice page", invoicePage, "Provider / Client Info");
-mustContain("invoice page", invoicePage, "Source of truth: Main Client Info Page / ProviderClientInfo");
+mustContain("invoice page", invoicePage, "filterControlStyle");
+mustContain("invoice page", invoicePage, "compactInfoLabelStyle");
+mustContain("invoice page", invoicePage, "WC Principal");
+mustContain("invoice page", invoicePage, "WC Interest");
+mustContain("invoice page", invoicePage, "Liens Principal");
+mustContain("invoice page", invoicePage, "Liens Interest");
+mustContain("invoice page", invoicePage, "All transaction types");
+mustContain("invoice page", invoicePage, "All posting contexts");
 mustContain("invoice page", invoicePage, "Edit Main Client Info");
 mustContain("invoice page", invoicePage, "loadClientDetail");
 mustContain("invoice page", invoicePage, "providerInfoRows");
-mustContain("invoice page", invoicePage, "Retainer NF Principal");
-mustContain("invoice page", invoicePage, "Retainer NF Interest");
+mustContain("invoice page", invoicePage, "NF Principal");
+mustContain("invoice page", invoicePage, "NF Interest");
 mustContain("invoice page", invoicePage, "Pull Costs");
 mustContain("invoice page", invoicePage, "Remit");
 mustContain("invoice page", invoicePage, "1. Preview");
@@ -80,6 +87,13 @@ mustContain("global page", globalPage, "Provider-Level Reporting");
 mustContain("global page", globalPage, "/api/admin/invoices?");
 mustContain("global page", globalPage, "Client Invoice Page");
 mustContain("client page", clientPage, "Global Invoice Search");
+
+if (invoicePage.includes("Source of truth: Main Client Info Page / ProviderClientInfo")) {
+  console.error("FAIL: invoice page still contains source-of-truth explanatory copy");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page source-of-truth explanatory copy removed");
+}
 
 if (failures) {
   console.error(`\nFAILURES=${failures}`);

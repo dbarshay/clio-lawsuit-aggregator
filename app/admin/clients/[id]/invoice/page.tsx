@@ -34,6 +34,33 @@ const tdStyle: React.CSSProperties = {
   fontSize: 13,
 };
 
+const filterControlStyle: React.CSSProperties = {
+  display: "block",
+  width: "100%",
+  marginTop: 5,
+  padding: "9px 10px",
+  border: "1px solid #94a3b8",
+  borderRadius: 8,
+  background: "#fff",
+  boxShadow: "inset 0 1px 2px rgba(15, 23, 42, 0.08)",
+  fontWeight: 800,
+  color: "#0f172a",
+};
+
+const compactInfoLabelStyle: React.CSSProperties = {
+  fontSize: 12,
+  color: "#475569",
+  fontWeight: 900,
+  textTransform: "uppercase",
+  letterSpacing: "0.02em",
+};
+
+const compactInfoValueStyle: React.CSSProperties = {
+  margin: "2px 0 0",
+  fontSize: 14,
+  lineHeight: 1.25,
+};
+
 function clean(value: unknown): string {
   return String(value ?? "").trim();
 }
@@ -490,10 +517,14 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     { label: "Address", value: providerAddress(providerClientDetails) || "—", multiline: true },
     { label: "Owner", value: findDetailValue(providerClientDetails, ["hidden_owner", "owner", "Owner", "assigned_owner", "account_owner", "client_owner"]) || "—" },
     { label: "Provider Group", value: findDetailValue(providerClientDetails, ["hidden_group_name", "group_name", "provider_group", "Provider Group", "Group Name"]) || "—" },
-    { label: "Retainer NF Principal", value: percentDisplay(findDetailValue(providerClientDetails, ["hidden_retainer_principal_nf_percent", "retainer_nf_principal_percent"])) || "—" },
-    { label: "Retainer NF Interest", value: percentDisplay(findDetailValue(providerClientDetails, ["hidden_retainer_interest_percent", "hidden_retainer_nf_interest_percent", "retainer_nf_interest_percent"])) || "—" },
     { label: "Pull Costs", value: findDetailValue(providerClientDetails, ["hidden_pull_costs", "pull_costs", "Pull Costs", "Pull Cost"]) || "—" },
     { label: "Remit", value: findDetailValue(providerClientDetails, ["hidden_remit", "remit", "Remit", "remit_type", "remit_account"]) || "—" },
+    { label: "NF Principal", value: percentDisplay(findDetailValue(providerClientDetails, ["hidden_retainer_principal_nf_percent", "retainer_nf_principal_percent"])) || "—" },
+    { label: "NF Interest", value: percentDisplay(findDetailValue(providerClientDetails, ["hidden_retainer_interest_percent", "hidden_retainer_nf_interest_percent", "retainer_nf_interest_percent"])) || "—" },
+    { label: "WC Principal", value: percentDisplay(findDetailValue(providerClientDetails, ["hidden_retainer_wc_principal_percent", "retainer_wc_principal_percent", "Retainer WC Principal", "WC Principal"])) || "—" },
+    { label: "WC Interest", value: percentDisplay(findDetailValue(providerClientDetails, ["hidden_retainer_wc_interest_percent", "retainer_wc_interest_percent", "Retainer WC Interest", "WC Interest"])) || "—" },
+    { label: "Liens Principal", value: percentDisplay(findDetailValue(providerClientDetails, ["hidden_retainer_liens_principal_percent", "hidden_retainer_lien_principal_percent", "retainer_liens_principal_percent", "retainer_lien_principal_percent", "Retainer Liens Principal", "Retainer Lien Principal"])) || "—" },
+    { label: "Liens Interest", value: percentDisplay(findDetailValue(providerClientDetails, ["hidden_retainer_liens_interest_percent", "hidden_retainer_lien_interest_percent", "retainer_liens_interest_percent", "retainer_lien_interest_percent", "Retainer Liens Interest", "Retainer Lien Interest"])) || "—" },
     { label: "Status", value: clientDetail?.isActive === false ? "Inactive" : "Active" },
   ];
 
@@ -544,15 +575,12 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
       {message && <section style={{ ...cardStyle, borderColor: "#bfdbfe", color: "#1d4ed8", marginBottom: 18 }}>{message}</section>}
 
       <section style={{ ...cardStyle, marginBottom: 18 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "start", flexWrap: "wrap" }}>
-          <div>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "baseline", flexWrap: "wrap" }}>
             <div style={{ color: "#64748b", fontSize: 12, fontWeight: 900, textTransform: "uppercase" }}>
               Provider / Client Info
             </div>
-            <h2 style={{ margin: "4px 0 6px" }}>{clientDetail?.displayName || "Provider Client"}</h2>
-            <p style={{ margin: 0, color: "#475569" }}>
-              Source of truth: Main Client Info Page / ProviderClientInfo. Invoice previews use this local provider/client information.
-            </p>
+            <h2 style={{ margin: 0, fontSize: 18 }}>{clientDetail?.displayName || "Provider Client"}</h2>
           </div>
           <Link href={id ? `/admin/clients/${encodeURIComponent(id)}` : "/admin/clients"} style={{ color: "#2563eb", fontWeight: 900, textDecoration: "none" }}>
             Edit Main Client Info
@@ -562,11 +590,11 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
         {clientDetailLoading ? (
           <p style={{ color: "#64748b" }}>Loading provider/client info...</p>
         ) : (
-          <dl style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(220px, 1fr))", gap: "10px 18px", margin: "14px 0 0" }}>
+          <dl style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(180px, 1fr))", gap: "8px 16px", margin: 0 }}>
             {providerInfoRows.map((row) => (
               <div key={row.label}>
-                <dt style={{ fontWeight: 900, color: "#334155" }}>{row.label}</dt>
-                <dd style={{ margin: 0, whiteSpace: row.multiline ? "pre-wrap" : "normal" }}>{row.value || "—"}</dd>
+                <dt style={compactInfoLabelStyle}>{row.label}</dt>
+                <dd style={{ ...compactInfoValueStyle, whiteSpace: row.multiline ? "pre-wrap" : "normal" }}>{row.value || "—"}</dd>
               </div>
             ))}
           </dl>
@@ -583,7 +611,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(130px, 1fr))", gap: 10, alignItems: "end" }}>
           <label style={{ fontWeight: 800 }}>
             Status
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={{ display: "block", width: "100%", padding: 8, marginTop: 4 }}>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={filterControlStyle}>
               <option value="posted">posted</option>
               <option value="active">active</option>
               <option value="voided">voided</option>
@@ -593,27 +621,27 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
 
           <label style={{ fontWeight: 800 }}>
             Transaction Type
-            <input value={transactionType} onChange={(event) => setTransactionType(event.target.value)} style={{ display: "block", width: "100%", padding: 8, marginTop: 4 }} />
+            <input value={transactionType} onChange={(event) => setTransactionType(event.target.value)} style={filterControlStyle} placeholder="All transaction types" />
           </label>
 
           <label style={{ fontWeight: 800 }}>
             Posting Context
-            <input value={postingContext} onChange={(event) => setPostingContext(event.target.value)} style={{ display: "block", width: "100%", padding: 8, marginTop: 4 }} />
+            <input value={postingContext} onChange={(event) => setPostingContext(event.target.value)} style={filterControlStyle} placeholder="All posting contexts" />
           </label>
 
           <label style={{ fontWeight: 800 }}>
             Check Number
-            <input value={checkNumber} onChange={(event) => setCheckNumber(event.target.value)} style={{ display: "block", width: "100%", padding: 8, marginTop: 4 }} />
+            <input value={checkNumber} onChange={(event) => setCheckNumber(event.target.value)} style={filterControlStyle} placeholder="Check number" />
           </label>
 
           <label style={{ fontWeight: 800 }}>
             Date From
-            <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} style={{ display: "block", width: "100%", padding: 8, marginTop: 4 }} />
+            <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} style={filterControlStyle} />
           </label>
 
           <label style={{ fontWeight: 800 }}>
             Date To
-            <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} style={{ display: "block", width: "100%", padding: 8, marginTop: 4 }} />
+            <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} style={filterControlStyle} />
           </label>
         </div>
 

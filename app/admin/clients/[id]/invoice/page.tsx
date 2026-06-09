@@ -259,6 +259,12 @@ export default function AdminClientInvoicePage({ params }: { params: Promise<{ i
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [hasPreviewed, setHasPreviewed] = useState(false);
+  const [invoiceDraftPreview, setInvoiceDraftPreview] = useState<any>(null);
+  const [invoiceDraftPreviewLoading, setInvoiceDraftPreviewLoading] = useState(false);
+  const [createdInvoice, setCreatedInvoice] = useState<any>(null);
+  const [createInvoiceLoading, setCreateInvoiceLoading] = useState(false);
+  const [finalizeInvoiceLoading, setFinalizeInvoiceLoading] = useState(false);
+  const [finalizedInvoice, setFinalizedInvoice] = useState<any>(null);
   const [sortField, setSortField] = useState("datePosted");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
@@ -266,19 +272,99 @@ export default function AdminClientInvoicePage({ params }: { params: Promise<{ i
     Promise.resolve(params).then((resolved) => setId(resolved.id));
   }, [params]);
 
-  async function loadDetail(clientId: string) {
-    if (!clientId) return;
-    setError("");
+  function invoiceFilterQueryString() {
     const query = new URLSearchParams();
     query.set("status", statusFilter);
     if (transactionType.trim() && transactionType !== "All") query.set("transactionType", transactionType.trim());
     if (dateFrom) query.set("dateFrom", dateFrom);
     if (dateTo) query.set("dateTo", dateTo);
+    return query.toString();
+  }
 
-    const res = await fetch(`/api/admin/clients/${encodeURIComponent(clientId)}?${query.toString()}`, { cache: "no-store" });
+  async function loadDetail(clientId: string) {
+    if (!clientId) return;
+    setError("");
+    const queryString = invoiceFilterQueryString();
+
+    const res = await fetch(`/api/admin/clients/${encodeURIComponent(clientId)}?${queryString}`, { cache: "no-store" });
     const json = await res.json();
     if (!res.ok) throw new Error(json?.error || "Could not load invoice screen.");
     setData(json);
+  }
+
+  async function prepareInvoiceDraftPreview() {
+    if (!id) return;
+    setError("");
+    setInvoiceDraftPreviewLoading(true);
+
+    try {
+      const queryString = invoiceFilterQueryString();
+      const res = await fetch(`/api/admin/clients/${encodeURIComponent(id)}/invoice/create-preview?${queryString}`, { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok || json?.ok === false) throw new Error(json?.error || "Could not prepare invoice draft preview.");
+      setInvoiceDraftPreview(json.invoiceDraftPreview || null);
+      setCreatedInvoice(null);
+    } catch (err: any) {
+      setError(err?.message || "Could not prepare invoice draft preview.");
+    } finally {
+      setInvoiceDraftPreviewLoading(false);
+    }
+  }
+
+  async function createInvoiceDraft() {
+    if (!id || !invoiceDraftPreview) return;
+    setError("");
+    setCreateInvoiceLoading(true);
+
+    try {
+      const res = await fetch(`/api/admin/clients/${encodeURIComponent(id)}/invoice/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({
+          confirmCreateInvoiceDraft: true,
+          invoiceDraftPreview,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json?.ok === false) throw new Error(json?.error || "Could not create draft invoice.");
+      setCreatedInvoice(json.invoice || null);
+      setFinalizedInvoice(null);
+    } catch (err: any) {
+      setError(err?.message || "Could not create draft invoice.");
+    } finally {
+      setCreateInvoiceLoading(false);
+    }
+  }
+
+  async function finalizeInvoice() {
+    const invoiceId = createdInvoice?.id;
+    if (!id || !invoiceId || finalizedInvoice) return;
+
+    const confirmed = window.confirm(`Finalize invoice ${createdInvoice?.invoiceNumber || invoiceId}? This will lock the invoice and mark included payment receipt rows with this invoice id.`);
+    if (!confirmed) return;
+
+    setError("");
+    setFinalizeInvoiceLoading(true);
+
+    try {
+      const res = await fetch(`/api/admin/clients/${encodeURIComponent(id)}/invoice/${encodeURIComponent(invoiceId)}/finalize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({
+          confirmFinalizeInvoice: true,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json?.ok === false) throw new Error(json?.error || "Could not finalize invoice.");
+      setFinalizedInvoice(json.invoice || null);
+      setCreatedInvoice(json.invoice || createdInvoice);
+    } catch (err: any) {
+      setError(err?.message || "Could not finalize invoice.");
+    } finally {
+      setFinalizeInvoiceLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -289,6 +375,9 @@ export default function AdminClientInvoicePage({ params }: { params: Promise<{ i
 
   useEffect(() => {
     setHasPreviewed(false);
+    setInvoiceDraftPreview(null);
+    setCreatedInvoice(null);
+    setFinalizedInvoice(null);
   }, [statusFilter, transactionType, dateFrom, dateTo]);
 
   const client = data?.client;
@@ -855,94 +944,180 @@ export default function AdminClientInvoicePage({ params }: { params: Promise<{ i
           </label>
         </div>
 
-        <div style={{ display: "flex", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
-          <button
-            type="button"
-            onClick={() =>
-              id &&
-              loadDetail(id)
-                .then(() => setHasPreviewed(true))
-                .catch((err) => setError(err?.message || "Could not refresh invoice screen."))
-            }
-            style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #0f172a", background: "#0f172a", color: "#fff", fontWeight: 800 }}
-          >
-            Preview
-          </button>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <button
+              type="button"
+              onClick={() =>
+                id &&
+                loadDetail(id)
+                  .then(() => setHasPreviewed(true))
+                  .catch((err) => setError(err?.message || "Could not refresh invoice screen."))
+              }
+              style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #16a34a", background: "#16a34a", color: "#fff", fontWeight: 900 }}
+            >
+              1. Preview
+            </button>
+
+            <span style={{ color: hasPreviewed ? "#16a34a" : "#94a3b8", fontWeight: 950 }}>→</span>
+
+            <button
+              type="button"
+              onClick={prepareInvoiceDraftPreview}
+              disabled={!hasPreviewed || invoiceDraftPreviewLoading}
+              title={!hasPreviewed ? "Preview must be loaded first." : ""}
+              style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #16a34a", background: !hasPreviewed ? "#dcfce7" : "#16a34a", color: !hasPreviewed ? "#166534" : "#fff", fontWeight: 900, cursor: !hasPreviewed ? "not-allowed" : "pointer" }}
+            >
+              {invoiceDraftPreviewLoading ? "Preparing..." : "2. Review Invoice Package"}
+            </button>
+
+            <span style={{ color: invoiceDraftPreview ? "#16a34a" : "#94a3b8", fontWeight: 950 }}>→</span>
+
+            <button
+              type="button"
+              onClick={createInvoiceDraft}
+              disabled={!invoiceDraftPreview || createInvoiceLoading || !!createdInvoice}
+              title={!invoiceDraftPreview ? "Review Invoice Package must be completed first." : createdInvoice ? "Draft invoice has already been created." : ""}
+              style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #16a34a", background: !invoiceDraftPreview ? "#dcfce7" : "#16a34a", color: !invoiceDraftPreview ? "#166534" : "#fff", fontWeight: 900, cursor: !invoiceDraftPreview || createdInvoice ? "not-allowed" : "pointer" }}
+            >
+              {createInvoiceLoading ? "Creating..." : createdInvoice ? `3. Draft Created: ${createdInvoice.invoiceNumber}` : "3. Create Draft Invoice"}
+            </button>
+
+            <span style={{ color: createdInvoice ? "#16a34a" : "#94a3b8", fontWeight: 950 }}>→</span>
+
+            <button
+              type="button"
+              onClick={finalizeInvoice}
+              disabled={!createdInvoice || finalizeInvoiceLoading || !!finalizedInvoice}
+              title={!createdInvoice ? "Create Draft Invoice must be completed first." : finalizedInvoice ? "Invoice has already been finalized." : "Finalize this local invoice and mark included payment receipt rows with this invoice id."}
+              style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #16a34a", background: !createdInvoice ? "#dcfce7" : "#16a34a", color: !createdInvoice ? "#166534" : "#fff", fontWeight: 900, cursor: !createdInvoice || finalizedInvoice ? "not-allowed" : "pointer" }}
+            >
+              {finalizeInvoiceLoading ? "Finalizing..." : finalizedInvoice ? `4. Finalized: ${finalizedInvoice.invoiceNumber}` : "4. Finalize Invoice"}
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={() => downloadCsv(`${client?.displayName || "Client"} - Remittance Preview.csv`, [...remittanceCsvRows, ...costsExpendedCsvRows])}
             disabled={![...remittanceCsvRows, ...costsExpendedCsvRows].length}
-            style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #cbd5e1", background: [...remittanceCsvRows, ...costsExpendedCsvRows].length ? "#fff" : "#f1f5f9", fontWeight: 800 }}
+            style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #cbd5e1", background: [...remittanceCsvRows, ...costsExpendedCsvRows].length ? "#fff" : "#f1f5f9", fontWeight: 800, marginLeft: "auto" }}
           >
             Export CSV
           </button>
         </div>
 
-        <div style={{ marginTop: 16, border: "1px solid #e2e8f0", borderRadius: 14, padding: 14, background: "#f8fafc" }}>
-          <div style={{ color: "#64748b", fontSize: 12, fontWeight: 900, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 6 }}>
-            Invoice Workflow Status
-          </div>
-          <div style={{ display: "grid", gap: 10 }}>
-            <div style={{ display: "flex", gap: 10, alignItems: "start" }}>
-              <div style={{ minWidth: 28, height: 28, borderRadius: 999, background: hasPreviewed ? "#dcfce7" : "#e2e8f0", color: "#0f172a", fontWeight: 950, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                1
-              </div>
-              <div>
-                <div style={{ fontWeight: 900 }}>Preview invoice/remittance data</div>
-                <div style={{ color: "#475569", lineHeight: 1.45 }}>
-                  {hasPreviewed
-                    ? "Preview is loaded from local child-matter payment rows and lawsuit cost metadata linked back through the provider's child matter context."
-                    : "Select filters and click Preview to load the read-only invoice/remittance package."}
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: 10, alignItems: "start" }}>
-              <div style={{ minWidth: 28, height: 28, borderRadius: 999, background: "#e2e8f0", color: "#0f172a", fontWeight: 950, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                2
-              </div>
-              <div>
-                <div style={{ fontWeight: 900 }}>Create invoice record</div>
-                <div style={{ color: "#475569", lineHeight: 1.45 }}>
-                  Not enabled yet. This step will require a local invoice model with invoice number, status, selected filters, included child payment rows, included lawsuit cost rows, and totals snapshot.
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: 10, alignItems: "start" }}>
-              <div style={{ minWidth: 28, height: 28, borderRadius: 999, background: "#e2e8f0", color: "#0f172a", fontWeight: 950, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                3
-              </div>
-              <div>
-                <div style={{ fontWeight: 900 }}>Finalize printable/exportable package</div>
-                <div style={{ color: "#475569", lineHeight: 1.45 }}>
-                  Not enabled yet. Finalization should only become available after a local invoice record exists and the included rows are locked or snapshotted.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              disabled
-              title="Create Invoice is intentionally disabled until a local invoice persistence model is added."
-              style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#f1f5f9", color: "#64748b", fontWeight: 800, cursor: "not-allowed" }}
-            >
-              Create Invoice
-            </button>
-            <button
-              type="button"
-              disabled
-              title="Finalize is intentionally disabled until invoice creation and row snapshotting exist."
-              style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#f1f5f9", color: "#64748b", fontWeight: 800, cursor: "not-allowed" }}
-            >
-              Finalize Package
-            </button>
-          </div>
-
-        </div>
       </section>
+
+      {invoiceDraftPreview && (
+        <section style={{ ...cardStyle, marginBottom: 18 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+            <div>
+              <div style={{ color: "#64748b", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
+                Invoice Package Review
+              </div>
+              <h2 style={{ margin: 0 }}>Package Snapshot: {invoiceDraftPreview.invoiceNumberCandidate}</h2>
+              <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.45 }}>
+                Review the invoice header and frozen line snapshot before creating the invoice.
+              </p>
+            </div>
+            <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, minWidth: 220, textAlign: "right", background: "#f8fafc" }}>
+              <div style={{ color: "#64748b", fontSize: 12, fontWeight: 900 }}>Package Total</div>
+              <div style={{ fontSize: 24, fontWeight: 950 }}>{money(invoiceDraftPreview?.totalsSnapshot?.invoicePackageTotal)}</div>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(140px, 1fr))", gap: 10, marginBottom: 14 }}>
+            <div><strong>Lines:</strong> {invoiceDraftPreview?.totalsSnapshot?.lineCount ?? 0}</div>
+            <div><strong>Receipts:</strong> {invoiceDraftPreview?.totalsSnapshot?.receiptRowCount ?? 0}</div>
+            <div><strong>Principal / Interest:</strong> {money(invoiceDraftPreview?.totalsSnapshot?.principalInterestTotal)}</div>
+            <div><strong>Filing Fees:</strong> {money(invoiceDraftPreview?.totalsSnapshot?.filingFeePaymentTotal)}</div>
+            <div><strong>Costs:</strong> {money(invoiceDraftPreview?.totalsSnapshot?.costsExpendedTotal)}</div>
+            <div><strong>Retainer:</strong> {money(invoiceDraftPreview?.totalsSnapshot?.retainerFeeTotal)}</div>
+            <div><strong>Status:</strong> {invoiceDraftPreview?.status || "package-review"}</div>
+            <div><strong>Provider:</strong> {invoiceDraftPreview?.providerDisplayName || "—"}</div>
+            <div><strong>Period:</strong> {invoicePeriodLabel()}</div>
+            <div><strong>Mode:</strong> Read-only</div>
+          </div>
+
+          <div style={{ overflowX: "auto", maxHeight: 420 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1040 }}>
+              <thead>
+                <tr>
+                  <th style={invoiceThStyle}>Line Type</th>
+                  <th style={invoiceThStyle}>Matter</th>
+                  <th style={invoiceThStyle}>Patient</th>
+                  <th style={invoiceThStyle}>Insurer</th>
+                  <th style={invoiceThStyle}>Lawsuit</th>
+                  <th style={invoiceThStyle}>Description</th>
+                  <th style={invoiceThStyle}>Date</th>
+                  <th style={invoiceThStyle}>Amount</th>
+                  <th style={invoiceThStyle}>Retainer Fee</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(invoiceDraftPreview.lines || []).map((line: any) => (
+                  <tr key={`${line.lineType}-${line.sourceTable}-${line.sourceId}-${line.description}-${line.amount}`}>
+                    <td style={invoiceTdStyle}>{line.lineType}</td>
+                    <td style={invoiceTdStyle}>{line.matter}</td>
+                    <td style={invoiceTdStyle}>{line.patient}</td>
+                    <td style={invoiceTdStyle}>{line.insurer}</td>
+                    <td style={invoiceTdStyle}>{line.lawsuit}</td>
+                    <td style={invoiceTdStyle}>{line.description}</td>
+                    <td style={invoiceTdStyle}>{displayDate(line.sortDate)}</td>
+                    <td style={invoiceTdStyle}>{money(line.amount)}</td>
+                    <td style={invoiceTdStyle}>{money(line.retainerFee)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {createdInvoice && (
+        <section style={{ ...cardStyle, marginBottom: 18, border: "2px solid #16a34a", background: "#f0fdf4" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ color: "#166534", fontSize: 12, fontWeight: 950, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
+                Draft Invoice Created
+              </div>
+              <h2 style={{ margin: 0 }}>{createdInvoice.invoiceNumber}</h2>
+              <p style={{ margin: "6px 0 0", color: "#166534", lineHeight: 1.45 }}>
+                Local draft invoice saved with frozen line snapshots. It is not finalized, not remitted, and source payment rows have not been marked invoiced.
+              </p>
+            </div>
+            <div style={{ border: "1px solid #86efac", borderRadius: 12, padding: 12, minWidth: 220, textAlign: "right", background: "#dcfce7" }}>
+              <div style={{ color: "#166534", fontSize: 12, fontWeight: 900 }}>Draft Total</div>
+              <div style={{ fontSize: 24, fontWeight: 950, color: "#14532d" }}>{money(createdInvoice.invoicePackageTotal)}</div>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(140px, 1fr))", gap: 10, marginTop: 14 }}>
+            <div><strong>Status:</strong> {createdInvoice.status || "draft"}</div>
+            <div><strong>Lines:</strong> {(createdInvoice.lines || []).length}</div>
+            <div><strong>Receipts:</strong> {createdInvoice.receiptRowCount ?? 0}</div>
+            <div><strong>Principal / Interest:</strong> {money(createdInvoice.principalInterestTotal)}</div>
+            <div><strong>Filing Fees:</strong> {money(createdInvoice.filingFeePaymentTotal)}</div>
+            <div><strong>Costs:</strong> {money(createdInvoice.costsExpendedTotal)}</div>
+            <div><strong>Retainer:</strong> {money(createdInvoice.retainerFeeTotal)}</div>
+            <div><strong>Created:</strong> {displayDate(createdInvoice.createdAt)}</div>
+            <div><strong>Finalized:</strong> {finalizedInvoice ? displayDate(finalizedInvoice.finalizedAt) : "Not finalized"}</div>
+            <div><strong>Next Step:</strong> {finalizedInvoice ? "Export / Print / Remit" : "Finalize Invoice"}</div>
+          </div>
+        </section>
+      )}
+
+      {finalizedInvoice && (
+        <section style={{ ...cardStyle, marginBottom: 18, border: "2px solid #15803d", background: "#ecfdf5" }}>
+          <div style={{ color: "#166534", fontSize: 12, fontWeight: 950, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
+            Invoice Finalized
+          </div>
+          <h2 style={{ margin: 0 }}>{finalizedInvoice.invoiceNumber}</h2>
+          <p style={{ margin: "6px 0 0", color: "#166534", lineHeight: 1.45 }}>
+            Local invoice is finalized. Included payment receipt rows are now marked with this invoice id. No Clio, ClaimIndex, document, email, print, queue, or remittance records were changed.
+          </p>
+        </section>
+      )}
 
       {hasPreviewed && (
       <section style={{ ...cardStyle, marginBottom: 18 }}>

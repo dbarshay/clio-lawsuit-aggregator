@@ -328,8 +328,74 @@ model MatterPaymentReceipt {
   @@index([paymentDate])
   @@index([transactionType])
   @@index([transactionStatus])
+  @@index([invoiceId])
   @@index([voided])
   @@index([createdAt])
+}
+
+model ProviderClientInvoice {
+  id                   String  @id @default(cuid())
+  invoiceNumber        String  @unique
+  providerClientInfoId String?
+  referenceEntityId    String
+  providerDisplayName  String
+  status               String  @default("draft")
+
+  dateFrom              String?
+  dateTo                String?
+  statusFilter          String?
+  transactionTypeFilter String?
+
+  receiptRowCount        Int   @default(0)
+  principalInterestTotal Float @default(0)
+  filingFeePaymentTotal  Float @default(0)
+  costsExpendedTotal     Float @default(0)
+  retainerFeeTotal       Float @default(0)
+  invoicePackageTotal    Float @default(0)
+
+  clientSnapshot Json?
+  filterSnapshot Json?
+  totalsSnapshot Json?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  finalizedAt DateTime?
+  voidedAt    DateTime?
+  voidReason  String?
+
+  lines ProviderClientInvoiceLine[]
+
+  @@index([referenceEntityId])
+  @@index([providerClientInfoId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ProviderClientInvoiceLine {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  lineType    String
+  sourceId    String?
+  sourceTable String?
+  sortDate    String?
+  matter      String?
+  patient     String?
+  provider    String?
+  insurer     String?
+  lawsuit     String?
+  description String?
+  amount      Float    @default(0)
+  retainerFee Float    @default(0)
+  rowSnapshot Json?
+  createdAt   DateTime @default(now())
+
+  invoice ProviderClientInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([lineType])
+  @@index([sourceId])
+  @@index([matter])
+  @@index([lawsuit])
 }
 
 model ClaimIndexRebuildState {
@@ -414,7 +480,7 @@ model ReferenceEntity {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  aliases ReferenceAlias[]
+  aliases            ReferenceAlias[]
   providerClientInfo ProviderClientInfo?
 
   @@unique([type, normalizedName])
@@ -426,8 +492,8 @@ model ReferenceEntity {
 }
 
 model ProviderClientInfo {
-  id                String   @id @default(cuid())
-  referenceEntityId String   @unique
+  id                String @id @default(cuid())
+  referenceEntityId String @unique
 
   displayNameSnapshot String?
   address             String?

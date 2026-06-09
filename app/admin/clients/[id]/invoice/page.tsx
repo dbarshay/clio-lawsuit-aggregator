@@ -143,7 +143,7 @@ function findDetailValue(details: unknown, keys: string[]) {
 
 function providerAddress(details: unknown) {
   const direct = findDetailValue(details, ["address", "full_address", "mailing_address"]);
-  if (direct) return direct;
+  if (direct) return normalizeAddressDisplay(direct);
 
   const street = findDetailValue(details, ["hidden_street", "street", "address_line_1", "address1"]);
   const street2 = findDetailValue(details, ["hidden_suite", "suite", "address_line_2", "address2"]);
@@ -153,7 +153,7 @@ function providerAddress(details: unknown) {
   const cityState = [city, state].filter(Boolean).join(", ");
   const cityStateZip = cityState && zip ? `${cityState} ${zip}` : cityState || zip;
 
-  return [street, street2, cityStateZip].filter(Boolean).join("\n");
+  return normalizeAddressDisplay([street, street2, cityStateZip].filter(Boolean).join("\n"));
 }
 
 function percentDisplay(value: unknown) {
@@ -163,6 +163,50 @@ function percentDisplay(value: unknown) {
   const numeric = Number(text.replace(/[$,%\s,]/g, ""));
   if (!Number.isFinite(numeric)) return text;
   return `${numeric}%`;
+}
+
+function titleCaseAddressSegment(value: string) {
+  const preserveUpper = new Set(["NY", "NJ", "CT", "PA", "US", "USA", "LLC", "PC", "PLLC", "MD", "DO"]);
+  const smallWords = new Set(["of", "and", "the"]);
+
+  return value
+    .toLowerCase()
+    .replace(/\b([a-z])([a-z']*)\b/g, (match, first, rest, offset) => {
+      const original = match.toUpperCase();
+      if (preserveUpper.has(original)) return original;
+      if (offset > 0 && smallWords.has(match)) return match;
+      return `${first.toUpperCase()}${rest}`;
+    })
+    .replace(/\bMc([a-z])/g, (_match, letter) => `Mc${letter.toUpperCase()}`)
+    .replace(/\bO'([a-z])/g, (_match, letter) => `O'${letter.toUpperCase()}`)
+    .replace(/\bPo Box\b/gi, "PO Box")
+    .replace(/\bSte\b/gi, "Ste")
+    .replace(/\bSuite\b/gi, "Suite")
+    .replace(/\bApt\b/gi, "Apt")
+    .replace(/\bFl\b/gi, "Fl");
+}
+
+function normalizeAddressLineDisplay(line: string) {
+  const trimmed = line.trim();
+  if (!trimmed) return "";
+
+  const zipMatch = trimmed.match(/^(.*?)(?:,)?\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/i);
+  if (zipMatch) {
+    return `${titleCaseAddressSegment(zipMatch[1])}, ${zipMatch[2].toUpperCase()} ${zipMatch[3]}`;
+  }
+
+  return titleCaseAddressSegment(trimmed);
+}
+
+function normalizeAddressDisplay(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s*•\s*/g, "\n")
+    .replace(/,\s*(\d{5}(?:-\d{4})?)\s*$/gm, " $1")
+    .split(/\r?\n/)
+    .map(normalizeAddressLineDisplay)
+    .filter(Boolean)
+    .join("\n");
 }
 
 function statusBadge(status: unknown) {

@@ -29,8 +29,10 @@ function isFeeRecoveryTransactionType(value: unknown) {
 
   return (
     type.includes("filing fee") ||
-    type.includes("court fee") ||
-    type.includes("court fees") ||
+    type.includes("service fee") ||
+    type.includes("court cost") ||
+    type.includes("court costs") ||
+    type.includes("other court costs") ||
     type.includes("other court fees")
   );
 }

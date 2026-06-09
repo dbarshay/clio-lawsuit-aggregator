@@ -48,7 +48,10 @@ for (const needle of [
   "No principal or interest payments in this preview.",
   "No cost payments received in this preview.",
   "No fees or costs expended in this preview.",
-  "line.description || line.lineType || \"—\"",
+  "previewLineDisplayType",
+  "Index Fee",
+  "Service Fee",
+  "Other Court Costs",
   "<tfoot>",
   "colSpan={activeColumns.length}",
   "previewTableSort",
@@ -65,6 +68,7 @@ for (const needle of [
 }
 
 mustNotContain("invoice page", page, "No eligible invoice lines in this preview.");
+mustNotContain("invoice page", page, "Other Court Fees Collected");
 
 for (const needle of [
   "createDraftInvoice",

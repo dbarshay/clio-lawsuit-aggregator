@@ -634,8 +634,21 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     return Number(line?.amount || 0) - Number(line?.retainerFee || 0);
   }
 
+  function previewLineDisplayType(line: any): string {
+    const rawType = String(line?.description || line?.rowSnapshot?.transactionType || line?.lineType || "").trim();
+    const normalizedType = rawType.toLowerCase();
+
+    if (line?.lineType === "filing_fee_payment") {
+      if (normalizedType.includes("filing fee") || normalizedType.includes("index fee")) return "Index Fee";
+      if (normalizedType.includes("service fee")) return "Service Fee";
+      if (normalizedType.includes("other court costs") || normalizedType.includes("other court fees")) return "Other Court Costs";
+    }
+
+    return rawType || "—";
+  }
+
   function previewSortValue(line: any, field: string): string | number {
-    if (field === "description") return String(line?.description || line?.lineType || "").toLowerCase();
+    if (field === "description") return previewLineDisplayType(line).toLowerCase();
     if (field === "dateOfService") return String(line?.dateOfService || line?.dateOfServiceEnd || "");
     if (field === "remitToProvider") return previewRemitToProvider(line);
     if (field === "billedAmount" || field === "amount" || field === "retainerFee") return Number(line?.[field] || 0);
@@ -718,7 +731,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
                   </td>
                   <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.insurer || "—"}</td>
                   <td style={{ ...tdStyle, border: "1px solid #e2e8f0", width: 56 }}>{line.caseType || "—"}</td>
-                  <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.description || line.lineType || "—"}</td>
+                  <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{previewLineDisplayType(line)}</td>
                   <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{dateOnly(line.sortDate) || "—"}</td>
                   <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{dateOnly(line.checkDate) || "—"}</td>
                   <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.checkNumber || "—"}</td>

@@ -538,9 +538,6 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
           Invoicing / Remittance
         </div>
         <h1 style={{ margin: "6px 0 8px", fontSize: 34 }}>Provider Client Invoice Workflow</h1>
-        <p style={{ margin: 0, color: "#475569", maxWidth: 1120 }}>
-          Payment invoicing is child-matter based only. Lawsuit-page payments enter invoice reporting only through allocated child MatterPaymentReceipt rows. This workflow is local-only and does not call or mutate Clio.
-        </p>
       </section>
 
       {error && <section style={{ ...cardStyle, borderColor: "#fecaca", color: "#b91c1c", marginBottom: 18 }}>{error}</section>}

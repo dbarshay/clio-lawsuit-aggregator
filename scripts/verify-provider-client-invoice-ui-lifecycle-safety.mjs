@@ -1,1 +1,185 @@
-#!/usr/bin/env node\nimport fs from "fs";\n\nconst files = {\n  invoicePage: "app/admin/clients/[id]/invoice/page.tsx",\n  globalPage: "app/admin/invoices/page.tsx",\n  clientPage: "app/admin/clients/[id]/page.tsx",\n};\n\nlet failures = 0;\n\nfunction text(file) {\n  return fs.readFileSync(file, "utf8");\n}\n\nfunction pass(message) {\n  console.log(`PASS: ${message}`);\n}\n\nfunction fail(message) {\n  failures += 1;\n  console.error(`FAIL: ${message}`);\n}\n\nfunction mustContain(label, body, needle) {\n  if (body.includes(needle)) pass(`${label} contains ${needle}`);\n  else fail(`${label} missing ${needle}`);\n}\n\nfor (const [label, file] of Object.entries(files)) {\n  if (!fs.existsSync(file)) fail(`${label} missing at ${file}`);\n}\n\nconst invoicePage = text(files.invoicePage);\nconst globalPage = text(files.globalPage);\nconst clientPage = text(files.clientPage);\n\nconsole.log("");\nconsole.log("=== VERIFY PROVIDER CLIENT INVOICE UI LIFECYCLE ===");\nmustContain("invoice page", invoicePage, "Provider Client Invoice Workflow");\nmustContain("invoice page", invoicePage, "fontSize: 26");\nmustContain("invoice page", invoicePage, "ProviderInfoItem");\nmustContain("invoice page", invoicePage, "providerIdentityRows");\nmustContain("invoice page", invoicePage, "normalizeAddressDisplay");\nmustContain("invoice page", invoicePage, "normalizeAddressLineDisplay");\nmustContain("invoice page", invoicePage, "titleCaseAddressSegment");\nmustContain("invoice page", invoicePage, "providerPercentageRows");\nmustContain("invoice page", invoicePage, "providerBillingRows");\nmustContain("invoice page", invoicePage, "compactInfoGroupStyle");\nmustContain("invoice page", invoicePage, "filterControlStyle");\nmustContain("invoice page", invoicePage, "Transaction Type");\nmustContain("invoice page", invoicePage, ">Posted</option>");\nmustContain("invoice page", invoicePage, ">Voided</option>");\nmustContain("invoice page", invoicePage, '<option value="">All</option>');\nmustContain("invoice page", invoicePage, '<option value="">All</option>');\nmustContain("invoice page", invoicePage, "Collection Payment");\nmustContain("invoice page", invoicePage, "Voluntary Payment");\nmustContain("invoice page", invoicePage, "compactInfoLabelStyle");\nmustContain("invoice page", invoicePage, "WC Principal");\nmustContain("invoice page", invoicePage, "WC Interest");\nmustContain("invoice page", invoicePage, "Liens Principal");\nmustContain("invoice page", invoicePage, "Liens Interest");\nmustContain("invoice page", invoicePage, "loadClientDetail");\nmustContain("invoice page", invoicePage, "NF Principal");\nmustContain("invoice page", invoicePage, "NF Interest");\nmustContain("invoice page", invoicePage, "Pull Costs");\nmustContain("invoice page", invoicePage, "Remit");\nmustContain("invoice page", invoicePage, "1. Preview");\nmustContain("invoice page", invoicePage, "2. Review Invoice");\nmustContain("invoice page", invoicePage, "Review Invoice");\nmustContain("invoice page", invoicePage, "Number of Principal / Interest Payments Received");\nmustContain("invoice page", invoicePage, "Number of Costs Payments Received");\nmustContain("invoice page", invoicePage, "principalInterestPaymentCount");\nmustContain("invoice page", invoicePage, "costPaymentCount");\nmustContain("invoice page", invoicePage, "3. Create Draft Invoice");\nmustContain("invoice page", invoicePage, "4. Finalize Invoice");\nmustContain("invoice page", invoicePage, "Invoice History");\nmustContain("invoice page", invoicePage, "Invoice Detail:");\nmustContain("invoice page", invoicePage, "Invoice Audit History");\nmustContain("invoice page", invoicePage, "Print / Save PDF");\nmustContain("invoice page", invoicePage, 'window.open("about:blank", "_blank")');\nmustContain("invoice page", invoicePage, "popup.document.open()");\nmustContain("invoice page", invoicePage, "popup.focus()");\nmustContain("invoice page", invoicePage, "confirmCreateInvoiceDraft");\nmustContain("invoice page", invoicePage, "confirmFinalizeInvoice");\nmustContain("invoice page", invoicePage, "confirmVoidInvoice");\nmustContain("invoice page", invoicePage, "/api/admin/clients/${encodeURIComponent(id)}/invoice/create-preview");\nmustContain("invoice page", invoicePage, "/api/admin/clients/${encodeURIComponent(id)}/invoice/create");\nmustContain("invoice page", invoicePage, "/api/admin/clients/${encodeURIComponent(id)}/invoice/${encodeURIComponent(invoiceId)}/finalize");\nmustContain("invoice page", invoicePage, "/api/admin/clients/${encodeURIComponent(id)}/invoice/${encodeURIComponent(invoiceId)}/void");\nmustContain("invoice page", invoicePage, "Draft invoice created. Receipt rows are not yet marked as invoiced.");\nmustContain("invoice page", invoicePage, "Invoice finalized. Included receipt rows are marked with this invoice ID");\nmustContain("invoice page", invoicePage, "Invoice voided. Receipt rows previously marked with this invoice ID were released");\n\nconsole.log("");\nconsole.log("=== VERIFY GLOBAL INVOICE SEARCH UI ===");\nmustContain("global page", globalPage, "Global Invoice Search");\nmustContain("global page", globalPage, "Provider-Level Reporting");\nmustContain("global page", globalPage, "/api/admin/invoices?");\nmustContain("global page", globalPage, "Client Invoice Page");\nmustContain("client page", clientPage, "Global Invoice Search");\n\nif (invoicePage.includes("Source of truth: Main Client Info Page / ProviderClientInfo")) {\n  console.error("FAIL: invoice page still contains source-of-truth explanatory copy");\n  failures += 1;\n} else {\n  console.log("PASS: invoice page source-of-truth explanatory copy removed");\n}\n\nif (invoicePage.includes("Edit Main Client Info")) {\n  console.error("FAIL: invoice page still contains Edit Main Client Info link");\n  failures += 1;\n} else {\n  console.log("PASS: invoice page does not expose provider/client editing from invoice workflow");\n}\n\nif (invoicePage.includes("Provider / Client Info")) {\n  console.error("FAIL: invoice page still contains Provider / Client Info label");\n  failures += 1;\n} else {\n  console.log("PASS: invoice page Provider / Client Info label removed");\n}\n\nif (invoicePage.includes('{ label: "Name", value: clientDetail?.displayName')) {\n  console.error("FAIL: invoice page still contains repeated provider Name row");\n  failures += 1;\n} else {\n  console.log("PASS: invoice page repeated provider Name row removed");\n}\n\nif (invoicePage.includes("Posting Context") || invoicePage.includes("postingContext") || invoicePage.includes("All posting contexts")) {\n  console.error("FAIL: invoice page still contains Posting Context filter");\n  failures += 1;\n} else {\n  console.log("PASS: invoice page Posting Context filter removed");\n}\n\nif (invoicePage.includes("Check Number") || invoicePage.includes("checkNumber") || invoicePage.includes("Check number")) {\nfor (const stale of [\n  "const [checkNumber",\n  "setCheckNumber",\n  'query.set("checkNumber"',\n  "value={checkNumber}",\n  "onChange={(event) => setCheckNumber",\n]) {\n  if (invoicePage.includes(stale)) fail(`invoice page still contains Check Number filter/state marker: ${stale}`);\n}\npass("invoice page Check Number filter removed while display columns may remain");\n  failures += 1;\n} else {\n}\n\nif (invoicePage.includes("Admin mode: include already-invoiced receipt rows for diagnostics") || invoicePage.includes("Admin review mode is active") || invoicePage.includes("includeAlreadyInvoiced") || invoicePage.includes("confirmIncludeAlreadyInvoiced") || invoicePage.includes('<option value="active">active</option>')) {\n  console.error("FAIL: invoice page still contains Active/Admin preview UI remnants");\n  failures += 1;\n} else {\n  console.log("PASS: invoice page Active/Admin preview UI removed");\n}\n\nif (invoicePage.includes('<option value="Filing Fee Collected">Filing Fee Collected</option>')) {\n  console.error("FAIL: invoice page still contains Filing Fee Collected transaction-type option");\n  failures += 1;\n} else {\n  console.log("PASS: invoice page Filing Fee Collected transaction-type option removed");\n}\n\nif (invoicePage.includes("Other Court Fees Collected")) {\n  console.error("FAIL: invoice page still contains Other Court Fees Collected transaction-type option");\n  failures += 1;\n} else {\n  console.log("PASS: invoice page Other Court Fees Collected transaction-type option removed");\n}\n\nif (invoicePage.includes("Receipt Rows") || invoicePage.includes("Excluded Already Invoiced") || invoicePage.includes("Included Already Invoiced") || invoicePage.includes("Package Total")) {\n  console.error("FAIL: invoice page still contains removed old review summary labels");\n  failures += 1;\n} else {\n  console.log("PASS: invoice page old review summary labels removed");\n}\n\nif (failures) {\n  console.error(`\nFAILURES=${failures}`);\n  process.exit(1);\n}\n\nconsole.log("\nPASS: provider client invoice UI lifecycle verifier passed");\n
+#!/usr/bin/env node
+import fs from "fs";
+
+const files = {
+  invoicePage: "app/admin/clients/[id]/invoice/page.tsx",
+  globalPage: "app/admin/invoices/page.tsx",
+  clientPage: "app/admin/clients/[id]/page.tsx",
+};
+
+let failures = 0;
+
+function text(file) {
+  return fs.readFileSync(file, "utf8");
+}
+
+function pass(message) {
+  console.log(`PASS: ${message}`);
+}
+
+function fail(message) {
+  failures += 1;
+  console.error(`FAIL: ${message}`);
+}
+
+function mustContain(label, body, needle) {
+  if (body.includes(needle)) pass(`${label} contains ${needle}`);
+  else fail(`${label} missing ${needle}`);
+}
+
+for (const [label, file] of Object.entries(files)) {
+  if (!fs.existsSync(file)) fail(`${label} missing at ${file}`);
+}
+
+const invoicePage = text(files.invoicePage);
+const globalPage = text(files.globalPage);
+const clientPage = text(files.clientPage);
+
+console.log("");
+console.log("=== VERIFY PROVIDER CLIENT INVOICE UI LIFECYCLE ===");
+mustContain("invoice page", invoicePage, "Provider Client Invoice Workflow");
+mustContain("invoice page", invoicePage, "fontSize: 26");
+mustContain("invoice page", invoicePage, "ProviderInfoItem");
+mustContain("invoice page", invoicePage, "providerIdentityRows");
+mustContain("invoice page", invoicePage, "normalizeAddressDisplay");
+mustContain("invoice page", invoicePage, "normalizeAddressLineDisplay");
+mustContain("invoice page", invoicePage, "titleCaseAddressSegment");
+mustContain("invoice page", invoicePage, "providerPercentageRows");
+mustContain("invoice page", invoicePage, "providerBillingRows");
+mustContain("invoice page", invoicePage, "compactInfoGroupStyle");
+mustContain("invoice page", invoicePage, "filterControlStyle");
+mustContain("invoice page", invoicePage, "Transaction Type");
+mustContain("invoice page", invoicePage, ">Posted</option>");
+mustContain("invoice page", invoicePage, ">Voided</option>");
+mustContain("invoice page", invoicePage, '<option value="">All</option>');
+mustContain("invoice page", invoicePage, '<option value="">All</option>');
+mustContain("invoice page", invoicePage, "Collection Payment");
+mustContain("invoice page", invoicePage, "Voluntary Payment");
+mustContain("invoice page", invoicePage, "compactInfoLabelStyle");
+mustContain("invoice page", invoicePage, "WC Principal");
+mustContain("invoice page", invoicePage, "WC Interest");
+mustContain("invoice page", invoicePage, "Liens Principal");
+mustContain("invoice page", invoicePage, "Liens Interest");
+mustContain("invoice page", invoicePage, "loadClientDetail");
+mustContain("invoice page", invoicePage, "NF Principal");
+mustContain("invoice page", invoicePage, "NF Interest");
+mustContain("invoice page", invoicePage, "Pull Costs");
+mustContain("invoice page", invoicePage, "Remit");
+mustContain("invoice page", invoicePage, "1. Preview");
+mustContain("invoice page", invoicePage, "2. Review Invoice");
+mustContain("invoice page", invoicePage, "Review Invoice");
+mustContain("invoice page", invoicePage, "Number of Principal / Interest Payments Received");
+mustContain("invoice page", invoicePage, "Number of Costs Payments Received");
+mustContain("invoice page", invoicePage, "principalInterestPaymentCount");
+mustContain("invoice page", invoicePage, "costPaymentCount");
+mustContain("invoice page", invoicePage, "3. Create Draft Invoice");
+mustContain("invoice page", invoicePage, "4. Finalize Invoice");
+mustContain("invoice page", invoicePage, "Invoice History");
+mustContain("invoice page", invoicePage, "Invoice Detail:");
+mustContain("invoice page", invoicePage, "Invoice Audit History");
+mustContain("invoice page", invoicePage, "Print / Save PDF");
+mustContain("invoice page", invoicePage, 'window.open("about:blank", "_blank")');
+mustContain("invoice page", invoicePage, "popup.document.open()");
+mustContain("invoice page", invoicePage, "popup.focus()");
+mustContain("invoice page", invoicePage, "confirmCreateInvoiceDraft");
+mustContain("invoice page", invoicePage, "confirmFinalizeInvoice");
+mustContain("invoice page", invoicePage, "confirmVoidInvoice");
+mustContain("invoice page", invoicePage, "/api/admin/clients/${encodeURIComponent(id)}/invoice/create-preview");
+mustContain("invoice page", invoicePage, "/api/admin/clients/${encodeURIComponent(id)}/invoice/create");
+mustContain("invoice page", invoicePage, "/api/admin/clients/${encodeURIComponent(id)}/invoice/${encodeURIComponent(invoiceId)}/finalize");
+mustContain("invoice page", invoicePage, "/api/admin/clients/${encodeURIComponent(id)}/invoice/${encodeURIComponent(invoiceId)}/void");
+mustContain("invoice page", invoicePage, "Draft invoice created. Receipt rows are not yet marked as invoiced.");
+mustContain("invoice page", invoicePage, "Invoice finalized. Included receipt rows are marked with this invoice ID");
+mustContain("invoice page", invoicePage, "Invoice voided. Receipt rows previously marked with this invoice ID were released");
+
+console.log("");
+console.log("=== VERIFY GLOBAL INVOICE SEARCH UI ===");
+mustContain("global page", globalPage, "Global Invoice Search");
+mustContain("global page", globalPage, "Provider-Level Reporting");
+mustContain("global page", globalPage, "/api/admin/invoices?");
+mustContain("global page", globalPage, "Client Invoice Page");
+mustContain("client page", clientPage, "Global Invoice Search");
+
+if (invoicePage.includes("Source of truth: Main Client Info Page / ProviderClientInfo")) {
+  console.error("FAIL: invoice page still contains source-of-truth explanatory copy");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page source-of-truth explanatory copy removed");
+}
+
+if (invoicePage.includes("Edit Main Client Info")) {
+  console.error("FAIL: invoice page still contains Edit Main Client Info link");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page does not expose provider/client editing from invoice workflow");
+}
+
+if (invoicePage.includes("Provider / Client Info")) {
+  console.error("FAIL: invoice page still contains Provider / Client Info label");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page Provider / Client Info label removed");
+}
+
+if (invoicePage.includes('{ label: "Name", value: clientDetail?.displayName')) {
+  console.error("FAIL: invoice page still contains repeated provider Name row");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page repeated provider Name row removed");
+}
+
+if (invoicePage.includes("Posting Context") || invoicePage.includes("postingContext") || invoicePage.includes("All posting contexts")) {
+  console.error("FAIL: invoice page still contains Posting Context filter");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page Posting Context filter removed");
+}
+
+for (const stale of [
+  "const [checkNumber",
+  "setCheckNumber",
+  'query.set("checkNumber"',
+  "value={checkNumber}",
+  "onChange={(event) => setCheckNumber",
+]) {
+  if (invoicePage.includes(stale)) {
+    console.error(`FAIL: invoice page still contains Check Number filter/state marker: ${stale}`);
+    failures += 1;
+  }
+}
+console.log("PASS: invoice page Check Number filter removed while display columns may remain");
+
+if (invoicePage.includes("Admin mode: include already-invoiced receipt rows for diagnostics") || invoicePage.includes("Admin review mode is active") || invoicePage.includes("includeAlreadyInvoiced") || invoicePage.includes("confirmIncludeAlreadyInvoiced") || invoicePage.includes('<option value="active">active</option>')) {
+  console.error("FAIL: invoice page still contains Active/Admin preview UI remnants");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page Active/Admin preview UI removed");
+}
+
+if (invoicePage.includes('<option value="Filing Fee Collected">Filing Fee Collected</option>')) {
+  console.error("FAIL: invoice page still contains Filing Fee Collected transaction-type option");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page Filing Fee Collected transaction-type option removed");
+}
+
+if (invoicePage.includes("Other Court Fees Collected")) {
+  console.error("FAIL: invoice page still contains Other Court Fees Collected transaction-type option");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page Other Court Fees Collected transaction-type option removed");
+}
+
+if (invoicePage.includes("Receipt Rows") || invoicePage.includes("Excluded Already Invoiced") || invoicePage.includes("Included Already Invoiced") || invoicePage.includes("Package Total")) {
+  console.error("FAIL: invoice page still contains removed old review summary labels");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page old review summary labels removed");
+}
+
+if (failures) {
+  console.error(`\nFAILURES=${failures}`);
+  process.exit(1);
+}
+
+console.log("\nPASS: provider client invoice UI lifecycle verifier passed");

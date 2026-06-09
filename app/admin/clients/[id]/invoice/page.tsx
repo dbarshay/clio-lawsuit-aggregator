@@ -420,8 +420,16 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     const invoiceId = invoice?.id;
     if (!id || !invoiceId) return;
 
+    const receiptLineCount = invoiceReceiptLineCount(invoice);
+
     const confirmed = window.confirm(
-      `Finalize invoice ${invoice?.invoiceNumber || invoiceId}? This will mark included payment receipt rows with this invoice ID and exclude them from future ordinary previews.`
+      [
+        `Finalize invoice ${invoice?.invoiceNumber || invoiceId}?`,
+        "",
+        `This will mark ${receiptLineCount || "the included"} MatterPaymentReceipt row${receiptLineCount === 1 ? "" : "s"} with this invoice ID and exclude them from future ordinary previews.`,
+        "Frozen invoice lines will remain the invoice review/output source.",
+        "This will not mutate Clio, ClaimIndex, source costs, documents, email, print, queue, or remittance records.",
+      ].join("\n")
     );
     if (!confirmed) return;
 
@@ -439,10 +447,13 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
       if (!res.ok || json?.ok === false) throw new Error(json?.error || "Could not finalize invoice.");
 
       setCreatedInvoice(json.invoice);
-      setMessage("Invoice finalized. Included receipt rows are now marked with this invoice ID and excluded from future invoice previews by default.");
+      const markedCount = json?.verification?.receiptRowsMarkedWithThisInvoiceId ?? 0;
+      const lineCount = json?.verification?.lineCount ?? 0;
+      setMessage(
+        `Invoice finalized. ${markedCount} included receipt row${markedCount === 1 ? "" : "s"} marked with this invoice ID. ${lineCount} frozen invoice line${lineCount === 1 ? "" : "s"} remain the review/output source.`
+      );
       await loadInvoiceDetail(invoiceId);
-      setInvoiceDetailVisible(false);
-      setInvoiceDetail(null);
+      setInvoiceDetailVisible(true);
       await loadHistory();
     } catch (err: any) {
       setError(err?.message || "Could not finalize invoice.");
@@ -492,72 +503,210 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     if (!invoice) return;
 
     const lines = Array.isArray(invoice.lines) ? invoice.lines : [];
-    const rows = lines
-      .map(
-        (line: any) => `
+    const principalInterestLines = lines.filter((line: any) => line?.lineType === "receipt");
+    const costsReceivedLines = lines.filter((line: any) => line?.lineType === "filing_fee_payment");
+    const feesCostsExpendedLines = lines.filter((line: any) => line?.lineType === "cost_expended");
+
+    const sectionTotal = (sectionLines: any[]) => sectionLines.reduce((sum: number, line: any) => sum + Number(line?.amount || 0), 0);
+    const sectionRetainerTotal = (sectionLines: any[]) => sectionLines.reduce((sum: number, line: any) => sum + Number(line?.retainerFee || 0), 0);
+    const sectionRemitTotal = (sectionLines: any[]) => sectionLines.reduce((sum: number, line: any) => sum + previewRemitToProvider(line), 0);
+
+    function printableDos(line: any) {
+      return [dateOnly(line.dateOfService), dateOnly(invoiceLineDosEnd(line))].filter(Boolean).join(" – ");
+    }
+
+    function lineTypeForPrint(line: any) {
+      return previewLineDisplayType(line);
+    }
+
+    function principalInterestRows(sectionLines: any[]) {
+      return sectionLines
+        .map(
+          (line: any) => `
       <tr>
-        <td>${safeHtml(dateOnly(line.sortDate))}</td>
         <td>${safeHtml(line.matter || "")}</td>
         <td>${safeHtml(line.patient || "")}</td>
-        <td>${safeHtml(line.provider || "")}</td>
-        <td>${safeHtml(line.description || "")}</td>
-        <td style="text-align:right;">${safeHtml(money(line.amount))}</td>
-        <td style="text-align:right;">${safeHtml(money(line.retainerFee))}</td>
+        <td>${safeHtml(dateOnly(line.dateOfLoss))}</td>
+        <td>${safeHtml(printableDos(line))}</td>
+        <td>${safeHtml(line.insurer || "")}</td>
+        <td>${safeHtml(line.caseType || "")}</td>
+        <td>${safeHtml(lineTypeForPrint(line))}</td>
+        <td>${safeHtml(dateOnly(line.sortDate))}</td>
+        <td>${safeHtml(dateOnly(line.checkDate))}</td>
+        <td>${safeHtml(line.checkNumber || "")}</td>
+        <td class="money">${safeHtml(money(line.billedAmount))}</td>
+        <td class="money">${safeHtml(money(line.amount))}</td>
+        <td class="money">${safeHtml(money(line.retainerFee))}</td>
+        <td class="money">${safeHtml(money(previewRemitToProvider(line)))}</td>
       </tr>`
-      )
-      .join("");
+        )
+        .join("");
+    }
+
+    function costsReceivedRows(sectionLines: any[]) {
+      return sectionLines
+        .map(
+          (line: any) => `
+      <tr>
+        <td>${safeHtml(line.matter || "")}</td>
+        <td>${safeHtml(line.patient || "")}</td>
+        <td>${safeHtml(dateOnly(line.dateOfLoss))}</td>
+        <td>${safeHtml(printableDos(line))}</td>
+        <td>${safeHtml(line.insurer || "")}</td>
+        <td>${safeHtml(line.caseType || "")}</td>
+        <td>${safeHtml(lineTypeForPrint(line))}</td>
+        <td>${safeHtml(dateOnly(line.sortDate))}</td>
+        <td>${safeHtml(dateOnly(line.checkDate))}</td>
+        <td>${safeHtml(line.checkNumber || "")}</td>
+        <td class="money">${safeHtml(money(line.amount))}</td>
+      </tr>`
+        )
+        .join("");
+    }
+
+    function feesCostsExpendedRows(sectionLines: any[]) {
+      return sectionLines
+        .map(
+          (line: any) => `
+      <tr>
+        <td>${safeHtml(line.matter || "")}</td>
+        <td>${safeHtml(line.patient || "")}</td>
+        <td>${safeHtml(dateOnly(line.dateOfLoss))}</td>
+        <td>${safeHtml(printableDos(line))}</td>
+        <td>${safeHtml(line.insurer || "")}</td>
+        <td>${safeHtml(line.caseType || "")}</td>
+        <td>${safeHtml(lineTypeForPrint(line))}</td>
+        <td>${safeHtml(dateOnly(line.sortDate))}</td>
+        <td class="money">${safeHtml(money(line.amount))}</td>
+      </tr>`
+        )
+        .join("");
+    }
+
+    function emptyRow(colSpan: number, message: string) {
+      return `<tr><td colspan="${colSpan}" class="empty">${safeHtml(message)}</td></tr>`;
+    }
+
+    const providerAddressHtml = safeHtml(invoice.clientSnapshot?.address || "").replace(/\n/g, "<br />");
+    const printedOn = new Date().toLocaleString();
 
     const html = `<!doctype html>
 <html>
 <head>
   <title>Invoice ${safeHtml(invoice.invoiceNumber)}</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 32px; color: #0f172a; }
-    h1 { margin-bottom: 4px; }
-    .muted { color: #64748b; font-size: 13px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
-    .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 18px; font-size: 12px; }
-    th, td { border-bottom: 1px solid #e5e7eb; padding: 8px; text-align: left; vertical-align: top; }
-    th { background: #f8fafc; }
-    .totals { margin-top: 18px; width: 420px; margin-left: auto; }
-    .totals div { display: flex; justify-content: space-between; padding: 5px 0; }
-    .total { font-weight: 800; border-top: 2px solid #0f172a; margin-top: 8px; padding-top: 8px; }
-    @media print { button { display: none; } body { padding: 16px; } }
+    @page { margin: 0.45in; size: landscape; }
+    body { font-family: Arial, sans-serif; color: #0f172a; font-size: 11px; line-height: 1.28; margin: 0; }
+    button { margin: 0 0 14px; padding: 8px 12px; border: 1px solid #0f172a; border-radius: 8px; background: #0f172a; color: #fff; font-weight: 800; }
+    h1 { margin: 0; font-size: 24px; letter-spacing: -0.02em; }
+    h2 { margin: 22px 0 6px; font-size: 15px; border-bottom: 2px solid #0f172a; padding-bottom: 4px; }
+    .topline { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; }
+    .muted { color: #475569; }
+    .meta { margin-top: 4px; color: #334155; }
+    .grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 12px; margin: 16px 0; }
+    .card { border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px; min-height: 72px; }
+    .label { color: #475569; font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 800; }
+    .value { margin-top: 3px; font-weight: 700; }
+    table { border-collapse: collapse; width: 100%; margin-top: 6px; font-size: 10px; page-break-inside: auto; }
+    tr { page-break-inside: avoid; page-break-after: auto; }
+    th, td { border: 1px solid #dbe3ef; padding: 4px 5px; text-align: left; vertical-align: top; }
+    th { background: #f1f5f9; font-size: 9px; text-transform: uppercase; letter-spacing: 0.02em; color: #334155; }
+    .money { text-align: right; white-space: nowrap; }
+    .empty { color: #64748b; font-style: italic; text-align: center; padding: 10px; }
+    .section-total td { font-weight: 800; background: #f8fafc; border-top: 2px solid #94a3b8; }
+    .totals { margin-top: 18px; width: 380px; margin-left: auto; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; }
+    .totals div { display: flex; justify-content: space-between; gap: 18px; padding: 4px 0; }
+    .total { font-weight: 900; border-top: 2px solid #0f172a; margin-top: 6px; padding-top: 8px !important; font-size: 13px; }
+    .footer { margin-top: 18px; color: #64748b; font-size: 10px; }
+    @media print { button { display: none; } body { padding: 0; } }
   </style>
 </head>
 <body>
   <button onclick="window.print()">Print / Save as PDF</button>
-  <h1>Provider Client Invoice</h1>
-  <div class="muted">Invoice Number: ${safeHtml(invoice.invoiceNumber)} | Status: ${safeHtml(invoice.status)} | Created: ${safeHtml(dateOnly(invoice.createdAt))} | Finalized: ${safeHtml(dateOnly(invoice.finalizedAt))}</div>
-  <div class="grid">
-    <div class="card">
-      <strong>Provider / Client</strong><br />
-      ${safeHtml(invoice.providerDisplayName)}<br />
-      ${safeHtml(invoice.clientSnapshot?.address).replace(/\n/g, "<br />")}
+
+  <div class="topline">
+    <div>
+      <h1>Provider Client Invoice</h1>
+      <div class="meta">Invoice Number: <strong>${safeHtml(invoice.invoiceNumber)}</strong> &nbsp; | &nbsp; Status: <strong>${safeHtml(invoice.status)}</strong></div>
+      <div class="muted">Created: ${safeHtml(dateOnly(invoice.createdAt)) || "—"} &nbsp; | &nbsp; Finalized: ${safeHtml(dateOnly(invoice.finalizedAt)) || "—"} &nbsp; | &nbsp; Printed: ${safeHtml(printedOn)}</div>
     </div>
-    <div class="card">
-      <strong>Receipt Marking</strong><br />
-      Rows found: ${safeHtml(detail.verification?.receiptRowsFound ?? 0)}<br />
-      Marked with this invoice: ${safeHtml(detail.verification?.receiptRowsMarkedWithThisInvoiceId ?? 0)}<br />
-      Marked with another invoice: ${safeHtml(detail.verification?.receiptRowsMarkedWithAnotherInvoiceId ?? 0)}<br />
-      Unmarked: ${safeHtml(detail.verification?.receiptRowsUnmarked ?? 0)}
+    <div style="text-align:right;">
+      <div class="label">Invoice Total</div>
+      <div style="font-size:22px;font-weight:900;">${safeHtml(money(invoice.invoicePackageTotal))}</div>
     </div>
   </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="label">Provider / Client</div>
+      <div class="value">${safeHtml(invoice.providerDisplayName)}</div>
+      <div>${providerAddressHtml}</div>
+    </div>
+    <div class="card">
+      <div class="label">Period / Filters</div>
+      <div>Date From: <strong>${safeHtml(dateOnly(invoice.dateFrom)) || "—"}</strong></div>
+      <div>Date To: <strong>${safeHtml(dateOnly(invoice.dateTo)) || "—"}</strong></div>
+      <div>Status Filter: <strong>${safeHtml(invoice.statusFilter || "—")}</strong></div>
+      <div>Transaction Type: <strong>${safeHtml(invoice.transactionTypeFilter || "All")}</strong></div>
+    </div>
+    <div class="card">
+      <div class="label">Package Summary</div>
+      <div>Invoice Lines: <strong>${safeHtml(lines.length)}</strong></div>
+      <div>Principal / Interest Lines: <strong>${safeHtml(principalInterestLines.length)}</strong></div>
+      <div>Costs Received Lines: <strong>${safeHtml(costsReceivedLines.length)}</strong></div>
+      <div>Fees and Costs Expended Lines: <strong>${safeHtml(feesCostsExpendedLines.length)}</strong></div>
+    </div>
+  </div>
+
+  <h2>Principal / Interest Received</h2>
   <table>
     <thead>
       <tr>
-        <th>Date</th><th>Matter</th><th>Patient</th><th>Provider</th><th>Description</th><th style="text-align:right;">Amount</th><th style="text-align:right;">Retainer Fee</th>
+        <th>Matter</th><th>Patient</th><th>Date of Loss</th><th>Date of Service</th><th>Insurer</th><th>Case Type</th><th>Type</th><th>Date Posted</th><th>Check Date</th><th>Check Number</th><th class="money">Billed Amount</th><th class="money">Payment Amount</th><th class="money">Retainer Fee</th><th class="money">Remit to Provider</th>
       </tr>
     </thead>
-    <tbody>${rows}</tbody>
+    <tbody>
+      ${principalInterestRows(principalInterestLines) || emptyRow(14, "No principal or interest payments.")}
+      <tr class="section-total"><td colspan="11">Section Total</td><td class="money">${safeHtml(money(sectionTotal(principalInterestLines)))}</td><td class="money">${safeHtml(money(sectionRetainerTotal(principalInterestLines)))}</td><td class="money">${safeHtml(money(sectionRemitTotal(principalInterestLines)))}</td></tr>
+    </tbody>
   </table>
+
+  <h2>Costs Received</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Matter</th><th>Patient</th><th>Date of Loss</th><th>Date of Service</th><th>Insurer</th><th>Case Type</th><th>Type</th><th>Date Posted</th><th>Check Date</th><th>Check Number</th><th class="money">Payment Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${costsReceivedRows(costsReceivedLines) || emptyRow(11, "No costs received.")}
+      <tr class="section-total"><td colspan="10">Section Total</td><td class="money">${safeHtml(money(sectionTotal(costsReceivedLines)))}</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Fees and Costs Expended</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Matter</th><th>Patient</th><th>Date of Loss</th><th>Date of Service</th><th>Insurer</th><th>Case Type</th><th>Type</th><th>Date Incurred</th><th class="money">Amount Expended</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${feesCostsExpendedRows(feesCostsExpendedLines) || emptyRow(9, "No fees or costs expended.")}
+      <tr class="section-total"><td colspan="8">Section Total</td><td class="money">${safeHtml(money(sectionTotal(feesCostsExpendedLines)))}</td></tr>
+    </tbody>
+  </table>
+
   <div class="totals">
-    <div><span>Principal / Interest</span><span>${safeHtml(money(invoice.principalInterestTotal))}</span></div>
-    <div><span>Filing Fee Payments</span><span>${safeHtml(money(invoice.filingFeePaymentTotal))}</span></div>
-    <div><span>Costs Expended</span><span>${safeHtml(money(invoice.costsExpendedTotal))}</span></div>
+    <div><span>Principal / Interest Received</span><span>${safeHtml(money(invoice.principalInterestTotal))}</span></div>
+    <div><span>Costs Received</span><span>${safeHtml(money(invoice.filingFeePaymentTotal))}</span></div>
+    <div><span>Fees and Costs Expended</span><span>${safeHtml(money(invoice.costsExpendedTotal))}</span></div>
     <div><span>Retainer Fee</span><span>${safeHtml(money(invoice.retainerFeeTotal))}</span></div>
     <div class="total"><span>Invoice Total</span><span>${safeHtml(money(invoice.invoicePackageTotal))}</span></div>
+  </div>
+
+  <div class="footer">
+    This invoice was generated from frozen local invoice lines. Word/DOCX is not a delivery format; use this print dialog to save or deliver a PDF copy.
   </div>
 </body>
 </html>`;
@@ -636,6 +785,11 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
 
   function invoiceLineDosEnd(line: any): string {
     return String(line?.dosEnd || line?.dateOfServiceEnd || line?.rowSnapshot?.dateOfServiceEnd || line?.rowSnapshot?.dosEnd || "").trim();
+  }
+
+  function invoiceReceiptLineCount(invoice: any): number {
+    const lines = Array.isArray(invoice?.lines) ? invoice.lines : [];
+    return lines.filter((line: any) => clean(line?.sourceTable) === "MatterPaymentReceipt").length;
   }
 
   function previewLineDisplayType(line: any): string {
@@ -977,7 +1131,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
       <section style={{ ...cardStyle, marginBottom: 18 }}>
         <h2 style={{ marginTop: 0 }}>4. Finalize Invoice</h2>
         <p style={{ color: "#475569" }}>
-          Finalizing marks included MatterPaymentReceipt rows with this invoice ID. Finalized rows are excluded from future ordinary previews.
+          Finalizing marks only the included MatterPaymentReceipt rows with this invoice ID. The frozen invoice lines remain the invoice review/output source, and source costs, remittance records, Clio, ClaimIndex, documents, email, print, and queue are not changed.
         </p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <button type="button" onClick={() => finalizeInvoice()} disabled={!createdInvoice || createdInvoice?.status !== "draft" || finalizing} style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid #166534", background: createdInvoice?.status === "draft" ? "#166534" : "#94a3b8", color: "#fff", fontWeight: 900 }}>
@@ -1063,8 +1217,8 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
             <div>
               <h2 style={{ marginTop: 0 }}>Invoice Detail: {detailInvoice?.invoiceNumber}</h2>
               <p style={{ color: "#475569", marginTop: 0 }}>
-                {detailInvoice?.status === "draft" && "Draft invoice created. Receipt rows are not yet marked as invoiced. Review the package before finalizing."}
-                {detailInvoice?.status === "finalized" && "Invoice finalized. Included receipt rows are marked with this invoice ID and excluded from future invoice previews by default."}
+                {detailInvoice?.status === "draft" && "Draft invoice created. Receipt rows are not yet marked as invoiced. Review the frozen package before finalizing."}
+                {detailInvoice?.status === "finalized" && "Invoice finalized. Included receipt rows are marked with this invoice ID and excluded from future invoice previews by default. The invoice review/output remains based on frozen invoice lines."}
                 {detailInvoice?.status === "voided" && "Invoice voided. Receipt rows previously marked with this invoice ID were released for future invoicing. The voided invoice remains in history."}
               </p>
             </div>
@@ -1078,6 +1232,19 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
               )}
             </div>
           </div>
+
+          {invoiceDetail?.verification && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(150px, 1fr))", gap: 10, margin: "12px 0", padding: 12, border: "1px solid #bfdbfe", borderRadius: 12, background: "#eff6ff" }}>
+              <div><strong>Frozen Lines</strong><br />{invoiceDetail.verification.lineCount ?? detailLines.length}</div>
+              <div><strong>Receipt Rows Found</strong><br />{invoiceDetail.verification.receiptRowsFound ?? "—"}</div>
+              <div><strong>Marked This Invoice</strong><br />{invoiceDetail.verification.receiptRowsMarkedWithThisInvoiceId ?? "—"}</div>
+              <div><strong>Marked Elsewhere</strong><br />{invoiceDetail.verification.receiptRowsMarkedWithAnotherInvoiceId ?? "—"}</div>
+              <div><strong>Unmarked</strong><br />{invoiceDetail.verification.receiptRowsUnmarked ?? "—"}</div>
+              <div style={{ gridColumn: "1 / -1", color: "#1e3a8a", fontWeight: 800 }}>
+                Lifecycle: detail/review uses frozen ProviderClientInvoiceLine rows. Finalize marks only included MatterPaymentReceipt rows. Clio, ClaimIndex, source costs, remittance records, documents, email, print, and queue are not mutated.
+              </div>
+            </div>
+          )}
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(140px, 1fr))", gap: 12, margin: "12px 0" }}>
             <div><strong>Status</strong><br />{statusBadge(detailInvoice?.status)}</div>

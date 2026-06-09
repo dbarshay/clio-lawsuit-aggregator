@@ -49,10 +49,12 @@ mustContain("invoice page", invoicePage, "providerBillingRows");
 mustContain("invoice page", invoicePage, "compactInfoGroupStyle");
 mustContain("invoice page", invoicePage, "filterControlStyle");
 mustContain("invoice page", invoicePage, "Transaction Type");
+mustContain("invoice page", invoicePage, ">Posted</option>");
+mustContain("invoice page", invoicePage, ">Voided</option>");
+mustContain("invoice page", invoicePage, '<option value="">All</option>');
 mustContain("invoice page", invoicePage, '<option value="">All</option>');
 mustContain("invoice page", invoicePage, "Collection Payment");
 mustContain("invoice page", invoicePage, "Voluntary Payment");
-mustContain("invoice page", invoicePage, "Filing Fee Collected");
 mustContain("invoice page", invoicePage, "Other Court Fees Collected");
 mustContain("invoice page", invoicePage, "compactInfoLabelStyle");
 mustContain("invoice page", invoicePage, "WC Principal");
@@ -143,6 +145,13 @@ if (invoicePage.includes("Admin mode: include already-invoiced receipt rows for 
   failures += 1;
 } else {
   console.log("PASS: invoice page Active/Admin preview UI removed");
+}
+
+if (invoicePage.includes('<option value="Filing Fee Collected">Filing Fee Collected</option>')) {
+  console.error("FAIL: invoice page still contains Filing Fee Collected transaction-type option");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page Filing Fee Collected transaction-type option removed");
 }
 
 if (failures) {

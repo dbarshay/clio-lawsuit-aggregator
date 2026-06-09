@@ -663,8 +663,8 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
           <label style={{ fontWeight: 800 }}>
             Status
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={filterControlStyle}>
-              <option value="posted">posted</option>
-              <option value="voided">voided</option>
+              <option value="posted">Posted</option>
+              <option value="voided">Voided</option>
               <option value="All">All</option>
             </select>
           </label>
@@ -676,7 +676,6 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
               <option value="Collection Payment">Collection Payment</option>
               <option value="Voluntary Payment">Voluntary Payment</option>
               <option value="Interest">Interest</option>
-              <option value="Filing Fee Collected">Filing Fee Collected</option>
               <option value="Other Court Fees Collected">Other Court Fees Collected</option>
               <option value="Index Fee">Index Fee</option>
               <option value="Service Fee">Service Fee</option>

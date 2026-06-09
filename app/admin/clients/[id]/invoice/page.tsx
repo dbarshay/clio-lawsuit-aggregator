@@ -753,35 +753,47 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
             </div>
 
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr>
-                    <th style={thStyle}>Date</th>
-                    <th style={thStyle}>Matter</th>
-                    <th style={thStyle}>Patient</th>
-                    <th style={thStyle}>Provider</th>
-                    <th style={thStyle}>Type</th>
-                    <th style={thStyle}>Description</th>
-                    <th style={{ ...thStyle, textAlign: "right" }}>Amount</th>
-                    <th style={{ ...thStyle, textAlign: "right" }}>Retainer Fee</th>
+                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Matter</th>
+                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Patient</th>
+                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Date of Loss</th>
+                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Date of Service</th>
+                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Insurer</th>
+                    <th style={{ ...thStyle, border: "1px solid #cbd5e1", width: 56 }}>Case Type</th>
+                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Type</th>
+                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Date Posted</th>
+                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Check Date</th>
+                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Check Number</th>
+                    <th style={{ ...thStyle, border: "1px solid #cbd5e1", textAlign: "right" }}>Billed Amount</th>
+                    <th style={{ ...thStyle, border: "1px solid #cbd5e1", textAlign: "right" }}>Payment Amount</th>
+                    <th style={{ ...thStyle, border: "1px solid #cbd5e1", textAlign: "right" }}>Retainer Fee</th>
                   </tr>
                 </thead>
                 <tbody>
                   {previewLines.slice(0, 250).map((line: any, index: number) => (
                     <tr key={`${line.sourceTable}-${line.sourceId}-${index}`}>
-                      <td style={tdStyle}>{dateOnly(line.sortDate)}</td>
-                      <td style={tdStyle}>{line.matter || "—"}</td>
-                      <td style={tdStyle}>{line.patient || "—"}</td>
-                      <td style={tdStyle}>{line.provider || "—"}</td>
-                      <td style={tdStyle}>{line.lineType || "—"}</td>
-                      <td style={tdStyle}>{line.description || "—"}</td>
-                      <td style={{ ...tdStyle, textAlign: "right" }}>{money(line.amount)}</td>
-                      <td style={{ ...tdStyle, textAlign: "right" }}>{money(line.retainerFee)}</td>
+                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.matter || "—"}</td>
+                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.patient || "—"}</td>
+                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{dateOnly(line.dateOfLoss) || "—"}</td>
+                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>
+                        {[dateOnly(line.dateOfService), dateOnly(line.dateOfServiceEnd)].filter(Boolean).join(" – ") || "—"}
+                      </td>
+                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.insurer || "—"}</td>
+                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0", width: 56 }}>{line.caseType || "—"}</td>
+                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.lineType || "—"}</td>
+                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{dateOnly(line.sortDate) || "—"}</td>
+                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{dateOnly(line.checkDate) || "—"}</td>
+                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.checkNumber || "—"}</td>
+                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0", textAlign: "right" }}>{money(line.billedAmount)}</td>
+                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0", textAlign: "right" }}>{money(line.amount)}</td>
+                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0", textAlign: "right" }}>{money(line.retainerFee)}</td>
                     </tr>
                   ))}
                   {!previewLines.length && (
                     <tr>
-                      <td style={tdStyle} colSpan={8}>No eligible invoice lines in this preview.</td>
+                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }} colSpan={13}>No eligible invoice lines in this preview.</td>
                     </tr>
                   )}
                 </tbody>

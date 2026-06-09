@@ -34,12 +34,7 @@ for (const needle of [
   "loadingPreview",
   "loadPreview",
   "/invoice/create-preview?",
-  "Review Invoice Package",
-  "Invoice Candidate",
-  "Receipt Rows",
-  "Excluded Already Invoiced",
-  "Included Already Invoiced",
-  "Package Total",
+  "Review Invoice",
   "Retainer Fee",
   "receiptMarkDiagnostics",
   "No eligible invoice lines in this preview.",
@@ -85,6 +80,21 @@ if (page.includes("includeAlreadyInvoiced") || page.includes("confirmIncludeAlre
   failures += 1;
 } else {
   console.log("PASS: invoice page removed admin include-already-invoiced draft-preview UI");
+}
+
+mustContain("invoice page", page, "Review Invoice");
+mustContain("invoice page", page, "Number of Principal / Interest Payments Received");
+mustContain("invoice page", page, "Number of Costs Payments Received");
+mustContain("invoice page", page, "principalInterestPaymentCount");
+mustContain("invoice page", page, "principalInterestPaymentTotal");
+mustContain("invoice page", page, "costPaymentCount");
+mustContain("invoice page", page, "costPaymentTotal");
+
+if (page.includes("Receipt Rows") || page.includes("Excluded Already Invoiced") || page.includes("Included Already Invoiced") || page.includes("Package Total") || page.includes("Invoice Candidate")) {
+  console.error("FAIL: invoice page still contains removed old review summary labels");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page old review summary labels removed");
 }
 
 if (failures) {

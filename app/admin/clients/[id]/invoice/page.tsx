@@ -542,7 +542,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     <div><span>Filing Fee Payments</span><span>${safeHtml(money(invoice.filingFeePaymentTotal))}</span></div>
     <div><span>Costs Expended</span><span>${safeHtml(money(invoice.costsExpendedTotal))}</span></div>
     <div><span>Retainer Fee</span><span>${safeHtml(money(invoice.retainerFeeTotal))}</span></div>
-    <div class="total"><span>Invoice Package Total</span><span>${safeHtml(money(invoice.invoicePackageTotal))}</span></div>
+    <div class="total"><span>Invoice Total</span><span>${safeHtml(money(invoice.invoicePackageTotal))}</span></div>
   </div>
 </body>
 </html>`;
@@ -584,6 +584,12 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
   const previewLines = Array.isArray(preview?.lines) ? preview.lines : [];
   const previewTotals = preview?.totalsSnapshot || {};
   const previewDiagnostics = preview?.receiptMarkDiagnostics || {};
+  const principalInterestPreviewLines = previewLines.filter((line: any) => line?.lineType === "receipt");
+  const costPaymentPreviewLines = previewLines.filter((line: any) => line?.lineType === "filing_fee_payment" || line?.lineType === "cost_expended");
+  const principalInterestPaymentCount = principalInterestPreviewLines.length;
+  const principalInterestPaymentTotal = principalInterestPreviewLines.reduce((sum: number, line: any) => sum + Number(line?.amount || 0), 0);
+  const costPaymentCount = costPaymentPreviewLines.length;
+  const costPaymentTotal = costPaymentPreviewLines.reduce((sum: number, line: any) => sum + Number(line?.amount || 0), 0);
   const detailInvoice = invoiceDetail?.invoice;
   const detailLines = Array.isArray(detailInvoice?.lines) ? detailInvoice.lines : [];
 
@@ -597,7 +603,6 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
         Finalized: invoice.finalizedAt,
         Voided: invoice.voidedAt,
         "Line Count": invoice.lineCount,
-        "Receipt Rows": invoice.receiptRowCount,
         "Invoice Total": invoice.invoicePackageTotal,
       })),
     [history]
@@ -704,17 +709,20 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
       </section>
 
       <section style={{ ...cardStyle, marginBottom: 18 }}>
-        <h2 style={{ marginTop: 0 }}>2. Review Invoice Package</h2>
+        <h2 style={{ marginTop: 0 }}>2. Review Invoice</h2>
         {!preview ? (
           <p style={{ color: "#64748b" }}>No preview loaded.</p>
         ) : (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(160px, 1fr))", gap: 12, marginBottom: 14 }}>
-              <div><strong>Invoice Candidate</strong><br />{preview.invoiceNumberCandidate || "—"}</div>
-              <div><strong>Receipt Rows</strong><br />{previewTotals.receiptRowCount || 0}</div>
-              <div><strong>Excluded Already Invoiced</strong><br />{previewDiagnostics.excludedAlreadyInvoicedReceiptRowCount || 0}</div>
-              <div><strong>Included Already Invoiced</strong><br />{previewDiagnostics.includedAlreadyInvoicedReceiptRowCount || 0}</div>
-              <div><strong>Package Total</strong><br />{money(previewTotals.invoicePackageTotal)}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(260px, 1fr))", gap: 12, marginBottom: 14 }}>
+              <div>
+                <strong>Number of Principal / Interest Payments Received</strong><br />
+                {principalInterestPaymentCount} — {money(principalInterestPaymentTotal)}
+              </div>
+              <div>
+                <strong>Number of Costs Payments Received</strong><br />
+                {costPaymentCount} — {money(costPaymentTotal)}
+              </div>
             </div>
 
             <div style={{ overflowX: "auto" }}>
@@ -806,7 +814,6 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
                 <th style={thStyle}>Finalized</th>
                 <th style={thStyle}>Voided</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>Lines</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Receipts</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>Total</th>
                 <th style={thStyle}>Actions</th>
               </tr>
@@ -820,7 +827,6 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
                   <td style={tdStyle}>{dateOnly(invoice.finalizedAt) || "—"}</td>
                   <td style={tdStyle}>{dateOnly(invoice.voidedAt) || "—"}</td>
                   <td style={{ ...tdStyle, textAlign: "right" }}>{invoice.lineCount}</td>
-                  <td style={{ ...tdStyle, textAlign: "right" }}>{invoice.receiptRowCount}</td>
                   <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.invoicePackageTotal)}</td>
                   <td style={tdStyle}>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -837,7 +843,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
               ))}
               {!history.length && (
                 <tr>
-                  <td style={tdStyle} colSpan={9}>No invoices yet.</td>
+                  <td style={tdStyle} colSpan={8}>No invoices yet.</td>
                 </tr>
               )}
             </tbody>

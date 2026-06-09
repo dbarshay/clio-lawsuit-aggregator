@@ -66,14 +66,17 @@ mustContain("invoice page", invoicePage, "NF Interest");
 mustContain("invoice page", invoicePage, "Pull Costs");
 mustContain("invoice page", invoicePage, "Remit");
 mustContain("invoice page", invoicePage, "1. Preview");
-mustContain("invoice page", invoicePage, "2. Review Invoice Package");
+mustContain("invoice page", invoicePage, "2. Review Invoice");
+mustContain("invoice page", invoicePage, "Review Invoice");
+mustContain("invoice page", invoicePage, "Number of Principal / Interest Payments Received");
+mustContain("invoice page", invoicePage, "Number of Costs Payments Received");
+mustContain("invoice page", invoicePage, "principalInterestPaymentCount");
+mustContain("invoice page", invoicePage, "costPaymentCount");
 mustContain("invoice page", invoicePage, "3. Create Draft Invoice");
 mustContain("invoice page", invoicePage, "4. Finalize Invoice");
 mustContain("invoice page", invoicePage, "Invoice History");
 mustContain("invoice page", invoicePage, "Invoice Detail:");
 mustContain("invoice page", invoicePage, "Invoice Audit History");
-mustContain("invoice page", invoicePage, "Excluded Already Invoiced");
-mustContain("invoice page", invoicePage, "Included Already Invoiced");
 mustContain("invoice page", invoicePage, "Print / Save PDF");
 mustContain("invoice page", invoicePage, 'window.open("about:blank", "_blank")');
 mustContain("invoice page", invoicePage, "popup.document.open()");
@@ -158,6 +161,13 @@ if (invoicePage.includes("Other Court Fees Collected")) {
   failures += 1;
 } else {
   console.log("PASS: invoice page Other Court Fees Collected transaction-type option removed");
+}
+
+if (invoicePage.includes("Receipt Rows") || invoicePage.includes("Excluded Already Invoiced") || invoicePage.includes("Included Already Invoiced") || invoicePage.includes("Package Total")) {
+  console.error("FAIL: invoice page still contains removed old review summary labels");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page old review summary labels removed");
 }
 
 if (failures) {

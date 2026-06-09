@@ -33,14 +33,12 @@ console.log("=== VERIFY PROVIDER CLIENT INVOICE WORKFLOW SEQUENCE UI SAFETY ==="
 for (const needle of [
   "Provider Client Invoice Workflow",
   "1. Preview",
-  "2. Review Invoice Package",
+  "2. Review Invoice",
   "3. Create Draft Invoice",
   "4. Finalize Invoice",
   "Invoice History",
   "Invoice Detail:",
   "Invoice Audit History",
-  "Excluded Already Invoiced",
-  "Included Already Invoiced",
   "Print / Save PDF",
   "Export CSV",
   "Global Invoice Search",
@@ -102,6 +100,21 @@ if (invoicePage.includes("Admin mode: include already-invoiced receipt rows for 
   failures += 1;
 } else {
   console.log("PASS: invoice page removed admin include-already-invoiced UI");
+}
+
+mustContain("invoice page", invoicePage, "Review Invoice");
+mustContain("invoice page", invoicePage, "Number of Principal / Interest Payments Received");
+mustContain("invoice page", invoicePage, "Number of Costs Payments Received");
+mustContain("invoice page", invoicePage, "principalInterestPaymentCount");
+mustContain("invoice page", invoicePage, "principalInterestPaymentTotal");
+mustContain("invoice page", invoicePage, "costPaymentCount");
+mustContain("invoice page", invoicePage, "costPaymentTotal");
+
+if (invoicePage.includes("Receipt Rows") || invoicePage.includes("Excluded Already Invoiced") || invoicePage.includes("Included Already Invoiced") || invoicePage.includes("Package Total") || invoicePage.includes("Invoice Candidate")) {
+  console.error("FAIL: invoice page still contains removed old review summary labels");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page old review summary labels removed");
 }
 
 if (failures) {

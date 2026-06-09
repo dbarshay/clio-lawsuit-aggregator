@@ -56,10 +56,25 @@ const compactInfoLabelStyle: React.CSSProperties = {
 };
 
 const compactInfoValueStyle: React.CSSProperties = {
-  margin: "2px 0 0",
+  margin: "1px 0 0",
   fontSize: 14,
-  lineHeight: 1.25,
+  lineHeight: 1.2,
 };
+
+const compactInfoGroupStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 6,
+  alignContent: "start",
+};
+
+function ProviderInfoItem({ label, value, multiline }: { label: string; value: unknown; multiline?: boolean }) {
+  return (
+    <div>
+      <dt style={compactInfoLabelStyle}>{label}</dt>
+      <dd style={{ ...compactInfoValueStyle, whiteSpace: multiline ? "pre-wrap" : "normal" }}>{clean(value) || "—"}</dd>
+    </div>
+  );
+}
 
 function clean(value: unknown): string {
   return String(value ?? "").trim();
@@ -512,20 +527,25 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
   }
 
   const providerClientDetails = clientDetail?.details || {};
-  const providerInfoRows = [
-    { label: "Name", value: clientDetail?.displayName || preview?.providerDisplayName || "—" },
+  const providerIdentityRows = [
     { label: "Address", value: providerAddress(providerClientDetails) || "—", multiline: true },
     { label: "Owner", value: findDetailValue(providerClientDetails, ["hidden_owner", "owner", "Owner", "assigned_owner", "account_owner", "client_owner"]) || "—" },
     { label: "Provider Group", value: findDetailValue(providerClientDetails, ["hidden_group_name", "group_name", "provider_group", "Provider Group", "Group Name"]) || "—" },
-    { label: "Pull Costs", value: findDetailValue(providerClientDetails, ["hidden_pull_costs", "pull_costs", "Pull Costs", "Pull Cost"]) || "—" },
-    { label: "Remit", value: findDetailValue(providerClientDetails, ["hidden_remit", "remit", "Remit", "remit_type", "remit_account"]) || "—" },
+    { label: "Status", value: clientDetail?.isActive === false ? "Inactive" : "Active" },
+  ];
+
+  const providerPercentageRows = [
     { label: "NF Principal", value: percentDisplay(findDetailValue(providerClientDetails, ["hidden_retainer_principal_nf_percent", "retainer_nf_principal_percent"])) || "—" },
     { label: "NF Interest", value: percentDisplay(findDetailValue(providerClientDetails, ["hidden_retainer_interest_percent", "hidden_retainer_nf_interest_percent", "retainer_nf_interest_percent"])) || "—" },
     { label: "WC Principal", value: percentDisplay(findDetailValue(providerClientDetails, ["hidden_retainer_wc_principal_percent", "retainer_wc_principal_percent", "Retainer WC Principal", "WC Principal"])) || "—" },
     { label: "WC Interest", value: percentDisplay(findDetailValue(providerClientDetails, ["hidden_retainer_wc_interest_percent", "retainer_wc_interest_percent", "Retainer WC Interest", "WC Interest"])) || "—" },
     { label: "Liens Principal", value: percentDisplay(findDetailValue(providerClientDetails, ["hidden_retainer_liens_principal_percent", "hidden_retainer_lien_principal_percent", "retainer_liens_principal_percent", "retainer_lien_principal_percent", "Retainer Liens Principal", "Retainer Lien Principal"])) || "—" },
     { label: "Liens Interest", value: percentDisplay(findDetailValue(providerClientDetails, ["hidden_retainer_liens_interest_percent", "hidden_retainer_lien_interest_percent", "retainer_liens_interest_percent", "retainer_lien_interest_percent", "Retainer Liens Interest", "Retainer Lien Interest"])) || "—" },
-    { label: "Status", value: clientDetail?.isActive === false ? "Inactive" : "Active" },
+  ];
+
+  const providerBillingRows = [
+    { label: "Pull Costs", value: findDetailValue(providerClientDetails, ["hidden_pull_costs", "pull_costs", "Pull Costs", "Pull Cost"]) || "—" },
+    { label: "Remit", value: findDetailValue(providerClientDetails, ["hidden_remit", "remit", "Remit", "remit_type", "remit_account"]) || "—" },
   ];
 
   const previewLines = Array.isArray(preview?.lines) ? preview.lines : [];
@@ -575,28 +595,29 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
       {message && <section style={{ ...cardStyle, borderColor: "#bfdbfe", color: "#1d4ed8", marginBottom: 18 }}>{message}</section>}
 
       <section style={{ ...cardStyle, marginBottom: 18 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "baseline", flexWrap: "wrap" }}>
-            <div style={{ color: "#64748b", fontSize: 12, fontWeight: 900, textTransform: "uppercase" }}>
-              Provider / Client Info
-            </div>
-            <h2 style={{ margin: 0, fontSize: 18 }}>{clientDetail?.displayName || "Provider Client"}</h2>
-          </div>
-          <Link href={id ? `/admin/clients/${encodeURIComponent(id)}` : "/admin/clients"} style={{ color: "#2563eb", fontWeight: 900, textDecoration: "none" }}>
-            Edit Main Client Info
-          </Link>
+        <div style={{ display: "flex", gap: 12, alignItems: "baseline", flexWrap: "wrap", marginBottom: 8 }}>
+          <h2 style={{ margin: 0, fontSize: 18 }}>{clientDetail?.displayName || "Provider Client"}</h2>
         </div>
 
         {clientDetailLoading ? (
           <p style={{ color: "#64748b" }}>Loading provider/client info...</p>
         ) : (
-          <dl style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(180px, 1fr))", gap: "8px 16px", margin: 0 }}>
-            {providerInfoRows.map((row) => (
-              <div key={row.label}>
-                <dt style={compactInfoLabelStyle}>{row.label}</dt>
-                <dd style={{ ...compactInfoValueStyle, whiteSpace: row.multiline ? "pre-wrap" : "normal" }}>{row.value || "—"}</dd>
-              </div>
-            ))}
+          <dl style={{ display: "grid", gridTemplateColumns: "minmax(260px, 1.25fr) minmax(220px, 1fr) minmax(180px, 0.8fr)", gap: "8px 28px", margin: 0 }}>
+            <div style={compactInfoGroupStyle}>
+              {providerIdentityRows.map((row) => (
+                <ProviderInfoItem key={row.label} label={row.label} value={row.value} multiline={row.multiline} />
+              ))}
+            </div>
+            <div style={compactInfoGroupStyle}>
+              {providerPercentageRows.map((row) => (
+                <ProviderInfoItem key={row.label} label={row.label} value={row.value} />
+              ))}
+            </div>
+            <div style={compactInfoGroupStyle}>
+              {providerBillingRows.map((row) => (
+                <ProviderInfoItem key={row.label} label={row.label} value={row.value} />
+              ))}
+            </div>
           </dl>
         )}
       </section>

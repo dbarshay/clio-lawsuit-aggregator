@@ -38,7 +38,11 @@ const clientPage = text(files.clientPage);
 console.log("");
 console.log("=== VERIFY PROVIDER CLIENT INVOICE UI LIFECYCLE ===");
 mustContain("invoice page", invoicePage, "Provider Client Invoice Workflow");
-mustContain("invoice page", invoicePage, "Provider / Client Info");
+mustContain("invoice page", invoicePage, "ProviderInfoItem");
+mustContain("invoice page", invoicePage, "providerIdentityRows");
+mustContain("invoice page", invoicePage, "providerPercentageRows");
+mustContain("invoice page", invoicePage, "providerBillingRows");
+mustContain("invoice page", invoicePage, "compactInfoGroupStyle");
 mustContain("invoice page", invoicePage, "filterControlStyle");
 mustContain("invoice page", invoicePage, "compactInfoLabelStyle");
 mustContain("invoice page", invoicePage, "WC Principal");
@@ -47,9 +51,7 @@ mustContain("invoice page", invoicePage, "Liens Principal");
 mustContain("invoice page", invoicePage, "Liens Interest");
 mustContain("invoice page", invoicePage, "All transaction types");
 mustContain("invoice page", invoicePage, "All posting contexts");
-mustContain("invoice page", invoicePage, "Edit Main Client Info");
 mustContain("invoice page", invoicePage, "loadClientDetail");
-mustContain("invoice page", invoicePage, "providerInfoRows");
 mustContain("invoice page", invoicePage, "NF Principal");
 mustContain("invoice page", invoicePage, "NF Interest");
 mustContain("invoice page", invoicePage, "Pull Costs");
@@ -93,6 +95,27 @@ if (invoicePage.includes("Source of truth: Main Client Info Page / ProviderClien
   failures += 1;
 } else {
   console.log("PASS: invoice page source-of-truth explanatory copy removed");
+}
+
+if (invoicePage.includes("Edit Main Client Info")) {
+  console.error("FAIL: invoice page still contains Edit Main Client Info link");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page does not expose provider/client editing from invoice workflow");
+}
+
+if (invoicePage.includes("Provider / Client Info")) {
+  console.error("FAIL: invoice page still contains Provider / Client Info label");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page Provider / Client Info label removed");
+}
+
+if (invoicePage.includes('{ label: "Name", value: clientDetail?.displayName')) {
+  console.error("FAIL: invoice page still contains repeated provider Name row");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page repeated provider Name row removed");
 }
 
 if (failures) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDateOnlyForDisplay } from "@/lib/dateOnlyDisplay";
 import { BARSH_MATTER_STATUS_OPTIONS } from "@/lib/matterStatusOptions";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -1699,18 +1700,7 @@ function todayIsoDateOnly(): string {
 }
 
 function costEntryDateDisplay(value: unknown): string {
-  const text = clean(value);
-  if (!text) return "";
-
-  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) {
-    const [, year, month, day] = iso;
-    return `${Number(month)}/${Number(day)}/${year}`;
-  }
-
-  const parsed = new Date(text);
-  if (Number.isNaN(parsed.getTime())) return text;
-  return parsed.toLocaleDateString();
+  return formatDateOnlyForDisplay(value);
 }
 
 function masterCostEntryRecordDisplay(field: "filingFee" | "serviceFee" | "otherCourtCosts"): string {
@@ -1956,25 +1946,7 @@ function masterMetadataMoneyDisplayValue(field: "filingFee" | "serviceFee" | "ot
   }
 
   function formatMasterDateDisplay(value: any): string {
-    const raw = clean(value);
-    if (!raw || raw === "—") return "—";
-
-    const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (isoMatch) {
-      return `${isoMatch[2]}/${isoMatch[3]}/${isoMatch[1]}`;
-    }
-
-    const slashMatch = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
-    if (slashMatch) {
-      return `${slashMatch[1].padStart(2, "0")}/${slashMatch[2].padStart(2, "0")}/${slashMatch[3]}`;
-    }
-
-    const date = new Date(raw);
-    if (!Number.isNaN(date.getTime())) {
-      return `${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}/${date.getFullYear()}`;
-    }
-
-    return raw;
+    return formatDateOnlyForDisplay(value) || "—";
   }
 
   function masterInfoDateInputValue(value: any): string {
@@ -1987,10 +1959,8 @@ function masterMetadataMoneyDisplayValue(field: "filingFee" | "serviceFee" | "ot
       return `${slashMatch[3]}-${slashMatch[1].padStart(2, "0")}-${slashMatch[2].padStart(2, "0")}`;
     }
 
-    const date = new Date(raw);
-    if (!Number.isNaN(date.getTime())) {
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    }
+    const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/);
+    if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
 
     return "";
   }
@@ -3534,23 +3504,7 @@ function masterSettlementDateFiledValue(): string {
   }
 
   function formatSettlementHistoryDate(value: unknown): string {
-    const raw = String(value ?? "").trim();
-    if (!raw) return "—";
-
-    const ymd = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (ymd) {
-      return `${ymd[2]}/${ymd[3]}/${ymd[1]}`;
-    }
-
-    const parsed = new Date(raw);
-    if (!Number.isNaN(parsed.getTime())) {
-      const month = String(parsed.getMonth() + 1).padStart(2, "0");
-      const day = String(parsed.getDate()).padStart(2, "0");
-      const year = parsed.getFullYear();
-      return `${month}/${day}/${year}`;
-    }
-
-    return raw;
+    return formatDateOnlyForDisplay(value) || "—";
   }
 
   function formatSettlementHistoryMoney(value: unknown): string {
@@ -3588,20 +3542,7 @@ function masterSettlementDateFiledValue(): string {
   }
 
   function formatSettlementTicklerDate(value: unknown): string {
-    const raw = String(value || "").trim();
-    if (!raw) return "";
-
-    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (match) return `${match[2]}/${match[3]}/${match[1]}`;
-
-    const parsed = new Date(raw);
-    if (Number.isNaN(parsed.getTime())) return raw;
-
-    return parsed.toLocaleDateString("en-US", {
-      month: "2-digit",
-      day: "2-digit",
-      year: "numeric",
-    });
+    return formatDateOnlyForDisplay(value);
   }
 
   function masterSettlementPaymentDueFollowUpLabel(): string {
@@ -13372,10 +13313,12 @@ function masterSettlementDateFiledValue(): string {
                       const preSuitPaymentAmount = Math.max(totalPaymentAmount - lawsuitPaymentAmount, 0);
                       const dosStart = clean(row.dosStart ?? row.dos_start ?? row.serviceStart ?? row.service_start ?? "");
                       const dosEnd = clean(row.dosEnd ?? row.dos_end ?? row.serviceEnd ?? row.service_end ?? "");
+                      const formattedDosStart = formatDateOnlyForDisplay(dosStart);
+                      const formattedDosEnd = formatDateOnlyForDisplay(dosEnd);
                       const dosLabel =
-                        dosStart && dosEnd && dosStart !== dosEnd
-                          ? `${dosStart} – ${dosEnd}`
-                          : dosStart || dosEnd || clean(row.dos) || "—";
+                        formattedDosStart && formattedDosEnd && formattedDosStart !== formattedDosEnd
+                          ? `${formattedDosStart} – ${formattedDosEnd}`
+                          : formattedDosStart || formattedDosEnd || formatDateOnlyForDisplay(row.dos) || clean(row.dos) || "—";
                       const denialReason = clean(row.denialReason ?? row.denial_reason ?? row.closeReason ?? row.close_reason ?? "");
                       const insurer = clean(row.insurer ?? row.insuranceCompany ?? row.insurance_company ?? "");
                       const claimNumber = clean(row.claimNumber ?? row.claim_number ?? "");

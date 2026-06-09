@@ -6,6 +6,7 @@ const mustExist = [
   "app/admin/clients/[id]/page.tsx",
   "app/admin/invoices/page.tsx",
   "app/matter/[id]/page.tsx",
+  "app/matters/page.tsx",
   "app/admin/ticklers/page.tsx",
   "app/api/settlements/documents-print-local/route.ts",
 ];
@@ -40,6 +41,20 @@ for (const file of patchedFiles) {
   }
   if (!text.includes("formatDateOnlyForDisplay")) {
     fail("patched file does not use shared date utility", { file });
+  }
+}
+
+
+const mattersPage = fs.readFileSync("app/matters/page.tsx", "utf8");
+for (const required of [
+  'import { formatDateOnlyForDisplay } from "@/lib/dateOnlyDisplay";',
+  "function costEntryDateDisplay(value: unknown): string {\n  return formatDateOnlyForDisplay(value);\n}",
+  'return formatDateOnlyForDisplay(value) || "—";',
+  "const formattedDosStart = formatDateOnlyForDisplay(dosStart);",
+  "const formattedDosEnd = formatDateOnlyForDisplay(dosEnd);",
+]) {
+  if (!mattersPage.includes(required)) {
+    fail("matters page missing master/lawsuit date-only safety marker", { required });
   }
 }
 

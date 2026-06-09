@@ -172,9 +172,6 @@ function isoDateOnly(value: unknown): string {
     return `${dotMatch[3]}-${month}-${day}`;
   }
 
-  const parsed = new Date(text);
-  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
-
   return "";
 }
 

@@ -681,7 +681,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     return (
       <section style={{ marginTop: 18 }}>
         <div style={{ marginBottom: 8 }}>
-          <h3 style={{ margin: 0 }}>{title}</h3>
+          <h3 style={{ margin: 0, fontWeight: 950 }}>{title}</h3>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>

@@ -526,13 +526,13 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
       <tr>
         <td>${safeHtml(line.matter || "")}</td>
         <td>${safeHtml(line.patient || "")}</td>
-        <td>${safeHtml(dateOnly(line.dateOfLoss))}</td>
-        <td>${safeHtml(printableDos(line))}</td>
+        <td class="date">${safeHtml(dateOnly(line.dateOfLoss))}</td>
+        <td class="date">${safeHtml(printableDos(line))}</td>
         <td>${safeHtml(line.insurer || "")}</td>
         <td>${safeHtml(line.caseType || "")}</td>
         <td>${safeHtml(lineTypeForPrint(line))}</td>
-        <td>${safeHtml(dateOnly(line.sortDate))}</td>
-        <td>${safeHtml(dateOnly(line.checkDate))}</td>
+        <td class="date">${safeHtml(dateOnly(line.sortDate))}</td>
+        <td class="date">${safeHtml(dateOnly(line.checkDate))}</td>
         <td>${safeHtml(line.checkNumber || "")}</td>
         <td class="money">${safeHtml(money(line.billedAmount))}</td>
         <td class="money">${safeHtml(money(line.amount))}</td>
@@ -550,13 +550,13 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
       <tr>
         <td>${safeHtml(line.matter || "")}</td>
         <td>${safeHtml(line.patient || "")}</td>
-        <td>${safeHtml(dateOnly(line.dateOfLoss))}</td>
-        <td>${safeHtml(printableDos(line))}</td>
+        <td class="date">${safeHtml(dateOnly(line.dateOfLoss))}</td>
+        <td class="date">${safeHtml(printableDos(line))}</td>
         <td>${safeHtml(line.insurer || "")}</td>
         <td>${safeHtml(line.caseType || "")}</td>
         <td>${safeHtml(lineTypeForPrint(line))}</td>
-        <td>${safeHtml(dateOnly(line.sortDate))}</td>
-        <td>${safeHtml(dateOnly(line.checkDate))}</td>
+        <td class="date">${safeHtml(dateOnly(line.sortDate))}</td>
+        <td class="date">${safeHtml(dateOnly(line.checkDate))}</td>
         <td>${safeHtml(line.checkNumber || "")}</td>
         <td class="money">${safeHtml(money(line.amount))}</td>
       </tr>`
@@ -571,12 +571,12 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
       <tr>
         <td>${safeHtml(line.matter || "")}</td>
         <td>${safeHtml(line.patient || "")}</td>
-        <td>${safeHtml(dateOnly(line.dateOfLoss))}</td>
-        <td>${safeHtml(printableDos(line))}</td>
+        <td class="date">${safeHtml(dateOnly(line.dateOfLoss))}</td>
+        <td class="date">${safeHtml(printableDos(line))}</td>
         <td>${safeHtml(line.insurer || "")}</td>
         <td>${safeHtml(line.caseType || "")}</td>
         <td>${safeHtml(lineTypeForPrint(line))}</td>
-        <td>${safeHtml(dateOnly(line.sortDate))}</td>
+        <td class="date">${safeHtml(dateOnly(line.sortDate))}</td>
         <td class="money">${safeHtml(money(line.amount))}</td>
       </tr>`
         )
@@ -587,82 +587,122 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
       return `<tr><td colspan="${colSpan}" class="empty">${safeHtml(message)}</td></tr>`;
     }
 
-    const providerAddressHtml = safeHtml(invoice.clientSnapshot?.address || "").replace(/\n/g, "<br />");
+    const summaryPrincipalInterestReceived = Number(invoice.principalInterestTotal || 0);
+    const summaryRetainerFee = Number(invoice.retainerFeeTotal || 0);
+    const summaryNetRemitToProvider = summaryPrincipalInterestReceived - summaryRetainerFee;
+
+    function normalizeAddressDisplayLine(line: any): string {
+      const text = String(line || "").trim().replace(/\s+/g, " ");
+      if (!text) return "";
+
+      const titleCased = text
+        .toLowerCase()
+        .replace(/\b([a-z])/g, (match) => match.toUpperCase())
+        .replace(/\bPo Box\b/i, "PO Box")
+        .replace(/\bP\.O\. Box\b/i, "PO Box")
+        .replace(/\bNy\b/g, "NY")
+        .replace(/\bUsa\b/g, "USA");
+
+      return titleCased
+        .replace(/, New York\b/i, ", NY")
+        .replace(/\bNew York, NY\b/i, "New York, NY");
+    }
+
+    const normalizedAddressHtml = safeHtml(
+      String(invoice.clientSnapshot?.address || "")
+        .split(/\r?\n/)
+        .map((line: string) => normalizeAddressDisplayLine(line))
+        .filter(Boolean)
+        .join("\n")
+    ).replace(/\n/g, "<br />");
+    const providerName = safeHtml(invoice.providerDisplayName || "Client");
+    const statementTitle = "Remittance / Statement of Account";
+    const statementPeriod = [dateOnly(invoice.dateFrom), dateOnly(invoice.dateTo)].filter(Boolean).join(" – ") || "—";
+    const invoiceDate = dateOnly(invoice.finalizedAt || invoice.createdAt) || "—";
     const printedOn = new Date().toLocaleString();
+    const logoSrc = "/brl-logo.png";
 
     const html = `<!doctype html>
 <html>
 <head>
   <title>Invoice ${safeHtml(invoice.invoiceNumber)}</title>
   <style>
-    @page { margin: 0.45in; size: landscape; }
-    body { font-family: Arial, sans-serif; color: #0f172a; font-size: 11px; line-height: 1.28; margin: 0; }
+    @page { margin: 0.35in; size: landscape; }
+    body { font-family: Arial, sans-serif; color: #0f172a; font-size: 13px; line-height: 1.35; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     button { margin: 0 0 14px; padding: 8px 12px; border: 1px solid #0f172a; border-radius: 8px; background: #0f172a; color: #fff; font-weight: 800; }
-    h1 { margin: 0; font-size: 24px; letter-spacing: -0.02em; }
-    h2 { margin: 22px 0 6px; font-size: 15px; border-bottom: 2px solid #0f172a; padding-bottom: 4px; }
-    .topline { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; }
+    h1 { margin: 0; font-size: 28px; letter-spacing: -0.025em; }
+    h2 { margin: 20px 0 6px; font-size: 16px; border-bottom: 2px solid #0f172a; padding-bottom: 4px; }
+    .topline { display: grid; grid-template-columns: 390px minmax(720px, 1fr) 340px; gap: 34px; align-items: stretch; border-bottom: 2px solid #cbd5e1; padding-bottom: 16px; margin-bottom: 16px; }
+    .header-left { display: flex; align-items: flex-start; justify-content: flex-start; }
+    .header-center { display: flex; flex-direction: column; justify-content: space-between; align-items: center; min-height: 170px; }
+    .header-right { display: flex; flex-direction: column; align-items: flex-end; }
+    .brl-logo { height: 170px; max-width: 380px; object-fit: contain; display: block; }
+    .provider-name { width: 100%; font-size: 24px; font-weight: 900; letter-spacing: -0.02em; line-height: 1.15; text-align: center; white-space: nowrap; }
+    .provider-address { width: 100%; margin-top: 6px; font-size: 12px; font-weight: 700; color: #334155; line-height: 1.35; text-align: center; }
+    .statement-title { width: 100%; font-size: 20px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; text-align: center; white-space: nowrap; }
+    .statement-address { width: 320px; max-width: 100%; color: #334155; line-height: 1.35; text-align: left; }
+    .statement-meta-block { width: 320px; max-width: 100%; margin-top: 14px; text-align: left; }
+    .statement-meta-row { margin-top: 7px; color: #0f172a; }
+    .statement-meta-label { display: block; font-size: 18px; font-weight: 900; line-height: 1.1; }
+    .statement-meta-value { display: block; margin-top: 4px; font-size: 16px; font-weight: 800; line-height: 1.15; color: #334155; }
     .muted { color: #475569; }
     .meta { margin-top: 4px; color: #334155; }
     .grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 12px; margin: 16px 0; }
     .card { border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px; min-height: 72px; }
     .label { color: #475569; font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 800; }
     .value { margin-top: 3px; font-weight: 700; }
-    table { border-collapse: collapse; width: 100%; margin-top: 6px; font-size: 10px; page-break-inside: auto; }
+    table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 14px; page-break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
     tr { page-break-inside: avoid; page-break-after: auto; }
-    th, td { border: 1px solid #dbe3ef; padding: 4px 5px; text-align: left; vertical-align: top; }
-    th { background: #f1f5f9; font-size: 9px; text-transform: uppercase; letter-spacing: 0.02em; color: #334155; }
+    th, td { border: 1px solid #cbd5e1; padding: 8px 9px; text-align: left; vertical-align: top; }
+    th { background: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.02em; color: #ffffff; white-space: nowrap; text-align: center; font-weight: 900; }
     .money { text-align: right; white-space: nowrap; }
+    .date { white-space: nowrap; }
+    .section-note { color: #475569; font-size: 12px; margin: 4px 0 8px; display: flex; gap: 20px; flex-wrap: wrap; }
     .empty { color: #64748b; font-style: italic; text-align: center; padding: 10px; }
     .section-total td { font-weight: 800; background: #f8fafc; border-top: 2px solid #94a3b8; }
-    .totals { margin-top: 18px; width: 380px; margin-left: auto; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; }
-    .totals div { display: flex; justify-content: space-between; gap: 18px; padding: 4px 0; }
-    .total { font-weight: 900; border-top: 2px solid #0f172a; margin-top: 6px; padding-top: 8px !important; font-size: 13px; }
+    .totals { margin-top: 30px; width: 680px; margin-left: auto; border: 3px solid #94a3b8; border-radius: 14px; padding: 22px 24px; font-size: 20px; }
+    .totals div { display: flex; justify-content: space-between; gap: 30px; padding: 10px 0; }
+    .total { font-weight: 900; border-top: 4px solid #0f172a; margin-top: 12px; padding-top: 16px !important; font-size: 28px; }
     .footer { margin-top: 18px; color: #64748b; font-size: 10px; }
-    @media print { button { display: none; } body { padding: 0; } }
+    @media print { button { display: none; } body { padding: 0; } thead { display: table-header-group; } tfoot { display: table-footer-group; } }
   </style>
 </head>
 <body>
   <button onclick="window.print()">Print / Save as PDF</button>
 
   <div class="topline">
-    <div>
-      <h1>Provider Client Invoice</h1>
-      <div class="meta">Invoice Number: <strong>${safeHtml(invoice.invoiceNumber)}</strong> &nbsp; | &nbsp; Status: <strong>${safeHtml(invoice.status)}</strong></div>
-      <div class="muted">Created: ${safeHtml(dateOnly(invoice.createdAt)) || "—"} &nbsp; | &nbsp; Finalized: ${safeHtml(dateOnly(invoice.finalizedAt)) || "—"} &nbsp; | &nbsp; Printed: ${safeHtml(printedOn)}</div>
+    <div class="header-left">
+      <img src="${safeHtml(logoSrc)}" alt="BRL Logo" class="brl-logo" />
     </div>
-    <div style="text-align:right;">
-      <div class="label">Invoice Total</div>
-      <div style="font-size:22px;font-weight:900;">${safeHtml(money(invoice.invoicePackageTotal))}</div>
+    <div class="header-center">
+      <div>
+        <div class="provider-name">${providerName}</div>
+        <div class="provider-address">${normalizedAddressHtml || "—"}</div>
+      </div>
+      <div class="statement-title">${statementTitle}</div>
+    </div>
+    <div class="header-right">
+      <div class="statement-meta-block">
+        <div class="statement-meta-row"><span class="statement-meta-label">Statement Number:</span><span class="statement-meta-value">${safeHtml(invoice.invoiceNumber)}</span></div>
+        <div class="statement-meta-row"><span class="statement-meta-label">Statement Period:</span><span class="statement-meta-value">${safeHtml(statementPeriod)}</span></div>
+        <div class="statement-meta-row"><span class="statement-meta-label">Invoice Date:</span><span class="statement-meta-value">${safeHtml(invoiceDate)}</span></div>
+      </div>
     </div>
   </div>
 
-  <div class="grid">
-    <div class="card">
-      <div class="label">Provider / Client</div>
-      <div class="value">${safeHtml(invoice.providerDisplayName)}</div>
-      <div>${providerAddressHtml}</div>
-    </div>
-    <div class="card">
-      <div class="label">Period / Filters</div>
-      <div>Date From: <strong>${safeHtml(dateOnly(invoice.dateFrom)) || "—"}</strong></div>
-      <div>Date To: <strong>${safeHtml(dateOnly(invoice.dateTo)) || "—"}</strong></div>
-      <div>Status Filter: <strong>${safeHtml(invoice.statusFilter || "—")}</strong></div>
-      <div>Transaction Type: <strong>${safeHtml(invoice.transactionTypeFilter || "All")}</strong></div>
-    </div>
-    <div class="card">
-      <div class="label">Package Summary</div>
-      <div>Invoice Lines: <strong>${safeHtml(lines.length)}</strong></div>
-      <div>Principal / Interest Lines: <strong>${safeHtml(principalInterestLines.length)}</strong></div>
-      <div>Costs Received Lines: <strong>${safeHtml(costsReceivedLines.length)}</strong></div>
-      <div>Fees and Costs Expended Lines: <strong>${safeHtml(feesCostsExpendedLines.length)}</strong></div>
-    </div>
-  </div>
 
   <h2>Principal / Interest Received</h2>
+  <div class="section-note">
+    <span>Gross: ${safeHtml(money(sectionTotal(principalInterestLines)))}</span>
+    <span>Retainer: ${safeHtml(money(sectionRetainerTotal(principalInterestLines)))}</span>
+    <span>Net Remit: ${safeHtml(money(sectionRemitTotal(principalInterestLines)))}</span>
+  </div>
   <table>
     <thead>
       <tr>
-        <th>Matter</th><th>Patient</th><th>Date of Loss</th><th>Date of Service</th><th>Insurer</th><th>Case Type</th><th>Type</th><th>Date Posted</th><th>Check Date</th><th>Check Number</th><th class="money">Billed Amount</th><th class="money">Payment Amount</th><th class="money">Retainer Fee</th><th class="money">Remit to Provider</th>
+        <th>Matter</th><th>Patient</th><th>DOL</th><th>DOS</th><th>Insurer</th><th>Case</th><th>Type</th><th>Posted</th><th>Check Date</th><th>Check #</th><th class="money">Amt. Billed</th><th class="money">Amt. Received</th><th class="money">Retainer</th><th class="money">Net Remit</th>
       </tr>
     </thead>
     <tbody>
@@ -672,10 +712,13 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
   </table>
 
   <h2>Costs Received</h2>
+  <div class="section-note">
+    <span>Total Costs Received: ${safeHtml(money(sectionTotal(costsReceivedLines)))}</span>
+  </div>
   <table>
     <thead>
       <tr>
-        <th>Matter</th><th>Patient</th><th>Date of Loss</th><th>Date of Service</th><th>Insurer</th><th>Case Type</th><th>Type</th><th>Date Posted</th><th>Check Date</th><th>Check Number</th><th class="money">Payment Amount</th>
+        <th>Matter</th><th>Patient</th><th>DOL</th><th>DOS</th><th>Insurer</th><th>Case</th><th>Type</th><th>Posted</th><th>Check Date</th><th>Check #</th><th class="money">Amt. Received</th>
       </tr>
     </thead>
     <tbody>
@@ -684,11 +727,14 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     </tbody>
   </table>
 
-  <h2>Fees and Costs Expended</h2>
+  <h2>Costs Expended</h2>
+  <div class="section-note">
+    <span>Total Costs Expended: ${safeHtml(money(sectionTotal(feesCostsExpendedLines)))}</span>
+  </div>
   <table>
     <thead>
       <tr>
-        <th>Matter</th><th>Patient</th><th>Date of Loss</th><th>Date of Service</th><th>Insurer</th><th>Case Type</th><th>Type</th><th>Date Incurred</th><th class="money">Amount Expended</th>
+        <th>Matter</th><th>Patient</th><th>DOL</th><th>DOS</th><th>Insurer</th><th>Case</th><th>Type</th><th>Incurred</th><th class="money">Amount</th>
       </tr>
     </thead>
     <tbody>
@@ -698,11 +744,9 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
   </table>
 
   <div class="totals">
-    <div><span>Principal / Interest Received</span><span>${safeHtml(money(invoice.principalInterestTotal))}</span></div>
-    <div><span>Costs Received</span><span>${safeHtml(money(invoice.filingFeePaymentTotal))}</span></div>
-    <div><span>Fees and Costs Expended</span><span>${safeHtml(money(invoice.costsExpendedTotal))}</span></div>
-    <div><span>Retainer Fee</span><span>${safeHtml(money(invoice.retainerFeeTotal))}</span></div>
-    <div class="total"><span>Invoice Total</span><span>${safeHtml(money(invoice.invoicePackageTotal))}</span></div>
+    <div><span>Principal / Interest Received</span><span>${safeHtml(money(summaryPrincipalInterestReceived))}</span></div>
+    <div><span>Retainer Fee</span><span>${safeHtml(money(summaryRetainerFee))}</span></div>
+    <div class="total"><span>Net Remit to Provider</span><span>${safeHtml(money(summaryNetRemitToProvider))}</span></div>
   </div>
 
   <div class="footer">
@@ -773,8 +817,8 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     { key: "sortDate", label: "Date Posted", expendedLabel: "Date Incurred" },
     { key: "checkDate", label: "Check Date", hideForExpended: true },
     { key: "checkNumber", label: "Check Number", hideForExpended: true },
-    { key: "billedAmount", label: "Billed Amount", align: "right", hideForCostsReceived: true, hideForExpended: true },
-    { key: "amount", label: "Payment Amount", expendedLabel: "Amount Expended", align: "right" },
+    { key: "billedAmount", label: "Amt. Billed", align: "right", headerAlign: "center", hideForCostsReceived: true, hideForExpended: true },
+    { key: "amount", label: "Amt. Received", expendedLabel: "Amount Expended", align: "right", headerAlign: "center" },
     { key: "retainerFee", label: "Retainer Fee", align: "right", hideForCostsReceived: true, hideForExpended: true },
     { key: "remitToProvider", label: "Remit to Provider", align: "right", principalOnly: true },
   ];
@@ -876,7 +920,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
                       ...thStyle,
                       border: "1px solid #cbd5e1",
                       width: column.width,
-                      textAlign: column.align === "right" ? "right" : undefined,
+                      textAlign: column.headerAlign === "center" ? "center" : column.align === "right" ? "right" : undefined,
                       cursor: "pointer",
                       userSelect: "none",
                       whiteSpace: "nowrap",

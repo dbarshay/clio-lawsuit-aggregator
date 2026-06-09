@@ -387,14 +387,16 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
 </body>
 </html>`;
 
-    const popup = window.open("", "_blank", "noopener,noreferrer");
+    const popup = window.open("about:blank", "_blank");
     if (!popup) {
       setError("Browser blocked printable invoice window.");
       return;
     }
 
+    popup.document.open();
     popup.document.write(html);
     popup.document.close();
+    popup.focus();
   }
 
   const previewLines = Array.isArray(preview?.lines) ? preview.lines : [];

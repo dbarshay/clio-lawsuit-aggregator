@@ -49,6 +49,9 @@ mustContain("invoice page", invoicePage, "Admin mode: include already-invoiced r
 mustContain("invoice page", invoicePage, "Excluded Already Invoiced");
 mustContain("invoice page", invoicePage, "Included Already Invoiced");
 mustContain("invoice page", invoicePage, "Print / Save PDF");
+mustContain("invoice page", invoicePage, 'window.open("about:blank", "_blank")');
+mustContain("invoice page", invoicePage, "popup.document.open()");
+mustContain("invoice page", invoicePage, "popup.focus()");
 mustContain("invoice page", invoicePage, "confirmCreateInvoiceDraft");
 mustContain("invoice page", invoicePage, "confirmFinalizeInvoice");
 mustContain("invoice page", invoicePage, "confirmVoidInvoice");

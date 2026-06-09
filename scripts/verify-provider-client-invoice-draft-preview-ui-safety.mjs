@@ -37,10 +37,30 @@ for (const needle of [
   "Review Invoice",
   "Retainer Fee",
   "receiptMarkDiagnostics",
-  "No eligible invoice lines in this preview.",
 ]) {
   mustContain("invoice page", page, needle);
 }
+
+for (const needle of [
+  "Principal / Interest Received",
+  "Costs Received",
+  "Fees and Costs Expended",
+  "No principal or interest payments in this preview.",
+  "No cost payments received in this preview.",
+  "No fees or costs expended in this preview.",
+  "line.description || line.lineType || \"—\"",
+  "<tfoot>",
+  "colSpan={11}",
+  "previewTableSort",
+  "setPreviewTableSort",
+  "sortPreviewLines",
+  "togglePreviewTableSort",
+  "activeSort.direction",
+]) {
+  mustContain("invoice page", page, needle);
+}
+
+mustNotContain("invoice page", page, "No eligible invoice lines in this preview.");
 
 for (const needle of [
   "createDraftInvoice",

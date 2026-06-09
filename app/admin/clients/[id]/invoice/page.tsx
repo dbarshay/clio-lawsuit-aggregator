@@ -600,11 +600,145 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
   const previewTotals = preview?.totalsSnapshot || {};
   const previewDiagnostics = preview?.receiptMarkDiagnostics || {};
   const principalInterestPreviewLines = previewLines.filter((line: any) => line?.lineType === "receipt");
-  const costPaymentPreviewLines = previewLines.filter((line: any) => line?.lineType === "filing_fee_payment" || line?.lineType === "cost_expended");
+  const costsReceivedPreviewLines = previewLines.filter((line: any) => line?.lineType === "filing_fee_payment");
+  const feesCostsExpendedPreviewLines = previewLines.filter((line: any) => line?.lineType === "cost_expended");
+  const costPaymentPreviewLines = [...costsReceivedPreviewLines, ...feesCostsExpendedPreviewLines];
   const principalInterestPaymentCount = principalInterestPreviewLines.length;
   const principalInterestPaymentTotal = principalInterestPreviewLines.reduce((sum: number, line: any) => sum + Number(line?.amount || 0), 0);
+  const costsReceivedPaymentCount = costsReceivedPreviewLines.length;
+  const costsReceivedPaymentTotal = costsReceivedPreviewLines.reduce((sum: number, line: any) => sum + Number(line?.amount || 0), 0);
+  const feesCostsExpendedCount = feesCostsExpendedPreviewLines.length;
+  const feesCostsExpendedTotal = feesCostsExpendedPreviewLines.reduce((sum: number, line: any) => sum + Number(line?.amount || 0), 0);
   const costPaymentCount = costPaymentPreviewLines.length;
   const costPaymentTotal = costPaymentPreviewLines.reduce((sum: number, line: any) => sum + Number(line?.amount || 0), 0);
+  const [previewTableSort, setPreviewTableSort] = useState<{ table: string; field: string; direction: "asc" | "desc" } | null>(null);
+
+  const previewTableColumns = [
+    { key: "matter", label: "Matter" },
+    { key: "patient", label: "Patient" },
+    { key: "dateOfLoss", label: "Date of Loss" },
+    { key: "dateOfService", label: "Date of Service" },
+    { key: "insurer", label: "Insurer" },
+    { key: "caseType", label: "Case Type", width: 56 },
+    { key: "description", label: "Type" },
+    { key: "sortDate", label: "Date Posted" },
+    { key: "checkDate", label: "Check Date" },
+    { key: "checkNumber", label: "Check Number" },
+    { key: "billedAmount", label: "Billed Amount", align: "right" },
+    { key: "amount", label: "Payment Amount", align: "right" },
+    { key: "retainerFee", label: "Retainer Fee", align: "right" },
+  ];
+
+  function previewSortValue(line: any, field: string): string | number {
+    if (field === "description") return String(line?.description || line?.lineType || "").toLowerCase();
+    if (field === "dateOfService") return String(line?.dateOfService || line?.dateOfServiceEnd || "");
+    if (field === "billedAmount" || field === "amount" || field === "retainerFee") return Number(line?.[field] || 0);
+    return String(line?.[field] ?? "").toLowerCase();
+  }
+
+  function sortPreviewLines(title: string, lines: any[]) {
+    if (!previewTableSort || previewTableSort.table !== title) return lines;
+    const direction = previewTableSort.direction === "desc" ? -1 : 1;
+    const field = previewTableSort.field;
+
+    return [...lines].sort((a: any, b: any) => {
+      const aValue = previewSortValue(a, field);
+      const bValue = previewSortValue(b, field);
+
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return (aValue - bValue) * direction;
+      }
+
+      return String(aValue).localeCompare(String(bValue), undefined, { numeric: true, sensitivity: "base" }) * direction;
+    });
+  }
+
+  function togglePreviewTableSort(title: string, field: string) {
+    setPreviewTableSort((current) => {
+      if (current?.table === title && current.field === field) {
+        return { table: title, field, direction: current.direction === "asc" ? "desc" : "asc" };
+      }
+
+      return { table: title, field, direction: "asc" };
+    });
+  }
+
+  function renderPreviewLineTable(title: string, lines: any[], emptyMessage: string) {
+    const total = lines.reduce((sum: number, line: any) => sum + Number(line?.amount || 0), 0);
+    const sortedLines = sortPreviewLines(title, lines);
+    const activeSort = previewTableSort?.table === title ? previewTableSort : null;
+
+    return (
+      <section style={{ marginTop: 18 }}>
+        <div style={{ marginBottom: 8 }}>
+          <h3 style={{ margin: 0 }}>{title}</h3>
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr>
+                {previewTableColumns.map((column) => (
+                  <th
+                    key={column.key}
+                    onClick={() => togglePreviewTableSort(title, column.key)}
+                    title={`Sort by ${column.label}`}
+                    style={{
+                      ...thStyle,
+                      border: "1px solid #cbd5e1",
+                      width: column.width,
+                      textAlign: column.align === "right" ? "right" : undefined,
+                      cursor: "pointer",
+                      userSelect: "none",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {column.label}{activeSort?.field === column.key ? (activeSort.direction === "asc" ? " ▲" : " ▼") : ""}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sortedLines.slice(0, 250).map((line: any, index: number) => (
+                <tr key={`${title}-${line.sourceTable}-${line.sourceId}-${index}`}>
+                  <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.matter || "—"}</td>
+                  <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.patient || "—"}</td>
+                  <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{dateOnly(line.dateOfLoss) || "—"}</td>
+                  <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>
+                    {[dateOnly(line.dateOfService), dateOnly(line.dateOfServiceEnd)].filter(Boolean).join(" – ") || "—"}
+                  </td>
+                  <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.insurer || "—"}</td>
+                  <td style={{ ...tdStyle, border: "1px solid #e2e8f0", width: 56 }}>{line.caseType || "—"}</td>
+                  <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.description || line.lineType || "—"}</td>
+                  <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{dateOnly(line.sortDate) || "—"}</td>
+                  <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{dateOnly(line.checkDate) || "—"}</td>
+                  <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.checkNumber || "—"}</td>
+                  <td style={{ ...tdStyle, border: "1px solid #e2e8f0", textAlign: "right" }}>{money(line.billedAmount)}</td>
+                  <td style={{ ...tdStyle, border: "1px solid #e2e8f0", textAlign: "right" }}>{money(line.amount)}</td>
+                  <td style={{ ...tdStyle, border: "1px solid #e2e8f0", textAlign: "right" }}>{money(line.retainerFee)}</td>
+                </tr>
+              ))}
+              {!lines.length && (
+                <tr>
+                  <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }} colSpan={13}>{emptyMessage}</td>
+                </tr>
+              )}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td style={{ ...tdStyle, border: "1px solid #cbd5e1", fontWeight: 900, textAlign: "right" }} colSpan={11}>
+                  Total
+                </td>
+                <td style={{ ...tdStyle, border: "1px solid #cbd5e1", fontWeight: 900, textAlign: "right" }}>{money(total)}</td>
+                <td style={{ ...tdStyle, border: "1px solid #cbd5e1", fontWeight: 900, textAlign: "right" }}>
+                  {money(lines.reduce((sum: number, line: any) => sum + Number(line?.retainerFee || 0), 0))}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+    );
+  }
   const detailInvoice = invoiceDetail?.invoice;
   const selectedInvoiceId = detailInvoice?.id || invoiceDetail?.invoiceId || null;
   const isInvoiceDetailOpen = (invoice: any) => invoiceDetailVisible && selectedInvoiceId && String(selectedInvoiceId) === String(invoice?.id);
@@ -750,53 +884,23 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
               </div>
             </div>
 
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                <thead>
-                  <tr>
-                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Matter</th>
-                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Patient</th>
-                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Date of Loss</th>
-                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Date of Service</th>
-                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Insurer</th>
-                    <th style={{ ...thStyle, border: "1px solid #cbd5e1", width: 56 }}>Case Type</th>
-                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Type</th>
-                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Date Posted</th>
-                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Check Date</th>
-                    <th style={{ ...thStyle, border: "1px solid #cbd5e1" }}>Check Number</th>
-                    <th style={{ ...thStyle, border: "1px solid #cbd5e1", textAlign: "right" }}>Billed Amount</th>
-                    <th style={{ ...thStyle, border: "1px solid #cbd5e1", textAlign: "right" }}>Payment Amount</th>
-                    <th style={{ ...thStyle, border: "1px solid #cbd5e1", textAlign: "right" }}>Retainer Fee</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {previewLines.slice(0, 250).map((line: any, index: number) => (
-                    <tr key={`${line.sourceTable}-${line.sourceId}-${index}`}>
-                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.matter || "—"}</td>
-                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.patient || "—"}</td>
-                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{dateOnly(line.dateOfLoss) || "—"}</td>
-                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>
-                        {[dateOnly(line.dateOfService), dateOnly(line.dateOfServiceEnd)].filter(Boolean).join(" – ") || "—"}
-                      </td>
-                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.insurer || "—"}</td>
-                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0", width: 56 }}>{line.caseType || "—"}</td>
-                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.lineType || "—"}</td>
-                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{dateOnly(line.sortDate) || "—"}</td>
-                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{dateOnly(line.checkDate) || "—"}</td>
-                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.checkNumber || "—"}</td>
-                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0", textAlign: "right" }}>{money(line.billedAmount)}</td>
-                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0", textAlign: "right" }}>{money(line.amount)}</td>
-                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0", textAlign: "right" }}>{money(line.retainerFee)}</td>
-                    </tr>
-                  ))}
-                  {!previewLines.length && (
-                    <tr>
-                      <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }} colSpan={13}>No eligible invoice lines in this preview.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            {renderPreviewLineTable(
+              "Principal / Interest Received",
+              principalInterestPreviewLines,
+              "No principal or interest payments in this preview."
+            )}
+
+            {renderPreviewLineTable(
+              "Costs Received",
+              costsReceivedPreviewLines,
+              "No cost payments received in this preview."
+            )}
+
+            {renderPreviewLineTable(
+              "Fees and Costs Expended",
+              feesCostsExpendedPreviewLines,
+              "No fees or costs expended in this preview."
+            )}
           </>
         )}
       </section>

@@ -122,10 +122,13 @@ if (page.includes("includeAlreadyInvoiced") || page.includes("confirmIncludeAlre
 mustContain("invoice page", page, "Review Invoice");
 mustContain("invoice page", page, "Number of Principal / Interest Payments Received");
 mustContain("invoice page", page, "Number of Costs Payments Received");
+mustContain("invoice page", page, "Number of Costs Expended");
 mustContain("invoice page", page, "principalInterestPaymentCount");
 mustContain("invoice page", page, "principalInterestPaymentTotal");
 mustContain("invoice page", page, "costPaymentCount");
 mustContain("invoice page", page, "costPaymentTotal");
+mustContain("invoice page", page, "feesCostsExpendedCount");
+mustContain("invoice page", page, "feesCostsExpendedTotal");
 
 if (page.includes("Receipt Rows") || page.includes("Excluded Already Invoiced") || page.includes("Included Already Invoiced") || page.includes("Package Total") || page.includes("Invoice Candidate")) {
   console.error("FAIL: invoice page still contains removed old review summary labels");

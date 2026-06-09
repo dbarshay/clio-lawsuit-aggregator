@@ -266,7 +266,6 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
   const [id, setId] = useState("");
   const [statusFilter, setStatusFilter] = useState("posted");
   const [transactionType, setTransactionType] = useState("");
-  const [checkNumber, setCheckNumber] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [includeAlreadyInvoiced, setIncludeAlreadyInvoiced] = useState(false);
@@ -332,7 +331,6 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     const query = new URLSearchParams();
     query.set("status", statusFilter);
     if (transactionType.trim()) query.set("transactionType", transactionType.trim());
-    if (checkNumber.trim()) query.set("checkNumber", checkNumber.trim());
     if (dateFrom) query.set("dateFrom", dateFrom);
     if (dateTo) query.set("dateTo", dateTo);
     if (includeAlreadyInvoiced) query.set("includeAlreadyInvoiced", "true");
@@ -638,7 +636,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
 
       <section style={{ ...cardStyle, marginBottom: 18 }}>
         <div style={{ display: "flex", gap: 12, alignItems: "baseline", flexWrap: "wrap", marginBottom: 8 }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>{clientDetail?.displayName || "Provider Client"}</h2>
+          <h2 style={{ margin: 0, fontSize: 26, fontWeight: 950, letterSpacing: "-0.01em" }}>{clientDetail?.displayName || "Provider Client"}</h2>
         </div>
 
         {clientDetailLoading ? (
@@ -671,7 +669,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
           Ordinary previews exclude receipt rows already assigned to an invoice. Admin mode can include already-invoiced rows for diagnostics only.
         </p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(150px, 1fr))", gap: 10, alignItems: "end" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(160px, 1fr))", gap: 10, alignItems: "end" }}>
           <label style={{ fontWeight: 800 }}>
             Status
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={filterControlStyle}>
@@ -695,11 +693,6 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
               <option value="Service Fee">Service Fee</option>
               <option value="Other Court Costs">Other Court Costs</option>
             </select>
-          </label>
-
-          <label style={{ fontWeight: 800 }}>
-            Check Number
-            <input value={checkNumber} onChange={(event) => setCheckNumber(event.target.value)} style={filterControlStyle} placeholder="Check number" />
           </label>
 
           <label style={{ fontWeight: 800 }}>
@@ -734,7 +727,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
           <p style={{ color: "#64748b" }}>No preview loaded.</p>
         ) : (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(150px, 1fr))", gap: 12, marginBottom: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(160px, 1fr))", gap: 12, marginBottom: 14 }}>
               <div><strong>Invoice Candidate</strong><br />{preview.invoiceNumberCandidate || "—"}</div>
               <div><strong>Receipt Rows</strong><br />{previewTotals.receiptRowCount || 0}</div>
               <div><strong>Excluded Already Invoiced</strong><br />{previewDiagnostics.excludedAlreadyInvoicedReceiptRowCount || 0}</div>

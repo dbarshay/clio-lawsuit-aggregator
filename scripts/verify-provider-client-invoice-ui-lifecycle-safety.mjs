@@ -38,6 +38,7 @@ const clientPage = text(files.clientPage);
 console.log("");
 console.log("=== VERIFY PROVIDER CLIENT INVOICE UI LIFECYCLE ===");
 mustContain("invoice page", invoicePage, "Provider Client Invoice Workflow");
+mustContain("invoice page", invoicePage, "fontSize: 26");
 mustContain("invoice page", invoicePage, "ProviderInfoItem");
 mustContain("invoice page", invoicePage, "providerIdentityRows");
 mustContain("invoice page", invoicePage, "normalizeAddressDisplay");
@@ -130,6 +131,13 @@ if (invoicePage.includes("Posting Context") || invoicePage.includes("postingCont
   failures += 1;
 } else {
   console.log("PASS: invoice page Posting Context filter removed");
+}
+
+if (invoicePage.includes("Check Number") || invoicePage.includes("checkNumber") || invoicePage.includes("Check number")) {
+  console.error("FAIL: invoice page still contains Check Number filter");
+  failures += 1;
+} else {
+  console.log("PASS: invoice page Check Number filter removed");
 }
 
 if (failures) {

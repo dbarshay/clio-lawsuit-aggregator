@@ -57,6 +57,72 @@ function dateTime(value: unknown) {
   return date.toLocaleString();
 }
 
+function asPlainObject(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
+}
+
+function detailEntries(details: unknown): { field: string; value: string; source: string }[] {
+  const root = asPlainObject(details);
+  const hidden = asPlainObject(root._hiddenImportFields);
+  const rows: { field: string; value: string; source: string }[] = [];
+
+  for (const [key, value] of Object.entries(root)) {
+    if (key === "_hiddenImportFields") continue;
+    const textValue = clean(value);
+    if (textValue) rows.push({ field: key, value: textValue, source: "Imported" });
+  }
+
+  for (const [key, value] of Object.entries(hidden)) {
+    const textValue = clean(value);
+    if (textValue) rows.push({ field: key, value: textValue, source: "Hidden Import" });
+  }
+
+  return rows;
+}
+
+function findDetailValue(details: unknown, keys: string[]) {
+  const entries = detailEntries(details);
+  const compact = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const wanted = keys.map(compact);
+
+  for (const key of wanted) {
+    const exact = entries.find((entry) => compact(entry.field) === key);
+    if (exact) return exact.value;
+  }
+
+  for (const key of wanted) {
+    const fuzzy = entries.find((entry) => compact(entry.field).includes(key));
+    if (fuzzy) return fuzzy.value;
+  }
+
+  return "";
+}
+
+function providerAddress(details: unknown) {
+  const direct = findDetailValue(details, ["address", "full_address", "mailing_address"]);
+  if (direct) return direct;
+
+  const street = findDetailValue(details, ["hidden_street", "street", "address_line_1", "address1"]);
+  const street2 = findDetailValue(details, ["hidden_suite", "suite", "address_line_2", "address2"]);
+  const city = findDetailValue(details, ["hidden_city", "city"]);
+  const state = findDetailValue(details, ["hidden_state", "state"]);
+  const zip = findDetailValue(details, ["hidden_zipcode", "hidden_zip", "zip", "zipcode", "postal_code"]);
+  const cityState = [city, state].filter(Boolean).join(", ");
+  const cityStateZip = cityState && zip ? `${cityState} ${zip}` : cityState || zip;
+
+  return [street, street2, cityStateZip].filter(Boolean).join("\n");
+}
+
+function percentDisplay(value: unknown) {
+  const text = clean(value);
+  if (!text) return "";
+  if (text.includes("%")) return text;
+  const numeric = Number(text.replace(/[$,%\s,]/g, ""));
+  if (!Number.isFinite(numeric)) return text;
+  return `${numeric}%`;
+}
+
 function statusBadge(status: unknown) {
   const value = clean(status).toLowerCase() || "draft";
   const style =
@@ -120,6 +186,8 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
   const [dateTo, setDateTo] = useState("");
   const [includeAlreadyInvoiced, setIncludeAlreadyInvoiced] = useState(false);
 
+  const [clientDetail, setClientDetail] = useState<any>(null);
+  const [clientDetailLoading, setClientDetailLoading] = useState(false);
   const [preview, setPreview] = useState<any>(null);
   const [createdInvoice, setCreatedInvoice] = useState<any>(null);
   const [invoiceDetail, setInvoiceDetail] = useState<any>(null);
@@ -135,6 +203,22 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
   useEffect(() => {
     Promise.resolve(params).then((resolved) => setId(resolved.id));
   }, [params]);
+
+  async function loadClientDetail(clientId = id) {
+    if (!clientId) return;
+    setClientDetailLoading(true);
+
+    try {
+      const res = await fetch(`/api/admin/clients/${encodeURIComponent(clientId)}?status=posted`, { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok || json?.ok === false) throw new Error(json?.error || "Could not load provider/client detail.");
+      setClientDetail(json.client || null);
+    } catch (err: any) {
+      setError(err?.message || "Could not load provider/client detail.");
+    } finally {
+      setClientDetailLoading(false);
+    }
+  }
 
   async function loadHistory(clientId = id) {
     if (!clientId) return;
@@ -154,6 +238,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
 
   useEffect(() => {
     if (!id) return;
+    loadClientDetail(id);
     loadHistory(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -399,6 +484,19 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     popup.focus();
   }
 
+  const providerClientDetails = clientDetail?.details || {};
+  const providerInfoRows = [
+    { label: "Name", value: clientDetail?.displayName || preview?.providerDisplayName || "—" },
+    { label: "Address", value: providerAddress(providerClientDetails) || "—", multiline: true },
+    { label: "Owner", value: findDetailValue(providerClientDetails, ["hidden_owner", "owner", "Owner", "assigned_owner", "account_owner", "client_owner"]) || "—" },
+    { label: "Provider Group", value: findDetailValue(providerClientDetails, ["hidden_group_name", "group_name", "provider_group", "Provider Group", "Group Name"]) || "—" },
+    { label: "Retainer NF Principal", value: percentDisplay(findDetailValue(providerClientDetails, ["hidden_retainer_principal_nf_percent", "retainer_nf_principal_percent"])) || "—" },
+    { label: "Retainer NF Interest", value: percentDisplay(findDetailValue(providerClientDetails, ["hidden_retainer_interest_percent", "hidden_retainer_nf_interest_percent", "retainer_nf_interest_percent"])) || "—" },
+    { label: "Pull Costs", value: findDetailValue(providerClientDetails, ["hidden_pull_costs", "pull_costs", "Pull Costs", "Pull Cost"]) || "—" },
+    { label: "Remit", value: findDetailValue(providerClientDetails, ["hidden_remit", "remit", "Remit", "remit_type", "remit_account"]) || "—" },
+    { label: "Status", value: clientDetail?.isActive === false ? "Inactive" : "Active" },
+  ];
+
   const previewLines = Array.isArray(preview?.lines) ? preview.lines : [];
   const previewTotals = preview?.totalsSnapshot || {};
   const previewDiagnostics = preview?.receiptMarkDiagnostics || {};
@@ -447,6 +545,37 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
 
       {error && <section style={{ ...cardStyle, borderColor: "#fecaca", color: "#b91c1c", marginBottom: 18 }}>{error}</section>}
       {message && <section style={{ ...cardStyle, borderColor: "#bfdbfe", color: "#1d4ed8", marginBottom: 18 }}>{message}</section>}
+
+      <section style={{ ...cardStyle, marginBottom: 18 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "start", flexWrap: "wrap" }}>
+          <div>
+            <div style={{ color: "#64748b", fontSize: 12, fontWeight: 900, textTransform: "uppercase" }}>
+              Provider / Client Info
+            </div>
+            <h2 style={{ margin: "4px 0 6px" }}>{clientDetail?.displayName || "Provider Client"}</h2>
+            <p style={{ margin: 0, color: "#475569" }}>
+              Source of truth: Main Client Info Page / ProviderClientInfo. Invoice previews use this local provider/client information.
+            </p>
+          </div>
+          <Link href={id ? `/admin/clients/${encodeURIComponent(id)}` : "/admin/clients"} style={{ color: "#2563eb", fontWeight: 900, textDecoration: "none" }}>
+            Edit Main Client Info
+          </Link>
+        </div>
+
+        {clientDetailLoading ? (
+          <p style={{ color: "#64748b" }}>Loading provider/client info...</p>
+        ) : (
+          <dl style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(220px, 1fr))", gap: "10px 18px", margin: "14px 0 0" }}>
+            {providerInfoRows.map((row) => (
+              <div key={row.label}>
+                <dt style={{ fontWeight: 900, color: "#334155" }}>{row.label}</dt>
+                <dd style={{ margin: 0, whiteSpace: row.multiline ? "pre-wrap" : "normal" }}>{row.value || "—"}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </section>
+
 
       <section style={{ ...cardStyle, marginBottom: 18 }}>
         <h2 style={{ marginTop: 0 }}>1. Preview</h2>

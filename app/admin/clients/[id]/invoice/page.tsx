@@ -634,6 +634,10 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     return Number(line?.amount || 0) - Number(line?.retainerFee || 0);
   }
 
+  function invoiceLineDosEnd(line: any): string {
+    return String(line?.dosEnd || line?.dateOfServiceEnd || line?.rowSnapshot?.dateOfServiceEnd || line?.rowSnapshot?.dosEnd || "").trim();
+  }
+
   function previewLineDisplayType(line: any): string {
     const rawType = String(line?.description || line?.rowSnapshot?.transactionType || line?.lineType || "").trim();
     const normalizedType = rawType.toLowerCase();
@@ -649,7 +653,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
 
   function previewSortValue(line: any, field: string): string | number {
     if (field === "description") return previewLineDisplayType(line).toLowerCase();
-    if (field === "dateOfService") return String(line?.dateOfService || line?.dateOfServiceEnd || "");
+    if (field === "dateOfService") return `${String(line?.dateOfService || "")} ${invoiceLineDosEnd(line)}`.trim();
     if (field === "remitToProvider") return previewRemitToProvider(line);
     if (field === "billedAmount" || field === "amount" || field === "retainerFee") return Number(line?.[field] || 0);
     return String(line?.[field] ?? "").toLowerCase();
@@ -736,7 +740,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
                   <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.patient || "—"}</td>
                   <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{dateOnly(line.dateOfLoss) || "—"}</td>
                   <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>
-                    {[dateOnly(line.dateOfService), dateOnly(line.dateOfServiceEnd)].filter(Boolean).join(" – ") || "—"}
+                    {[dateOnly(line.dateOfService), dateOnly(invoiceLineDosEnd(line))].filter(Boolean).join(" – ") || "—"}
                   </td>
                   <td style={{ ...tdStyle, border: "1px solid #e2e8f0" }}>{line.insurer || "—"}</td>
                   <td style={{ ...tdStyle, border: "1px solid #e2e8f0", width: 56 }}>{line.caseType || "—"}</td>

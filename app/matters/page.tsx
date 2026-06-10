@@ -506,6 +506,7 @@ export default function FilteredMattersPage() {
   const [masterPaymentReceipts, setMasterPaymentReceipts] = useState<any[]>([]);
   const [masterPaymentReceiptsError, setMasterPaymentReceiptsError] = useState("");
   const [masterPaymentShowVoided, setMasterPaymentShowVoided] = useState(false);
+  const [masterPaymentVoidLoadingId, setMasterPaymentVoidLoadingId] = useState<number | null>(null);
   const [masterCloseDialogOpen, setMasterCloseDialogOpen] = useState(false);
   const [masterCloseReason, setMasterCloseReason] = useState("");
   const [masterClosing, setMasterClosing] = useState(false);
@@ -826,6 +827,7 @@ export default function FilteredMattersPage() {
           allReceipts.push({
             ...receipt,
             sourceMatterId: matterId,
+            sourceClaimAmount: claimAmount,
             sourceDisplayNumber: display || receipt?.displayNumber || "",
           });
         }
@@ -843,6 +845,86 @@ export default function FilteredMattersPage() {
       setMasterPaymentReceiptsError(error?.message || String(error));
     } finally {
       setMasterPaymentReceiptsLoading(false);
+    }
+  }
+
+  async function handleVoidMasterPaymentReceipt(receipt: any) {
+    const receiptId = Number(receipt?.id || 0);
+    const matterId = Number(receipt?.sourceMatterId || receipt?.matterId || 0);
+    const expectedDisplayNumber = clean(receipt?.sourceDisplayNumber || receipt?.displayNumber);
+    const claimAmount = Number(receipt?.sourceClaimAmount || receipt?.claimAmount || receipt?.claim_amount || 0);
+    const amount = Number(receipt?.paymentAmount || 0);
+
+    if (!receiptId || !matterId) {
+      setMasterPaymentPostResult({ ok: false, error: "Could not identify the child payment receipt to void." });
+      return;
+    }
+
+    if (receipt?.voided) {
+      setMasterPaymentPostResult({ ok: false, error: "This payment receipt is already voided." });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Void receipt #${receiptId} for ${money(amount)} from ${expectedDisplayNumber || "this child matter"}?`
+    );
+    if (!confirmed) return;
+
+    setMasterPaymentVoidLoadingId(receiptId);
+    setMasterPaymentPostResult(null);
+
+    try {
+      const response = await fetch("/api/matters/apply-payment", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receiptId,
+          matterId,
+          expectedDisplayNumber,
+          claimAmount,
+          voidReason: `Voided from master lawsuit ${clean(value) || "payment"} screen`,
+          voidedBy: "Barsh Matters UI",
+        }),
+      });
+
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json?.ok) {
+        throw new Error(json?.error || "Payment receipt could not be voided.");
+      }
+
+      if (json?.after) {
+        setRows((currentRows: any[]) =>
+          currentRows.map((row: any) => {
+            const rowMatterId = Number(row?.matterId || row?.matter_id || row?.id || 0);
+            if (rowMatterId !== matterId) return row;
+
+            return {
+              ...row,
+              paymentVoluntary: json.after.paymentVoluntary,
+              payment_voluntary: json.after.paymentVoluntary,
+              balancePresuit: json.after.balancePresuit,
+              balance_presuit: json.after.balancePresuit,
+            };
+          })
+        );
+      }
+
+      setMasterPaymentPostResult({
+        ok: true,
+        action: "void-payment",
+        message: `Voided receipt #${receiptId} for ${money(json?.paymentVoided || amount)}.`,
+        result: json,
+      });
+
+      await loadMasterPaymentReceipts();
+    } catch (error: any) {
+      setMasterPaymentPostResult({
+        ok: false,
+        action: "void-payment",
+        error: error?.message || String(error),
+      });
+    } finally {
+      setMasterPaymentVoidLoadingId(null);
     }
   }
 
@@ -1723,7 +1805,17 @@ function masterCostRecordAmountNumber(value: unknown): number {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
-function parseMasterCostEntryHistory(value: unknown): { amount: string; date: string }[] {
+type MasterCostField = "filingFee" | "serviceFee" | "otherCourtCosts";
+
+type MasterCostEntryRecord = {
+  amount: string;
+  date: string;
+  voided?: boolean;
+  voidedAt?: string;
+  voidReason?: string;
+};
+
+function parseMasterCostEntryHistory(value: unknown): MasterCostEntryRecord[] {
   const text = clean(value);
   if (!text) return [];
 
@@ -1735,6 +1827,9 @@ function parseMasterCostEntryHistory(value: unknown): { amount: string; date: st
       .map((row) => ({
         amount: clean(row?.amount),
         date: clean(row?.date),
+        voided: Boolean(row?.voided),
+        voidedAt: clean(row?.voidedAt),
+        voidReason: clean(row?.voidReason),
       }))
       .filter((row) => row.amount && row.date);
   } catch {
@@ -1750,7 +1845,7 @@ function costEntryDateDisplay(value: unknown): string {
   return formatDateOnlyForDisplay(value);
 }
 
-function masterCostEntryRecordDisplay(field: "filingFee" | "serviceFee" | "otherCourtCosts"): string {
+function masterCostEntryRecords(field: MasterCostField): MasterCostEntryRecord[] {
   const entryDateField = masterCostEntryDateField(field);
   const entryAmountField = masterCostEntryAmountField(field);
   const entryHistoryField = masterCostEntryHistoryField(field);
@@ -1766,12 +1861,32 @@ function masterCostEntryRecordDisplay(field: "filingFee" | "serviceFee" | "other
     }
   }
 
-  return history
-    .map((row) => `${money(masterCostRecordAmountNumber(row.amount))} added ${costEntryDateDisplay(row.date)}.`)
+  return history;
+}
+
+function masterCostEntryActiveRecords(field: MasterCostField): MasterCostEntryRecord[] {
+  return masterCostEntryRecords(field).filter((row) => !row.voided);
+}
+
+function masterCostEntryTotal(field: MasterCostField): number {
+  return masterCostEntryActiveRecords(field).reduce((sum, row) => sum + masterCostRecordAmountNumber(row.amount), 0);
+}
+
+function masterCostEntryTotalDisplay(field: MasterCostField): string {
+  return money(masterCostEntryTotal(field));
+}
+
+function masterCostEntryPersistedTotalValue(field: MasterCostField, history: MasterCostEntryRecord[]): string {
+  return money(history.filter((row) => !row.voided).reduce((sum, row) => sum + masterCostRecordAmountNumber(row.amount), 0));
+}
+
+function masterCostEntryRecordDisplay(field: MasterCostField): string {
+  return masterCostEntryRecords(field)
+    .map((row) => `${money(masterCostRecordAmountNumber(row.amount))} added ${costEntryDateDisplay(row.date)}${row.voided ? " · VOIDED" : ""}.`)
     .join("\n");
 }
 
-function masterCostEntryRecordLines(field: "filingFee" | "serviceFee" | "otherCourtCosts"): string[] {
+function masterCostEntryRecordLines(field: MasterCostField): string[] {
   return masterCostEntryRecordDisplay(field)
     .split("\n")
     .map((line) => clean(line))
@@ -1908,13 +2023,16 @@ function masterMetadataMoneyDisplayValue(field: "filingFee" | "serviceFee" | "ot
     const existingCostEntryHistory = costEntryHistoryField
       ? parseMasterCostEntryHistory(masterInfoOverrides[costEntryHistoryField] ?? masterLocalMetadataValue(costEntryHistoryField))
       : [];
-    const costEntryHistoryValue =
+    const nextCostEntryHistory =
       costEntryHistoryField && costEntryAmountValue && costEntryDateValue
-        ? JSON.stringify([...existingCostEntryHistory, { amount: costEntryAmountValue, date: costEntryDateValue }])
-        : costEntryHistoryField
-          ? JSON.stringify(existingCostEntryHistory)
-          : "";
+        ? [...existingCostEntryHistory, { amount: costEntryAmountValue, date: costEntryDateValue }]
+        : existingCostEntryHistory;
+    const costEntryHistoryValue = costEntryHistoryField ? JSON.stringify(nextCostEntryHistory) : "";
+    const costEntryTotalValue = costEntryHistoryField ? masterCostEntryPersistedTotalValue(field as MasterCostField, nextCostEntryHistory) : after;
 
+    if (costEntryHistoryField) {
+      payload[field] = costEntryTotalValue;
+    }
     if (costEntryDateField) {
       payload[costEntryDateField] = costEntryDateValue;
     }
@@ -1927,13 +2045,106 @@ function masterMetadataMoneyDisplayValue(field: "filingFee" | "serviceFee" | "ot
 
     setMasterInfoOverrides((current) => ({
       ...current,
-      [field]: after,
+      [field]: costEntryHistoryField ? costEntryTotalValue : after,
       ...(costEntryDateField ? { [costEntryDateField]: costEntryDateValue } : {}),
       ...(costEntryAmountField ? { [costEntryAmountField]: costEntryAmountValue } : {}),
       ...(costEntryHistoryField ? { [costEntryHistoryField]: costEntryHistoryValue } : {}),
     }));
 
     return payload;
+  }
+
+  async function voidMasterCostEntry(field: MasterCostField, entryIndex: number) {
+    const masterLawsuitId = clean(value);
+    if (!masterLawsuitId) {
+      window.alert("Cannot void cost entry because no Master Lawsuit ID is available.");
+      return;
+    }
+
+    const entries = masterCostEntryRecords(field);
+    const target = entries[entryIndex];
+
+    if (!target || target.voided) return;
+
+    const confirmed = window.confirm(
+      `Void this ${money(masterCostRecordAmountNumber(target.amount))} cost entry from ${costEntryDateDisplay(target.date)}?`
+    );
+    if (!confirmed) return;
+
+    const nextEntries = entries.map((row, index) =>
+      index === entryIndex
+        ? {
+            ...row,
+            voided: true,
+            voidedAt: new Date().toISOString(),
+            voidReason: "Voided from master cost card",
+          }
+        : row
+    );
+
+    const entryDateField = masterCostEntryDateField(field);
+    const entryAmountField = masterCostEntryAmountField(field);
+    const entryHistoryField = masterCostEntryHistoryField(field);
+    const activeEntries = nextEntries.filter((row) => !row.voided);
+    const lastActiveEntry = activeEntries[activeEntries.length - 1] || null;
+    const totalValue = masterCostEntryPersistedTotalValue(field, nextEntries);
+    const historyValue = JSON.stringify(nextEntries);
+
+    const payload: Record<string, any> = {
+      masterLawsuitId,
+      [field]: totalValue,
+      [entryHistoryField]: historyValue,
+      [entryDateField]: lastActiveEntry?.date || "",
+      [entryAmountField]: lastActiveEntry?.amount || "",
+      status: masterDetailedStatusDisplayValue() === "—" ? "" : masterDetailedStatusDisplayValue(),
+      matterStatus: masterDetailedStatusDisplayValue() === "—" ? "" : masterDetailedStatusDisplayValue(),
+      matter_status: masterDetailedStatusDisplayValue() === "—" ? "" : masterDetailedStatusDisplayValue(),
+      workflowStatus: masterDetailedStatusDisplayValue() === "—" ? "" : masterDetailedStatusDisplayValue(),
+      workflow_status: masterDetailedStatusDisplayValue() === "—" ? "" : masterDetailedStatusDisplayValue(),
+      venue: masterCourtDisplayValue() === "—" ? "" : masterCourtDisplayValue(),
+      venueSelection: masterCourtDisplayValue() === "—" ? "" : masterCourtDisplayValue(),
+      venueOther: "",
+      indexAaaNumber: masterIndexAaaDisplayValue() === "—" ? "" : masterIndexAaaDisplayValue(),
+      adversaryAttorney: masterAdversaryAttorneyDisplayValue() === "—" ? "" : masterAdversaryAttorneyDisplayValue(),
+    };
+
+    try {
+      const response = await fetch("/api/lawsuits/update-metadata", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await response.json();
+
+      if (!response.ok || !json?.ok) {
+        throw new Error(json?.error || "Cost entry could not be voided.");
+      }
+
+      setMasterInfoOverrides((current) => ({
+        ...current,
+        [field]: totalValue,
+        [entryHistoryField]: historyValue,
+        [entryDateField]: lastActiveEntry?.date || "",
+        [entryAmountField]: lastActiveEntry?.amount || "",
+      }));
+
+      setMasterInfoAuditEntries((prev) => [
+        {
+          id: `${Date.now()}-${field}-void-${entryIndex}`,
+          field,
+          label: "Void Cost Entry",
+          before: `${money(masterCostRecordAmountNumber(target.amount))} added ${costEntryDateDisplay(target.date)}`,
+          after: "Voided",
+          timestamp: new Date().toLocaleString(),
+          details: { field, entryIndex, entry: target },
+        },
+        ...prev,
+      ]);
+
+      await loadMasterLawsuitMetadata();
+    } catch (error: any) {
+      window.alert(error?.message || "Cost entry could not be voided.");
+    }
   }
 
   function masterInfoFieldPersistsLocally(field: string): boolean {
@@ -9727,83 +9938,73 @@ function masterSettlementDateFiledValue(): string {
                         alignItems: "stretch",
                       }}
                     >
-                      <div style={masterInfoCardStyle}>
-                        <span style={masterSummaryCardTitleStyle}>Index Fee</span>
-                        <strong style={masterSummaryCardValueStyle}>{masterMetadataMoneyDisplayValue("filingFee")}</strong>
-                        {masterCostEntryRecordLines("filingFee").length > 0 && (
-                          <div style={{ marginTop: 6, display: "grid", gap: 2, fontSize: 11, color: "#64748b", fontWeight: 800, lineHeight: 1.25 }}>
-                            {masterCostEntryRecordLines("filingFee").map((line) => (
-                              <div key={line}>{line}</div>
-                            ))}
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => openMasterInfoEditDialog("filingFee", "Index Fee", masterMetadataMoneyDisplayValue("filingFee"))}
-                          title="Open Index Fee edit dialog."
-                          style={{
-                            ...masterInfoCardEditButtonStyle,
-                            borderColor: "#93c5fd",
-                            background: "#ffffff",
-                            color: "#1d4ed8",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Edit
-                        </button>
-                      </div>
-
-                      <div style={masterInfoCardStyle}>
-                        <span style={masterSummaryCardTitleStyle}>Service Fee</span>
-                        <strong style={masterSummaryCardValueStyle}>{masterMetadataMoneyDisplayValue("serviceFee")}</strong>
-                        {masterCostEntryRecordLines("serviceFee").length > 0 && (
-                          <div style={{ marginTop: 6, display: "grid", gap: 2, fontSize: 11, color: "#64748b", fontWeight: 800, lineHeight: 1.25 }}>
-                            {masterCostEntryRecordLines("serviceFee").map((line) => (
-                              <div key={line}>{line}</div>
-                            ))}
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => openMasterInfoEditDialog("serviceFee", "Service Fee", masterMetadataMoneyDisplayValue("serviceFee"))}
-                          title="Open Service Fee edit dialog."
-                          style={{
-                            ...masterInfoCardEditButtonStyle,
-                            borderColor: "#93c5fd",
-                            background: "#ffffff",
-                            color: "#1d4ed8",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Edit
-                        </button>
-                      </div>
-
-                      <div style={masterInfoCardStyle}>
-                        <span style={masterSummaryCardTitleStyle}>Other Court Costs</span>
-                        <strong style={masterSummaryCardValueStyle}>{masterMetadataMoneyDisplayValue("otherCourtCosts")}</strong>
-                        {masterCostEntryRecordLines("otherCourtCosts").length > 0 && (
-                          <div style={{ marginTop: 6, display: "grid", gap: 2, fontSize: 11, color: "#64748b", fontWeight: 800, lineHeight: 1.25 }}>
-                            {masterCostEntryRecordLines("otherCourtCosts").map((line) => (
-                              <div key={line}>{line}</div>
-                            ))}
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => openMasterInfoEditDialog("otherCourtCosts", "Other Court Costs", masterMetadataMoneyDisplayValue("otherCourtCosts"))}
-                          title="Open Other Court Costs edit dialog."
-                          style={{
-                            ...masterInfoCardEditButtonStyle,
-                            borderColor: "#93c5fd",
-                            background: "#ffffff",
-                            color: "#1d4ed8",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Edit
-                        </button>
-                      </div>
+                      {([
+                        ["filingFee", "Index Fee"],
+                        ["serviceFee", "Service Fee"],
+                        ["otherCourtCosts", "Other Court Costs"],
+                      ] as Array<[MasterCostField, string]>).map(([field, label]) => (
+                        <div key={field} style={masterInfoCardStyle}>
+                          <span style={masterSummaryCardTitleStyle}>{label}</span>
+                          <strong style={masterSummaryCardValueStyle}>{masterCostEntryTotalDisplay(field)}</strong>
+                          {masterCostEntryRecords(field).length > 0 && (
+                            <div style={{ marginTop: 6, display: "grid", gap: 4, fontSize: 11, color: "#64748b", fontWeight: 800, lineHeight: 1.25 }}>
+                              {masterCostEntryRecords(field).map((entry, entryIndex) => (
+                                <div
+                                  key={`${field}-${entry.date}-${entry.amount}-${entryIndex}`}
+                                  style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "1fr auto",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    opacity: entry.voided ? 0.58 : 1,
+                                    textDecoration: entry.voided ? "line-through" : "none",
+                                  }}
+                                >
+                                  <span>
+                                    {money(masterCostRecordAmountNumber(entry.amount))} added {costEntryDateDisplay(entry.date)}
+                                    {entry.voided ? " · VOIDED" : ""}
+                                  </span>
+                                  {entry.voided ? (
+                                    <span style={{ color: "#991b1b", fontWeight: 950 }}>Voided</span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => void voidMasterCostEntry(field, entryIndex)}
+                                      title={`Void ${label} entry.`}
+                                      style={{
+                                        border: "1px solid #ef4444",
+                                        borderRadius: 999,
+                                        background: "#fff",
+                                        color: "#dc2626",
+                                        fontSize: 10,
+                                        fontWeight: 950,
+                                        padding: "2px 7px",
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      Void
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => openMasterInfoEditDialog(field, label, masterCostEntryTotalDisplay(field))}
+                            title={`Add ${label}.`}
+                            style={{
+                              ...masterInfoCardEditButtonStyle,
+                              borderColor: "#93c5fd",
+                              background: "#ffffff",
+                              color: "#1d4ed8",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Add Cost
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </section>
 
@@ -10628,7 +10829,7 @@ function masterSettlementDateFiledValue(): string {
                             key={`master-payment-receipt-${receipt.sourceDisplayNumber || receipt.displayNumber}-${receipt.id}`}
                             style={{
                               display: "grid",
-                              gridTemplateColumns: "1fr auto",
+                              gridTemplateColumns: receipt.voided ? "1fr auto" : "1fr auto auto",
                               gap: 6,
                               padding: "8px 9px",
                               border: receipt.voided ? "1px solid #fecaca" : "1px solid #dbe4f0",
@@ -10652,6 +10853,27 @@ function masterSettlementDateFiledValue(): string {
                             <strong style={{ fontSize: 13, color: receipt.voided ? "#991b1b" : "#166534", whiteSpace: "nowrap" }}>
                               {money(receipt.paymentAmount)}
                             </strong>
+                            {!receipt.voided && (
+                              <button
+                                type="button"
+                                disabled={masterPaymentVoidLoadingId === Number(receipt.id)}
+                                onClick={() => void handleVoidMasterPaymentReceipt(receipt)}
+                                title="Void this child payment receipt from the master lawsuit screen."
+                                style={{
+                                  border: "1px solid #ef4444",
+                                  borderRadius: 999,
+                                  background: "#fff",
+                                  color: "#dc2626",
+                                  fontSize: 11,
+                                  fontWeight: 950,
+                                  padding: "3px 8px",
+                                  cursor: masterPaymentVoidLoadingId === Number(receipt.id) ? "not-allowed" : "pointer",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {masterPaymentVoidLoadingId === Number(receipt.id) ? "Voiding..." : "Void"}
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -11108,7 +11330,7 @@ function masterSettlementDateFiledValue(): string {
                           color: "#1d4ed8",
                         }}
                       >
-                        Edit {masterInfoEditDialog.label}
+                        {masterInfoFieldKind(masterInfoEditDialog.field) === "money" ? "Add" : "Edit"} {masterInfoEditDialog.label}
                       </div>
                       <div
                         style={{
@@ -11118,7 +11340,7 @@ function masterSettlementDateFiledValue(): string {
                           color: "#1e40af",
                         }}
                       >
-                        Master Lawsuit field edit · Local save.
+                        {masterInfoFieldKind(masterInfoEditDialog.field) === "money" ? "Master Lawsuit cost entry · Local save." : "Master Lawsuit field edit · Local save."}
                       </div>
                     </div>
 
@@ -11417,7 +11639,7 @@ function masterSettlementDateFiledValue(): string {
                           letterSpacing: "0.05em",
                         }}
                       >
-                        New {masterInfoEditDialog.label}
+                        {masterInfoFieldKind(masterInfoEditDialog.field) === "money" ? "New Cost Amount" : `New ${masterInfoEditDialog.label}`}
                         {masterInfoFieldKind(masterInfoEditDialog.field) === "money" ? (
                           <div style={{ position: "relative", width: "100%" }}>
                             <span

@@ -34,9 +34,17 @@ mustContain("master status divider line is independent", 'background: "#94a3b8"'
 mustContain("master status divider line moved left", "left: -18");
 mustContain("master status column is vertical", 'gridTemplateColumns: "1fr"');
 mustContain("master costs section uses three columns", 'gridTemplateColumns: "repeat(3, minmax(0, 1fr))"');
-mustContain("master costs section has Index Fee", "<span style={masterSummaryCardTitleStyle}>Index Fee</span>");
-mustContain("master costs section has Service Fee", "<span style={masterSummaryCardTitleStyle}>Service Fee</span>");
-mustContain("master costs section has Other Court Costs", "<span style={masterSummaryCardTitleStyle}>Other Court Costs</span>");
+mustContain("master costs section has Index Fee", '["filingFee", "Index Fee"]');
+mustContain("master costs section has Service Fee", '["serviceFee", "Service Fee"]');
+mustContain("master costs section has Other Court Costs", '["otherCourtCosts", "Other Court Costs"]');
+
+mustContain("master costs display active total helper", "function masterCostEntryTotalDisplay");
+mustContain("master costs display active records helper", "function masterCostEntryActiveRecords");
+mustContain("master costs render entry-level void", "voidMasterCostEntry(field, entryIndex)");
+mustContain("master costs cards say Add Cost", "Add Cost");
+mustContain("master cost entries persist voided flag", "voided: true");
+mustContain("master cost entries preserve void audit reason", "Voided from master cost card");
+mustNotContain("master cost cards no longer use raw filing fee display", "{masterMetadataMoneyDisplayValue(\"filingFee\")}</strong>");
 mustNotContain("old partial split layout marker removed", 'data-barsh-master-lawsuit-costs-status-layout="true"');
 
 const layoutIndex = page.indexOf('data-barsh-master-claim-lawsuit-costs-notes-status-layout="true"');
@@ -65,9 +73,9 @@ if (!(statusSectionIndex > notesIndex)) {
   pass("Lawsuit Status section is separated after the left-column source block");
 }
 
-const indexFeeIndex = page.indexOf("<span style={masterSummaryCardTitleStyle}>Index Fee</span>");
-const serviceFeeIndex = page.indexOf("<span style={masterSummaryCardTitleStyle}>Service Fee</span>");
-const otherCostsIndex = page.indexOf("<span style={masterSummaryCardTitleStyle}>Other Court Costs</span>");
+const indexFeeIndex = page.indexOf('["filingFee", "Index Fee"]');
+const serviceFeeIndex = page.indexOf('["serviceFee", "Service Fee"]');
+const otherCostsIndex = page.indexOf('["otherCourtCosts", "Other Court Costs"]');
 
 if (!(indexFeeIndex > costsSectionIndex && serviceFeeIndex > costsSectionIndex && otherCostsIndex > costsSectionIndex)) {
   fail("Cost cards must appear inside/after the Costs section, not in the Lawsuit Information card group.");

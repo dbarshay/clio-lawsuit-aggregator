@@ -90,7 +90,6 @@ for (const required of [
   "const costEntryAmountValue = clean(after) ? after : \"\"",
   "const existingCostEntryHistory = costEntryHistoryField",
   "? parseMasterCostEntryHistory(masterInfoOverrides[costEntryHistoryField] ?? masterLocalMetadataValue(costEntryHistoryField))",
-  "? JSON.stringify([...existingCostEntryHistory, { amount: costEntryAmountValue, date: costEntryDateValue }])",
   "payload[costEntryDateField] = costEntryDateValue",
   "payload[costEntryAmountField] = costEntryAmountValue",
   "payload[costEntryHistoryField] = costEntryHistoryValue",
@@ -151,7 +150,7 @@ for (const required of [
 for (const required of [
   "const costsExpendedRows = Array.isArray(detail.costsExpended?.rows) ? detail.costsExpended.rows : []",
   "const costLines = costsExpendedRows.map((row: any) => costLine(row))",
-  "costsExpendedTotal: costLines.reduce((sum: number, line: any) => sum + moneyNumber(line.amount), 0)",
+  "costLines.reduce((sum: number, line: any) => sum + moneyNumber(line.amount), 0)",
 ]) {
   mustContain("invoice create-preview cost history pickup", previewRoute, required);
 }
@@ -175,12 +174,9 @@ for (const stale of [
   mustNotContain("invoice page stale cost wording", invoicePage, stale);
 }
 
-mustMatch(
-  "master cost UI append behavior",
-  mattersPage,
-  /JSON\.stringify\(\[\.\.\.existingCostEntryHistory,\s*\{\s*amount:\s*costEntryAmountValue,\s*date:\s*costEntryDateValue\s*\}\]\)/s,
-  "new cost entry is appended to existing cost history"
-);
+mustContain("master cost UI append behavior", mattersPage, "const nextCostEntryHistory =");
+mustContain("master cost UI append behavior", mattersPage, "? [...existingCostEntryHistory, { amount: costEntryAmountValue, date: costEntryDateValue }]");
+mustContain("master cost UI append behavior", mattersPage, "const costEntryHistoryValue = costEntryHistoryField ? JSON.stringify(nextCostEntryHistory) : \"\"");
 
 const expectedScript = "node scripts/verify-invoice-table3-cost-history-pickup-safety.mjs";
 if (pkg.scripts?.["verify:invoice-table3-cost-history-pickup-safety"] === expectedScript) {

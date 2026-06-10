@@ -812,15 +812,12 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
   const principalInterestPreviewLines = previewLines.filter((line: any) => line?.lineType === "receipt");
   const costsReceivedPreviewLines = previewLines.filter((line: any) => line?.lineType === "filing_fee_payment");
   const feesCostsExpendedPreviewLines = previewLines.filter((line: any) => line?.lineType === "cost_expended");
-  const costPaymentPreviewLines = [...costsReceivedPreviewLines, ...feesCostsExpendedPreviewLines];
   const principalInterestPaymentCount = principalInterestPreviewLines.length;
   const principalInterestPaymentTotal = principalInterestPreviewLines.reduce((sum: number, line: any) => sum + Number(line?.amount || 0), 0);
   const costsReceivedPaymentCount = costsReceivedPreviewLines.length;
   const costsReceivedPaymentTotal = costsReceivedPreviewLines.reduce((sum: number, line: any) => sum + Number(line?.amount || 0), 0);
   const feesCostsExpendedCount = feesCostsExpendedPreviewLines.length;
   const feesCostsExpendedTotal = feesCostsExpendedPreviewLines.reduce((sum: number, line: any) => sum + Number(line?.amount || 0), 0);
-  const costPaymentCount = costPaymentPreviewLines.length;
-  const costPaymentTotal = costPaymentPreviewLines.reduce((sum: number, line: any) => sum + Number(line?.amount || 0), 0);
   const [previewTableSort, setPreviewTableSort] = useState<{ table: string; field: string; direction: "asc" | "desc" } | null>(null);
 
   const previewTableColumns = [
@@ -1103,7 +1100,17 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
         Finalized: invoice.finalizedAt,
         Voided: invoice.voidedAt,
         "Line Count": invoice.lineCount,
-        "Invoice Total": invoice.invoicePackageTotal,
+        "Principal / Interest Received": invoice.principalInterestTotal,
+        "Retainer Fee": invoice.retainerFeeTotal,
+        "Net Remit Before Costs": invoice.baseNetRemitToProvider,
+        "Costs Received During This Remittance Period": invoice.filingFeePaymentTotal,
+        "Costs Expended During This Remittance Period": invoice.costsExpendedTotal,
+        "Cost Balance During This Remittance Period": invoice.costBalanceThisRemittancePeriod,
+        "Cost Balance Ledger Before": invoice.costBalanceLedgerBefore,
+        "Cost Balance Ledger Change": invoice.costBalanceLedgerChange,
+        "Cost Balance Ledger": invoice.costBalanceLedgerAfter,
+        "Final Net Remit to Provider": invoice.netRemitToProviderTotal,
+        "Frozen Invoice Line Total": invoice.invoicePackageTotal,
       })),
     [history]
   );
@@ -1302,7 +1309,14 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
                 <th style={thStyle}>Finalized</th>
                 <th style={thStyle}>Voided</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>Lines</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Total</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>Principal / Interest</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>Retainer Fee</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>Net Before Costs</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>Costs Received</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>Costs Expended</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>Cost Balance</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>Cost Ledger</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>Final Net Remit</th>
                 <th style={thStyle}>Actions</th>
               </tr>
             </thead>
@@ -1321,7 +1335,14 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
                   <td style={tdStyle}>{dateOnly(invoice.finalizedAt) || "—"}</td>
                   <td style={tdStyle}>{dateOnly(invoice.voidedAt) || "—"}</td>
                   <td style={{ ...tdStyle, textAlign: "right" }}>{invoice.lineCount}</td>
-                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.invoicePackageTotal)}</td>
+                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.principalInterestTotal)}</td>
+                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.retainerFeeTotal)}</td>
+                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.baseNetRemitToProvider)}</td>
+                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.filingFeePaymentTotal)}</td>
+                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.costsExpendedTotal)}</td>
+                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.costBalanceThisRemittancePeriod)}</td>
+                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.costBalanceLedgerAfter)}</td>
+                  <td style={{ ...tdStyle, textAlign: "right", fontWeight: 900 }}>{money(invoice.netRemitToProviderTotal)}</td>
                   <td style={tdStyle}>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       <button type="button" onClick={() => toggleInvoiceDetail(invoice)} style={secondaryButtonStyle}>{isInvoiceDetailOpen(invoice) ? "Hide" : "View"}</button>
@@ -1337,7 +1358,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
               ))}
               {!history.length && (
                 <tr>
-                  <td style={tdStyle} colSpan={8}>No invoices yet.</td>
+                  <td style={tdStyle} colSpan={15}>No invoices yet.</td>
                 </tr>
               )}
             </tbody>
@@ -1352,7 +1373,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
               <h2 style={{ marginTop: 0 }}>Invoice Detail: {detailInvoice?.invoiceNumber}</h2>
               <p style={{ color: "#475569", marginTop: 0 }}>
                 {detailInvoice?.status === "draft" && "Draft invoice created. Receipt rows are not yet marked as invoiced. Review the frozen package before finalizing."}
-                {detailInvoice?.status === "finalized" && "Invoice finalized. Included receipt rows are now marked with this invoice ID and excluded from future invoice previews by default. The invoice review/output remains based on frozen invoice lines."}
+                {detailInvoice?.status === "finalized" && "Invoice finalized. Included receipt rows are marked with this invoice ID and excluded from future invoice previews by default. The invoice review/output remains based on frozen invoice lines."}
                 {detailInvoice?.status === "voided" && "Invoice voided. Receipt rows previously marked with this invoice ID were released for future invoicing. The voided invoice remains in history."}
               </p>
             </div>

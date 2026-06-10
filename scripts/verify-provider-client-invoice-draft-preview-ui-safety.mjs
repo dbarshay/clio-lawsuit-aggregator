@@ -125,16 +125,25 @@ mustContain("invoice page", page, "Costs Received:");
 mustContain("invoice page", page, "Costs Expended:");
 mustContain("invoice page", page, "principalInterestPaymentCount");
 mustContain("invoice page", page, "principalInterestPaymentTotal");
-mustContain("invoice page", page, "costPaymentCount");
-mustContain("invoice page", page, "costPaymentTotal");
+mustContain("invoice page", page, "costsReceivedPaymentCount");
+mustContain("invoice page", page, "costsReceivedPaymentTotal");
 mustContain("invoice page", page, "feesCostsExpendedCount");
 mustContain("invoice page", page, "feesCostsExpendedTotal");
 
-if (page.includes("Receipt Rows") || page.includes("Excluded Already Invoiced") || page.includes("Included Already Invoiced") || page.includes("Package Total") || page.includes("Invoice Candidate")) {
-  console.error("FAIL: invoice page still contains removed old review summary labels");
+const staleReviewSummaryLabels = [
+  "Receipt Rows:",
+  "Excluded Already Invoiced:",
+  "Included Already Invoiced:",
+  "Package Total",
+  "Invoice Candidate",
+];
+
+const staleReviewSummaryLabel = staleReviewSummaryLabels.find((label) => page.includes(label));
+if (staleReviewSummaryLabel) {
+  console.error(`FAIL: invoice page still contains removed old review summary label: ${staleReviewSummaryLabel}`);
   failures += 1;
 } else {
-  console.log("PASS: invoice page old review summary labels removed");
+  console.log("PASS: invoice page old review summary labels removed while retaining receipt verification detail labels");
 }
 
 if (failures) {

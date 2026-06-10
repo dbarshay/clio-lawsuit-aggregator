@@ -29,8 +29,8 @@ console.log("=== VERIFY SCENARIO 1 COST EXCESS SUMMARY TERMINOLOGY ===");
 
 mustContain("printable CSS", invoicePage, ".summary-emphasis { padding-left: 28px !important; font-weight: 900; }");
 mustContain("printable CSS", invoicePage, ".summary-emphasis span { font-weight: 900; }");
-mustContain("printable summary", invoicePage, '<div class="summary-emphasis"><span>Net Remit Before Costs</span><span>${safeHtml(money(summaryNetRemitToProvider))}</span></div>');
-mustContain("printable summary", invoicePage, '<div class="summary-emphasis"><span>Cost Excess / Shortfall This Remittance</span><span>${safeHtml(money(printableCostSummary.costBalanceThisRemittancePeriod))}</span></div>');
+mustContain("printable summary", invoicePage, '<div class=\"summary-emphasis\"><span>Net Remit Before Costs</span><span>${safeHtml(money(summaryNetRemitToProvider))}</span></div>');
+mustContain("printable summary", invoicePage, '<div class=\"summary-emphasis\"><span>Cost Excess / Shortfall This Remittance</span><span>${safeHtml(money(printableCostSummary.costBalanceThisRemittancePeriod))}</span></div>');
 mustContain("printable hidden row", invoicePage, "Cost Excess Applied to Negative Cost Balance</span><span class=\"negative-remit-adjustment\">${safeHtml(money(printableCostSummary.costBalanceAppliedToLedger))}</span>");
 mustContain("printable hidden row", invoicePage, "Negative Cost Balance Before This Remittance</span><span>${safeHtml(money(printableCostSummary.costBalanceLedgerBefore))}</span>");
 mustContain("printable hidden row", invoicePage, "Negative Cost Balance After This Remittance</span><span>${safeHtml(money(printableCostSummary.costBalanceLedgerAfter))}</span>");

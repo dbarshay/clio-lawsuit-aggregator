@@ -236,7 +236,7 @@ function optionAmount(options: Record<string, unknown>, keys: string[]): number 
   return 0;
 }
 
-function parseCostEntryHistory(value: unknown): { amount: number; date: string }[] {
+function parseCostEntryHistory(value: unknown): { amount: number; date: string; voided: boolean; voidedAt: string; voidReason: string }[] {
   const text = clean(value);
   if (!text) return [];
 
@@ -248,14 +248,17 @@ function parseCostEntryHistory(value: unknown): { amount: number; date: string }
       .map((row) => ({
         amount: moneyNumber(row?.amount),
         date: formatDateValue(row?.date),
+        voided: Boolean(row?.voided || row?.isVoided || row?.voidedAt || row?.voided_at),
+        voidedAt: formatDateValue(row?.voidedAt || row?.voided_at),
+        voidReason: clean(row?.voidReason || row?.void_reason),
       }))
-      .filter((row) => row.amount && row.date);
+      .filter((row) => row.amount && row.date && !row.voided);
   } catch {
     return [];
   }
 }
 
-function costEntryHistoryFromOptions(options: Record<string, unknown>, field: "filingFee" | "serviceFee" | "otherCourtCosts"): { amount: number; date: string }[] {
+function costEntryHistoryFromOptions(options: Record<string, unknown>, field: "filingFee" | "serviceFee" | "otherCourtCosts"): { amount: number; date: string; voided: boolean; voidedAt: string; voidReason: string }[] {
   if (field === "filingFee") return parseCostEntryHistory(options.filingFeeEntryHistory);
   if (field === "serviceFee") return parseCostEntryHistory(options.serviceFeeEntryHistory);
   return parseCostEntryHistory(options.otherCourtCostsEntryHistory);
@@ -821,6 +824,9 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
                 dateEntered: historyRow.date,
                 amount: historyRow.amount,
                 source: "Lawsuit.lawsuitOptions cost entry history",
+                isVoided: false,
+                voidedAt: "",
+                voidReason: "",
               });
             }
             continue;

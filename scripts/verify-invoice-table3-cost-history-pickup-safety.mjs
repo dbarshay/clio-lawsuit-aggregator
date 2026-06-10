@@ -109,6 +109,8 @@ for (const required of [
 
 for (const required of [
   "function parseCostEntryHistory",
+  "voided: Boolean(row?.voided || row?.isVoided || row?.voidedAt || row?.voided_at)",
+  ".filter((row) => row.amount && row.date && !row.voided)",
   "JSON.parse(text)",
   "amount: moneyNumber(row?.amount)",
   "date: formatDateValue(row?.date)",

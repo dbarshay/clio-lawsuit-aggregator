@@ -591,6 +591,9 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     const summaryRetainerFee = Number(invoice.retainerFeeTotal || 0);
     const summaryNetRemitToProvider = summaryPrincipalInterestReceived - summaryRetainerFee;
     const printableCostSummary = invoiceCostSummaryValues(invoice);
+    const printableCostDeductionCapHtml = printableCostSummary.costBalanceThisRemittancePeriod < 0
+      ? `<div><span>25% Deduction Cap</span><span>${safeHtml(money(printableCostSummary.costBalanceDeductionCap))}</span></div>`
+      : "";
     const summaryFinalNetRemitToProvider = printableCostSummary.netRemitToProviderTotal;
 
     function normalizeAddressDisplayLine(line: any): string {
@@ -753,7 +756,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     <div><span>Costs Received During This Remittance Period</span><span>${safeHtml(money(printableCostSummary.filingFeePaymentTotal))}</span></div>
     <div><span>Cost Balance During This Remittance Period</span><span>${safeHtml(money(printableCostSummary.costBalanceThisRemittancePeriod))}</span></div>
     <div><span>Cost Balance Applied to Ledger</span><span>${safeHtml(money(printableCostSummary.costBalanceAppliedToLedger))}</span></div>
-    <div><span>25% Deduction Cap</span><span>${safeHtml(money(printableCostSummary.costBalanceDeductionCap))}</span></div>
+    ${printableCostDeductionCapHtml}
     <div><span>Cost Balance Added to Net Remit</span><span>${safeHtml(money(printableCostSummary.costBalanceReimbursementToProvider))}</span></div>
     <div><span>Cost Deduction Applied</span><span>${safeHtml(money(printableCostSummary.costBalanceDeductionApplied))}</span></div>
     <div><span>Cost Balance Ledger</span><span>${safeHtml(money(printableCostSummary.costBalanceLedgerAfter))}</span></div>
@@ -859,7 +862,9 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     const baseNetRemitToProvider = Number(totals.baseNetRemitToProvider ?? (principalInterestTotal - retainerFeeTotal));
     const costBalanceThisRemittancePeriod = Number(totals.costBalanceThisRemittancePeriod ?? (filingFeePaymentTotal - costsExpendedTotal));
     const costBalanceLedgerBefore = Number(totals.costBalanceLedgerBefore || 0);
-    const costBalanceDeductionCap = Number(totals.costBalanceDeductionCap ?? Math.max(0, baseNetRemitToProvider * 0.25));
+    const costBalanceDeductionCap = costBalanceThisRemittancePeriod < 0
+      ? Number(totals.costBalanceDeductionCap ?? Math.max(0, baseNetRemitToProvider * 0.25))
+      : 0;
     const currentPeriodPositiveCostBalance = Math.max(0, costBalanceThisRemittancePeriod);
     const currentPeriodNegativeCostBalance = Math.max(0, -costBalanceThisRemittancePeriod);
     const costBalanceAppliedToLedger = Number(totals.costBalanceAppliedToLedger ?? Math.min(currentPeriodPositiveCostBalance, Math.max(0, costBalanceLedgerBefore)));
@@ -900,7 +905,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
           <div><strong>Principal / Interest Received</strong><br />{money(summary.principalInterestTotal)}</div>
           <div><strong>Retainer Fee</strong><br />{money(summary.retainerFeeTotal)}</div>
           <div><strong>Net Remit Before Costs</strong><br />{money(summary.baseNetRemitToProvider)}</div>
-          <div><strong>25% Deduction Cap</strong><br />{money(summary.costBalanceDeductionCap)}</div>
+          {summary.costBalanceThisRemittancePeriod < 0 && <div><strong>25% Deduction Cap</strong><br />{money(summary.costBalanceDeductionCap)}</div>}
           <div><strong>Costs Expended During This Remittance Period</strong><br />{money(summary.costsExpendedTotal)}</div>
           <div><strong>Costs Received During This Remittance Period</strong><br />{money(summary.filingFeePaymentTotal)}</div>
           <div><strong>Cost Balance During This Remittance Period</strong><br />{money(summary.costBalanceThisRemittancePeriod)}</div>
@@ -913,7 +918,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
           <div><strong>Final Net Remit to Provider</strong><br />{money(summary.netRemitToProviderTotal)}</div>
         </div>
         <p style={{ margin: "10px 0 0", color: "#475569", fontSize: 12 }}>
-          Cost Balance During This Remittance Period = Costs Received During This Remittance Period minus Costs Expended During This Remittance Period. Negative balances are deducted from Net Remit Before Costs up to the 25% cap, with the excess carried forward in the Cost Balance Ledger. Positive balances first reduce the Cost Balance Ledger, and only the excess is added to Net Remit Before Costs.
+          Cost Balance During This Remittance Period = Costs Received During This Remittance Period minus Costs Expended During This Remittance Period. Negative balances are deducted from Net Remit Before Costs up to the 25% cap, with the excess carried forward in the Cost Balance Ledger. Positive balances have no 25% deduction; they first reduce the Cost Balance Ledger, and only the excess is added to Net Remit Before Costs.
         </p>
       </section>
     );

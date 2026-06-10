@@ -235,9 +235,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const baseNetRemitToProvider = moneyNumber(principalInterestTotal - retainerFeeTotal);
     const costBalanceThisRemittancePeriod = moneyNumber(filingFeePaymentTotal - costsExpendedTotal);
     const costBalanceLedgerBefore = moneyNumber(Math.max(0, Number(priorFinalizedInvoice?.costBalanceLedgerAfter || 0)));
-    const costBalanceDeductionCap = moneyNumber(Math.max(0, baseNetRemitToProvider * 0.25));
     const currentPeriodPositiveCostBalance = moneyNumber(Math.max(0, costBalanceThisRemittancePeriod));
     const currentPeriodNegativeCostBalance = moneyNumber(Math.max(0, -costBalanceThisRemittancePeriod));
+    const costBalanceDeductionCap = moneyNumber(currentPeriodNegativeCostBalance > 0 ? Math.max(0, baseNetRemitToProvider * 0.25) : 0);
     const costBalanceAppliedToLedger = moneyNumber(Math.min(currentPeriodPositiveCostBalance, costBalanceLedgerBefore));
     const costBalanceReimbursementToProvider = moneyNumber(Math.max(0, currentPeriodPositiveCostBalance - costBalanceAppliedToLedger));
     const costBalanceDeductionApplied = moneyNumber(Math.min(currentPeriodNegativeCostBalance, costBalanceDeductionCap));
@@ -271,7 +271,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       costBalanceLedgerChange,
       costBalanceLedgerAfter,
       netRemitToProviderTotal,
-      costBalanceFormula: "Cost Balance During This Remittance Period = Costs Received During This Remittance Period minus Costs Expended During This Remittance Period. Negative balances are deducted from Net Remit Before Costs up to the 25% cap and the excess is carried forward in the Cost Balance Ledger. Positive balances first reduce the Cost Balance Ledger and only the excess is added to Net Remit Before Costs.",
+      costBalanceFormula: "Cost Balance During This Remittance Period = Costs Received During This Remittance Period minus Costs Expended During This Remittance Period. Negative balances are deducted from Net Remit Before Costs up to the 25% cap and the excess is carried forward in the Cost Balance Ledger. Positive balances have no 25% deduction; they first reduce the Cost Balance Ledger and only the excess is added to Net Remit Before Costs.",
     };
 
     const clientSnapshot = {

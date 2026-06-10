@@ -303,7 +303,8 @@
     "verify:printable-invoice-summary-page-break-safety": "node scripts/verify-printable-invoice-summary-page-break-safety.mjs",
     "verify:invoice-summary-emphasis-layout-safety": "node scripts/verify-invoice-summary-emphasis-layout-safety.mjs",
     "verify:scenario-2-negative-cost-balance-cost-excess-safety": "node scripts/verify-scenario-2-negative-cost-balance-cost-excess-safety.mjs",
-    "verify:scenario-3-negative-cost-balance-cleared-excess-added-safety": "node scripts/verify-scenario-3-negative-cost-balance-cleared-excess-added-safety.mjs"
+    "verify:scenario-3-negative-cost-balance-cleared-excess-added-safety": "node scripts/verify-scenario-3-negative-cost-balance-cleared-excess-added-safety.mjs",
+    "verify:scenario-4-cost-shortfall-25-percent-deduction-safety": "node scripts/verify-scenario-4-cost-shortfall-25-percent-deduction-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

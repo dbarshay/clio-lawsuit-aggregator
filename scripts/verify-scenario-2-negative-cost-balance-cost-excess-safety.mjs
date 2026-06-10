@@ -110,7 +110,7 @@ mustContain(
 mustContain(
   "printable summary scenario 2 current excess",
   invoicePage,
-  '<div class="summary-emphasis"><span>Cost Excess / Shortfall This Remittance</span><span>${safeHtml(money(printableCostSummary.costBalanceThisRemittancePeriod))}</span></div>'
+  '<div class=\"summary-emphasis\"><span>Cost Excess / Shortfall This Remittance</span><span>${safeHtml(money(printableCostSummary.costBalanceThisRemittancePeriod))}</span></div>'
 );
 mustContain(
   "printable summary scenario 2 applied amount",
@@ -151,7 +151,7 @@ mustContain(
 mustContain(
   "on-screen summary hides deduction when zero",
   invoicePage,
-  "isNonZeroMoneyValue(summary.costBalanceDeductionApplied) && <div><strong>Cost Deduction Applied</strong><br />{money(summary.costBalanceDeductionApplied)}</div>"
+  "isNonZeroMoneyValue(summary.costBalanceDeductionApplied) && <div style={{ paddingLeft: 28, fontWeight: 950 }}><strong>Cost Deduction Applied</strong><br /><span style={{ color: \"#b91c1c\", fontWeight: 900 }}>{money(summary.costBalanceDeductionApplied)}</span></div>"
 );
 
 mustOccurExactly(

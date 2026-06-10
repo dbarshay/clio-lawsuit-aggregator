@@ -607,7 +607,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
       ? `<div class="summary-emphasis"><span>Cost Excess Added to Net Remit</span><span>${safeHtml(money(printableCostSummary.costBalanceReimbursementToProvider))}</span></div>`
       : "";
     const printableCostDeductionAppliedHtml = isNonZeroMoneyValue(printableCostSummary.costBalanceDeductionApplied)
-      ? `<div><span>Cost Deduction Applied</span><span>${safeHtml(money(printableCostSummary.costBalanceDeductionApplied))}</span></div>`
+      ? `<div class="summary-emphasis"><span>Cost Deduction Applied</span><span class="negative-remit-adjustment">${safeHtml(money(printableCostSummary.costBalanceDeductionApplied))}</span></div>`
       : "";
     const summaryFinalNetRemitToProvider = printableCostSummary.netRemitToProviderTotal;
 
@@ -933,7 +933,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
           {isNonZeroMoneyValue(summary.costBalanceAppliedToLedger) && <div><strong>Cost Excess Applied to Negative Cost Balance</strong><br /><span style={{ color: "#b91c1c", fontWeight: 900 }}>{money(summary.costBalanceAppliedToLedger)}</span></div>}
           {isNonZeroMoneyValue(summary.costBalanceLedgerAfter) && <div><strong>Negative Cost Balance After This Remittance</strong><br />{money(summary.costBalanceLedgerAfter)}</div>}
           {isNonZeroMoneyValue(summary.costBalanceReimbursementToProvider) && <div style={{ paddingLeft: 28, fontWeight: 950 }}><strong>Cost Excess Added to Net Remit</strong><br /><strong>{money(summary.costBalanceReimbursementToProvider)}</strong></div>}
-          {isNonZeroMoneyValue(summary.costBalanceDeductionApplied) && <div><strong>Cost Deduction Applied</strong><br />{money(summary.costBalanceDeductionApplied)}</div>}
+          {isNonZeroMoneyValue(summary.costBalanceDeductionApplied) && <div style={{ paddingLeft: 28, fontWeight: 950 }}><strong>Cost Deduction Applied</strong><br /><span style={{ color: "#b91c1c", fontWeight: 900 }}>{money(summary.costBalanceDeductionApplied)}</span></div>}
           <div><strong>Final Net Remit to Provider</strong><br />{money(summary.netRemitToProviderTotal)}</div>
         </div>
         <p style={{ margin: "10px 0 0", color: "#475569", fontSize: 12 }}>

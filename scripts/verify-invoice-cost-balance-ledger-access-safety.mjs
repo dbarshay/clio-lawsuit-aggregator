@@ -50,6 +50,8 @@ mustContain("invoice page", page, 'document.getElementById("client-cost-ledger")
 mustContain("invoice page", page, 'title="Open the Client Cost Ledger"');
 mustContain("invoice page", page, 'id="client-cost-ledger"');
 mustContain("invoice page", page, "Client Cost Ledger");
+
+mustNotContain("invoice page", page, "Open Ledger");
 mustNotContain("invoice page", page, '{ label: "Cost Balance Ledger", value: displayedCostBalanceLedger');
 
 mustNotMatch("invoice page", page, /providerClientInvoice\.(create|update|delete|upsert)\s*\(/i, "direct ProviderClientInvoice mutation in UI");

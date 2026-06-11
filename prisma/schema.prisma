@@ -820,6 +820,7 @@ model CourtCalendarEvent {
   court                  String?
   venue                  String?
   indexAaaNumber         String?
+  calendarNumber         String?
   eventDate              String
   eventTime              String?
   part                   String?
@@ -846,6 +847,7 @@ model CourtCalendarEvent {
   @@index([eventType])
   @@index([status])
   @@index([eventDate])
+  @@index([calendarNumber])
   @@index([reminderDate])
   @@index([reminderTicklerId])
   @@index([createdAt])

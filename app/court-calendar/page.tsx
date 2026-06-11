@@ -16,6 +16,7 @@ type CalendarEvent = {
   court?: string | null;
   venue?: string | null;
   indexAaaNumber?: string | null;
+  calendarNumber?: string | null;
   eventDate: string;
   eventTime?: string | null;
   part?: string | null;
@@ -228,6 +229,7 @@ export default function CourtCalendarPage() {
     court: "",
     venue: "",
     indexAaaNumber: "",
+    calendarNumber: "",
     part: "",
     judgeOrArbitrator: "",
     appearanceType: "",
@@ -459,7 +461,8 @@ export default function CourtCalendarPage() {
             <label style={labelStyle}>Court<input value={form.court} onChange={(event) => setForm((prev) => ({ ...prev, court: event.target.value }))} style={inputStyle} /></label>
             <label style={labelStyle}>Part<input value={form.part} onChange={(event) => setForm((prev) => ({ ...prev, part: event.target.value }))} style={inputStyle} /></label>
             <label style={labelStyle}>Judge / Arbitrator<input value={form.judgeOrArbitrator} onChange={(event) => setForm((prev) => ({ ...prev, judgeOrArbitrator: event.target.value }))} style={inputStyle} /></label>
-            <label style={labelStyle}>Index / AAA<input value={form.indexAaaNumber} onChange={(event) => setForm((prev) => ({ ...prev, indexAaaNumber: event.target.value }))} style={inputStyle} /></label>
+            <label style={labelStyle}>Index Number<input value={form.indexAaaNumber} onChange={(event) => setForm((prev) => ({ ...prev, indexAaaNumber: event.target.value }))} style={inputStyle} /></label>
+            <label style={labelStyle}>Calendar Number<input value={form.calendarNumber} onChange={(event) => setForm((prev) => ({ ...prev, calendarNumber: event.target.value }))} style={inputStyle} /></label>
             <label style={labelStyle}>Appearance Type<input value={form.appearanceType} onChange={(event) => setForm((prev) => ({ ...prev, appearanceType: event.target.value }))} style={inputStyle} placeholder="In person, virtual, submission..." /></label>
             <label style={labelStyle}>Reminder Date<input type="date" value={form.reminderDate} onChange={(event) => setForm((prev) => ({ ...prev, reminderDate: event.target.value }))} style={inputStyle} /></label>
             <label style={{ ...labelStyle, alignContent: "end" }}>

@@ -41,8 +41,12 @@ mustContain("invoice page", invoicePage, "/invoice/history");
 mustContain("invoice page", invoicePage, 'window.open(`/admin/clients/${encodeURIComponent(id)}/invoice/history`, "_blank", "noopener,noreferrer");');
 mustAvoid("invoice page", invoicePage, 'id="invoice-history"');
 mustAvoid("invoice page", invoicePage, 'document.getElementById("invoice-history")');
-mustAvoid("invoice page", invoicePage, "setInvoiceHistoryVisible(true)");
-mustAvoid("invoice page", invoicePage, "invoiceHistoryVisible && (");
+mustAvoid("invoice page", invoicePage, "setInvoiceHistoryVisible");
+mustAvoid("invoice page", invoicePage, "invoiceHistoryVisible");
+mustAvoid("invoice page", invoicePage, '<h2 style={{ marginTop: 0 }}>Invoice History</h2>');
+mustAvoid("invoice page", invoicePage, 'invoice.status === "finalized" && (');
+mustAvoid("invoice page", invoicePage, "No invoices yet.");
+mustAvoid("invoice page", invoicePage, "provider-client-invoice-history.csv");
 
 mustContain("history page", historyPage, '"use client";');
 mustContain("history page", historyPage, "Client Invoice History");

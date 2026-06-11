@@ -1533,9 +1533,6 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
           <button type="button" onClick={loadPreview} disabled={loadingPreview || !id} style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid #2563eb", background: "#2563eb", color: "#fff", fontWeight: 900 }}>
             {loadingPreview ? "Loading Preview..." : "Preview Invoice"}
           </button>
-          <button type="button" onClick={() => downloadCsv("provider-client-invoice-history.csv", historyCsvRows)} disabled={!historyCsvRows.length} style={{ marginLeft: "auto", padding: "9px 14px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#fff", fontWeight: 900 }}>
-            Export CSV
-          </button>
         </div>
       </section>
 
@@ -1610,23 +1607,6 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
         </div>
       </section>
 
-                      {invoice.status === "finalized" && (
-                        <button type="button" onClick={() => voidInvoice(invoice)} style={{ padding: "5px 8px", borderRadius: 8, border: "1px solid #991b1b", background: "#fff", color: "#991b1b", fontWeight: 900 }}>Void</button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!history.length && (
-                <tr>
-                  <td style={tdStyle} colSpan={15}>No invoices yet.</td>
-                </tr>
-              )}
-            </tbody>
-                        </table>
-          </div>
-        </section>
-      )}
 
       {invoiceDetailVisible && invoiceDetail && (
         <section style={{ ...cardStyle, marginBottom: 18 }}>

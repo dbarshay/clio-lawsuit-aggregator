@@ -315,13 +315,6 @@
     "verify:invoice-history-collapsed-default-safety": "node scripts/verify-invoice-history-collapsed-default-safety.mjs",
     "verify:invoice-unreached-steps-hidden-safety": "node scripts/verify-invoice-unreached-steps-hidden-safety.mjs",
     "verify:invoice-client-costs-ledger-page-safety": "node scripts/verify-invoice-client-costs-ledger-page-safety.mjs",
-    "verify:invoice-history-top-summary-button-safety": "node scripts/verify-invoice-history-top-summary-button-safety.mjs",
-    "verify:invoice-top-summary-professional-actions-safety": "node scripts/verify-invoice-top-summary-professional-actions-safety.mjs",
-    "verify:invoice-top-summary-account-controls-layout-safety": "node scripts/verify-invoice-top-summary-account-controls-layout-safety.mjs",
-    "verify:invoice-account-controls-fourth-column-safety": "node scripts/verify-invoice-account-controls-fourth-column-safety.mjs",
-    "verify:invoice-account-controls-card-colors-safety": "node scripts/verify-invoice-account-controls-card-colors-safety.mjs",
-    "verify:invoice-account-controls-heading-removed-safety": "node scripts/verify-invoice-account-controls-heading-removed-safety.mjs",
-    "verify:invoice-provider-account-summary-polish-safety": "node scripts/verify-invoice-provider-account-summary-polish-safety.mjs",
     "verify:invoice-history-page-safety": "node scripts/verify-invoice-history-page-safety.mjs"
   },
   "dependencies": {

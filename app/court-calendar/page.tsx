@@ -383,7 +383,7 @@ export default function CourtCalendarPage() {
             </div>
             <h1 style={{ margin: "4px 0 6px", fontSize: 30, lineHeight: 1.1 }}>Court Calendar</h1>
             <p style={{ margin: 0, color: "#475569", fontWeight: 750 }}>
-              Dedicated local court calendar for master/lawsuit events, filtering, and report generation.
+              
             </p>
           </div>
         </div>
@@ -395,7 +395,7 @@ export default function CourtCalendarPage() {
           <div>
             <h2 style={{ margin: "0 0 5px", fontSize: 20 }}>Filters</h2>
             <p style={{ margin: 0, color: "#64748b", fontWeight: 750 }}>
-              Searches local Barsh Matters court calendar events. Report exports may include child matter data for reporting only.
+              
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

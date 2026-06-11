@@ -825,9 +825,6 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
           PROVIDER ACCOUNT
         </div>
         <h1 style={{ margin: "6px 0 8px", fontSize: 38, lineHeight: 1.08, letterSpacing: "-0.035em", fontWeight: 950, color: "#0f172a" }}>{client?.displayName || "Loading client..."}</h1>
-        <p style={{ margin: 0, color: "#475569", fontSize: 14, lineHeight: 1.45 }}>
-          Central account profile, billing terms, matter workflow access, and operational notes.
-        </p>
       </section>
 
       <section
@@ -1026,13 +1023,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
         </div>
 
         <div style={providerHubCardStyle}>
-          <div style={providerHubHeaderLabelStyle}>
-            ACCOUNT WORKFLOW
-          </div>
           <h2 style={providerHubSectionTitleStyle}>Provider Workflow Hub</h2>
-          <p style={providerHubSubtleTextStyle}>
-            Launch account workflows, review related matters, and manage invoice/remittance activity.
-          </p>
           <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
             <Link
               href={`/admin/clients/${encodeURIComponent(id)}/invoice`}
@@ -1065,7 +1056,6 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
               Notes
             </div>
             <h2 style={providerHubSectionTitleStyle}>Account Notes</h2>
-            <p style={providerHubSubtleTextStyle}>Internal notes and account-specific reminders for this provider/client.</p>
           </div>
         </div>
 

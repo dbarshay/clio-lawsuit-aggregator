@@ -37,6 +37,7 @@ function mustAvoidPattern(label, text, regex, description) {
 console.log("=== VERIFY PROVIDER CLIENT NOTES ADD EDIT DELETE SAFETY ===");
 
 mustContain("client page", page, "Account Notes");
+mustAvoid("client page", page, "Internal notes and account-specific reminders for this provider/client.");
 mustContain("client page", page, "Add Note");
 mustContain("client page", page, "Edit Notes");
 mustContain("client page", page, "Save New Note");

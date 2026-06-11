@@ -44,7 +44,7 @@ for (const value of [...transactionTypes, ...transactionStatuses]) {
 }
 
 mustContain("transaction seed", seed, 'type,');
-mustContain("transaction seed", seed, 'await upsertReferenceOption("transaction_type", transactionReferenceDisplayName(option), transactionReferenceAliases(option))');
+mustContain("transaction seed", seed, 'await upsertReferenceOption("transaction_type", transactionReferenceDisplayName(option), transactionReferenceAliases(option), transactionReferenceDetails(option))');
 mustContain("transaction seed", seed, "transactionReferenceDisplayName");
 mustContain("transaction seed", seed, "transactionReferenceAliases");
 mustContain("transaction seed", seed, "Filing Fee Collected");

@@ -27,6 +27,10 @@ function mustNotContain(label, text, needle) {
   else fail(`${label}: still contains ${needle}`);
 }
 
+function mustAvoid(label, text, needle) {
+  mustNotContain(label, text, needle);
+}
+
 function mustNotMatch(label, text, regex, description) {
   if (!regex.test(text)) pass(`${label}: avoids ${description}`);
   else fail(`${label}: matched forbidden ${description}`);
@@ -39,12 +43,10 @@ mustNotContain("invoice page", page, "const [costLedgerVisible, setCostLedgerVis
 mustContain("invoice page", page, "Open Client Costs Ledger");
 mustContain("invoice page", page, "setCostLedgerVisible(true);");
 mustContain("invoice page", page, "loadCostLedger();");
-mustContain("invoice page", page, 'document.getElementById("client-cost-ledger")?.scrollIntoView');
-mustContain("invoice page", page, "renderClientCostLedger()");
-mustContain("invoice page", page, 'id="client-cost-ledger"');
-mustContain("invoice page", page, "Hide Ledger");
-mustContain("invoice page", page, "Show Ledger");
-mustContain("invoice page", page, "Client Cost Ledger");
+mustAvoid("invoice page", page, 'document.getElementById("client-cost-ledger")?.scrollIntoView');
+mustAvoid("invoice page", page, "{renderClientCostLedger()}");
+mustContain("invoice page", page, "/invoice/client-costs-ledger");
+mustContain("invoice page", page, "Open Client Costs Ledger");
 
 mustNotMatch("invoice page", page, /providerClientInvoice\.(create|update|delete|upsert)\s*\(/i, "direct ProviderClientInvoice mutation in UI");
 mustNotMatch("invoice page", page, /matterPaymentReceipt\.(create|update|delete|upsert)\s*\(/i, "direct MatterPaymentReceipt mutation in UI");

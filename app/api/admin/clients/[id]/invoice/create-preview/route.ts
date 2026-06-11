@@ -25,17 +25,20 @@ function numberFromPercent(value: unknown): number {
 }
 
 function isFeeRecoveryTransactionType(value: unknown) {
-  const normalized = clean(value).toLowerCase();
-  return [
-    "filing fee",
-    "filing fee collected",
-    "index fee",
-    "index fee collected",
-    "service fee collected",
-    "other court costs",
-    "other court costs collected",
-    "other court fees collected",
-  ].includes(normalized);
+  const type = String(value ?? "").toLowerCase();
+  return (
+    type.includes("filing fee") ||
+    type.includes("index fee") ||
+    type.includes("service fee") ||
+    type.includes("court cost") ||
+    type.includes("court costs") ||
+    type.includes("court fee") ||
+    type.includes("court fees") ||
+    type.includes("other court cost") ||
+    type.includes("other court costs") ||
+    type.includes("other court fee") ||
+    type.includes("other court fees")
+  );
 }
 
 function detailValue(details: Record<string, unknown>, keys: string[]): string {

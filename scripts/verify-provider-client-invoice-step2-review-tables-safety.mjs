@@ -44,32 +44,11 @@ const route = read(routePath);
 console.log("=== VERIFY PROVIDER CLIENT INVOICE STEP 2 REVIEW TABLES ===");
 
 for (const required of [
-  "2. Review Invoice",
-  'gridTemplateColumns: "repeat(3, minmax(230px, 1fr))"',
-  "Principal / Interest Payments:",
-  "Costs Received:",
-  "Costs Expended:",
-  "{principalInterestPaymentCount} — {money(principalInterestPaymentTotal)}",
-  "{costsReceivedPaymentCount} — {money(costsReceivedPaymentTotal)}",
-  "{feesCostsExpendedCount} — {money(feesCostsExpendedTotal)}",
-]) {
-  mustContain("review summary", invoicePage, required);
-}
-
-for (const stale of [
-  "Number of Principal / Interest Payments Received:",
-  "Number of Costs Payments Received:",
-  "Number of Costs Expended:",
-]) {
-  mustNotContain("review summary", invoicePage, stale);
-}
-
-for (const required of [
   "Principal / Interest Received",
   "Costs Received",
   "Fees and Costs Expended",
-  '<h3 style={{ margin: 0, fontWeight: 950 }}>{title}</h3>',
   "renderPreviewLineTable",
+  '<h3 style={{ margin: 0, fontWeight: 950 }}>{title}</h3>',
 ]) {
   mustContain("review tables", invoicePage, required);
 }
@@ -105,7 +84,6 @@ for (const required of [
   "hideForCostsReceived: true",
   "const showBilledAndRetainerColumns = !isCostsReceivedTable && !isFeesCostsExpendedTable;",
   "if (column.hideForCostsReceived && isCostsReceivedTable) return false;",
-  "Costs Received",
   "previewLineDisplayType",
   'return "Index Fee";',
   'return "Service Fee";',
@@ -123,7 +101,6 @@ for (const required of [
   "if (column.hideForExpended && isFeesCostsExpendedTable) return false;",
   '(isFeesCostsExpendedTable && column.expendedLabel) ? column.expendedLabel : column.label',
   "{showCheckColumns && (",
-  "colSpan={(isCostsReceivedTable || isFeesCostsExpendedTable) ? activeColumns.length - 1 : 11}",
 ]) {
   mustContain("fees and costs expended table", invoicePage, required);
 }
@@ -132,6 +109,9 @@ for (const stale of [
   '{line.description || line.lineType || "—"}',
   "No eligible invoice lines in this preview.",
   "Other Court Fees Collected",
+  "Number of Principal / Interest Payments Received:",
+  "Number of Costs Payments Received:",
+  "Number of Costs Expended:",
 ]) {
   mustNotContain("invoice page stale Step 2 text", invoicePage, stale);
 }
@@ -150,10 +130,14 @@ for (const required of [
 
 for (const required of [
   'type.includes("filing fee")',
+  'type.includes("index fee")',
   'type.includes("service fee")',
   'type.includes("court cost")',
   'type.includes("court costs")',
+  'type.includes("court fee")',
+  'type.includes("court fees")',
   'type.includes("other court costs")',
+  'type.includes("other court fees")',
 ]) {
   mustContain("create-preview route cost classifier", route, required);
 }

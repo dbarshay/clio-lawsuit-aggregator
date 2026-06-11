@@ -46,14 +46,14 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter, log: ["error"] });
 
 const TRANSACTION_TYPES = [
-  "Collection Payment",
-  "Voluntary Payment",
-  "Attorney Fee",
-  { displayName: "Filing Fee", aliases: ["Filing Fee Collected"] },
-  { displayName: "Index Fee", aliases: ["Index Fee Collected"] },
-  "Interest",
-  "Service Fee Collected",
-  { displayName: "Other Court Costs", aliases: ["Other Court Fees Collected", "Other Court Costs Collected"] },
+  { displayName: "Collection Payment", aliases: ["Collection Payment"], details: { remittanceCategory: "principal_interest", directMatterAllowed: false, lawsuitAllowed: true, defaultStatus: "Show on Remittance", includeOnInvoicePreview: true, retainerEligible: true, sortOrder: 10 } },
+  { displayName: "Voluntary Payment", aliases: ["Voluntary Payment"], details: { remittanceCategory: "principal_interest", directMatterAllowed: true, lawsuitAllowed: false, defaultStatus: "Show on Remittance", includeOnInvoicePreview: true, retainerEligible: true, sortOrder: 20 } },
+  { displayName: "Attorney Fee", aliases: ["Attorney Fee"], details: { remittanceCategory: "attorney_fee", directMatterAllowed: true, lawsuitAllowed: true, defaultStatus: "Do Not Show on Remittance", includeOnInvoicePreview: false, retainerEligible: false, sortOrder: 30 } },
+  { displayName: "Filing Fee", aliases: ["Filing Fee", "Filing Fee Collected"], details: { remittanceCategory: "cost_recovery", directMatterAllowed: true, lawsuitAllowed: true, defaultStatus: "Show on Remittance", includeOnInvoicePreview: true, retainerEligible: false, costCategory: "filing_fee", sortOrder: 40 } },
+  { displayName: "Index Fee", aliases: ["Index Fee", "Index Fee Collected"], details: { remittanceCategory: "cost_recovery", directMatterAllowed: true, lawsuitAllowed: true, defaultStatus: "Show on Remittance", includeOnInvoicePreview: true, retainerEligible: false, costCategory: "index_fee", sortOrder: 50 } },
+  { displayName: "Interest", aliases: ["Interest"], details: { remittanceCategory: "principal_interest", directMatterAllowed: true, lawsuitAllowed: true, defaultStatus: "Show on Remittance", includeOnInvoicePreview: true, retainerEligible: true, retainerRateKind: "interest", sortOrder: 60 } },
+  { displayName: "Service Fee Collected", aliases: ["Service Fee Collected"], details: { remittanceCategory: "cost_recovery", directMatterAllowed: true, lawsuitAllowed: true, defaultStatus: "Show on Remittance", includeOnInvoicePreview: true, retainerEligible: false, costCategory: "service_fee", sortOrder: 70 } },
+  { displayName: "Other Court Costs", aliases: ["Other Court Costs", "Other Court Fees Collected", "Other Court Costs Collected"], details: { remittanceCategory: "cost_recovery", directMatterAllowed: true, lawsuitAllowed: true, defaultStatus: "Show on Remittance", includeOnInvoicePreview: true, retainerEligible: false, costCategory: "other_court_costs", sortOrder: 80 } },
 ];
 
 const TRANSACTION_STATUSES = [
@@ -77,7 +77,17 @@ function transactionReferenceAliases(option) {
   return typeof option === "string" ? [] : option.aliases || [];
 }
 
-async function upsertReferenceOption(type, displayName, aliases = []) {
+function transactionReferenceDetails(option) {
+  const base = {
+    source: "seed:transaction-reference-options",
+    paymentReferenceOption: true,
+  };
+  if (typeof option === "string") return base;
+  return { ...base, ...(option.details || {}) };
+}
+
+
+async function upsertReferenceOption(type, displayName, aliases = [], details = {}) {
   const normalizedName = normalizeReferenceText(displayName);
 
   const entity = await prisma.referenceEntity.upsert({
@@ -93,20 +103,14 @@ async function upsertReferenceOption(type, displayName, aliases = []) {
       normalizedName,
       active: true,
       notes: "Seeded payment transaction reference option",
-      details: {
-        source: "seed:transaction-reference-options",
-        paymentReferenceOption: true,
-      },
+      details,
       source: "barsh-matters-local",
     },
     update: {
       displayName,
       active: true,
       notes: "Seeded payment transaction reference option",
-      details: {
-        source: "seed:transaction-reference-options",
-        paymentReferenceOption: true,
-      },
+      details,
       source: "barsh-matters-local",
     },
   });
@@ -135,7 +139,7 @@ async function upsertReferenceOption(type, displayName, aliases = []) {
 
 async function main() {
   for (const option of TRANSACTION_TYPES) {
-    await upsertReferenceOption("transaction_type", transactionReferenceDisplayName(option), transactionReferenceAliases(option));
+    await upsertReferenceOption("transaction_type", transactionReferenceDisplayName(option), transactionReferenceAliases(option), transactionReferenceDetails(option));
   }
 
   for (const value of TRANSACTION_STATUSES) {

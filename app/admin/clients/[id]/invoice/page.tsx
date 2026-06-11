@@ -77,6 +77,36 @@ const compactInfoGroupStyle: React.CSSProperties = {
   alignContent: "start",
 };
 
+const summarySectionLabelStyle: React.CSSProperties = {
+  marginBottom: 10,
+  color: "#475569",
+  fontSize: 12,
+  fontWeight: 950,
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+};
+
+const topSummaryPanelStyle: React.CSSProperties = {
+  border: "1px solid #e2e8f0",
+  borderRadius: 14,
+  background: "#ffffff",
+  padding: 14,
+  minHeight: 150,
+};
+
+const activeStatusPillStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  width: "fit-content",
+  borderRadius: 999,
+  padding: "3px 9px",
+  border: "1px solid #bbf7d0",
+  background: "#f0fdf4",
+  color: "#166534",
+  fontSize: 12,
+  fontWeight: 950,
+};
+
 function ProviderInfoItem({ label, value, multiline }: { label: string; value: unknown; multiline?: boolean }) {
   return (
     <div>
@@ -286,7 +316,6 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
   const [costLedger, setCostLedger] = useState<any>(null);
   const [costLedgerVisible, setCostLedgerVisible] = useState(false);
   const [loadingCostLedger, setLoadingCostLedger] = useState(false);
-  const [invoiceHistoryVisible, setInvoiceHistoryVisible] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -831,7 +860,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     { label: "Address", value: providerAddress(providerClientDetails) || "—", multiline: true },
     { label: "Owner", value: findDetailValue(providerClientDetails, ["hidden_owner", "owner", "Owner", "assigned_owner", "account_owner", "client_owner"]) || "—" },
     { label: "Provider Group", value: findDetailValue(providerClientDetails, ["hidden_group_name", "group_name", "provider_group", "Provider Group", "Group Name"]) || "—" },
-    { label: "Status", value: clientDetail?.isActive === false ? "Inactive" : "Active" },
+    { label: "Status", value: clientDetail?.isActive === false ? "Inactive" : "Active", statusPill: true },
   ];
 
   const providerPercentageRows = [
@@ -855,7 +884,10 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
   const providerBillingRows = [
     { label: "Pull Costs", value: findDetailValue(providerClientDetails, ["hidden_pull_costs", "pull_costs", "Pull Costs", "Pull Cost"]) || "—" },
     { label: "Remit", value: findDetailValue(providerClientDetails, ["hidden_remit", "remit", "Remit", "remit_type", "remit_account"]) || "—" },
+  ];
+  const providerAccountControlRows = [
     { label: "Cost Balance", value: displayedCostBalanceLedger, amount: costBalanceLedgerAmount, action: "view-cost-ledger" },
+    { label: "Invoice History", value: `${history.length} total`, latest: latestFinalizedInvoice?.invoiceNumber || latestInvoice?.invoiceNumber || "", action: "view-invoice-history" },
   ];
 
   const previewLines = Array.isArray(preview?.lines) ? preview.lines : [];
@@ -1057,7 +1089,14 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     return (
       <section style={{ marginTop: 18, border: "2px solid #94a3b8", borderRadius: 14, padding: 14, background: "#f8fafc" }}>
         <h3 style={{ margin: "0 0 10px", fontWeight: 950 }}>Remittance Summary</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(180px, 1fr))", gap: 10 }}>
+        <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(320px, 1.45fr) minmax(190px, 0.9fr) minmax(170px, 0.75fr) minmax(410px, 1.25fr)",
+              gap: 24,
+              alignItems: "start",
+            }}
+          >
           <div><strong>Principal / Interest Received</strong><br />{money(summary.principalInterestTotal)}</div>
           <div><strong>Retainer Fee</strong><br />{money(summary.retainerFeeTotal)}</div>
           <div style={{ paddingLeft: 28, fontWeight: 950 }}><strong>Net Remit Before Costs</strong><br /><strong>{money(summary.baseNetRemitToProvider)}</strong></div>
@@ -1305,62 +1344,150 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
         {clientDetailLoading ? (
           <p style={{ color: "#64748b" }}>Loading provider/client info...</p>
         ) : (
-          <dl style={{ display: "grid", gridTemplateColumns: "minmax(260px, 1.25fr) minmax(220px, 1fr) minmax(180px, 0.8fr)", gap: "8px 28px", margin: 0 }}>
-            <div style={compactInfoGroupStyle}>
-              {providerIdentityRows.map((row) => (
-                <ProviderInfoItem key={row.label} label={row.label} value={row.value} multiline={row.multiline} />
-              ))}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(320px, 1.25fr) minmax(210px, 0.8fr) minmax(190px, 0.7fr) minmax(440px, 1.35fr)",
+              gap: 18,
+              alignItems: "stretch",
+            }}
+          >
+            <div style={topSummaryPanelStyle}>
+              <div style={summarySectionLabelStyle}>Provider Details</div>
+              <dl style={{ margin: 0, display: "grid", gap: 8 }}>
+                {providerIdentityRows.map((row: any) => (
+                  row.statusPill ? (
+                    <div key={row.label}>
+                      <dt style={compactInfoLabelStyle}>{row.label}</dt>
+                      <dd style={compactInfoValueStyle}>
+                        <span style={row.value === "Active" ? activeStatusPillStyle : { ...activeStatusPillStyle, border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b" }}>
+                          {row.value}
+                        </span>
+                      </dd>
+                    </div>
+                  ) : (
+                    <ProviderInfoItem key={row.label} label={row.label} value={row.value} multiline={row.multiline} />
+                  )
+                ))}
+              </dl>
             </div>
-            <div style={compactInfoGroupStyle}>
-              {providerPercentageRows.map((row) => (
-                <ProviderInfoItem key={row.label} label={row.label} value={row.value} />
-              ))}
+
+            <div style={topSummaryPanelStyle}>
+              <div style={summarySectionLabelStyle}>Retainer Terms</div>
+              <dl style={{ margin: 0, display: "grid", gap: 8 }}>
+                {providerPercentageRows.map((row) => (
+                  <ProviderInfoItem key={row.label} label={row.label} value={row.value} />
+                ))}
+              </dl>
             </div>
-            <div style={compactInfoGroupStyle}>
-              {providerBillingRows.map((row: any) => (
+
+            <div style={topSummaryPanelStyle}>
+              <div style={summarySectionLabelStyle}>Billing Defaults</div>
+              <dl style={{ margin: 0, display: "grid", gap: 8 }}>
+                {providerBillingRows.map((row) => (
+                  <ProviderInfoItem key={row.label} label={row.label} value={row.value} />
+                ))}
+              </dl>
+            </div>
+
+            <div style={{ ...topSummaryPanelStyle, display: "grid", gap: 10 }}>
+              <div style={summarySectionLabelStyle}>Account Actions</div>
+              {providerAccountControlRows.map((row: any) => (
                 row.action === "view-cost-ledger" ? (
-                  <div key={row.label}>
-                    <dt style={compactInfoLabelStyle}>{row.label}</dt>
-                    <dd style={compactInfoValueStyle}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                        <strong
+                  <div
+                    key={row.label}
+                    style={{
+                      border: "1px solid #dbeafe",
+                      background: "#f8fbff",
+                      borderRadius: 14,
+                      padding: "12px 14px",
+                      boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
+                      <div>
+                        <div style={{ ...compactInfoLabelStyle, marginBottom: 4 }}>{row.label}</div>
+                        <div
                           style={{
-                            fontSize: 24,
+                            fontSize: 28,
                             lineHeight: 1,
+                            fontWeight: 950,
                             color: Number(row.amount || 0) > 0 ? "#b91c1c" : "#166534",
+                            letterSpacing: "-0.03em",
                           }}
                         >
                           {row.value}
-                        </strong>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCostLedgerVisible(true);
-                            loadCostLedger();
-                            window.setTimeout(() => {
-                              document.getElementById("client-cost-ledger")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                            }, 50);
-                          }}
-                          style={{
-                            ...secondaryButtonStyle,
-                            border: "1px solid #2563eb",
-                            background: "#2563eb",
-                            color: "#ffffff",
-                            boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)",
-                          }}
-                          title="Open the Client Cost Ledger"
-                        >
-                          Open Client Costs Ledger
-                        </button>
+                        </div>
+                        <div style={{ marginTop: 6, color: "#64748b", fontSize: 11, fontWeight: 800, whiteSpace: "nowrap" }}>
+                          {Number(row.amount || 0) > 0 ? "Outstanding client cost balance" : "No client cost balance"}
+                        </div>
                       </div>
-                    </dd>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!id) return;
+                          window.open(`/admin/clients/${encodeURIComponent(id)}/invoice/client-costs-ledger`, "_blank", "noopener,noreferrer");
+                        }}
+                        style={{
+                          ...secondaryButtonStyle,
+                          border: "1px solid #2563eb",
+                          background: "#2563eb",
+                          color: "#ffffff",
+                          boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)",
+                          whiteSpace: "nowrap",
+                        }}
+                        title="Open the Client Cost Ledger"
+                      >
+                        Open Client Costs Ledger
+                      </button>
+                    </div>
                   </div>
-                ) : (
-                  <ProviderInfoItem key={row.label} label={row.label} value={row.value} />
-                )
+                ) : row.action === "view-invoice-history" ? (
+                  <div
+                    key={row.label}
+                    style={{
+                      border: "1px solid #dbeafe",
+                      background: "#f8fbff",
+                      borderRadius: 14,
+                      padding: "12px 14px",
+                      boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
+                      <div>
+                        <div style={{ ...compactInfoLabelStyle, marginBottom: 4 }}>{row.label}</div>
+                        <div style={{ fontSize: 20, lineHeight: 1.05, fontWeight: 950, color: "#0f172a" }}>
+                          {row.value}
+                        </div>
+                        <div style={{ marginTop: 5, color: "#64748b", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>
+                          Latest: {row.latest || "—"}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (id) {
+                            window.open(`/admin/clients/${encodeURIComponent(id)}/invoice/history`, "_blank", "noopener,noreferrer");
+                          }
+                        }}
+                        style={{
+                          ...secondaryButtonStyle,
+                          border: "1px solid #2563eb",
+                          background: "#2563eb",
+                          color: "#ffffff",
+                          boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)",
+                          whiteSpace: "nowrap",
+                        }}
+                        title="Open Invoice History"
+                      >
+                        Open Invoice History
+                      </button>
+                    </div>
+                  </div>
+                ) : null
               ))}
             </div>
-          </dl>
+          </div>
         )}
       </section>
 
@@ -1483,91 +1610,6 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
         </div>
       </section>
 
-      {renderClientCostLedger()}
-
-      <section style={{ ...cardStyle, marginBottom: 18 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
-          <div>
-            <h2 style={{ marginTop: 0 }}>Invoice History</h2>
-            <p style={{ color: "#475569", marginTop: 0 }}>
-              Collapsed by default. Expand to view finalized invoice detail, finalize drafts, void finalized invoices, and print/save invoices as PDF.
-            </p>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", fontSize: 12, color: "#334155" }}>
-              <span><strong>Total:</strong> {history.length}</span>
-              <span><strong>Finalized:</strong> {finalizedInvoiceCount}</span>
-              <span><strong>Draft:</strong> {draftInvoiceCount}</span>
-              <span><strong>Voided:</strong> {voidedInvoiceCount}</span>
-              <span><strong>Latest Finalized:</strong> {latestFinalizedInvoice?.invoiceNumber || "—"}</span>
-              <span><strong>Cost Balance:</strong> {displayedCostBalanceLedger}</span>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <button type="button" onClick={() => setInvoiceHistoryVisible((value) => value === false)} style={secondaryButtonStyle}>
-              {invoiceHistoryVisible ? "Hide Invoice History" : "Show Invoice History"}
-            </button>
-            <button type="button" onClick={() => loadHistory()} disabled={loadingHistory} style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#fff", fontWeight: 900 }}>
-              {loadingHistory ? "Refreshing..." : "Refresh"}
-            </button>
-          </div>
-        </div>
-
-        {invoiceHistoryVisible === false && (
-          <p style={{ color: "#64748b", marginBottom: 0 }}>
-            Latest invoice: <strong>{latestInvoice?.invoiceNumber || "—"}</strong>{latestInvoice ? <> {statusBadge(latestInvoice.status)}</> : null}
-          </p>
-        )}
-
-        {invoiceHistoryVisible && (
-          <div style={{ overflowX: "auto", marginTop: 14 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Invoice Number</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Created</th>
-                <th style={thStyle}>Finalized</th>
-                <th style={thStyle}>Voided</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Lines</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Principal / Interest</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Retainer Fee</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Net Before Costs</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Costs Received</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Costs Expended</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Cost Balance</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Cost Ledger</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Final Net Remit</th>
-                <th style={thStyle}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((invoice) => (
-                <tr key={invoice.id}>
-                  <td style={tdStyle}><strong><button
-                          type="button"
-                          onClick={() => loadInvoiceDetail(invoice.id)}
-                          style={{ border: 0, background: "transparent", padding: 0, color: "#2563eb", fontWeight: 800, cursor: "pointer" }}
-                        >
-                          {invoice.invoiceNumber}
-                        </button></strong></td>
-                  <td style={tdStyle}>{statusBadge(invoice.status)}</td>
-                  <td style={tdStyle}>{dateOnly(invoice.createdAt)}</td>
-                  <td style={tdStyle}>{dateOnly(invoice.finalizedAt) || "—"}</td>
-                  <td style={tdStyle}>{dateOnly(invoice.voidedAt) || "—"}</td>
-                  <td style={{ ...tdStyle, textAlign: "right" }}>{invoice.lineCount}</td>
-                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.principalInterestTotal)}</td>
-                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.retainerFeeTotal)}</td>
-                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.baseNetRemitToProvider)}</td>
-                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.filingFeePaymentTotal)}</td>
-                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.costsExpendedTotal)}</td>
-                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.costBalanceThisRemittancePeriod)}</td>
-                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.costBalanceLedgerAfter)}</td>
-                  <td style={{ ...tdStyle, textAlign: "right", fontWeight: 900 }}>{money(invoice.netRemitToProviderTotal)}</td>
-                  <td style={tdStyle}>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      <button type="button" onClick={() => toggleInvoiceDetail(invoice)} style={secondaryButtonStyle}>{isInvoiceDetailOpen(invoice) ? "Hide" : "View"}</button>
-                      {invoice.status === "draft" && (
-                        <button type="button" onClick={() => finalizeInvoice(invoice)} style={{ padding: "5px 8px", borderRadius: 8, border: "1px solid #166534", background: "#166534", color: "#fff", fontWeight: 900 }}>Finalize</button>
-                      )}
                       {invoice.status === "finalized" && (
                         <button type="button" onClick={() => voidInvoice(invoice)} style={{ padding: "5px 8px", borderRadius: 8, border: "1px solid #991b1b", background: "#fff", color: "#991b1b", fontWeight: 900 }}>Void</button>
                       )}
@@ -1581,10 +1623,10 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
                 </tr>
               )}
             </tbody>
-            </table>
+                        </table>
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       {invoiceDetailVisible && invoiceDetail && (
         <section style={{ ...cardStyle, marginBottom: 18 }}>

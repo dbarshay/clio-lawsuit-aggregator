@@ -24,6 +24,11 @@ function numberFromPercent(value: unknown): number {
   return numeric > 1 ? numeric / 100 : numeric;
 }
 
+function showOnRemittance(value: unknown) {
+  const status = lower(value);
+  return !status.includes("do not show");
+}
+
 function isFeeRecoveryTransactionType(value: unknown) {
   const type = String(value ?? "").toLowerCase();
   return (
@@ -205,14 +210,18 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       receiptInvoiceMarks.map((row: any) => [row.id, clean(row.invoiceId)])
     );
 
+    const showableRemittanceRows = remittanceRows.filter((row: any) => showOnRemittance(row?.transactionStatus));
+
     const eligibleRemittanceRows = includeAlreadyInvoiced
-      ? remittanceRows
-      : remittanceRows.filter((row: any) => {
+      ? showableRemittanceRows
+      : showableRemittanceRows.filter((row: any) => {
           const receiptId = Number(String(row?.id || "").trim());
           return !invoiceIdByReceiptId.get(receiptId);
         });
 
-    const excludedAlreadyInvoicedRows = remittanceRows.filter((row: any) => {
+    const excludedDoNotShowRows = remittanceRows.filter((row: any) => !showOnRemittance(row?.transactionStatus));
+
+    const excludedAlreadyInvoicedRows = showableRemittanceRows.filter((row: any) => {
       const receiptId = Number(String(row?.id || "").trim());
       return Boolean(invoiceIdByReceiptId.get(receiptId));
     });
@@ -387,6 +396,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
               amount: moneyNumber(row?.amount),
             };
           }),
+          excludedDoNotShowReceiptRowCount: excludedDoNotShowRows.length,
           excludedAlreadyInvoicedReceiptRowCount: includeAlreadyInvoiced ? 0 : excludedAlreadyInvoicedRows.length,
           includedAlreadyInvoicedReceiptRowCount: includeAlreadyInvoiced ? excludedAlreadyInvoicedRows.length : 0,
           alreadyInvoicedReceiptDetails: excludedAlreadyInvoicedRows.map((row: any) => {

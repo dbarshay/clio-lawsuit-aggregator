@@ -513,19 +513,12 @@ export default function FilteredMattersPage() {
   const [masterCloseResult, setMasterCloseResult] = useState<any>(null);
 
   const fallbackMasterPaymentTransactionTypeOptions = [
-    "Attorney Fee",
     "Collection Payment",
-    "Filing Fee Billed",
-    "Filing Fee Collected",
-    "Index Fee Billed",
-    "Index Fee Collected",
     "Interest",
-    "Other Court Fees Billed",
-    "Other Court Fees Collected",
-    "PreC to Provider",
-    "Service Fee Billed",
-    "Service Fee Collected",
-    "Voluntary Payment",
+    "Attorney Fee",
+    "Index Fee",
+    "Filing Fee",
+    "Other Court Costs",
   ];
 
   const fallbackMasterPaymentTransactionStatusOptions = [
@@ -544,6 +537,13 @@ export default function FilteredMattersPage() {
   function masterPaymentTransactionStatusDropdownOptions(): string[] {
     const loaded = masterPaymentTransactionStatusOptions.map(masterReferenceOptionDisplayName).filter(Boolean);
     return loaded.length ? loaded : fallbackMasterPaymentTransactionStatusOptions;
+  }
+
+  function handleMasterPaymentTransactionTypeChange(nextType: string) {
+    setMasterPaymentTransactionTypeInput(nextType);
+    if (String(nextType || "").trim() === "Attorney Fee") {
+      setMasterPaymentTransactionStatusInput("Do Not Show on Remittance");
+    }
   }
 
   async function loadMasterPaymentTransactionReferenceOptions() {
@@ -13099,10 +13099,10 @@ function masterSettlementDateFiledValue(): string {
                     }}
                   >
                     <label className="barsh-direct-payment-field">
-                      <span>Transaction Type *{masterPaymentTransactionOptionsLoading ? " · loading..." : ""}</span>
+                      <span>Transaction Type{masterPaymentTransactionOptionsLoading ? " · loading..." : ""}</span>
                       <select
                         value={masterPaymentTransactionTypeInput}
-                        onChange={(event) => setMasterPaymentTransactionTypeInput(event.target.value)}
+                        onChange={(event) => handleMasterPaymentTransactionTypeChange(event.target.value)}
                         style={{
                           width: "100%",
                           border: "1px solid #cbd5e1",
@@ -13121,7 +13121,7 @@ function masterSettlementDateFiledValue(): string {
                     </label>
 
                     <label className="barsh-direct-payment-field">
-                      <span>Transaction Status *</span>
+                      <span>Transaction Status</span>
                       <select
                         value={masterPaymentTransactionStatusInput}
                         onChange={(event) => setMasterPaymentTransactionStatusInput(event.target.value)}
@@ -13143,7 +13143,7 @@ function masterSettlementDateFiledValue(): string {
                     </label>
 
                     <label className="barsh-direct-payment-field">
-                      <span>Transaction Date *</span>
+                      <span>Transaction Date</span>
                       <input
                         type="date"
                         value={masterPaymentDateInput}
@@ -13162,7 +13162,7 @@ function masterSettlementDateFiledValue(): string {
                     </label>
 
                     <label className="barsh-direct-payment-field">
-                      <span>Amount *</span>
+                      <span>Amount</span>
                       <div style={{ position: "relative", width: "100%" }}>
                         <span
                           style={{

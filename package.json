@@ -326,7 +326,9 @@
     "verify:provider-client-hub-nowrap-safety": "node scripts/verify-provider-client-hub-nowrap-safety.mjs",
     "verify:provider-client-identity-nowrap-safety": "node scripts/verify-provider-client-identity-nowrap-safety.mjs",
     "verify:provider-client-notes-eyebrow-removed-safety": "node scripts/verify-provider-client-notes-eyebrow-removed-safety.mjs",
-    "verify:provider-client-notes-header-actions-safety": "node scripts/verify-provider-client-notes-header-actions-safety.mjs"
+    "verify:provider-client-notes-header-actions-safety": "node scripts/verify-provider-client-notes-header-actions-safety.mjs",
+    "verify:lawsuit-payment-transaction-order-safety": "node scripts/verify-lawsuit-payment-transaction-order-safety.mjs",
+    "verify:payment-required-label-asterisks-removed-safety": "node scripts/verify-payment-required-label-asterisks-removed-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

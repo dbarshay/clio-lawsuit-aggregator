@@ -28,8 +28,8 @@ const matterPage = read("app/matter/[id]/page.tsx");
 const mattersPage = read("app/matters/page.tsx");
 
 mustInclude("direct UI uses Post Payment button", matterPage, ': paymentFormOpen ? "Close Payment Form" : "Post Payment"');
-mustInclude("direct UI requires Check Date", matterPage, "<span>Check Date *</span>");
-mustInclude("direct UI requires Check Number", matterPage, "<span>Check Number *</span>");
+mustInclude("direct UI requires Check Date", matterPage, "<span>Check Date</span>");
+mustInclude("direct UI requires Check Number", matterPage, "<span>Check Number</span>");
 mustInclude("direct UI aggregated disabled explanation", matterPage, 'Payments must be posted in Lawsuit Screen');
 mustInclude("direct UI has aggregation payment helper", matterPage, "function matterIsAggregatedForPayment()");
 mustInclude("direct UI blocks aggregated submit", matterPage, 'error: "Payments must be posted in Lawsuit Screen"');
@@ -38,7 +38,6 @@ mustInclude("direct UI submit says Post Payment", matterPage, '{paymentApplyLoad
 mustInclude("direct UI has required-field completion helper", matterPage, "function paymentFormRequiredFieldsComplete()");
 mustInclude("direct UI defaults transaction type to Voluntary Payment", matterPage, 'useState("Voluntary Payment")');
 mustInclude("direct UI allows Interest transaction type", matterPage, '"Interest"');
-mustInclude("direct UI allows PreC to Provider transaction type", matterPage, '"PreC to Provider"');
 mustNotInclude("direct UI excludes Collection Payment transaction type", matterPage, '"Collection Payment"');
 mustInclude("direct UI disables submit until required fields complete", matterPage, "disabled={paymentFormSubmitDisabled()}");
 mustInclude("direct UI explains disabled submit", matterPage, "Complete all required payment fields before posting.");

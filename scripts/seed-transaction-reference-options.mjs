@@ -49,16 +49,11 @@ const TRANSACTION_TYPES = [
   "Collection Payment",
   "Voluntary Payment",
   "Attorney Fee",
-  "Filing Fee Collected",
-  "Filing Fee Billed",
-  "Index Fee Collected",
-  "Index Fee Billed",
+  { displayName: "Filing Fee", aliases: ["Filing Fee Collected"] },
+  { displayName: "Index Fee", aliases: ["Index Fee Collected"] },
   "Interest",
-  "PreC to Provider",
   "Service Fee Collected",
-  "Service Fee Billed",
-  "Other Court Fees Collected",
-  "Other Court Fees Billed",
+  { displayName: "Other Court Costs", aliases: ["Other Court Fees Collected", "Other Court Costs Collected"] },
 ];
 
 const TRANSACTION_STATUSES = [
@@ -72,6 +67,14 @@ function cleanText(value) {
 
 function normalizeReferenceText(value) {
   return cleanText(value).toLowerCase();
+}
+
+function transactionReferenceDisplayName(option) {
+  return typeof option === "string" ? option : option.displayName;
+}
+
+function transactionReferenceAliases(option) {
+  return typeof option === "string" ? [] : option.aliases || [];
 }
 
 async function upsertReferenceOption(type, displayName, aliases = []) {
@@ -131,8 +134,8 @@ async function upsertReferenceOption(type, displayName, aliases = []) {
 }
 
 async function main() {
-  for (const value of TRANSACTION_TYPES) {
-    await upsertReferenceOption("transaction_type", value);
+  for (const option of TRANSACTION_TYPES) {
+    await upsertReferenceOption("transaction_type", transactionReferenceDisplayName(option), transactionReferenceAliases(option));
   }
 
   for (const value of TRANSACTION_STATUSES) {

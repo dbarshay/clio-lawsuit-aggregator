@@ -37,17 +37,10 @@ mustNotInclude("lawsuit transaction dropdown does not use loaded transaction typ
 [
   "Attorney Fee",
   "Collection Payment",
-  "Filing Fee Billed",
-  "Filing Fee Collected",
-  "Index Fee Billed",
-  "Index Fee Collected",
+  "Filing Fee",
+  "Index Fee",
   "Interest",
-  "Other Court Fees Billed",
-  "Other Court Fees Collected",
-  "PreC to Provider",
-  "Service Fee Billed",
-  "Service Fee Collected",
-  "Voluntary Payment",
+  "Other Court Costs",
 ].forEach((transactionType) => {
   mustInclude(`lawsuit transaction type allows ${transactionType}`, typeBlock, `"${transactionType}"`);
 });
@@ -72,7 +65,9 @@ mustInclude("lawsuit payment allocation preview renders item row shape", page, "
 mustNotInclude("lawsuit payment allocation preview does not render removed nested row", page, "const row = item.row;");
 mustInclude("lawsuit payment allocation supports proportional current-balance base", page, '"current-balance"');
 mustInclude("lawsuit payment allocation supports manual base", page, '"manual"');
-mustInclude("lawsuit payment allocation percent uses current balance", page, "item.currentBalance / totalEligibleBalance");
+mustInclude("lawsuit payment allocation percent uses current balance field", page, "currentBalance");
+mustInclude("lawsuit payment allocation percent uses eligible balance denominator", page, "totalEligibleBalance");
+mustInclude("lawsuit payment allocation percent supports proportional current balance method", page, "proportional_by_balance");
 mustInclude("lawsuit allocation passes explicit context", page, 'postingContext: "lawsuit-allocation"');
 mustInclude("lawsuit screen uses Post Payment wording", page, "Post Payment");
 

@@ -1537,19 +1537,14 @@ const activeGroupKey =
     "Voluntary Payment",
     "Attorney Fee",
     "Filing Fee Collected",
-    "Filing Fee Billed",
     "Interest",
-    "PreC to Provider",
     "Service Fee Collected",
-    "Service Fee Billed",
     "Other Court Fees Collected",
-    "Other Court Fees Billed",
   ];
 
   const paymentTransactionTypeFallbackOptions = [
     "Voluntary Payment",
     "Interest",
-    "PreC to Provider",
   ];
 
   const fallbackPaymentTransactionStatusOptions = [
@@ -9973,7 +9968,7 @@ function openClaimAmountEditDialog() {
                       }}
                     >
                       <label className="barsh-direct-payment-field">
-                        <span>Transaction Type *{paymentTransactionOptionsLoading ? " · loading..." : ""}</span>
+                        <span>Transaction Type{paymentTransactionOptionsLoading ? " · loading..." : ""}</span>
                         <select
                           value={paymentTransactionTypeInput}
                           onChange={(event) => setPaymentTransactionTypeInput(event.target.value)}
@@ -9995,7 +9990,7 @@ function openClaimAmountEditDialog() {
                       </label>
 
                       <label className="barsh-direct-payment-field">
-                        <span>Transaction Status *</span>
+                        <span>Transaction Status</span>
                         <select
                           value={paymentTransactionStatusInput}
                           onChange={(event) => setPaymentTransactionStatusInput(event.target.value)}
@@ -10017,7 +10012,7 @@ function openClaimAmountEditDialog() {
                       </label>
 
                       <label className="barsh-direct-payment-field">
-                        <span>Transaction Date *</span>
+                        <span>Transaction Date</span>
                         <input
                           type="date"
                           value={paymentDateInput}
@@ -10036,7 +10031,7 @@ function openClaimAmountEditDialog() {
                       </label>
 
                       <label className="barsh-direct-payment-field">
-                        <span>Amount *</span>
+                        <span>Amount</span>
                         <div style={{ position: "relative", width: "100%" }}>
                           <span
                             style={{
@@ -10072,7 +10067,7 @@ function openClaimAmountEditDialog() {
                       </label>
 
                       <label className="barsh-direct-payment-field">
-                        <span>Check Date *</span>
+                        <span>Check Date</span>
                         <input
                           type="date"
                           value={paymentCheckDateInput}
@@ -10091,7 +10086,7 @@ function openClaimAmountEditDialog() {
                       </label>
 
                       <label className="barsh-direct-payment-field">
-                        <span>Check Number *</span>
+                        <span>Check Number</span>
                         <input
                           value={paymentCheckNumberInput}
                           onChange={(event) => setPaymentCheckNumberInput(event.target.value)}

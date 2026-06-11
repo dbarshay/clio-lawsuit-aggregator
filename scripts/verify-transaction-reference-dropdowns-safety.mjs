@@ -27,16 +27,11 @@ const transactionTypes = [
   "Collection Payment",
   "Voluntary Payment",
   "Attorney Fee",
-  "Filing Fee Collected",
-  "Filing Fee Billed",
-  "Index Fee Collected",
-  "Index Fee Billed",
+  "Filing Fee",
+  "Index Fee",
   "Interest",
-  "PreC to Provider",
   "Service Fee Collected",
-  "Service Fee Billed",
-  "Other Court Fees Collected",
-  "Other Court Fees Billed",
+  "Other Court Costs",
 ];
 
 const transactionStatuses = [
@@ -49,7 +44,12 @@ for (const value of [...transactionTypes, ...transactionStatuses]) {
 }
 
 mustContain("transaction seed", seed, 'type,');
-mustContain("transaction seed", seed, 'await upsertReferenceOption("transaction_type", value)');
+mustContain("transaction seed", seed, 'await upsertReferenceOption("transaction_type", transactionReferenceDisplayName(option), transactionReferenceAliases(option))');
+mustContain("transaction seed", seed, "transactionReferenceDisplayName");
+mustContain("transaction seed", seed, "transactionReferenceAliases");
+mustContain("transaction seed", seed, "Filing Fee Collected");
+mustContain("transaction seed", seed, "Index Fee Collected");
+mustContain("transaction seed", seed, "Other Court Fees Collected");
 mustContain("transaction seed", seed, 'await upsertReferenceOption("transaction_status", value)');
 mustContain("transaction seed", seed, "prisma.referenceEntity.upsert");
 mustContain("transaction seed", seed, "prisma.referenceAlias.upsert");

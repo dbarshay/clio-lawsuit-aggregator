@@ -20,9 +20,12 @@ function isCostRecoveryTransactionType(value: unknown): boolean {
   const normalized = cleanText(value).toLowerCase();
   if (normalized === "interest" || normalized === "interest payment" || normalized.includes("interest collected")) return true;
   return [
+    "filing fee",
     "filing fee collected",
+    "index fee",
     "index fee collected",
     "service fee collected",
+    "other court costs",
     "other court costs collected",
     "other court fees collected",
   ].includes(normalized);

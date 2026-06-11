@@ -2717,15 +2717,14 @@ export default function Home() {
                             </td>
                             <td style={homeResultsTdStyle}>
                               {row.masterLawsuitId ? (
-                                <button
-                                  type="button"
-                                  onClick={() => runHomeLinkedFilter(row.masterLawsuitId, "Lawsuit ID")}
+                                <a
+                                  href={`/matters?master=${encodeURIComponent(row.masterLawsuitId)}`}
                                   className="barsh-field-link"
                                   style={homeResultsFieldButtonStyle}
-                                  title={linkedSearchButtonTitle("Lawsuit ID")}
+                                  title="Open master lawsuit page"
                                 >
                                   {row.masterLawsuitId}
-                                </button>
+                                </a>
                               ) : (
                                 "Not Filed"
                               )}

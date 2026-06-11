@@ -52,7 +52,8 @@ mustContain("Home results filtered search supports Adversary Attorney", home, 't
 mustContain("Home results filtered search supports Denial Reason", home, 'target === "Denial Reason"');
 mustContain("Home results links insurer", home, 'runHomeLinkedFilter(row.insurer, "Insurer")');
 mustContain("Home results links claim number", home, 'runHomeLinkedFilter(row.claimNumber || values.claim, "Claim number")');
-mustContain("Home results links lawsuit ID", home, 'runHomeLinkedFilter(row.masterLawsuitId, "Lawsuit ID")');
+mustContain("Home results Lawsuit ID opens master lawsuit page", home, 'href={`/matters?master=${encodeURIComponent(row.masterLawsuitId)}`}');
+mustNotContain("Home results Lawsuit ID does not re-filter sibling matters", home, 'runHomeLinkedFilter(row.masterLawsuitId, "Lawsuit ID")');
 mustContain("Home results links court", home, 'runHomeLinkedFilter(courtValue, "Court")');
 mustContain("Home results links adversary attorney", home, 'runHomeLinkedFilter(adversaryAttorneyValue, "Adversary Attorney")');
 mustContain("Home results links denial reason", home, 'runHomeLinkedFilter(denialReasonValue, "Denial Reason")');

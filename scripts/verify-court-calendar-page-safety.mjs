@@ -51,4 +51,18 @@ if (!page.includes('Hide Closed Matters')) failures.push('page missing Hide Clos
 if (!page.includes('hideClosedMatters')) failures.push('page missing hideClosedMatters');
 if (!page.includes('gridTemplateColumns: "130px 130px minmax(210px, 1fr) 180px minmax(250px, 1.1fr) minmax(220px, 0.95fr) 190px"')) failures.push('page missing gridTemplateColumns: "130px 130px minmax(210px, 1fr) 180px minmax(250px, 1.1fr) minmax(220px, 0.95fr) 190px"');
 if (page.includes('Export Report XLS')) failures.push('page contains removed filter action Export Report XLS');
+if (!page.includes('sortableCalendarHeader')) failures.push('page missing sortable result column token sortableCalendarHeader');
+if (!page.includes('calendarResultSort')) failures.push('page missing sortable result column token calendarResultSort');
+if (!page.includes('setCalendarResultSort')) failures.push('page missing sortable result column token setCalendarResultSort');
+if (!page.includes('data-barsh-court-calendar-sort-header')) failures.push('page missing sortable result column token data-barsh-court-calendar-sort-header');
+if (!page.includes('CourtCalendarSortKey')) failures.push('page missing sortable result column token CourtCalendarSortKey');
+if (!page.includes('sortableCalendarHeader("Date", "eventDate")')) failures.push('page missing sortable result column token sortableCalendarHeader("Date", "eventDate")');
+if (!page.includes('sortableCalendarHeader("Court", "court")')) failures.push('page missing sortable result column token sortableCalendarHeader("Court", "court")');
+if (!page.includes('sortableCalendarHeader("Calendar Number", "calendarNumber")')) failures.push('page missing sortable result column token sortableCalendarHeader("Calendar Number", "calendarNumber")');
+if (!page.includes('sortableCalendarHeader("Index Number", "indexNumber")')) failures.push('page missing sortable result column token sortableCalendarHeader("Index Number", "indexNumber")');
+if (!page.includes('sortableCalendarHeader("Lawsuit Number", "lawsuitNumber")')) failures.push('page missing sortable result column token sortableCalendarHeader("Lawsuit Number", "lawsuitNumber")');
+if (!page.includes('sortableCalendarHeader("Appearance Type", "appearanceType")')) failures.push('page missing sortable result column token sortableCalendarHeader("Appearance Type", "appearanceType")');
+if (!page.includes('sortableCalendarHeader("Lawsuit Amount", "lawsuitAmount")')) failures.push('page missing sortable result column token sortableCalendarHeader("Lawsuit Amount", "lawsuitAmount")');
+if (!page.includes('sortableCalendarHeader("Lawsuit Balance", "lawsuitBalance")')) failures.push('page missing sortable result column token sortableCalendarHeader("Lawsuit Balance", "lawsuitBalance")');
+if (!page.includes('sortableCalendarHeader("Caption", "caption")')) failures.push('page missing sortable result column token sortableCalendarHeader("Caption", "caption")');
 console.log("PASS: court calendar page safety");

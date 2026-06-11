@@ -249,7 +249,49 @@ export default function CourtCalendarPage() {
     notes: "",
   });
 
-  const events = useMemo(() => Array.isArray(result?.events) ? result.events : [], [result]);
+  const rawEvents = useMemo(() => Array.isArray(result?.events) ? result.events : [], [result]);
+  type CourtCalendarSortKey = "eventDate" | "court" | "calendarNumber" | "indexNumber" | "lawsuitNumber" | "appearanceType" | "lawsuitAmount" | "lawsuitBalance" | "caption";
+  const [calendarResultSort, setCalendarResultSort] = useState<{ key: CourtCalendarSortKey; direction: "asc" | "desc" }>({ key: "eventDate", direction: "asc" });
+
+  function calendarResultSortValue(event: CalendarEvent, key: CourtCalendarSortKey) {
+    if (key === "eventDate") return text(event.eventDate);
+    if (key === "court") return text(event.court || event.venue).toLowerCase();
+    if (key === "calendarNumber") return text(event.calendarNumber).toLowerCase();
+    if (key === "indexNumber") return text(event.indexAaaNumber).toLowerCase();
+    if (key === "lawsuitNumber") return text(event.displayNumber || event.masterLawsuitId).toLowerCase();
+    if (key === "appearanceType") return text(event.appearanceType).toLowerCase();
+    if (key === "lawsuitAmount") return Number(event.caseData?.lawsuitAmount || 0);
+    if (key === "lawsuitBalance") return Number(event.caseData?.lawsuitBalance || 0);
+    if (key === "caption") return text(event.caseData?.caption).toLowerCase();
+    return "";
+  }
+
+  const events = useMemo(() => {
+    const sorted = [...rawEvents];
+    sorted.sort((a, b) => {
+      const av = calendarResultSortValue(a, calendarResultSort.key);
+      const bv = calendarResultSortValue(b, calendarResultSort.key);
+      const cmp = typeof av === "number" && typeof bv === "number" ? av - bv : String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" });
+      return calendarResultSort.direction === "asc" ? cmp : -cmp;
+    });
+    return sorted;
+  }, [rawEvents, calendarResultSort]);
+
+  function sortableCalendarHeader(label: string, key: CourtCalendarSortKey) {
+    const active = calendarResultSort.key === key;
+    const direction = active ? calendarResultSort.direction : "asc";
+    return (
+      <button
+        type="button"
+        onClick={() => setCalendarResultSort((current) => current.key === key ? { key, direction: current.direction === "asc" ? "desc" : "asc" } : { key, direction: "asc" })}
+        style={{ appearance: "none", border: 0, background: "transparent", color: "inherit", font: "inherit", fontWeight: 950, cursor: "pointer", padding: 0, textAlign: "left" }}
+        data-barsh-court-calendar-sort-header={key}
+        title={`Sort by ${label}`}
+      >
+        {label} {active ? (direction === "asc" ? "▲" : "▼") : ""}
+      </button>
+    );
+  }
 
   useEffect(() => { async function loadFilterOptions() { setFilterOptionsLoading(true); try { const response = await fetch("/api/court-calendar/filter-options", { cache: "no-store" }); const json = await response.json().catch(() => ({})); setFilterOptions(json); } catch (error: any) { setFilterOptions({ ok: false, error: error?.message || "Could not load filter options." }); } finally { setFilterOptionsLoading(false); } } void loadFilterOptions(); }, []);
 
@@ -524,15 +566,15 @@ export default function CourtCalendarPage() {
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1400 }}>
             <thead>
               <tr>
-                <th style={thStyle}>Date</th>
-                <th style={thStyle}>Court</th>
-                <th style={thStyle}>Calendar Number</th>
-                <th style={thStyle}>Index Number</th>
-                <th style={thStyle}>Lawsuit Number</th>
-                <th style={thStyle}>Appearance Type</th>
-                <th style={thStyle}>Lawsuit Amount</th>
-                <th style={thStyle}>Lawsuit Balance</th>
-                <th style={thStyle}>Caption</th>
+                <th style={thStyle}>{sortableCalendarHeader("Date", "eventDate")}</th>
+                <th style={thStyle}>{sortableCalendarHeader("Court", "court")}</th>
+                <th style={thStyle}>{sortableCalendarHeader("Calendar Number", "calendarNumber")}</th>
+                <th style={thStyle}>{sortableCalendarHeader("Index Number", "indexNumber")}</th>
+                <th style={thStyle}>{sortableCalendarHeader("Lawsuit Number", "lawsuitNumber")}</th>
+                <th style={thStyle}>{sortableCalendarHeader("Appearance Type", "appearanceType")}</th>
+                <th style={thStyle}>{sortableCalendarHeader("Lawsuit Amount", "lawsuitAmount")}</th>
+                <th style={thStyle}>{sortableCalendarHeader("Lawsuit Balance", "lawsuitBalance")}</th>
+                <th style={thStyle}>{sortableCalendarHeader("Caption", "caption")}</th>
               </tr>
             </thead>
             <tbody>

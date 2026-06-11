@@ -811,6 +811,46 @@ model LocalWorkflowTickler {
   @@index([createdAt])
 }
 
+model CourtCalendarEvent {
+  id                    String    @id @default(cuid())
+  masterLawsuitId        String
+  displayNumber          String?
+  eventType              String
+  title                  String
+  court                  String?
+  venue                  String?
+  indexAaaNumber         String?
+  eventDate              String
+  eventTime              String?
+  part                   String?
+  judgeOrArbitrator      String?
+  appearanceType         String?
+  notes                  String?
+  status                 String    @default("scheduled")
+  adjournedFromEventId   String?
+  adjournedToEventId     String?
+  reminderDate           String?
+  reminderTicklerId      String?
+  source                 String    @default("barsh-matters-local")
+  sourceType             String?
+  sourcePage             String?
+  sourceAction           String?
+  metadata               Json?
+  createdBy              String?
+  updatedBy              String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([masterLawsuitId])
+  @@index([displayNumber])
+  @@index([eventType])
+  @@index([status])
+  @@index([eventDate])
+  @@index([reminderDate])
+  @@index([reminderTicklerId])
+  @@index([createdAt])
+}
+
 model SettlementContact {
   id        String   @id @default(cuid())
   name      String

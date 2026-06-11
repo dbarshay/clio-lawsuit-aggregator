@@ -12,7 +12,7 @@ const actionRowStyle: React.CSSProperties = {
   justifyContent: "flex-end",
   gap: 8,
   whiteSpace: "nowrap",
-  transform: "translateX(48px)",
+  flexWrap: "wrap",
 };
 
 const baseActionStyle: React.CSSProperties = {
@@ -50,6 +50,10 @@ export default function BarshHeaderActions({ onAdministratorClick }: BarshHeader
       <a href="/print-queue" title="Open Daily Print Queue." style={baseActionStyle}>
         <span aria-hidden="true">🖨️</span>
         <span>Print Queue</span>
+      </a>
+
+      <a href="/court-calendar" title="Open Court Calendar." style={baseActionStyle} data-barsh-court-calendar-header-link="true">
+        <span>Court Calendar</span>
       </a>
 
       {onAdministratorClick ? (

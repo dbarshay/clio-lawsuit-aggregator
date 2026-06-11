@@ -335,7 +335,10 @@
     "verify:clio-rule1-boundary-safety": "node scripts/verify-clio-rule1-boundary-safety.mjs",
     "verify:golden-rule-clio-boundary-safety": "node scripts/verify-clio-rule1-boundary-safety.mjs",
     "verify:guarded-clio-close-sync-safety": "node scripts/verify-guarded-clio-close-sync-safety.mjs",
-    "verify:scenario-7-numeric-arithmetic-safety": "node scripts/verify-scenario-7-numeric-arithmetic-safety.mjs"
+    "verify:scenario-7-numeric-arithmetic-safety": "node scripts/verify-scenario-7-numeric-arithmetic-safety.mjs",
+    "verify:court-calendar-schema-foundation-safety": "node scripts/verify-court-calendar-schema-foundation-safety.mjs",
+    "verify:court-calendar-route-safety": "node scripts/verify-court-calendar-route-safety.mjs",
+    "verify:court-calendar-page-safety": "node scripts/verify-court-calendar-page-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

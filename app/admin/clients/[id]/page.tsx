@@ -25,6 +25,50 @@ const pageStyle: React.CSSProperties = {
   fontFamily: "var(--font-geist-sans)",
 };
 
+
+const providerHubCardStyle: React.CSSProperties = {
+  border: "1px solid #e2e8f0",
+  borderRadius: 18,
+  background: "#ffffff",
+  padding: 18,
+  boxShadow: "0 6px 20px rgba(15, 23, 42, 0.055)",
+};
+
+const providerHubHeaderLabelStyle: React.CSSProperties = {
+  color: "#64748b",
+  fontSize: 11,
+  fontWeight: 950,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+};
+
+const providerHubSectionTitleStyle: React.CSSProperties = {
+  margin: "4px 0 6px",
+  color: "#0f172a",
+  fontSize: 22,
+  fontWeight: 950,
+  letterSpacing: "-0.015em",
+};
+
+const providerHubSubtleTextStyle: React.CSSProperties = {
+  margin: 0,
+  color: "#475569",
+  fontSize: 14,
+  lineHeight: 1.45,
+};
+
+const providerHubButtonBaseStyle: React.CSSProperties = {
+  width: "100%",
+  textAlign: "center",
+  padding: "13px 16px",
+  borderRadius: 12,
+  fontWeight: 950,
+  fontSize: 15,
+  boxSizing: "border-box",
+  boxShadow: "0 3px 10px rgba(15, 23, 42, 0.08)",
+};
+
+
 const cardStyle: React.CSSProperties = {
   border: "1px solid #e5e7eb",
   borderRadius: 16,
@@ -737,9 +781,12 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
 
       <section style={{ marginBottom: 22 }}>
         <div style={{ color: "#64748b", fontSize: 13, fontWeight: 700, textTransform: "uppercase" }}>
-          Client
+          PROVIDER ACCOUNT
         </div>
-        <h1 style={{ margin: "6px 0 8px", fontSize: 34 }}>{client?.displayName || "Loading client..."}</h1>
+        <h1 style={{ margin: "6px 0 8px", fontSize: 38, lineHeight: 1.08, letterSpacing: "-0.035em", fontWeight: 950, color: "#0f172a" }}>{client?.displayName || "Loading client..."}</h1>
+        <p style={{ margin: 0, color: "#475569", fontSize: 14, lineHeight: 1.45 }}>
+          Central account profile, billing terms, matter workflow access, and operational notes.
+        </p>
       </section>
 
       <section
@@ -751,7 +798,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
           alignItems: "start",
         }}
       >
-        <div style={{ ...cardStyle, position: "relative", paddingTop: 22 }}>
+        <div style={{ ...providerHubCardStyle, position: "relative", paddingTop: 22 }}>
           <div style={{ position: "absolute", top: 10, right: 12 }}>
             {editingField === "address" ? (
               <span style={{ display: "inline-flex", gap: 6 }}>
@@ -804,7 +851,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
           </dl>
         </div>
 
-        <div style={cardStyle}>
+        <div style={providerHubCardStyle}>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
             {editingField === "providerGroup" ? (
               <span style={{ display: "inline-flex", gap: 6, alignSelf: "start" }}>
@@ -937,32 +984,32 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
           </dl>
         </div>
 
-        <div style={cardStyle}>
-          <div style={{ color: "#64748b", fontSize: 12, fontWeight: 900, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 6 }}>
-            Workflow Actions
+        <div style={providerHubCardStyle}>
+          <div style={providerHubHeaderLabelStyle}>
+            ACCOUNT WORKFLOW
           </div>
-          <h2 style={{ margin: "0 0 6px", fontSize: 22 }}>Provider Hub</h2>
-          <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
-            Launch provider/client workflows from this hub.
+          <h2 style={providerHubSectionTitleStyle}>Provider Workflow Hub</h2>
+          <p style={providerHubSubtleTextStyle}>
+            Launch account workflows, review related matters, and manage invoice/remittance activity.
           </p>
           <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
             <Link
               href={`/admin/clients/${encodeURIComponent(id)}/invoice`}
-              style={{ width: "100%", textAlign: "center", padding: "13px 16px", borderRadius: 12, border: "1px solid #1d4ed8", background: "#dbeafe", color: "#0f172a", fontWeight: 950, textDecoration: "none", boxSizing: "border-box" }}
+              style={{ ...providerHubButtonBaseStyle, border: "1px solid #1d4ed8", background: "linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%)", color: "#0f172a", textDecoration: "none" }}
             >
               Invoicing / Remittance
             </Link>
             <button
               type="button"
               onClick={() => setActiveWorkflowPanel(activeWorkflowPanel === "individual" ? "" : "individual")}
-              style={{ width: "100%", textAlign: "center", padding: "13px 16px", borderRadius: 12, border: "1px solid #047857", background: activeWorkflowPanel === "individual" ? "#047857" : "#d1fae5", color: activeWorkflowPanel === "individual" ? "#fff" : "#0f172a", fontWeight: 950 }}
+              style={{ ...providerHubButtonBaseStyle, border: "1px solid #047857", background: activeWorkflowPanel === "individual" ? "#047857" : "linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%)", color: activeWorkflowPanel === "individual" ? "#fff" : "#0f172a" }}
             >
               Individual Matters
             </button>
             <button
               type="button"
               onClick={() => setActiveWorkflowPanel(activeWorkflowPanel === "lawsuits" ? "" : "lawsuits")}
-              style={{ width: "100%", textAlign: "center", padding: "13px 16px", borderRadius: 12, border: "1px solid #7c3aed", background: activeWorkflowPanel === "lawsuits" ? "#7c3aed" : "#ede9fe", color: activeWorkflowPanel === "lawsuits" ? "#fff" : "#0f172a", fontWeight: 950 }}
+              style={{ ...providerHubButtonBaseStyle, border: "1px solid #7c3aed", background: activeWorkflowPanel === "lawsuits" ? "#7c3aed" : "linear-gradient(180deg, #f5f3ff 0%, #ede9fe 100%)", color: activeWorkflowPanel === "lawsuits" ? "#fff" : "#0f172a" }}
             >
               Lawsuit Matters
             </button>
@@ -970,13 +1017,14 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
         </div>
       </section>
 
-      <section style={{ ...cardStyle, marginBottom: 18 }}>
+      <section style={{ ...providerHubCardStyle, marginBottom: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12, marginBottom: 10 }}>
           <div>
-            <div style={{ color: "#64748b", fontSize: 12, fontWeight: 900, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 6 }}>
+            <div style={providerHubHeaderLabelStyle}>
               Notes
             </div>
-            <h2 style={{ margin: 0, fontSize: 22 }}>Provider Notes</h2>
+            <h2 style={providerHubSectionTitleStyle}>Account Notes</h2>
+            <p style={providerHubSubtleTextStyle}>Internal notes and account-specific reminders for this provider/client.</p>
           </div>
         </div>
         <dl style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8, margin: 0 }}>

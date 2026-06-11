@@ -7182,7 +7182,7 @@ function openClaimAmountEditDialog() {
     }
 
     const confirmed = window.confirm(
-      "Close Paid Settlements?\\n\\nUse this only after payment is confirmed.  This will write Close Reason = PAID (SETTLEMENT) and set eligible child/bill matters to closed in Clio.  Master matters and already closed/final matters will remain blocked.  No documents or print queue records will be changed."
+      "Close Paid Settlements?\\n\\nUse this only after payment is confirmed. This will route through the guarded Close Lawsuit workflow, sync the Clio operational close status, mark the master lawsuit Closed with Close Reason = PAID (SETTLEMENT), and mark child matters Closed with Closed Reason = Closed Lawsuit. No documents or print queue records will be changed."
     );
 
     if (!confirmed) {
@@ -7193,15 +7193,15 @@ function openClaimAmountEditDialog() {
     setSettlementCloseWritebackResult(null);
 
     try {
-      const res = await fetch("/api/settlements/close", {
+      const res = await fetch("/api/lawsuits/close", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           masterLawsuitId,
-          confirmPaid: true,
-          confirmClosePaidSettlements: true,
+          closeReason: "PAID (SETTLEMENT)",
+          actorName: "Barsh Matters User",
         }),
       });
 
@@ -7214,10 +7214,10 @@ function openClaimAmountEditDialog() {
     } catch (err: any) {
       setSettlementCloseWritebackResult({
         ok: false,
-        action: "close-paid-settlements",
+        action: "guarded-close-paid-settlement-lawsuit",
         error: err?.message || "Close Paid Settlements failed.",
         safety: {
-          actionLabel: "Close Paid Settlements",
+          actionLabel: "Close Paid Settlements via guarded Close Lawsuit",
           explicitPaymentConfirmationRequired: true,
           noDocumentsGenerated: true,
           noPrintQueueRecordsChanged: true,
@@ -12646,7 +12646,7 @@ function openClaimAmountEditDialog() {
               )}
 
             <div style={{ marginTop: 8, color: "#92400e", fontSize: 12 }}>
-              Preview does not close anything.  Actual closure should occur only after payment is confirmed.  The legacy Clio close workflow is disabled pending a local-first close workflow.
+              Preview does not close anything. Actual closure should occur only after payment is confirmed and now routes through the guarded Close Lawsuit workflow.
             </div>
 
             {settlementClosePreviewResult?.ok &&
@@ -12679,7 +12679,7 @@ function openClaimAmountEditDialog() {
                   </button>
 
                   <div style={{ marginTop: 8, color: "#7f1d1d", fontSize: 12 }}>
-                    Use only after payment is confirmed.  This action is disabled until a local-first close workflow is built.  Master matters, already closed matters, final-status matters, documents, and print queue records are not changed.
+                    Use only after payment is confirmed. This runs the guarded Close Lawsuit workflow. Clio close sync must succeed before local close records are committed. Documents and print queue records are not changed.
                   </div>
                 </div>
               )}
@@ -12707,7 +12707,7 @@ function openClaimAmountEditDialog() {
 
                 {settlementCloseWritebackResult.ok && (
                   <div style={{ color: "#166534", marginBottom: 6 }}>
-                    Local-first settlement close workflow is pending.  No Clio records were changed.
+                    Guarded Close Lawsuit completed. Clio operational close status was synced before local close records were committed.
                   </div>
                 )}
 

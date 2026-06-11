@@ -120,6 +120,9 @@ mustNotInclude("lawsuit payment summary has no missing masterLocalMetadata depen
 mustNotInclude("lawsuit payment summary has no missing masterLocalLawsuitOptions function", page, "masterLocalLawsuitOptions()");
 mustInclude("lawsuit payment summary calls actual masterLawsuitOptions helper", page, "const options = masterLawsuitOptions();");
 
+
+mustInclude("lawsuit payment close prompt can navigate to close workflow", page, 'setActiveMasterWorkspaceTab("close_paid_settlements")');
+
 if (process.exitCode) {
   process.exit(process.exitCode);
 }

@@ -1,56 +1,56 @@
 #!/usr/bin/env node
-import fs from "fs";
+import fs from "node:fs";
 
 function read(path) {
   return fs.readFileSync(path, "utf8");
 }
+
+let failures = 0;
 function pass(message) {
   console.log(`PASS: ${message}`);
 }
 function fail(message) {
   console.error(`FAIL: ${message}`);
-  process.exitCode = 1;
+  failures += 1;
 }
 function mustContain(label, text, needle) {
   text.includes(needle) ? pass(`${label}: found ${needle}`) : fail(`${label}: missing ${needle}`);
 }
 function mustNotContain(label, text, needle) {
-  !text.includes(needle) ? pass(`${label}: does not contain ${needle}`) : fail(`${label}: unexpectedly contains ${needle}`);
+  !text.includes(needle) ? pass(`${label}: avoids ${needle}`) : fail(`${label}: forbidden ${needle}`);
 }
 
-console.log("=== VERIFY CLOSE PAID SETTLEMENTS SAFETY ===");
+console.log("=== VERIFY CLOSE PAID SETTLEMENTS GUARDED ROUTE BRIDGE SAFETY ===");
 
-const route = read("app/api/settlements/close/route.ts");
+const settlementCloseRoute = read("app/api/settlements/close/route.ts");
+const lawsuitCloseRoute = read("app/api/lawsuits/close/route.ts");
 const matterPage = read("app/matter/[id]/page.tsx");
 const packageJson = read("package.json");
 
-mustContain("close paid settlements route", route, "legacyClioOperationalRouteBlocked");
-mustContain("close paid settlements route", route, "app/api/settlements/close");
+mustContain("settlement close shortcut remains blocked", settlementCloseRoute, "legacyClioOperationalRouteBlocked");
+mustContain("settlement close shortcut identifies blocked route", settlementCloseRoute, "app/api/settlements/close");
+mustNotContain("settlement close shortcut must not call guarded helper", settlementCloseRoute, "syncClioMatterClosed");
+mustNotContain("settlement close shortcut must not call guarded helper", settlementCloseRoute, "syncClioMattersClosed");
 
-for (const forbidden of [
-  "clioFetch",
-  "ingestMattersFromClioBatch",
-  "upsertClaimIndexFromMatter",
-  "method: \"PATCH\"",
-  "custom_field_values",
-  "patchMatterClosedAsPaidSettlement",
-]) {
-  mustNotContain("close paid settlements route", route, forbidden);
-}
+mustContain("guarded lawsuit close route exists", lawsuitCloseRoute, 'action: "guarded-close-lawsuit"');
+mustContain("guarded lawsuit close route performs Clio close sync", lawsuitCloseRoute, "syncClioMattersClosed");
+mustContain("guarded lawsuit close route blocks local commit on Clio failure", lawsuitCloseRoute, "Local lawsuit close was not committed.");
 
-mustContain("matter page", matterPage, "Close Paid Settlements");
-mustContain("matter page", matterPage, "/api/settlements/close");
-mustContain("matter page", matterPage, "confirmPaid: true");
-mustContain("matter page", matterPage, "confirmClosePaidSettlements: true");
-mustNotContain("matter page", matterPage, "Close Settlement Matters Now");
-mustNotContain("matter page", matterPage, "Confirm Settlement Close");
-
+mustContain("matter page still exposes Close Paid Settlements convenience action", matterPage, "Close Paid Settlements");
+mustContain("matter page close paid settlements uses guarded Close Lawsuit route", matterPage, "/api/lawsuits/close");
+mustContain("matter page close paid settlements supplies settlement close reason", matterPage, 'closeReason: "PAID (SETTLEMENT)"');
+mustContain("matter page warns guarded route is used", matterPage, "guarded Close Lawsuit workflow");
+mustContain("matter page says Clio sync must succeed first", matterPage, "Clio close sync must succeed before local close records are committed");
+mustNotContain("matter page must not call blocked settlement close route", matterPage, 'fetch("/api/settlements/close"');
+mustNotContain("matter page must not send old settlement close confirmation flag", matterPage, "confirmClosePaidSettlements: true");
+mustNotContain("matter page must not send old payment close confirmation flag", matterPage, "confirmPaid: true");
+mustNotContain("matter page must not say close workflow pending", matterPage, "local-first close workflow is built");
 mustContain("package.json", packageJson, "verify:close-paid-settlements-safety");
 
-if (process.exitCode) {
-  console.error("=== CLOSE PAID SETTLEMENTS SAFETY VERIFICATION FAILED ===");
-  process.exit(process.exitCode);
+if (failures) {
+  console.error(`=== CLOSE PAID SETTLEMENTS GUARDED ROUTE BRIDGE FAILED: ${failures} failure(s) ===`);
+  process.exit(1);
 }
 
-console.log("=== CLOSE PAID SETTLEMENTS SAFETY VERIFICATION PASSED ===");
-console.log("Close paid settlements route is quarantined; no Clio/database/document/print mutations are verified here.");
+console.log("=== CLOSE PAID SETTLEMENTS GUARDED ROUTE BRIDGE PASSED ===");
+console.log("Close Paid Settlements remains a convenience UI action, but it now routes through guarded Close Lawsuit. The legacy settlement close API remains blocked.");

@@ -1493,44 +1493,82 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
 
 
       <section style={{ ...cardStyle, marginBottom: 18 }}>
-        <h2 style={{ marginTop: 0 }}>1. Preview Invoice</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 14 }}>
+          <div>
+            <div style={{ color: "#2563eb", fontSize: 12, fontWeight: 950, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Step 1
+            </div>
+            <h2 style={{ margin: "4px 0 4px", fontSize: 22, fontWeight: 950, letterSpacing: "-0.01em" }}>
+              Preview Invoice
+            </h2>
+            <p style={{ margin: 0, color: "#475569", fontSize: 13, lineHeight: 1.4 }}>
+              Select the receipt status, transaction type, and date range to generate a read-only invoice preview before creating a draft.
+            </p>
+          </div>
+        </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(160px, 1fr))", gap: 10, alignItems: "end" }}>
-          <label style={{ fontWeight: 800 }}>
-            Status
+        <div
+          style={{
+            border: "1px solid #dbeafe",
+            background: "#f8fbff",
+            borderRadius: 14,
+            padding: 14,
+            display: "grid",
+            gridTemplateColumns: "minmax(190px, 1fr) minmax(220px, 1fr) minmax(180px, 0.9fr) minmax(180px, 0.9fr)",
+            gap: 14,
+            alignItems: "end",
+          }}
+        >
+          <label style={{ fontWeight: 900, color: "#334155" }}>
+            <span style={{ display: "block", marginBottom: 6 }}>Status</span>
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={filterControlStyle}>
               <option value="posted">Posted</option>
               <option value="voided">Voided</option>
-              <option value="All">All</option>
+              <option value="all">All</option>
             </select>
           </label>
 
-          <label style={{ fontWeight: 800 }}>
-            Transaction Type
-            <select value={transactionType} onChange={(event) => setTransactionType(event.target.value)} style={filterControlStyle}>
+          <label style={{ fontWeight: 900, color: "#334155" }}>
+            <span style={{ display: "block", marginBottom: 6 }}>Transaction Type</span>
+            <select value={transactionTypeFilter} onChange={(event) => setTransactionTypeFilter(event.target.value)} style={filterControlStyle}>
               <option value="">All</option>
-              <option value="Voluntary Payment">Voluntary Payment</option>
-              <option value="Collection Payment">Collection Payment</option>
-              <option value="Interest">Interest</option>
+              <option value="principal_interest">Principal / Interest</option>
+              <option value="filing_fee_payment">Costs Received</option>
               <option value="Index Fee">Index Fee</option>
               <option value="Service Fee">Service Fee</option>
               <option value="Other Court Costs">Other Court Costs</option>
             </select>
           </label>
 
-          <label style={{ fontWeight: 800 }}>
-            Date From
+          <label style={{ fontWeight: 900, color: "#334155" }}>
+            <span style={{ display: "block", marginBottom: 6 }}>Date From</span>
             <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} style={filterControlStyle} />
           </label>
 
-          <label style={{ fontWeight: 800 }}>
-            Date To
+          <label style={{ fontWeight: 900, color: "#334155" }}>
+            <span style={{ display: "block", marginBottom: 6 }}>Date To</span>
             <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} style={filterControlStyle} />
           </label>
         </div>
 
-        <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button type="button" onClick={loadPreview} disabled={loadingPreview || !id} style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid #2563eb", background: "#2563eb", color: "#fff", fontWeight: 900 }}>
+        <div style={{ marginTop: 14, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ color: "#64748b", fontSize: 12, fontWeight: 800 }}>
+            Previewing does not create, finalize, email, print, queue, or mark invoice source rows.
+          </span>
+          <button
+            type="button"
+            onClick={loadPreview}
+            disabled={loadingPreview || !id}
+            style={{
+              padding: "10px 16px",
+              borderRadius: 10,
+              border: "1px solid #2563eb",
+              background: "#2563eb",
+              color: "#fff",
+              fontWeight: 950,
+              boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)",
+            }}
+          >
             {loadingPreview ? "Loading Preview..." : "Preview Invoice"}
           </button>
         </div>

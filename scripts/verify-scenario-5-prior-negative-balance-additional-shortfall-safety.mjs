@@ -59,21 +59,21 @@ mustMatch(
 );
 
 mustContain(
-  "scenario 5 caps deduction at lesser of shortfall and 25 percent cap",
+  "scenario 5 caps deduction at lesser of total recoverable negative balance and 25 percent cap",
   previewRoute,
-  "const costBalanceDeductionApplied = moneyNumber(Math.min(currentPeriodNegativeCostBalance, costBalanceDeductionCap));"
+  "const costBalanceDeductionApplied = moneyNumber(Math.min(totalRecoverableNegativeCostBalance, costBalanceDeductionCap));"
 );
 
 mustContain(
-  "scenario 5 carries unrecovered current shortfall forward",
+  "scenario 5 carries unrecovered current shortfall forward after current-shortfall deduction",
   previewRoute,
-  "const costBalanceAddedToLedger = moneyNumber(Math.max(0, currentPeriodNegativeCostBalance - costBalanceDeductionApplied));"
+  "const costBalanceAddedToLedger = moneyNumber(Math.max(0, currentPeriodNegativeCostBalance - currentShortfallDeductionApplied));"
 );
 
 mustContain(
-  "scenario 5 adds unrecovered shortfall to prior negative balance",
+  "scenario 5 updates prior negative balance after current excess, prior-balance deduction, and unrecovered current shortfall",
   previewRoute,
-  "const costBalanceLedgerAfter = moneyNumber(Math.max(0, costBalanceLedgerBefore - costBalanceAppliedToLedger + costBalanceAddedToLedger));"
+  "const costBalanceLedgerAfter = moneyNumber(Math.max(0, costBalanceLedgerBefore - costBalanceAppliedToLedger - priorBalanceDeductionApplied + costBalanceAddedToLedger));"
 );
 
 mustContain(

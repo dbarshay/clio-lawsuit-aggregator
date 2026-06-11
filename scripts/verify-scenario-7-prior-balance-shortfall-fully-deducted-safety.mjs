@@ -43,7 +43,7 @@ function assertOrder(label, body, markers) {
   pass(`${label}: order is correct`);
 }
 
-console.log("=== VERIFY SCENARIO 7: PRIOR NEGATIVE BALANCE + CURRENT SHORTFALL FULLY DEDUCTED ===");
+console.log("=== VERIFY SCENARIO 7: PRIOR NEGATIVE BALANCE + CURRENT SHORTFALL + UNUSED CAP APPLIED TO PRIOR BALANCE ===");
 
 mustContain(
   "scenario 7 computes current shortfall",
@@ -59,21 +59,39 @@ mustMatch(
 );
 
 mustContain(
-  "scenario 7 caps deduction at lesser of shortfall and 25 percent cap",
+  "scenario 7 computes total recoverable negative balance from current shortfall plus prior balance after current excess",
   previewRoute,
-  "const costBalanceDeductionApplied = moneyNumber(Math.min(currentPeriodNegativeCostBalance, costBalanceDeductionCap));"
+  "const totalRecoverableNegativeCostBalance = moneyNumber(currentPeriodNegativeCostBalance + Math.max(0, costBalanceLedgerBefore - costBalanceAppliedToLedger));"
+);
+
+mustContain(
+  "scenario 7 caps deduction at lesser of total recoverable negative balance and 25 percent cap",
+  previewRoute,
+  "const costBalanceDeductionApplied = moneyNumber(Math.min(totalRecoverableNegativeCostBalance, costBalanceDeductionCap));"
+);
+
+mustContain(
+  "scenario 7 applies deduction first to current shortfall",
+  previewRoute,
+  "const currentShortfallDeductionApplied = moneyNumber(Math.min(currentPeriodNegativeCostBalance, costBalanceDeductionApplied));"
+);
+
+mustContain(
+  "scenario 7 applies unused cap room to prior negative balance",
+  previewRoute,
+  "const priorBalanceDeductionApplied = moneyNumber(Math.max(0, costBalanceDeductionApplied - currentShortfallDeductionApplied));"
 );
 
 mustContain(
   "scenario 7 carries forward only unrecovered current shortfall",
   previewRoute,
-  "const costBalanceAddedToLedger = moneyNumber(Math.max(0, currentPeriodNegativeCostBalance - costBalanceDeductionApplied));"
+  "const costBalanceAddedToLedger = moneyNumber(Math.max(0, currentPeriodNegativeCostBalance - currentShortfallDeductionApplied));"
 );
 
 mustContain(
-  "scenario 7 keeps prior balance unchanged when added-to-ledger is zero",
+  "scenario 7 reduces prior balance by unused cap room after current shortfall deduction",
   previewRoute,
-  "const costBalanceLedgerAfter = moneyNumber(Math.max(0, costBalanceLedgerBefore - costBalanceAppliedToLedger + costBalanceAddedToLedger));"
+  "const costBalanceLedgerAfter = moneyNumber(Math.max(0, costBalanceLedgerBefore - costBalanceAppliedToLedger - priorBalanceDeductionApplied + costBalanceAddedToLedger));"
 );
 
 mustContain(

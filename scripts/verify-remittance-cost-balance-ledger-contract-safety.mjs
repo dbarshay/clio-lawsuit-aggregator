@@ -42,7 +42,7 @@ mustContain("create-preview reports excluded already-invoiced cost rows", previe
 mustContain("create-preview totals costs expended", previewRoute, "const costsExpendedTotal = costLines.reduce((sum: number, line: any) => sum + moneyNumber(line.amount), 0)");
 mustContain("create-preview calculates period cost balance from costs received minus costs expended", previewRoute, "const costBalanceThisRemittancePeriod = moneyNumber(filingFeePaymentTotal - costsExpendedTotal)");
 mustContain("create-preview uses prior finalized cost balance ledger", previewRoute, "select: { costBalanceLedgerAfter: true }");
-mustContain("create-preview calculates cost balance ledger after", previewRoute, "const costBalanceLedgerAfter = moneyNumber(Math.max(0, costBalanceLedgerBefore - costBalanceAppliedToLedger + costBalanceAddedToLedger))");
+mustContain("create-preview calculates cost balance ledger after", previewRoute, "const costBalanceLedgerAfter = moneyNumber(Math.max(0, costBalanceLedgerBefore - costBalanceAppliedToLedger - priorBalanceDeductionApplied + costBalanceAddedToLedger))");
 mustContain("create-preview includes costsExpendedTotal in totals snapshot", previewRoute, "costsExpendedTotal,");
 mustContain("create-preview includes costBalanceLedgerAfter in totals snapshot", previewRoute, "costBalanceLedgerAfter,");
 mustContain("create-preview includes final net remit in totals snapshot", previewRoute, "netRemitToProviderTotal,");

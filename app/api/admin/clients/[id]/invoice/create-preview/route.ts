@@ -296,9 +296,12 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const costBalanceDeductionCap = moneyNumber(currentPeriodNegativeCostBalance > 0 ? Math.max(0, baseNetRemitToProvider * 0.25) : 0);
     const costBalanceAppliedToLedger = moneyNumber(Math.min(currentPeriodPositiveCostBalance, costBalanceLedgerBefore));
     const costBalanceReimbursementToProvider = moneyNumber(Math.max(0, currentPeriodPositiveCostBalance - costBalanceAppliedToLedger));
-    const costBalanceDeductionApplied = moneyNumber(Math.min(currentPeriodNegativeCostBalance, costBalanceDeductionCap));
-    const costBalanceAddedToLedger = moneyNumber(Math.max(0, currentPeriodNegativeCostBalance - costBalanceDeductionApplied));
-    const costBalanceLedgerAfter = moneyNumber(Math.max(0, costBalanceLedgerBefore - costBalanceAppliedToLedger + costBalanceAddedToLedger));
+    const totalRecoverableNegativeCostBalance = moneyNumber(currentPeriodNegativeCostBalance + Math.max(0, costBalanceLedgerBefore - costBalanceAppliedToLedger));
+    const costBalanceDeductionApplied = moneyNumber(Math.min(totalRecoverableNegativeCostBalance, costBalanceDeductionCap));
+    const currentShortfallDeductionApplied = moneyNumber(Math.min(currentPeriodNegativeCostBalance, costBalanceDeductionApplied));
+    const priorBalanceDeductionApplied = moneyNumber(Math.max(0, costBalanceDeductionApplied - currentShortfallDeductionApplied));
+    const costBalanceAddedToLedger = moneyNumber(Math.max(0, currentPeriodNegativeCostBalance - currentShortfallDeductionApplied));
+    const costBalanceLedgerAfter = moneyNumber(Math.max(0, costBalanceLedgerBefore - costBalanceAppliedToLedger - priorBalanceDeductionApplied + costBalanceAddedToLedger));
     const costBalanceLedgerChange = moneyNumber(costBalanceLedgerAfter - costBalanceLedgerBefore);
     const costBalanceAdjustmentToNetRemit = moneyNumber(costBalanceReimbursementToProvider - costBalanceDeductionApplied);
     const netRemitToProviderTotal = moneyNumber(baseNetRemitToProvider + costBalanceAdjustmentToNetRemit);

@@ -236,6 +236,32 @@ const tdStyle: React.CSSProperties = {
   fontSize: 13,
 };
 
+const wrapCellStyle: React.CSSProperties = {
+  whiteSpace: "normal",
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
+  lineHeight: 1.25,
+};
+
+const nowrapCellStyle: React.CSSProperties = {
+  whiteSpace: "nowrap",
+};
+
+const compactIdCellStyle: React.CSSProperties = {
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
+const moneyCellStyle: React.CSSProperties = {
+  whiteSpace: "nowrap",
+  textAlign: "right",
+  fontVariantNumeric: "tabular-nums",
+};
+
+const resultColumnWidths = [96, 150, 118, 136, 132, 142, 118, 118, 350];
+const resultTableMinWidth = resultColumnWidths.reduce((total, width) => total + width, 0);
+
 export default function CourtCalendarPage() {
   const [masterLawsuitId, setMasterLawsuitId] = useState("");
   const [eventType, setEventType] = useState("all");
@@ -715,7 +741,10 @@ export default function CourtCalendarPage() {
         </div>
 
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1400 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: resultTableMinWidth, tableLayout: "fixed" }} data-barsh-court-calendar-results-fit-columns="true">
+            <colgroup>
+              {resultColumnWidths.map((width, index) => <col key={index} style={{ width }} />)}
+            </colgroup>
             <thead>
               <tr>
                 <th style={thStyle}>{sortableCalendarHeader("Date", "eventDate")}</th>
@@ -737,19 +766,19 @@ export default function CourtCalendarPage() {
               ) : (
                 events.map((event) => (
                   <tr key={event.id} data-barsh-court-calendar-result-row="true">
-                    <td style={{ ...tdStyle, fontWeight: 950 }}>{dateOnly(event.eventDate)}</td>
-                    <td style={tdStyle}>{text(event.court || event.venue) || "—"}</td>
-                    <td style={tdStyle}>{text(event.calendarNumber) || "—"}</td>
-                    <td style={tdStyle}>{text(event.indexAaaNumber) || "—"}</td>
-                    <td style={tdStyle}>
-                      <a href={`/matters?master=${encodeURIComponent(text(event.displayNumber || event.masterLawsuitId))}`} style={{ color: "#1d4ed8", fontWeight: 900, textDecoration: "underline" }}>
+                    <td style={{ ...tdStyle, ...nowrapCellStyle, fontWeight: 950 }}>{dateOnly(event.eventDate)}</td>
+                    <td style={{ ...tdStyle, ...wrapCellStyle }}>{text(event.court || event.venue) || "—"}</td>
+                    <td style={{ ...tdStyle, ...nowrapCellStyle }}>{text(event.calendarNumber) || "—"}</td>
+                    <td style={{ ...tdStyle, ...compactIdCellStyle }} title={text(event.indexAaaNumber)}>{text(event.indexAaaNumber) || "—"}</td>
+                    <td style={{ ...tdStyle, ...compactIdCellStyle }} title={text(event.displayNumber || event.masterLawsuitId)}>
+                      <a href={`/matters?master=${encodeURIComponent(text(event.displayNumber || event.masterLawsuitId))}`} style={{ color: "#1d4ed8", fontWeight: 900, textDecoration: "underline", display: "inline-block", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", verticalAlign: "top" }}>
                         {text(event.displayNumber || event.masterLawsuitId) || "—"}
                       </a>
                     </td>
-                    <td style={tdStyle}>{text(event.appearanceType) || "—"}</td>
-                    <td style={tdStyle}>{money(event.caseData?.lawsuitAmount)}</td>
-                    <td style={tdStyle}>{money(event.caseData?.lawsuitBalance)}</td>
-                    <td style={{ ...tdStyle, minWidth: 320 }}>{text(event.caseData?.caption) || "—"}</td>
+                    <td style={{ ...tdStyle, ...wrapCellStyle }}>{text(event.appearanceType) || "—"}</td>
+                    <td style={{ ...tdStyle, ...moneyCellStyle }}>{money(event.caseData?.lawsuitAmount)}</td>
+                    <td style={{ ...tdStyle, ...moneyCellStyle }}>{money(event.caseData?.lawsuitBalance)}</td>
+                    <td style={{ ...tdStyle, ...wrapCellStyle }}>{text(event.caseData?.caption) || "—"}</td>
                   </tr>
                 ))
               )}

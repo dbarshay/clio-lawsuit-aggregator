@@ -65,6 +65,13 @@ if (!page.includes('sortableCalendarHeader("Appearance Type", "appearanceType")'
 if (!page.includes('sortableCalendarHeader("Lawsuit Amount", "lawsuitAmount")')) failures.push('page missing sortable result column token sortableCalendarHeader("Lawsuit Amount", "lawsuitAmount")');
 if (!page.includes('sortableCalendarHeader("Lawsuit Balance", "lawsuitBalance")')) failures.push('page missing sortable result column token sortableCalendarHeader("Lawsuit Balance", "lawsuitBalance")');
 if (!page.includes('sortableCalendarHeader("Caption", "caption")')) failures.push('page missing sortable result column token sortableCalendarHeader("Caption", "caption")');
+if (!page.includes('data-barsh-court-calendar-results-fit-columns="true"')) failures.push('page missing results fit-columns marker');
+if (!page.includes('resultColumnWidths')) failures.push('page missing resultColumnWidths');
+if (!page.includes('resultTableMinWidth')) failures.push('page missing resultTableMinWidth');
+if (!page.includes('tableLayout: "fixed"')) failures.push('page missing fixed table layout for fitted results columns');
+if (!page.includes('wrapCellStyle')) failures.push('page missing wrapCellStyle');
+if (!page.includes('compactIdCellStyle')) failures.push('page missing compactIdCellStyle');
+if (!page.includes('moneyCellStyle')) failures.push('page missing moneyCellStyle');
 if (!page.includes('WEB_CIVIL_LOCAL_CALENDAR_URL')) failures.push('page missing WebCivil Local calendar-number helper token WEB_CIVIL_LOCAL_CALENDAR_URL');
 if (!page.includes('webcivilLocal/LCCalendarSearch')) failures.push('page missing WebCivil Local calendar-number helper token webcivilLocal/LCCalendarSearch');
 if (!page.includes('data-barsh-court-calendar-webcivil-local-helper')) failures.push('page missing WebCivil Local calendar-number helper token data-barsh-court-calendar-webcivil-local-helper');

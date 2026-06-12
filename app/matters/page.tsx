@@ -11225,7 +11225,7 @@ function masterSettlementDateFiledValue(): string {
                             letterSpacing: "0.05em",
                           }}
                         >
-                          Search Local Contact
+                          Search Adversary Attorney
                           <input
                             ref={masterInfoPrimaryInputRef}
                             value={masterInfoContactSearch}

@@ -828,3 +828,32 @@ body {
   border-top-left-radius: 18px !important;
   border-top-right-radius: 18px !important;
 }
+
+/* BARSH MATTERS DIRECT FINANCIAL TYPOGRAPHY PARITY */
+.barsh-direct-financial-row {
+  font-size: 16px;
+  line-height: 1.35;
+  min-height: 36px;
+}
+.barsh-direct-financial-row > span:first-child {
+  font-size: 16px;
+  font-weight: 800;
+  color: #475569;
+}
+.barsh-direct-financial-row > span:last-child,
+.barsh-direct-financial-row > strong {
+  font-size: 19px;
+  font-weight: 950;
+  color: #0f172a;
+}
+.barsh-direct-financial-row.total > span:first-child {
+  font-size: 17px;
+  font-weight: 900;
+  color: #334155;
+}
+.barsh-direct-financial-row.total > span:last-child,
+.barsh-direct-financial-row.total > strong {
+  font-size: 23px;
+  font-weight: 950;
+  color: #0f172a;
+}

@@ -9248,43 +9248,7 @@ function openClaimAmountEditDialog() {
                   <div className="barsh-direct-summary-value">
                     {textValue(matter?.closeReason || "") || "—"}
                   </div>
-                </div>
-
-                <div className="barsh-direct-summary-card" data-barsh-direct-close-matter-visible-workflow-card="true">
-                  <div
-                    className="barsh-direct-summary-label"
-                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
-                  >
-                    <span>Close Workflow</span>
-                  </div>
-                  <button
-                    type="button"
-                    data-barsh-direct-visible-close-matter-button="true"
-                    onClick={() => {
-                      if (!matter?.id || matterIsClosedForPayment()) return;
-                      setCloseMatterTarget({
-                        id: matter.id,
-                        displayNumber: textValue(matter?.displayNumber || matter?.display_number || matterId),
-                      });
-                      setCloseReason("");
-                      setShowCloseModal(true);
-                    }}
-                    disabled={!matter?.id || matterIsClosedForPayment() || closing}
-                    style={{
-                      width: "100%",
-                      minHeight: 38,
-                      border: "1px solid #dc2626",
-                      borderRadius: 10,
-                      background: !matter?.id || matterIsClosedForPayment() || closing ? "#f3f4f6" : "#fee2e2",
-                      color: !matter?.id || matterIsClosedForPayment() || closing ? "#6b7280" : "#991b1b",
-                      fontWeight: 950,
-                      cursor: !matter?.id || matterIsClosedForPayment() || closing ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    {matterIsClosedForPayment() ? "Matter Closed" : "Close Matter"}
-                  </button>
-                </div>
-              </div>
+                </div>              </div>
               </div>
 
               <div
@@ -9560,122 +9524,35 @@ function openClaimAmountEditDialog() {
                   <strong>{money(currentDirectMatterBalancePresuit(matter))}</strong>
                 </div>
 
-
-                <div
+                <button
+                  type="button"
+                  data-barsh-direct-visible-close-matter-button="true"
+                  onClick={() => {
+                    if (!matter?.id || matterIsClosedForPayment()) return;
+                    setCloseMatterTarget({
+                      id: matter.id,
+                      displayNumber: textValue(matter?.displayNumber || matter?.display_number || matterId),
+                    });
+                    setCloseReason("");
+                    setShowCloseModal(true);
+                  }}
+                  disabled={!matter?.id || matterIsClosedForPayment() || closing}
                   style={{
+                    width: "100%",
+                    minHeight: 42,
+                    border: "1px solid #dc2626",
+                    borderRadius: 999,
+                    background: !matter?.id || matterIsClosedForPayment() || closing ? "#f3f4f6" : "#dc2626",
+                    color: !matter?.id || matterIsClosedForPayment() || closing ? "#6b7280" : "#ffffff",
+                    fontSize: 13,
+                    fontWeight: 950,
+                    cursor: !matter?.id || matterIsClosedForPayment() || closing ? "not-allowed" : "pointer",
                     marginTop: 10,
-                    display: "grid",
-                    gap: 7,
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: 8,
-                      fontSize: 11,
-                      fontWeight: 900,
-                      color: matterIsClosedForPayment() ? "#991b1b" : "#166534",
-                    }}
-                  >
-                    <span>
-                      Payment controls: {matterIsClosedForPayment() ? "Locked because matter status is Closed" : "Active"}
-                    </span>
-                  </div>
+                  {matterIsClosedForPayment() ? "Matter Closed" : "Close Matter"}
+                </button>
 
-                  {latestPaymentReceipt() && (
-                    <div style={{ fontSize: 11, fontWeight: 800, color: "#475569" }}>
-                      Last activity: Receipt #{latestPaymentReceipt().id} {paymentReceiptAuditStatus(latestPaymentReceipt()).toLowerCase()} · {paymentReceiptPrimaryTimestamp(latestPaymentReceipt()) || "—"}
-                    </div>
-                  )}
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 12,
-                    paddingTop: 10,
-                    borderTop: "1px solid #e2e8f0",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: 8,
-                      marginBottom: 6,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 900,
-                        letterSpacing: "0.06em",
-                        textTransform: "uppercase",
-                        color: "#475569",
-                      }}
-                    >
-                      Recent Receipts
-                    </span>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: "#64748b" }}>
-                      {paymentReceipts.length ? `${Math.min(paymentReceipts.length, 5)} shown` : "None"}
-                    </span>
-                  </div>
-
-                  {paymentReceipts.length === 0 ? (
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b" }}>
-                      No receipts posted yet.
-                    </div>
-                  ) : (
-                    <div style={{ display: "grid", gap: 5 }}>
-                      {paymentReceipts.slice(0, 5).map((receipt) => (
-                        <div
-                          key={receipt.id}
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "auto 1fr auto",
-                            gap: 8,
-                            alignItems: "center",
-                            fontSize: 12,
-                            lineHeight: 1.35,
-                            padding: "4px 6px",
-                            borderRadius: 8,
-                            border: receipt?.voided
-                              ? "1px solid #fecaca"
-                              : receipt?.editedAt
-                                ? "1px solid #bbf7d0"
-                                : "1px solid #22c55e",
-                            background: receipt?.voided
-                              ? "#fee2e2"
-                              : receipt?.editedAt
-                                ? "#dcfce7"
-                                : "#86efac",
-                            color: receipt?.voided
-                              ? "#991b1b"
-                              : receipt?.editedAt
-                                ? "#166534"
-                                : "#052e16",
-                            opacity: receipt?.voided ? 0.82 : 1,
-                          }}
-                        >
-                          <strong style={{ whiteSpace: "nowrap" }}>#{receipt.id}</strong>
-                          <span
-                            style={{
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                            title={`${receipt.paymentDate ? formatPaymentDateMMDDYYYY(receipt.paymentDate) : "—"} · ${receipt?.voided ? "Voided" : receipt?.editedAt ? "Edited" : "Posted"} · ${textValue(receipt.description || receipt.transactionType) || "Payment"}`}
-                          >
-                            {receipt.paymentDate ? formatPaymentDateMMDDYYYY(receipt.paymentDate) : "—"} · {receipt?.voided ? "Voided" : receipt?.editedAt ? "Edited" : "Posted"} · {textValue(receipt.description || receipt.transactionType) || "Payment"}
-                          </span>
-                          <strong style={{ whiteSpace: "nowrap" }}>{money(receipt.paymentAmount)}</strong>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
 
                 {paymentFormOpen && (
                   <div

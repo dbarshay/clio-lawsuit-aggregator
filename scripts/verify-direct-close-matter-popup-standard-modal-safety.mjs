@@ -11,8 +11,10 @@ const visibleButtonIndex = page.indexOf(`data-barsh-direct-visible-close-matter-
 const actionsBoxIndex = page.indexOf(`data-barsh-direct-actions-box="true"`);
 if (visibleButtonIndex < 0) failures.push("missing visible direct Close Matter workflow button");
 if (actionsBoxIndex >= 0 && visibleButtonIndex > actionsBoxIndex && visibleButtonIndex < page.indexOf(`{showCloseModal && (`, actionsBoxIndex)) failures.push("visible Close Matter button must not be inside the direct Actions box");
-if (!page.includes(`data-barsh-direct-close-matter-visible-workflow-card="true"`)) failures.push("missing visible Close Matter workflow card marker");
-if (!page.includes(`setCloseMatterTarget({\n                        id: matter.id,`)) failures.push("visible Close Matter button must set current matter target");
+if (page.includes(`data-barsh-direct-close-matter-visible-workflow-card="true"`)) failures.push("direct Close Matter button must not remain as a Claim Status workflow card");
+if (!page.includes(`data-barsh-direct-visible-close-matter-button="true"`)) failures.push("missing visible direct Close Matter button");
+if (!page.includes(`borderRadius: 999`) || !page.includes(`background: !matter?.id || matterIsClosedForPayment() || closing ? "#f3f4f6" : "#dc2626"`)) failures.push("visible direct Close Matter button must use lawsuit-style full-width red pill presentation");
+if (!page.includes(`setCloseMatterTarget({\n                      id: matter.id,`)) failures.push("visible Close Matter button must set current matter target");
 
 if (region === "") failures.push("could not isolate direct Close Matter popup region");
 

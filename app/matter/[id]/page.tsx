@@ -9249,6 +9249,41 @@ function openClaimAmountEditDialog() {
                     {textValue(matter?.closeReason || "") || "—"}
                   </div>
                 </div>
+
+                <div className="barsh-direct-summary-card" data-barsh-direct-close-matter-visible-workflow-card="true">
+                  <div
+                    className="barsh-direct-summary-label"
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
+                  >
+                    <span>Close Workflow</span>
+                  </div>
+                  <button
+                    type="button"
+                    data-barsh-direct-visible-close-matter-button="true"
+                    onClick={() => {
+                      if (!matter?.id || matterIsClosedForPayment()) return;
+                      setCloseMatterTarget({
+                        id: matter.id,
+                        displayNumber: textValue(matter?.displayNumber || matter?.display_number || matterId),
+                      });
+                      setCloseReason("");
+                      setShowCloseModal(true);
+                    }}
+                    disabled={!matter?.id || matterIsClosedForPayment() || closing}
+                    style={{
+                      width: "100%",
+                      minHeight: 38,
+                      border: "1px solid #dc2626",
+                      borderRadius: 10,
+                      background: !matter?.id || matterIsClosedForPayment() || closing ? "#f3f4f6" : "#fee2e2",
+                      color: !matter?.id || matterIsClosedForPayment() || closing ? "#6b7280" : "#991b1b",
+                      fontWeight: 950,
+                      cursor: !matter?.id || matterIsClosedForPayment() || closing ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {matterIsClosedForPayment() ? "Matter Closed" : "Close Matter"}
+                  </button>
+                </div>
               </div>
               </div>
 
@@ -14293,91 +14328,65 @@ function openClaimAmountEditDialog() {
 
     {showCloseModal && (
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Close Matter"
+        data-barsh-direct-close-matter-standard-modal="true"
+        onClick={() => { setShowCloseModal(false); setCloseMatterTarget(null); setCloseReason(""); }}
+        onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setShowCloseModal(false); setCloseMatterTarget(null); setCloseReason(""); } }}
+        tabIndex={-1}
         style={{
           position: "fixed",
           inset: 0,
-          background: "rgba(0,0,0,0.45)",
+          background: "rgba(15, 23, 42, 0.42)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           zIndex: 1000,
+          padding: 24,
         }}
       >
-        <div
+        <form
+          onClick={(event) => event.stopPropagation()}
+          onSubmit={(event) => { event.preventDefault(); if (closeReason && !closing) void handleCloseMatter(); }}
+          onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setShowCloseModal(false); setCloseMatterTarget(null); setCloseReason(""); } }}
           style={{
-            width: 460,
-            background: "#fff",
-            borderRadius: 8,
-            padding: 22,
-            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+            width: "min(520px, calc(100vw - 48px))",
+            overflow: "hidden",
+            background: "#1e3a8a",
+            border: "1px solid transparent",
+            borderRadius: 18,
+            boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
           }}
         >
-          <h2 style={{ marginTop: 0 }}>Close Matter</h2>
+          <h2 style={{ margin: 0, padding: "12px 14px", background: "#1e3a8a", color: "#ffffff", textAlign: "center", fontSize: 17, fontWeight: 950, lineHeight: 1.15 }}>
+            Close Matter
+          </h2>
 
-          <p style={{ marginBottom: 14 }}>
-            This will close matter <strong>{textValue(closeMatterTarget?.displayNumber)}</strong> locally
-            and write Final Status = Closed with the selected Closed Reason.
-          </p>
+          <div style={{ display: "grid", gap: 12, padding: 16, background: "#ffffff" }}>
+            <div data-barsh-direct-close-matter-current-card="true" style={{ display: "grid", gap: 6, padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 12, background: "#f8fafc" }}>
+              <span style={{ fontSize: 12, fontWeight: 950, letterSpacing: "0.06em", textTransform: "uppercase", color: "#64748b" }}>Current</span>
+              <strong style={{ fontSize: 16, color: "#0f172a" }}>{textValue(closeMatterTarget?.displayNumber) || textValue(matter?.displayNumber || matter?.display_number) || "—"}</strong>
+            </div>
 
-          <label style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>
-            Close Reason
-          </label>
-
-          <select
-            value={closeReason}
-            onChange={(e) => setCloseReason(e.target.value)}
-            style={{
-              width: "100%",
-              padding: 10,
-              marginBottom: 18,
-              border: "1px solid #bbb",
-              borderRadius: 4,
-            }}
-          >
-            <option value="">Select Close Reason</option>
-            {VALID_CLOSE_REASONS.map((reason) => (
-              <option key={reason} value={reason}>
-                {reason}
-              </option>
-            ))}
-          </select>
-
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <button
-              onClick={() => {
-                setShowCloseModal(false);
-                setCloseMatterTarget(null);
-                setCloseReason("");
-              }}
-              disabled={closing}
-              style={{
-                padding: "8px 12px",
-                border: "1px solid #aaa",
-                background: "#fff",
-                borderRadius: 4,
-                cursor: closing ? "not-allowed" : "pointer",
-              }}
-            >
-              Cancel
-            </button>
-
-            <button
-              onClick={handleCloseMatter}
-              disabled={!closeReason || closing}
-              style={{
-                padding: "8px 12px",
-                border: "1px solid #dc2626",
-                background: !closeReason || closing ? "#f3f4f6" : "#dc2626",
-                color: !closeReason || closing ? "#666" : "#fff",
-                borderRadius: 4,
-                cursor: !closeReason || closing ? "not-allowed" : "pointer",
-                fontWeight: 700,
-              }}
-            >
-              {closing ? "Closing..." : "Close Matter"}
-            </button>
+            <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>
+              <span>Close Reason</span>
+              <select
+                value={closeReason}
+                onChange={(event) => setCloseReason(event.target.value)}
+                style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: 10, background: "#ffffff", color: "#0f172a", padding: "11px 12px", fontSize: 14, fontWeight: 800 }}
+              >
+                <option value="">Select Close Reason</option>
+                {VALID_CLOSE_REASONS.map((reason) => (<option key={reason} value={reason}>{reason}</option>))}
+              </select>
+            </label>
           </div>
-        </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 16px 16px", borderTop: "1px solid #e2e8f0", background: "#ffffff" }}>
+            <button type="button" onClick={() => { setShowCloseModal(false); setCloseMatterTarget(null); setCloseReason(""); }} disabled={closing} style={{ minWidth: 96, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#334155", fontWeight: 900, cursor: closing ? "not-allowed" : "pointer" }}>Cancel</button>
+            <button type="submit" disabled={!closeReason || closing} style={{ minWidth: 118, height: 38, border: "1px solid #dc2626", borderRadius: 10, background: !closeReason || closing ? "#fecaca" : "#dc2626", color: !closeReason || closing ? "#7f1d1d" : "#ffffff", fontWeight: 900, cursor: !closeReason || closing ? "not-allowed" : "pointer" }}>{closing ? "Closing..." : "Close Matter"}</button>
+          </div>
+        </form>
       </div>
     )}
     </>

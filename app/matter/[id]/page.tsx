@@ -8363,6 +8363,10 @@ function openClaimAmountEditDialog() {
           role="dialog"
           aria-modal="true"
           aria-label="Edit Claim Amount"
+          data-barsh-direct-claim-amount-edit-standard-modal="true"
+          onClick={() => setDirectFieldEditModal(null)}
+          onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setDirectFieldEditModal(null); setDirectFieldEditResult(null); } }}
+          tabIndex={-1}
           style={{
             position: "fixed",
             inset: 0,
@@ -8374,67 +8378,62 @@ function openClaimAmountEditDialog() {
             padding: 24,
           }}
         >
-          <div
+          <form
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={(event) => { event.preventDefault(); if (!directFieldEditLoading && String(claimAmountInput || "").trim()) void saveClaimAmountEditDialog(); }}
             style={{
               width: "min(520px, calc(100vw - 48px))",
               maxHeight: "calc(100vh - 48px)",
-              overflow: "auto",
-              background: "#ffffff",
-              border: "1px solid #bfdbfe",
-              borderRadius: 22,
+              overflow: "hidden",
+              background: "#1e3a8a",
+              border: "1px solid transparent",
+              borderRadius: 18,
               boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
-              padding: 20,
             }}
           >
-            <h2 style={{ marginTop: 0, marginBottom: 8 }}>Edit Claim Amount</h2>
-            <p style={{ marginTop: 0, marginBottom: 16, color: "#64748b", fontSize: 13 }}>
-              This updates Claim Amount in ClaimIndex.  Payments and Balance remain read-only.
-            </p>
+            <h2 style={{ margin: 0, padding: "12px 14px", background: "#1e3a8a", color: "#ffffff", textAlign: "center", fontSize: 17, fontWeight: 950, lineHeight: 1.15 }}>
+              Edit Claim Amount
+            </h2>
 
-            <label style={{ display: "grid", gap: 6, fontWeight: 900, marginBottom: 16 }}>
-              <span>Claim Amount</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={claimAmountInput}
-                autoFocus
-                onFocus={(event) => event.currentTarget.select()}
-                onChange={(event) => setClaimAmountInput(formatMoneyEditingInput(event.target.value))}
-                onBlur={() => setClaimAmountInput(formatMoneyInputValue(parseMoneyInputValue(claimAmountInput)))}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    void saveClaimAmountEditDialog();
-                  }
-                }}
-                style={{
-                  height: 40,
-                  border: "1px solid #cbd5e1",
-                  borderRadius: 10,
-                  padding: "0 10px",
-                  fontWeight: 800,
-                }}
-              />
-            </label>
+            <div style={{ display: "grid", gap: 12, padding: 16, background: "#ffffff" }}>
+              <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>
+                <span>Claim Amount</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={claimAmountInput}
+                  autoFocus
+                  onFocus={(event) => event.currentTarget.select()}
+                  onChange={(event) => setClaimAmountInput(formatMoneyEditingInput(event.target.value))}
+                  onBlur={() => setClaimAmountInput(formatMoneyInputValue(parseMoneyInputValue(claimAmountInput)))}
+                  style={{
+                    height: 40,
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 10,
+                    padding: "0 10px",
+                    fontWeight: 800,
+                  }}
+                />
+              </label>
 
-            {directFieldEditResult && !directFieldEditResult.ok && (
-              <div
-                style={{
-                  border: "1px solid #fecaca",
-                  background: "#fef2f2",
-                  color: "#991b1b",
-                  borderRadius: 12,
-                  padding: 10,
-                  marginBottom: 12,
-                  fontSize: 13,
-                  fontWeight: 800,
-                }}
-              >
-                {textValue(directFieldEditResult.error) || "Claim Amount could not be updated."}
-              </div>
-            )}
+              {directFieldEditResult && !directFieldEditResult.ok && (
+                <div
+                  style={{
+                    border: "1px solid #fecaca",
+                    background: "#fef2f2",
+                    color: "#991b1b",
+                    borderRadius: 12,
+                    padding: 10,
+                    fontSize: 13,
+                    fontWeight: 800,
+                  }}
+                >
+                  {textValue(directFieldEditResult.error) || "Claim Amount could not be updated."}
+                </div>
+              )}
+            </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 16px 16px", borderTop: "1px solid #e2e8f0", background: "#ffffff" }}>
               <button
                 type="button"
                 onClick={() => setDirectFieldEditModal(null)}
@@ -8454,24 +8453,23 @@ function openClaimAmountEditDialog() {
               </button>
 
               <button
-                type="button"
-                onClick={saveClaimAmountEditDialog}
+                type="submit"
                 disabled={directFieldEditLoading || !String(claimAmountInput || "").trim()}
                 style={{
                   minWidth: 118,
                   height: 38,
-                  border: "1px solid #16a34a",
+                  border: "1px solid #1e3a8a",
                   borderRadius: 10,
-                  background: directFieldEditLoading || !String(claimAmountInput || "").trim() ? "#bbf7d0" : "#16a34a",
+                  background: directFieldEditLoading || !String(claimAmountInput || "").trim() ? "#93c5fd" : "#1e3a8a",
                   color: "#ffffff",
                   fontWeight: 900,
                   cursor: directFieldEditLoading || !String(claimAmountInput || "").trim() ? "not-allowed" : "pointer",
                 }}
               >
-                {directFieldEditLoading ? "Saving..." : "Save"}
+                {directFieldEditLoading ? "Saving..." : "Confirm Edit"}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 

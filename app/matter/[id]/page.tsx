@@ -8639,6 +8639,10 @@ function openClaimAmountEditDialog() {
           role="dialog"
           aria-modal="true"
           aria-label={"Edit " + identityFieldEditLabel(identityFieldEditModal)}
+          data-barsh-direct-identity-edit-standard-modal="true"
+          onClick={closeIdentityFieldEditDialog}
+          onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeIdentityFieldEditDialog(); } }}
+          tabIndex={-1}
           style={{
             position: "fixed",
             inset: 0,
@@ -8650,181 +8654,83 @@ function openClaimAmountEditDialog() {
             padding: 24,
           }}
         >
-          <div
+          <form
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={(event) => { event.preventDefault(); if (!identityFieldEditLoading && textValue(identityFieldEditInput)) void saveIdentityFieldEditDialog(); }}
+            onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeIdentityFieldEditDialog(); } }}
             style={{
               width: "min(560px, calc(100vw - 48px))",
               maxHeight: "calc(100vh - 48px)",
-              overflow: "auto",
-              background: "#ffffff",
-              border: "1px solid #bfdbfe",
-              borderRadius: 22,
+              overflow: "hidden",
+              background: "#1e3a8a",
+              border: "1px solid transparent",
+              borderRadius: 18,
               boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
-              padding: 20,
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 16,
-                alignItems: "flex-start",
-                marginBottom: 16,
-              }}
-            >
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 900, color: "#1d4ed8", letterSpacing: 1.2 }}>
-                  CLAIMINDEX IDENTITY FIELD
-                </div>
-                <h2 style={{ margin: "4px 0 6px", fontSize: 24 }}>
-                  Edit {identityFieldEditLabel(identityFieldEditModal)}
-                </h2>
-                <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.45 }}>
-                  Matter: {textValue(matter?.displayNumber || matter?.display_number) || matterId || "—"}
-                </p>
+            <h2 style={{ margin: 0, padding: "12px 14px", background: "#1e3a8a", color: "#ffffff", textAlign: "center", fontSize: 17, fontWeight: 950, lineHeight: 1.15 }}>
+              Edit {identityFieldEditLabel(identityFieldEditModal)}
+            </h2>
+
+            <div style={{ display: "grid", gap: 12, padding: 16, background: "#ffffff" }}>
+              <div data-barsh-direct-identity-current-card="true" style={{ display: "grid", gap: 6, padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 12, background: "#f8fafc" }}>
+                <span style={{ fontSize: 12, fontWeight: 950, letterSpacing: "0.06em", textTransform: "uppercase", color: "#64748b" }}>Current</span>
+                <strong style={{ fontSize: 16, color: "#0f172a" }}>{identityFieldEditModal === "date_of_loss" ? (formatDate(identityFieldEditInput) || "—") : (textValue(identityFieldEditInput) || "—")}</strong>
               </div>
 
-              <button
-                type="button"
-                onClick={closeIdentityFieldEditDialog}
-                disabled={identityFieldEditLoading}
-                style={{
-                  border: "1px solid #cbd5e1",
-                  background: "#f8fafc",
-                  color: "#0f172a",
-                  borderRadius: 12,
-                  padding: "10px 12px",
-                  fontWeight: 900,
-                  cursor: identityFieldEditLoading ? "not-allowed" : "pointer",
-                }}
-              >
-                Close
-              </button>
-            </div>
-
-            <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#334155", marginBottom: 6 }}>
-              {identityFieldEditLabel(identityFieldEditModal)}
-            </label>
-
-            {identityFieldUsesReferenceOptions(identityFieldEditModal) ? (
-              <select
-                value={identityFieldEditSelectedOptionId}
-                onChange={(event) => {
-                  const selectedId = event.target.value;
-                  const referenceType = identityFieldReferenceType(identityFieldEditModal);
-                  const option = (identityReferenceOptions[referenceType] || []).find((item: any) => String(item?.id) === selectedId);
-                  const selectedValue = identityReferenceOptionValue(option);
-
-                  setIdentityFieldEditSelectedOptionId(selectedId);
-                  setIdentityFieldEditInput(selectedValue);
-                  setIdentityFieldEditResult(null);
-                }}
-                disabled={identityFieldEditLoading || identityReferenceOptionsLoading}
-                style={{
-                  width: "100%",
-                  minWidth: 0,
-                  border: "1px solid #cbd5e1",
-                  borderRadius: 12,
-                  background: "#ffffff",
-                  color: "#0f172a",
-                  padding: "11px 12px",
-                  fontSize: 14,
-                  fontWeight: 800,
-                  marginBottom: 12,
-                }}
-              >
-                <option value="">
-                  {identityReferenceOptionsLoading ? "Loading..." : `Select ${identityFieldEditLabel(identityFieldEditModal)}`}
-                </option>
-                {(identityReferenceOptions[identityFieldReferenceType(identityFieldEditModal)] || []).map((option: any, index: number) => {
-                  const label = identityReferenceOptionLabel(option);
-                  if (!label) return null;
-
-                  return (
-                    <option key={`${option?.id || label}-${index}`} value={String(option?.id || "")}>
-                      {label}
+              <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>
+                <span>{identityFieldEditLabel(identityFieldEditModal)}</span>
+                {identityFieldUsesReferenceOptions(identityFieldEditModal) ? (
+                  <select
+                    value={identityFieldEditSelectedOptionId}
+                    onChange={(event) => {
+                      const selectedId = event.target.value;
+                      const referenceType = identityFieldReferenceType(identityFieldEditModal);
+                      const option = (identityReferenceOptions[referenceType] || []).find((item: any) => String(item?.id) === selectedId);
+                      const selectedValue = identityReferenceOptionValue(option);
+                      setIdentityFieldEditSelectedOptionId(selectedId);
+                      setIdentityFieldEditInput(selectedValue);
+                      setIdentityFieldEditResult(null);
+                    }}
+                    disabled={identityFieldEditLoading || identityReferenceOptionsLoading}
+                    style={{ width: "100%", minWidth: 0, border: "1px solid #cbd5e1", borderRadius: 10, background: "#ffffff", color: "#0f172a", padding: "11px 12px", fontSize: 14, fontWeight: 800 }}
+                  >
+                    <option value="">
+                      {identityReferenceOptionsLoading ? "Loading..." : `Select ${identityFieldEditLabel(identityFieldEditModal)}`}
                     </option>
-                  );
-                })}
-              </select>
-            ) : (
-              <input
-                value={identityFieldEditInput}
-                onChange={(event) => {
-                  setIdentityFieldEditInput(event.target.value);
-                  setIdentityFieldEditSelectedOptionId("");
-                  setIdentityFieldEditResult(null);
-                }}
-                disabled={identityFieldEditLoading}
-                style={{
-                  width: "100%",
-                  minWidth: 0,
-                  border: "1px solid #cbd5e1",
-                  borderRadius: 12,
-                  background: "#ffffff",
-                  color: "#0f172a",
-                  padding: "11px 12px",
-                  fontSize: 14,
-                  fontWeight: 800,
-                  marginBottom: 12,
-                }}
-              />
-            )}
+                    {(identityReferenceOptions[identityFieldReferenceType(identityFieldEditModal)] || []).map((option: any, index: number) => {
+                      const label = identityReferenceOptionLabel(option);
+                      if (!label) return null;
+                      return (
+                        <option key={`${option?.id || label}-${index}`} value={String(option?.id || "")}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                ) : (
+                  <input
+                    type={identityFieldEditModal === "date_of_loss" ? "date" : "text"}
+                    value={identityFieldEditInput}
+                    onChange={(event) => { setIdentityFieldEditInput(event.target.value); setIdentityFieldEditSelectedOptionId(""); setIdentityFieldEditResult(null); }}
+                    disabled={identityFieldEditLoading}
+                    style={{ width: "100%", minWidth: 0, border: "1px solid #cbd5e1", borderRadius: 10, background: "#ffffff", color: "#0f172a", padding: "11px 12px", fontSize: 14, fontWeight: 800 }}
+                  />
+                )}
+              </label>
 
-            {identityFieldEditResult && !identityFieldEditResult.ok ? (
-              <div
-                style={{
-                  border: "1px solid #fecaca",
-                  background: "#fef2f2",
-                  color: "#991b1b",
-                  borderRadius: 12,
-                  padding: 10,
-                  marginBottom: 12,
-                  fontSize: 13,
-                  fontWeight: 800,
-                }}
-              >
-                {textValue(identityFieldEditResult.error) || "Identity field could not be saved."}
-              </div>
-            ) : null}
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button
-                type="button"
-                onClick={closeIdentityFieldEditDialog}
-                disabled={identityFieldEditLoading}
-                style={{
-                  minWidth: 96,
-                  height: 38,
-                  border: "1px solid #cbd5e1",
-                  borderRadius: 10,
-                  background: "#f8fafc",
-                  color: "#334155",
-                  fontWeight: 900,
-                  cursor: identityFieldEditLoading ? "not-allowed" : "pointer",
-                }}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={saveIdentityFieldEditDialog}
-                disabled={identityFieldEditLoading || !textValue(identityFieldEditInput)}
-                style={{
-                  minWidth: 118,
-                  height: 38,
-                  border: "1px solid #16a34a",
-                  borderRadius: 10,
-                  background: identityFieldEditLoading || !textValue(identityFieldEditInput) ? "#bbf7d0" : "#16a34a",
-                  color: "#ffffff",
-                  fontWeight: 900,
-                  cursor: identityFieldEditLoading || !textValue(identityFieldEditInput) ? "not-allowed" : "pointer",
-                }}
-              >
-                {identityFieldEditLoading ? "Saving..." : "Save"}
-              </button>
+              {identityFieldEditResult && !identityFieldEditResult.ok ? (
+                <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 12, padding: 10, fontSize: 13, fontWeight: 800 }}>
+                  {textValue(identityFieldEditResult.error) || "Identity field could not be saved."}
+                </div>
+              ) : null}
             </div>
-          </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 16px 16px", borderTop: "1px solid #e2e8f0", background: "#ffffff" }}>
+              <button type="button" onClick={closeIdentityFieldEditDialog} disabled={identityFieldEditLoading} style={{ minWidth: 96, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#334155", fontWeight: 900, cursor: identityFieldEditLoading ? "not-allowed" : "pointer" }}>Cancel</button>
+              <button type="submit" disabled={identityFieldEditLoading || !textValue(identityFieldEditInput)} style={{ minWidth: 118, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: identityFieldEditLoading || !textValue(identityFieldEditInput) ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: identityFieldEditLoading || !textValue(identityFieldEditInput) ? "not-allowed" : "pointer" }}>{identityFieldEditLoading ? "Saving..." : "Confirm Edit"}</button>
+            </div>
+          </form>
         </div>
       )}
 
@@ -8833,6 +8739,10 @@ function openClaimAmountEditDialog() {
           role="dialog"
           aria-modal="true"
           aria-label="Edit Treating Provider"
+          data-barsh-direct-treating-provider-edit-standard-modal="true"
+          onClick={closeTreatingProviderEditDialog}
+          onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeTreatingProviderEditDialog(); } }}
+          tabIndex={-1}
           style={{
             position: "fixed",
             inset: 0,
@@ -8844,150 +8754,44 @@ function openClaimAmountEditDialog() {
             padding: 24,
           }}
         >
-          <div
+          <form
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={(event) => { event.preventDefault(); if (!treatingProviderSaving && !treatingProviderOptionsLoading && treatingProviderInput) void saveClaimIndexTreatingProvider(); }}
+            onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeTreatingProviderEditDialog(); } }}
             style={{
               width: "min(560px, calc(100vw - 48px))",
               maxHeight: "calc(100vh - 48px)",
-              overflow: "auto",
-              background: "#ffffff",
-              border: "1px solid #bfdbfe",
-              borderRadius: 22,
+              overflow: "hidden",
+              background: "#1e3a8a",
+              border: "1px solid transparent",
+              borderRadius: 18,
               boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
-              padding: 20,
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 16,
-                alignItems: "flex-start",
-                marginBottom: 16,
-              }}
-            >
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 900, color: "#1d4ed8", letterSpacing: 1.2 }}>
-                  CLAIMINDEX IDENTITY FIELD
-                </div>
-                <h2 style={{ margin: "4px 0 6px", fontSize: 24 }}>Edit Treating Provider</h2>
-                <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.45 }}>
-                  Matter: {textValue(matter?.displayNumber || matter?.display_number) || matterId || "—"}
-                </p>
-              </div>
+            <h2 style={{ margin: 0, padding: "12px 14px", background: "#1e3a8a", color: "#ffffff", textAlign: "center", fontSize: 17, fontWeight: 950, lineHeight: 1.15 }}>
+              Edit Treating Provider
+            </h2>
 
-              <button
-                type="button"
-                onClick={closeTreatingProviderEditDialog}
-                disabled={treatingProviderSaving}
-                style={{
-                  border: "1px solid #cbd5e1",
-                  background: "#f8fafc",
-                  color: "#0f172a",
-                  borderRadius: 12,
-                  padding: "10px 12px",
-                  fontWeight: 900,
-                  cursor: treatingProviderSaving ? "not-allowed" : "pointer",
-                }}
-              >
-                Close
-              </button>
+            <div style={{ display: "grid", gap: 12, padding: 16, background: "#ffffff" }}>
+              <div data-barsh-direct-treating-provider-current-card="true" style={{ display: "grid", gap: 6, padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 12, background: "#f8fafc" }}>
+                <span style={{ fontSize: 12, fontWeight: 950, letterSpacing: "0.06em", textTransform: "uppercase", color: "#64748b" }}>Current</span>
+                <strong style={{ fontSize: 16, color: "#0f172a" }}>{localTreatingProviderName() || "—"}</strong>
+              </div>
+              <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>
+                <span>Treating Provider</span>
+                <select value={treatingProviderInput} onChange={(event) => { setTreatingProviderInput(event.target.value); setTreatingProviderResult(null); }} disabled={treatingProviderOptionsLoading || treatingProviderSaving} style={{ width: "100%", minWidth: 0, border: "1px solid #cbd5e1", borderRadius: 10, background: "#ffffff", color: "#0f172a", padding: "11px 12px", fontSize: 14, fontWeight: 800 }}>
+                  <option value="">{treatingProviderOptionsLoading ? "Loading Treating Providers..." : "Select Treating Provider"}</option>
+                  {treatingProviderOptions.map((option: any) => (<option key={option.id} value={option.id}>{option.displayName}</option>))}
+                </select>
+              </label>
+              {treatingProviderResult && !treatingProviderResult.ok ? (<div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 12, padding: 10, fontSize: 13, fontWeight: 800 }}>{textValue(treatingProviderResult.error) || "Treating Provider could not be saved."}</div>) : null}
             </div>
 
-            <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#334155", marginBottom: 6 }}>
-              Treating Provider
-            </label>
-
-            <select
-              value={treatingProviderInput}
-              onChange={(event) => {
-                setTreatingProviderInput(event.target.value);
-                setTreatingProviderResult(null);
-              }}
-              disabled={treatingProviderOptionsLoading || treatingProviderSaving}
-              style={{
-                width: "100%",
-                minWidth: 0,
-                border: "1px solid #cbd5e1",
-                borderRadius: 12,
-                background: "#ffffff",
-                color: "#0f172a",
-                padding: "11px 12px",
-                fontSize: 14,
-                fontWeight: 800,
-                marginBottom: 12,
-              }}
-            >
-              <option value="">
-                {treatingProviderOptionsLoading ? "Loading Treating Providers..." : "Select Treating Provider"}
-              </option>
-              {treatingProviderOptions.map((option: any) => (
-                <option key={option.id} value={option.id}>
-                  {option.displayName}
-                </option>
-              ))}
-            </select>
-
-            {treatingProviderResult && !treatingProviderResult.ok ? (
-              <div
-                style={{
-                  border: "1px solid #fecaca",
-                  background: "#fef2f2",
-                  color: "#991b1b",
-                  borderRadius: 12,
-                  padding: 10,
-                  marginBottom: 12,
-                  fontSize: 13,
-                  fontWeight: 800,
-                }}
-              >
-                {textValue(treatingProviderResult.error) || "Treating Provider could not be saved."}
-              </div>
-            ) : null}
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button
-                type="button"
-                onClick={closeTreatingProviderEditDialog}
-                disabled={treatingProviderSaving}
-                style={{
-                  minWidth: 96,
-                  height: 38,
-                  border: "1px solid #cbd5e1",
-                  borderRadius: 10,
-                  background: "#f8fafc",
-                  color: "#334155",
-                  fontWeight: 900,
-                  cursor: treatingProviderSaving ? "not-allowed" : "pointer",
-                }}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={saveClaimIndexTreatingProvider}
-                disabled={treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput}
-                style={{
-                  minWidth: 118,
-                  height: 38,
-                  border: "1px solid #16a34a",
-                  borderRadius: 10,
-                  background:
-                    treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput
-                      ? "#bbf7d0"
-                      : "#16a34a",
-                  color: "#ffffff",
-                  fontWeight: 900,
-                  cursor:
-                    treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput
-                      ? "not-allowed"
-                      : "pointer",
-                }}
-              >
-                {treatingProviderSaving ? "Saving..." : "Save"}
-              </button>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 16px 16px", borderTop: "1px solid #e2e8f0", background: "#ffffff" }}>
+              <button type="button" onClick={closeTreatingProviderEditDialog} disabled={treatingProviderSaving} style={{ minWidth: 96, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#334155", fontWeight: 900, cursor: treatingProviderSaving ? "not-allowed" : "pointer" }}>Cancel</button>
+              <button type="submit" disabled={treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput} style={{ minWidth: 118, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput ? "not-allowed" : "pointer" }}>{treatingProviderSaving ? "Saving..." : "Confirm Edit"}</button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 

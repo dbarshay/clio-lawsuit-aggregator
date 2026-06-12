@@ -339,7 +339,8 @@
     "verify:court-calendar-schema-foundation-safety": "node scripts/verify-court-calendar-schema-foundation-safety.mjs",
     "verify:court-calendar-route-safety": "node scripts/verify-court-calendar-route-safety.mjs",
     "verify:court-calendar-page-safety": "node scripts/verify-court-calendar-page-safety.mjs",
-    "verify:court-calendar-webcivil-local-import-safety": "node scripts/verify-court-calendar-webcivil-local-import-safety.mjs"
+    "verify:court-calendar-webcivil-local-import-safety": "node scripts/verify-court-calendar-webcivil-local-import-safety.mjs",
+    "verify:master-action-area-option-e-safety": "node scripts/verify-master-action-area-option-e-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

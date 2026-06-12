@@ -8548,6 +8548,10 @@ function openClaimAmountEditDialog() {
           role="dialog"
           aria-modal="true"
           aria-label={`Edit ${directPicklistFieldLabel(directFieldEditModal)}`}
+          data-barsh-direct-picklist-edit-standard-modal="true"
+          onClick={() => { setDirectFieldEditModal(null); setDirectFieldEditResult(null); }}
+          onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setDirectFieldEditModal(null); setDirectFieldEditResult(null); } }}
+          tabIndex={-1}
           style={{
             position: "fixed",
             inset: 0,
@@ -8559,104 +8563,74 @@ function openClaimAmountEditDialog() {
             background: "rgba(15, 23, 42, 0.45)",
           }}
         >
-          <div
+          <form
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={(event) => { event.preventDefault(); if (!directFieldEditLoading && !directFieldPicklistsLoading && directPicklistInputValue(directFieldEditModal)) void savePicklistEditDialog(directFieldEditModal); }}
             style={{
               width: "min(560px, calc(100vw - 48px))",
               boxSizing: "border-box",
-              border: "1px solid #cbd5e1",
+              overflow: "hidden",
+              border: "1px solid transparent",
               borderRadius: 18,
-              background: "#fff",
-              boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
-              padding: 20,
+              background: "#1e3a8a",
+              boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
             }}
           >
-            <h2 style={{ marginTop: 0, marginBottom: 8 }}>
+            <h2 style={{ margin: 0, padding: "12px 14px", background: "#1e3a8a", color: "#ffffff", textAlign: "center", fontSize: 17, fontWeight: 950, lineHeight: 1.15 }}>
               Edit {directPicklistFieldLabel(directFieldEditModal)}
             </h2>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#475569", marginBottom: 16 }}>
-              This writes {directPicklistFieldLabel(directFieldEditModal)} directly.
-            </div>
 
-            <label style={{ display: "grid", gap: 6, fontWeight: 900, marginBottom: 16 }}>
-              <span>{directPicklistFieldLabel(directFieldEditModal)}</span>
-              <select
-                value={directPicklistInputValue(directFieldEditModal)}
-                onChange={(event) => setDirectPicklistInputValue(directFieldEditModal, event.target.value)}
-                disabled={directFieldPicklistsLoading || directFieldEditLoading}
-                style={{
-                  width: "100%",
-                  maxWidth: "100%",
-                  boxSizing: "border-box",
-                  height: 42,
-                  border: "1px solid #cbd5e1",
-                  borderRadius: 10,
-                  padding: "0 10px",
-                  fontWeight: 800,
-                  background: "#fff",
-                }}
-              >
-                <option value="">
-                  {directFieldPicklistsLoading ? "Loading..." : "Select..."}
-                </option>
-                {picklistOptionsForDirectField(directFieldEditModal).map((option: any) => {
-                  const value = optionValue(option);
-                  const label = optionLabel(option);
-                  return (
-                    <option key={`${value}-${label}`} value={value}>
-                      {label}
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
-
-            {directFieldEditResult && !directFieldEditResult.ok && (
-              <div style={{ color: "#991b1b", fontWeight: 800, marginBottom: 12 }}>
-                {textValue(directFieldEditResult.error) || `${directPicklistFieldLabel(directFieldEditModal)} could not be updated.`}
+            <div style={{ display: "grid", gap: 12, padding: 16, background: "#ffffff" }}>
+              <div data-barsh-direct-picklist-current-card="true" style={{ display: "grid", gap: 6, padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 12, background: "#f8fafc" }}>
+                <span style={{ fontSize: 12, fontWeight: 950, letterSpacing: "0.06em", textTransform: "uppercase", color: "#64748b" }}>Current</span>
+                <strong style={{ fontSize: 16, color: "#0f172a" }}>{(() => { const currentValue = directPicklistInputValue(directFieldEditModal); const currentOption = picklistOptionsForDirectField(directFieldEditModal).find((option: any) => optionValue(option) === currentValue); return optionLabel(currentOption) || currentValue || "—"; })()}</strong>
               </div>
-            )}
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setDirectFieldEditModal(null);
-                  setDirectFieldEditResult(null);
-                }}
-                disabled={directFieldEditLoading}
-                style={{
-                  minWidth: 96,
-                  height: 38,
-                  border: "1px solid #cbd5e1",
-                  borderRadius: 10,
-                  background: "#f8fafc",
-                  color: "#334155",
-                  fontWeight: 900,
-                  cursor: directFieldEditLoading ? "not-allowed" : "pointer",
-                }}
-              >
-                Cancel
-              </button>
+              <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>
+                <span>{directPicklistFieldLabel(directFieldEditModal)}</span>
+                <select
+                  value={directPicklistInputValue(directFieldEditModal)}
+                  onChange={(event) => setDirectPicklistInputValue(directFieldEditModal, event.target.value)}
+                  disabled={directFieldPicklistsLoading || directFieldEditLoading}
+                  style={{
+                    width: "100%",
+                    maxWidth: "100%",
+                    boxSizing: "border-box",
+                    height: 42,
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 10,
+                    padding: "0 10px",
+                    fontWeight: 800,
+                    background: "#fff",
+                  }}
+                >
+                  <option value="">
+                    {directFieldPicklistsLoading ? "Loading..." : "Select..."}
+                  </option>
+                  {picklistOptionsForDirectField(directFieldEditModal).map((option: any) => {
+                    const value = optionValue(option);
+                    const label = optionLabel(option);
+                    return (
+                      <option key={`${value}-${label}`} value={value}>
+                        {label}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
 
-              <button
-                type="button"
-                onClick={() => savePicklistEditDialog(directFieldEditModal)}
-                disabled={directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal)}
-                style={{
-                  minWidth: 118,
-                  height: 38,
-                  border: "1px solid #16a34a",
-                  borderRadius: 10,
-                  background: directFieldEditLoading ? "#bbf7d0" : "#16a34a",
-                  color: "#fff",
-                  fontWeight: 900,
-                  cursor: directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal) ? "not-allowed" : "pointer",
-                }}
-              >
-                {directFieldEditLoading ? "Saving..." : "Save"}
-              </button>
+              {directFieldEditResult && !directFieldEditResult.ok && (
+                <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 12, padding: 10, fontSize: 13, fontWeight: 800 }}>
+                  {textValue(directFieldEditResult.error) || `${directPicklistFieldLabel(directFieldEditModal)} could not be updated.`}
+                </div>
+              )}
             </div>
-          </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 16px 16px", borderTop: "1px solid #e2e8f0", background: "#ffffff" }}>
+              <button type="button" onClick={() => { setDirectFieldEditModal(null); setDirectFieldEditResult(null); }} disabled={directFieldEditLoading} style={{ minWidth: 96, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#334155", fontWeight: 900, cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}>Cancel</button>
+              <button type="submit" disabled={directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal)} style={{ minWidth: 118, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal) ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal) ? "not-allowed" : "pointer" }}>{directFieldEditLoading ? "Saving..." : "Confirm Edit"}</button>
+            </div>
+          </form>
         </div>
       )}
 

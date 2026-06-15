@@ -6365,21 +6365,7 @@ function openClaimAmountEditDialog() {
                 )}
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    onClick={() => setMatterDocumentWorkflowStage("chooseAction")}
-                    style={{
-                      border: "1px solid #cbd5e1",
-                      background: "#fff",
-                      color: "#334155",
-                      borderRadius: 12,
-                      padding: "10px 14px",
-                      fontWeight: 900,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Back
-                  </button>
+                  
                   {actionButton(
                     documentPreviewLoading || finalizeUploadLoading ? "Finalizing..." : "Finalize Document",
                     () => finalizeMatterDocumentFromStep2(selectedTemplate),
@@ -6403,9 +6389,6 @@ function openClaimAmountEditDialog() {
               >
                 <div>
                   <h3 style={{ margin: 0, fontSize: 18 }}>Document Delivery</h3>
-                  <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
-                    These delivery actions use the finalized PDF from this direct matter's Clio Documents tab.  Email prepares a draft preview with the finalized PDF attached.  Print opens the finalized PDF.  Send to Print Queue adds the finalized PDF to the Barsh Matters print queue.
-                  </p>
                 </div>
                 <div style={{ display: "grid", gap: 10 }}>
                   <label style={{ display: "grid", gap: 6, maxWidth: 420 }}>
@@ -6454,9 +6437,6 @@ function openClaimAmountEditDialog() {
                 <div>
                   <h3 style={{ margin: 0, fontSize: 18 }}>Document Delivery</h3>
                   <span style={{ display: "none" }}>Document Delivery — Standalone</span>
-                  <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
-                    These delivery actions use the finalized PDF from this direct matter's Clio Documents tab.  Email prepares a draft preview with the finalized PDF attached.  Print opens the finalized PDF.  Send to Print Queue adds the finalized PDF to the Barsh Matters print queue.
-                  </p>
                 </div>
                 <div style={{ display: "grid", gap: 10 }}>
                   <label style={{ display: "grid", gap: 6, maxWidth: 420 }}>

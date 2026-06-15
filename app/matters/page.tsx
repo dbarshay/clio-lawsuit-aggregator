@@ -4801,6 +4801,80 @@ function masterSettlementDateFiledValue(): string {
       }
 
       setMasterDocumentDeliveryPreview(nextPreview);
+
+      const draft = preview?.draft || {};
+      const graphPreview = preview?.graphDraftPayloadPreview || {};
+      const readiness = graphPreview?.readiness || {};
+      const attachmentPlan = Array.isArray(graphPreview?.attachmentPlan)
+        ? graphPreview.attachmentPlan
+        : Array.isArray(draft?.attachments)
+          ? draft.attachments
+          : [];
+
+      const overrideTo = masterDocumentDeliveryToOverride.trim()
+        ? buildDocumentDeliveryToOverrideRecipient()
+        : undefined;
+
+      const createResponse = await fetch("/api/graph/create-draft?confirm=create-graph-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: "master_lawsuit",
+          context,
+          draft: {
+            ...draft,
+            ...(overrideTo ? { to: overrideTo } : {}),
+          },
+          ...(overrideTo ? {} : { graphDraftPayloadPreview: preview?.graphDraftPayloadPreview }),
+          to: overrideTo,
+          masterLawsuitId: context.masterLawsuitId,
+          matterId: context.masterLawsuitId,
+        }),
+      });
+
+      const createResult = await createResponse.json().catch(() => null);
+
+      if (!createResponse.ok || !createResult?.createsOutlookDraft) {
+        alert(
+          "Document Email Draft Preview Ready, But Draft Creation Failed\n\n" +
+            "No email was sent.\n\n" +
+            `Document: ${context.documentLabel || selectedTemplate?.label || "Document"}\n` +
+            `To: ${draft.to || "not resolved"}\n` +
+            `Cc / MailDrop: ${context.clioMaildropLabel || "MailDrop"} ${context.clioMaildropEmail ? "<" + context.clioMaildropEmail + ">" : "not resolved"}\n` +
+            `Subject: ${draft.subject || "not resolved"}\n` +
+            `Attachments planned: ${attachmentPlan.length}\n` +
+            `Ready for Graph draft creation: ${readiness.readyForGraphDraftCreate ? "Yes" : "No"}\n\n` +
+            `Error: ${createResult?.error || "Graph draft creation failed."}` +
+            (Array.isArray(createResult?.attachmentErrors) && createResult.attachmentErrors.length
+              ? "\n\nAttachment errors:\n" +
+                createResult.attachmentErrors
+                  .map((item: any) =>
+                    [
+                      item?.name ? "Name: " + item.name : "",
+                      item?.clioDocumentId ? "Clio Document ID: " + item.clioDocumentId : "",
+                      item?.error ? "Error: " + item.error : "",
+                    ].filter(Boolean).join("\n")
+                  )
+                  .join("\n\n")
+              : "")
+        );
+        return;
+      }
+
+      const outlookDraftUrl = String(createResult?.draft?.webLink || createResult?.draftMetadata?.webLink || createResult?.webLink || "").trim();
+      if (outlookDraftUrl) {
+        window.open(outlookDraftUrl, "_blank", "noopener,noreferrer");
+      }
+
+      setMasterDocumentDeliveryPreview({
+        ...nextPreview,
+        draftCreated: true,
+        outlookDraftUrl,
+        draftMetadata: createResult?.draftMetadata || createResult?.draft || null,
+        attachmentUploads: Array.isArray(createResult?.attachmentUploads) ? createResult.attachmentUploads : [],
+        attachmentErrors: Array.isArray(createResult?.attachmentErrors) ? createResult.attachmentErrors : [],
+        createError: "",
+      });
     } catch (error: any) {
       setMasterDocumentDeliveryPreview({
         ok: false,
@@ -5743,15 +5817,6 @@ function masterSettlementDateFiledValue(): string {
       return;
     }
 
-    const confirmed = confirm(
-      "FINALIZE PDF TO CLIO\n\n" +
-        "Document: " + (selectedTemplate.label || selectedTemplate.key) + "\n" +
-        "Lawsuit ID: " + masterLawsuitId + "\n\n" +
-        "Barsh Matters will convert the latest saved working Word document to PDF and upload the PDF to the mapped master Clio matter Documents tab.  Exact duplicate filenames are skipped.\n\n" +
-        "Continue?"
-    );
-
-    if (!confirmed) return;
 
     setMasterDocumentFinalizing(true);
     setMasterFinalizeUploadLoading(true);
@@ -5789,7 +5854,6 @@ function masterSettlementDateFiledValue(): string {
       setMasterDocumentFinalizationResult(json);
       setMasterDocumentWorkflowStage("delivery");
 
-      setMasterDocumentDeliveryPopupOpen(true);
       await loadMasterClioDocuments();
 
       const uploadedCount = Array.isArray(json.uploaded) ? json.uploaded.length : 0;
@@ -5798,13 +5862,6 @@ function masterSettlementDateFiledValue(): string {
         ? json.uploaded.map((doc: any) => clean(doc?.filename)).filter(Boolean)
         : [];
 
-      alert(
-        "Document finalization complete.\n\n" +
-          "Uploaded to Clio: " + uploadedCount + " document(s).\n" +
-          "Skipped duplicates: " + skippedCount + " document(s).\n\n" +
-          (uploadedNames.length ? "Final PDF: " + uploadedNames.join(", ") + "\n\n" : "") +
-          "Opening Document Delivery."
-      );
     } catch (err: any) {
       const result = {
         ok: false,
@@ -6784,65 +6841,50 @@ function masterSettlementDateFiledValue(): string {
     const showFinalizeStep = masterDocumentWorkflowStage === "finalize";
     const showDeliveryStep = masterDocumentWorkflowStage === "delivery";
 
-    const stepBadge = (step: number, label: string, active: boolean, complete = false) => (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "6px 8px",
-          borderRadius: 999,
-          border: active ? "1px solid #4f46e5" : "1px solid #e5e7eb",
-          background: active ? "#eef2ff" : complete ? "#f0fdf4" : "#f9fafb",
-          color: active ? "#3730a3" : complete ? "#166534" : "#374151",
-          fontSize: 12,
-          fontWeight: 900,
-          whiteSpace: "nowrap",
-        }}
-      >
+    const stepBadge = (step: number, label: string, active: boolean, complete: boolean) => {
+      const isComplete = complete;
+      const isActive = active && !complete;
+
+      const badgeBackground = isComplete ? "#16a34a" : isActive ? "#dcfce7" : "#dcfce7";
+      const badgeBorder = isComplete ? "#16a34a" : isActive ? "#bbf7d0" : "#bbf7d0";
+      const badgeColor = isComplete ? "#ffffff" : "#166534";
+      const circleBackground = isComplete ? "#15803d" : isActive ? "#16a34a" : "#bbf7d0";
+      const circleColor = isComplete || isActive ? "#ffffff" : "#166534";
+
+      return (
         <span
           style={{
             display: "inline-flex",
             alignItems: "center",
-            justifyContent: "center",
-            width: 22,
-            height: 22,
+            gap: 8,
+            padding: "7px 12px",
             borderRadius: 999,
-            background: active ? "#4f46e5" : complete ? "#16a34a" : "#e5e7eb",
-            color: active || complete ? "#fff" : "#374151",
+            border: `1px solid ${badgeBorder}`,
+            background: badgeBackground,
+            color: badgeColor,
+            fontSize: 13,
+            fontWeight: 950,
           }}
         >
-          {step}
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 22,
+              height: 22,
+              borderRadius: 999,
+              background: circleBackground,
+              color: circleColor,
+              fontWeight: 950,
+            }}
+          >
+            {step}
+          </span>
+          {label}
         </span>
-        {label}
-      </div>
-    );
-
-    const actionButton = (
-      label: string,
-      onClick: () => void,
-      disabled = false,
-      title?: string
-    ) => (
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={disabled}
-        title={title}
-        style={{
-          border: disabled ? "1px solid #d1d5db" : "1px solid #4f46e5",
-          background: disabled ? "#f3f4f6" : "#4f46e5",
-          color: disabled ? "#6b7280" : "#fff",
-          borderRadius: 12,
-          padding: "10px 14px",
-          fontWeight: 900,
-          cursor: disabled ? "not-allowed" : "pointer",
-          boxShadow: disabled ? "none" : "0 10px 20px rgba(79, 70, 229, 0.18)",
-        }}
-      >
-        {label}
-      </button>
-    );
+      );
+    };
 
     const stepArrow = (completed: boolean) => (
       <div
@@ -6862,6 +6904,27 @@ function masterSettlementDateFiledValue(): string {
       </div>
     );
 
+    const actionButton = (label: string, onClick: () => void, disabled = false, title = "") => (
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        title={title}
+        style={{
+          border: disabled ? "1px solid #cbd5e1" : "1px solid #1e3a8a",
+          background: disabled ? "#f8fafc" : "#1e3a8a",
+          color: disabled ? "#94a3b8" : "#ffffff",
+          borderRadius: 12,
+          padding: "10px 14px",
+          fontWeight: 900,
+          cursor: disabled ? "not-allowed" : "pointer",
+          boxShadow: disabled ? "none" : "0 8px 18px rgba(30, 58, 138, 0.22)",
+        }}
+      >
+        {label}
+      </button>
+    );
+
     const step1Complete = masterDocumentWorkflowStage !== "select";
     const step2Complete =
       masterDocumentWorkflowStage === "finalize" || masterDocumentWorkflowStage === "delivery";
@@ -6872,6 +6935,9 @@ function masterSettlementDateFiledValue(): string {
         role="dialog"
         aria-modal="true"
         aria-label="Master Lawsuit Document Generation"
+        onClick={() => setMasterDocumentGenerationPopupOpen(false)}
+        onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setMasterDocumentGenerationPopupOpen(false); } }}
+        tabIndex={-1}
         style={{
           position: "fixed",
           inset: 0,
@@ -6896,34 +6962,32 @@ function masterSettlementDateFiledValue(): string {
           }}
         >
           <div
+            data-barsh-master-document-generation-header-standard="true"
             style={{
-              padding: "22px 24px",
-              borderBottom: "1px solid #e5e7eb",
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              gap: 18,
+              display: "grid",
+              gridTemplateColumns: "90px minmax(0, 1fr) 90px",
+              alignItems: "center",
+              gap: 14,
+              padding: "16px 20px",
+              borderBottom: "1px solid #1e3a8a",
+              background: "#1e3a8a",
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
             }}
           >
-            <div>
-              <h2 style={{ margin: 0, fontSize: 22 }}>
-                {isSettlementDocumentMode ? "Settlement Document Generation" : "Document Generation"}
-              </h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => setMasterDocumentGenerationPopupOpen(false)}
+            <span aria-hidden="true" />
+            <h2
               style={{
-                border: "1px solid #d1d5db",
-                background: "#fff",
-                borderRadius: 999,
-                padding: "8px 12px",
-                fontWeight: 900,
-                cursor: "pointer",
+                margin: 0,
+                fontSize: 20,
+                fontWeight: 950,
+                color: "#ffffff",
+                textAlign: "center",
               }}
             >
-              Close
-            </button>
+              {isSettlementDocumentMode ? "Settlement Document Generation" : "Document Generation"}
+            </h2>
+            <span data-barsh-standard-modal-close="removed" aria-hidden="true" />
           </div>
 
           <div style={{ padding: 24, display: "grid", gap: 18 }}>
@@ -6964,9 +7028,7 @@ function masterSettlementDateFiledValue(): string {
               <div>
                 <h3 style={{ margin: 0, fontSize: 18 }}>Step 1: Select Document</h3>
                 <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
-                  {isSettlementDocumentMode
-                    ? "Choose one of the settlement documents from the Barsh Matters document-template repository.  The current seeded settlement templates are Settlement Summary, Provider Remittance Breakdown, and Attorney Fee Breakdown."
-                    : "Start typing to filter available document templates.  Stored local DOCX templates appear first when available; placeholder fallbacks remain available for testing."}
+                  Select the document template for this matter.
                 </p>
                 {isSettlementDocumentMode && (
                   <p style={{ margin: "6px 0 0", color: masterDocumentRepositoryTemplatesError ? "#991b1b" : "#64748b", lineHeight: 1.45, fontWeight: masterDocumentRepositoryTemplatesError ? 900 : 700 }}>
@@ -6997,7 +7059,7 @@ function masterSettlementDateFiledValue(): string {
                       setMasterDocumentWorkflowStage("select");
                     }
                   }}
-                  placeholder={isSettlementDocumentMode ? "Choose Settlement Summary, Provider Remittance Breakdown, or Attorney Fee Breakdown." : "Start typing or choose a document..."}
+                  placeholder="Select document template"
                   style={{
                     width: "100%",
                     boxSizing: "border-box",
@@ -7054,17 +7116,64 @@ function masterSettlementDateFiledValue(): string {
               </div>
             </section>
 
+            {masterDocumentWorkflowStage === "select" && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 14,
+                  padding: "14px 0 0",
+                  borderTop: "1px solid #e5e7eb",
+                }}
+              >
+                <button
+                  type="button"
+                  disabled
+                  style={{
+                    minWidth: 118,
+                    height: 38,
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 10,
+                    background: "#f8fafc",
+                    color: "#94a3b8",
+                    fontWeight: 900,
+                    cursor: "not-allowed",
+                  }}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMasterDocumentGenerationPopupOpen(false)}
+                  style={{
+                    minWidth: 118,
+                    height: 38,
+                    border: "1px solid #dc2626",
+                    borderRadius: 10,
+                    background: "#dc2626",
+                    color: "#ffffff",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
+
             <section
               style={{
                 border: "1px solid #e5e7eb",
                 borderRadius: 18,
                 padding: 18,
                 background: "#fff",
-                display: showActionStep ? "grid" : "none",
+                display: showActionStep || showPreviewStep || showEditStep ? "grid" : "none",
                 gap: 14,
               }}
             >
-              <div>
+              <div style={{ display: showActionStep ? "block" : "none" }}>
                 <h3 style={{ margin: 0, fontSize: 18 }}>Step 2: Preview PDF / Edit / Finalize</h3>
                 <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
                   {displayedSelectedTemplate
@@ -7073,8 +7182,8 @@ function masterSettlementDateFiledValue(): string {
                 </p>
               </div>
 
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {actionButton(
+              <div style={{ display: showActionStep ? "flex" : "none", gap: 10, flexWrap: "wrap" }}>
+{actionButton(
                   "Preview PDF",
                   () => launchMasterStep2PdfPreview(displayedSelectedTemplate),
                   !displayedSelectedTemplate,
@@ -7094,25 +7203,21 @@ function masterSettlementDateFiledValue(): string {
                 )}
               </div>
 
-              {masterDocumentWorkflowStage === "preview" && displayedSelectedTemplate && (
+              {masterDocumentWorkflowStage === "preview" && (
                 <div
                   style={{
-                    border: "1px solid #bfdbfe",
-                    background: "#eff6ff",
-                    borderRadius: 14,
-                    padding: 14,
-                    color: "#1e3a8a",
-                    lineHeight: 1.45,
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 18,
+                    padding: 18,
+                    background: "#fff",
+                    display: "grid",
+                    gap: 14,
                   }}
                 >
-                  <strong>Preview shell:</strong> {displayedSelectedTemplate?.label || "Selected document"} opens in the Barsh Matters preview shell using the current master lawsuit or settlement document packet.  No final file is created until the workflow is finalized.
-                  <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-                    <div><strong>Lawsuit ID:</strong> {masterDocumentPreviewText(templateFields.masterLawsuitId || uiFields.masterLawsuitId) || "—"}</div>
-                    <div><strong>Provider:</strong> {masterDocumentPreviewText(templateFields.providerName || claimIndexFields.providerName) || "—"}</div>
-                    <div><strong>Patient:</strong> {masterDocumentPreviewText(templateFields.patientName || claimIndexFields.patientName) || "—"}</div>
-                    <div><strong>Insurer:</strong> {masterDocumentPreviewText(templateFields.insurerName || claimIndexFields.insurerName) || "—"}</div>
-                    <div><strong>Claim:</strong> {masterDocumentPreviewText(templateFields.claimNumber || claimIndexFields.claimNumber) || "—"}</div>
-                    <div><strong>Lawsuit Amount:</strong> {money(templateFields.lawsuitAmount || uiFields.lawsuitAmount)}</div>
+                  <h3 style={{ margin: 0, fontSize: 18 }}>Preview PDF</h3>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    
+                    {actionButton(masterFinalizeUploadLoading || masterDocumentFinalizing ? "Finalizing..." : "Finalize Document", () => finalizeMasterDocumentFromStep2(displayedSelectedTemplate), masterFinalizeUploadLoading || masterDocumentFinalizing)}
                   </div>
                 </div>
               )}
@@ -7153,8 +7258,8 @@ function masterSettlementDateFiledValue(): string {
                       }}
                       disabled={!masterDocumentFinalizationResult?.workingDocument?.msWordEditUrl}
                       style={{
-                        border: "1px solid #7c3aed",
-                        background: "#4f46e5",
+                        border: "1px solid #1e3a8a",
+                        background: "#1e3a8a",
                         color: "#fff",
                         borderRadius: 12,
                         padding: "10px 14px",
@@ -7225,179 +7330,54 @@ function masterSettlementDateFiledValue(): string {
               )}
             </section>
 
-            {(showPreviewStep || showEditStep) && displayedSelectedTemplate && (
-              <section
+            {(showActionStep || showPreviewStep || showEditStep) && (
+              <div
                 style={{
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 18,
-                  padding: 18,
-                  background: "#fff",
-                  display: "grid",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
                   gap: 14,
+                  padding: "14px 0 0",
+                  borderTop: "1px solid #e5e7eb",
                 }}
               >
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 18 }}>
-                    {showPreviewStep ? "Preview PDF" : "Edit Document"}
-                  </h3>
-                  <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
-                    {showPreviewStep
-                      ? "Review the PDF preview before finalizing.  Barsh Matters creates a temporary working DOCX, converts it to PDF through Microsoft Graph, and opens the generated PDF in a new tab."
-                      : "Edit the generated working DOCX in Word Web, save your changes, then return here to finalize the document."}
-                  </p>
-                </div>
-
-                {showPreviewStep && (
-                  <div
-                    style={{
-                      border: "1px solid #bfdbfe",
-                      background: "#eff6ff",
-                      borderRadius: 14,
-                      padding: 14,
-                      color: "#1e3a8a",
-                      lineHeight: 1.45,
-                    }}
-                  >
-                    <strong>PDF preview generated:</strong> {displayedSelectedTemplate?.label || "Selected document"} is previewed through a temporary working DOCX converted to PDF.  No final Clio upload, email draft, or print queue record is created by preview.
-                    <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-                      <div><strong>Lawsuit ID:</strong> {masterDocumentPreviewText(masterDocumentDataPreview?.masterLawsuitId || templateFields.masterLawsuitId || uiFields.masterLawsuitId) || "—"}</div>
-                      <div><strong>Provider:</strong> {masterDocumentPreviewText(masterDocumentDataPreview?.settlementSummary?.provider || templateFields.providerName || claimIndexFields.providerName) || "—"}</div>
-                      <div><strong>Patient:</strong> {masterDocumentPreviewText(masterDocumentDataPreview?.settlementSummary?.patient || templateFields.patientName || claimIndexFields.patientName) || "—"}</div>
-                      <div><strong>Insurer:</strong> {masterDocumentPreviewText(masterDocumentDataPreview?.settlementSummary?.insurer || templateFields.insurerName || claimIndexFields.insurerName) || "—"}</div>
-                      <div><strong>Claim:</strong> {masterDocumentPreviewText(masterDocumentDataPreview?.settlementSummary?.claimNumber || templateFields.claimNumber || claimIndexFields.claimNumber) || "—"}</div>
-                      <div><strong>{isSettlementDocumentMode ? "Gross Settlement" : "Lawsuit Amount"}:</strong> {isSettlementDocumentMode ? money(masterDocumentDataPreview?.settlementSummary?.grossSettlementAmount) : money(templateFields.lawsuitAmount || uiFields.lawsuitAmount)}</div>
-                    </div>
-                  </div>
-                )}
-
-                {showEditStep && (
-                  <div
-                    style={{
-                      border: "1px solid #ddd6fe",
-                      background: "#f5f3ff",
-                      borderRadius: 14,
-                      padding: 14,
-                      color: "#4c1d95",
-                      lineHeight: 1.45,
-                      display: "grid",
-                      gap: 12,
-                    }}
-                  >
-                    <div>
-                      <strong>Working document ready.</strong> Open the newly created Word Web document, make your edits, wait until Word Web shows the document is saved, then return here and click Finalize Document.  Close older working-document tabs to avoid editing the wrong file.
-                    </div>
-
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const url = masterDocumentFinalizationResult?.workingDocument?.msWordEditUrl || "";
-                          if (!url) {
-                            alert("No desktop Word link is available for this working document.");
-                            return;
-                          }
-                          const link = document.createElement("a");
-                          link.href = url;
-                          link.style.display = "none";
-                          link.rel = "noopener noreferrer";
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }}
-                        disabled={!masterDocumentFinalizationResult?.workingDocument?.msWordEditUrl}
-                        style={{
-                          border: "1px solid #7c3aed",
-                          background: "#4f46e5",
-                          color: "#fff",
-                          borderRadius: 12,
-                          padding: "10px 14px",
-                          fontWeight: 900,
-                          cursor: masterDocumentFinalizationResult?.workingDocument?.msWordEditUrl ? "pointer" : "not-allowed",
-                          opacity: masterDocumentFinalizationResult?.workingDocument?.msWordEditUrl ? 1 : 0.55,
-                        }}
-                      >
-                        Try Desktop Word
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const url = masterDocumentFinalizationResult?.workingDocument?.webUrl || "";
-                          if (!url) {
-                            alert("No Word web link is available for this working document.");
-                            return;
-                          }
-                          window.open(url, "_blank", "noopener,noreferrer");
-                        }}
-                        disabled={!masterDocumentFinalizationResult?.workingDocument?.webUrl}
-                        style={{
-                          border: "1px solid #7c3aed",
-                          background: "#4f46e5",
-                          color: "#fff",
-                          borderRadius: 12,
-                          padding: "10px 14px",
-                          fontWeight: 900,
-                          cursor: masterDocumentFinalizationResult?.workingDocument?.webUrl ? "pointer" : "not-allowed",
-                          opacity: masterDocumentFinalizationResult?.workingDocument?.webUrl ? 1 : 0.55,
-                        }}
-                      >
-                        Open in Word Web
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const url = masterDocumentFinalizationResult?.workingDocument?.webUrl || "";
-                          if (!url) {
-                            alert("No Word web link is available to copy.");
-                            return;
-                          }
-                          try {
-                            await navigator.clipboard.writeText(url);
-                            alert("Word web link copied.");
-                          } catch {
-                            alert("Could not copy the Word web link automatically.");
-                          }
-                        }}
-                        disabled={!masterDocumentFinalizationResult?.workingDocument?.webUrl}
-                        style={{
-                          border: "1px solid #7c3aed",
-                          background: "#4f46e5",
-                          color: "#fff",
-                          borderRadius: 12,
-                          padding: "10px 14px",
-                          fontWeight: 900,
-                          cursor: masterDocumentFinalizationResult?.workingDocument?.webUrl ? "pointer" : "not-allowed",
-                          opacity: masterDocumentFinalizationResult?.workingDocument?.webUrl ? 1 : 0.55,
-                        }}
-                      >
-                        Copy Word Web Link
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    onClick={() => setMasterDocumentWorkflowStage("chooseAction")}
-                    style={{
-                      border: "1px solid #cbd5e1",
-                      background: "#fff",
-                      color: "#334155",
-                      borderRadius: 12,
-                      padding: "10px 14px",
-                      fontWeight: 900,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Back
-                  </button>
-                  {actionButton(masterFinalizeUploadLoading || masterDocumentFinalizing ? "Finalizing..." : "Finalize Document", () => finalizeMasterDocumentFromStep2(displayedSelectedTemplate), masterFinalizeUploadLoading || masterDocumentFinalizing)}
-                </div>
-              </section>
+                <button
+                  type="button"
+                  onClick={() => setMasterDocumentWorkflowStage(showPreviewStep || showEditStep ? "chooseAction" : "select")}
+                  style={{
+                    minWidth: 118,
+                    height: 38,
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 10,
+                    background: "#ffffff",
+                    color: "#334155",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMasterDocumentGenerationPopupOpen(false)}
+                  style={{
+                    minWidth: 118,
+                    height: 38,
+                    border: "1px solid #dc2626",
+                    borderRadius: 10,
+                    background: "#dc2626",
+                    color: "#ffffff",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
             )}
 
+
+            
             <section
               style={{
                 border: "1px solid #e5e7eb",
@@ -7522,68 +7502,7 @@ function masterSettlementDateFiledValue(): string {
               </section>
             )}
 
-            {masterFinalizeUploadResult && (
-              <section
-                style={{
-                  border: masterFinalizeUploadResult.ok ? "1px solid #86efac" : "1px solid #fecaca",
-                  borderRadius: 18,
-                  padding: 18,
-                  background: masterFinalizeUploadResult.ok ? "#f0fdf4" : "#fef2f2",
-                  display: "grid",
-                  gap: 8,
-                }}
-              >
-                <h3 style={{ margin: 0, fontSize: 18 }}>
-                  {masterFinalizeUploadResult.ok ? "Master Final Upload Complete" : "Master Final Upload Failed"}
-                </h3>
-
-                <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
-                  {masterFinalizeUploadResult.ok
-                    ? `Uploaded ${Array.isArray(masterFinalizeUploadResult.uploaded) ? masterFinalizeUploadResult.uploaded.length : 0} document(s) to the mapped master Clio matter.`
-                    : masterFinalizeUploadResult.error || "Master final upload failed."}
-                </p>
-
-                {Array.isArray(masterFinalizeUploadResult.uploaded) && masterFinalizeUploadResult.uploaded.length > 0 && (
-                  <div>
-                    <strong>Uploaded:</strong>{" "}
-                    {masterFinalizeUploadResult.uploaded
-                      .map((doc: any) => masterDocumentPreviewText(doc?.label) || masterDocumentPreviewText(doc?.filename) || masterDocumentPreviewText(doc?.clioDocumentId))
-                      .filter(Boolean)
-                      .join(", ")}
-                  </div>
-                )}
-
-                {Array.isArray(masterFinalizeUploadResult.skipped) && masterFinalizeUploadResult.skipped.length > 0 && (
-                  <div>
-                    <strong>Skipped:</strong>{" "}
-                    {masterFinalizeUploadResult.skipped
-                      .map((doc: any) => masterDocumentPreviewText(doc?.label) || masterDocumentPreviewText(doc?.filename) || masterDocumentPreviewText(doc?.reason))
-                      .filter(Boolean)
-                      .join(", ")}
-                  </div>
-                )}
-
-                {masterFinalizeUploadResult.ok && (
-                  <div style={{ display: "flex", justifyContent: "flex-start", marginTop: 8 }}>
-                    <button
-                      type="button"
-                      onClick={() => setMasterDocumentDeliveryPopupOpen(true)}
-                      style={{
-                        border: "1px solid #2563eb",
-                        background: "#2563eb",
-                        color: "#fff",
-                        borderRadius: 12,
-                        padding: "10px 14px",
-                        fontWeight: 950,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Open Delivery Options
-                    </button>
-                  </div>
-                )}
-              </section>
-            )}
+            
 
             {masterSettlementUploadNotice && (
               <section
@@ -7636,7 +7555,7 @@ function masterSettlementDateFiledValue(): string {
                         masterDocumentPrintQueueLoading || !masterDocumentFinalizationResult?.finalizationRecord?.id
                       )}
                       {actionButton(
-                        "Save Finalized PDF",
+                        "Save Locally",
                         () => saveMasterSettlementDocumentLocally(displayedSelectedTemplate),
                         !masterDocumentFinalizationResult?.finalizationRecord?.id
                       )}
@@ -7652,13 +7571,13 @@ function masterSettlementDateFiledValue(): string {
                         title="Create an Outlook draft with the finalized settlement PDF attached from the mapped master Clio matter."
                         style={{
                           border: "none",
-                          background: masterDocumentFinalizationResult?.finalizationRecord?.id ? "#4f46e5" : "#c7d2fe",
+                          background: masterDocumentFinalizationResult?.finalizationRecord?.id ? "#1e3a8a" : "#cbd5e1",
                           color: "#fff",
                           borderRadius: 14,
                           padding: "12px 16px",
                           fontWeight: 900,
                           cursor: masterDocumentFinalizationResult?.finalizationRecord?.id ? "pointer" : "not-allowed",
-                          boxShadow: "0 10px 25px rgba(79,70,229,0.18)",
+                          boxShadow: "0 10px 25px rgba(30,58,138,0.18)",
                         }}
                       >
                         Email Finalized Document
@@ -7682,67 +7601,89 @@ function masterSettlementDateFiledValue(): string {
                     </div>
                   </div>
                 ) : (
-                  <div
-                    style={{
-                      border: "1px solid #fed7aa",
-                      background: "#fff7ed",
-                      color: "#9a3412",
-                      borderRadius: 14,
-                      padding: 14,
-                      fontWeight: 850,
-                      lineHeight: 1.45,
-                    }}
-                  >
-                    Email, print, and queue actions remain hidden until finalized-document delivery is wired.  The current production action is explicit upload to the mapped master Clio matter.
+                  <div style={{ display: "grid", gap: 10 }}>
+                    <label style={{ display: "grid", gap: 6, maxWidth: 420 }}>
+                      <span style={{ fontWeight: 850, color: "#334155" }}>To Email for Document Delivery</span>
+                      <input
+                        value={masterDocumentDeliveryToOverride}
+                        onChange={(event) => setMasterDocumentDeliveryToOverride(event.target.value)}
+                        placeholder="Recipient email"
+                        style={{
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 10,
+                          padding: "9px 10px",
+                          fontWeight: 750,
+                        }}
+                      />
+                      {masterDocumentDeliveryToOverride.trim() && !isValidDocumentDeliveryEmail(masterDocumentDeliveryToOverride) && (
+                        <span style={{ color: "#b91c1c", fontSize: 12, fontWeight: 800 }}>Enter a valid email address.</span>
+                      )}
+                    </label>
+
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      {actionButton(
+                        "Email Document",
+                        () => launchMasterDocumentEmail(displayedSelectedTemplate),
+                        Boolean(masterDocumentDeliveryToOverride.trim()) && !isValidDocumentDeliveryEmail(masterDocumentDeliveryToOverride),
+                        "Create an Outlook draft with the finalized PDF attached."
+                      )}
+                      {actionButton("Print Document", () => launchMasterDocumentPrint(displayedSelectedTemplate), false, "Open the finalized PDF/printable document.")}
+                      {actionButton("Send to Print Queue", () => sendMasterDocumentToPrintQueue(displayedSelectedTemplate), false, "Send this finalized document to the shared Barsh Matters print queue.")}
+                    </div>
                   </div>
                 )}
               </section>
             )}
 
-            {masterDocumentPrintResult && (
-              <section
+
+            {showDeliveryStep && (
+              <div
+                data-barsh-master-generate-documents-delivery-footer="true"
                 style={{
-                  border: masterDocumentPrintResult.ok ? "1px solid #c4b5fd" : "1px solid #fecaca",
-                  borderRadius: 18,
-                  padding: 18,
-                  background: masterDocumentPrintResult.ok ? "#f5f3ff" : "#fef2f2",
-                  display: "grid",
-                  gap: 8,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 14,
+                  padding: "14px 0 0",
+                  borderTop: "1px solid #e5e7eb",
                 }}
               >
-                <h3 style={{ margin: 0, fontSize: 18 }}>
-                  {masterDocumentPrintResult.ok
-                    ? masterDocumentPrintResult.action === "settlement-document-finalized-pdf-save-local-opened"
-                      ? "Finalized PDF Save Opened"
-                      : masterDocumentPrintResult.action === "settlement-document-print-dialog-opened" || masterDocumentPrintResult.action === "settlement-document-finalized-pdf-print-opened"
-                        ? "Print Dialog Opened"
-                        : "DOCX Route Opened"
-                    : "Print Launch Failed"}
-                </h3>
-                <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
-                  {masterDocumentPrintResult.ok
-                    ? masterDocumentPrintResult.action === "settlement-document-finalized-pdf-save-local-opened"
-                      ? "The finalized settlement PDF from the mapped master Clio matter Documents tab was opened for local saving.  No new PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent."
-                      : masterDocumentPrintResult.action === "settlement-document-finalized-pdf-print-opened"
-                        ? "The finalized settlement PDF from the mapped master Clio matter Documents tab was opened for printing.  No new PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent."
-                        : masterDocumentPrintResult.action === "settlement-document-print-dialog-opened"
-                          ? "A local printable settlement document view was opened and the browser print dialog was launched.  No PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent."
-                        : "The placeholder-seeded generated DOCX route was opened.  This is not a final production template/document.  No PDF was generated, no Clio upload occurred, no Outlook draft was created, and no email was sent."
-                    : masterDocumentPrintResult.error || "Could not open the generated settlement document route."}
-                </p>
-                {masterDocumentPrintResult?.docxDownloadUrl && (
-                  <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
-                    Local save DOCX route: <strong>{masterDocumentPrintResult.docxDownloadUrl}</strong>
-                  </p>
-                )}
-                {masterDocumentPrintResult?.printableUrl && (
-                  <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
-                    Printable local route: <strong>{masterDocumentPrintResult.printableUrl}</strong>
-                  </p>
-                )}
-              </section>
+                <button
+                  type="button"
+                  onClick={() => setMasterDocumentWorkflowStage("chooseAction")}
+                  style={{
+                    minWidth: 118,
+                    height: 38,
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 10,
+                    background: "#ffffff",
+                    color: "#334155",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMasterDocumentGenerationPopupOpen(false)}
+                  style={{
+                    minWidth: 118,
+                    height: 38,
+                    border: "1px solid #dc2626",
+                    borderRadius: 10,
+                    background: "#dc2626",
+                    color: "#ffffff",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
             )}
 
+            
             {masterDocumentPrintQueueResult && (
               <section
                 style={{

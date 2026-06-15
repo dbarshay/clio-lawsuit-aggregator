@@ -1304,6 +1304,27 @@ export default function FilteredMattersPage() {
     }
   }
 
+  function masterViewDocumentListDisplayName(doc: any): string {
+    const raw = masterDocumentPreviewText(doc?.latestDocumentVersion?.filename) || masterDocumentPreviewText(doc?.clioDocumentFilename) || masterDocumentPreviewText(doc?.clioDocumentName);
+    if (!raw) return "Untitled";
+    const parts = raw.split(" - ").map((part) => part.trim()).filter(Boolean);
+    return parts.length > 1 ? parts[parts.length - 1] : raw;
+  }
+
+  function formatMasterDocumentUploadedSavedDate(value: unknown): string {
+    const raw = masterDocumentPreviewText(value);
+    if (!raw) return "—";
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) return raw;
+    return date.toLocaleString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
+
   function masterClioDocumentsArray(): any[] {
     return Array.isArray(masterClioDocumentsResult?.documents)
       ? masterClioDocumentsResult.documents
@@ -1329,16 +1350,18 @@ export default function FilteredMattersPage() {
   }
 
   function renderMasterViewDocumentsPopup() {
-    if (!masterViewDocumentsPopupOpen) return null;
+    if (masterViewDocumentsPopupOpen === false) return null;
 
     const docs = masterClioDocumentsArray();
-    const selectedDoc = selectedMasterViewDocument();
 
     return (
       <div
         role="dialog"
         aria-modal="true"
         aria-label="View Lawsuit Documents"
+        tabIndex={-1}
+        onClick={closeMasterViewDocumentsPopup}
+        onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeMasterViewDocumentsPopup(); } }}
         style={{
           position: "fixed",
           inset: 0,
@@ -1355,334 +1378,60 @@ export default function FilteredMattersPage() {
           style={{
             width: "min(920px, 96vw)",
             maxHeight: "88vh",
-            overflow: "auto",
-            border: "1px solid #cbd5e1",
-            borderRadius: 22,
+            overflow: "hidden",
+            border: "1px solid #1e3a8a",
+            borderRadius: 18,
             background: "#ffffff",
             boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
           }}
         >
-          <div
-            style={{
-              position: "sticky",
-              top: 0,
-              zIndex: 2,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              gap: 14,
-              padding: "18px 20px",
-              borderBottom: "1px solid #e5e7eb",
-              background: "#ffffff",
-              borderTopLeftRadius: 22,
-              borderTopRightRadius: 22,
-            }}
-          >
-            <div>
-              <h2 style={{ margin: 0, fontSize: 22 }}>View Lawsuit Documents</h2>
-              <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: 13, lineHeight: 1.45 }}>
-                Pick a document from the mapped Clio master matter Documents tab.  This popup is read-only and does not upload, download, generate, email, print, queue, or write anything.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={closeMasterViewDocumentsPopup}
-              disabled={masterClioDocumentsLoading}
-              style={{
-                border: "1px solid #cbd5e1",
-                borderRadius: 999,
-                background: "#f8fafc",
-                color: "#0f172a",
-                padding: "8px 12px",
-                fontWeight: 900,
-                cursor: masterClioDocumentsLoading ? "not-allowed" : "pointer",
-              }}
-            >
-              Close
-            </button>
+          <div style={{ padding: "16px 20px", background: "#1e3a8a", color: "#ffffff", textAlign: "center", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 950, color: "#ffffff" }}>View Lawsuit Documents</h2>
           </div>
 
-          <div style={{ padding: 20, display: "grid", gap: 14 }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-                flexWrap: "wrap",
-              }}
-            >
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ padding: "4px 8px", borderRadius: 999, border: "1px solid #cbd5e1", background: "#f8fafc", fontSize: 12, fontWeight: 850 }}>
-                  Lawsuit ID: {currentMasterLawsuitIdForDocumentPreview() || "—"}
-                </span>
-                <span style={{ padding: "4px 8px", borderRadius: 999, border: "1px solid #cbd5e1", background: "#f8fafc", fontSize: 12, fontWeight: 850 }}>
-                  Clio Matter ID: {masterDocumentPreviewText(masterClioDocumentsResult?.clioMatterId) || "—"}
-                </span>
-                <span style={{ padding: "4px 8px", borderRadius: 999, border: "1px solid #cbd5e1", background: "#f8fafc", fontSize: 12, fontWeight: 850 }}>
-                  Clio Display: {masterDocumentPreviewText(masterClioDocumentsResult?.clioDisplayNumber) || "—"}
-                </span>
-                <span style={{ padding: "4px 8px", borderRadius: 999, border: "1px solid #cbd5e1", background: "#f8fafc", fontSize: 12, fontWeight: 850 }}>
-                  Documents: {masterClioDocumentsResult?.summary?.documentCount ?? docs.length}
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => void loadMasterClioDocuments()}
-                disabled={masterClioDocumentsLoading}
-                style={{
-                  border: "1px solid #1d4ed8",
-                  background: masterClioDocumentsLoading ? "#dbeafe" : "#2563eb",
-                  color: "#ffffff",
-                  borderRadius: 999,
-                  padding: "8px 12px",
-                  fontWeight: 900,
-                  cursor: masterClioDocumentsLoading ? "not-allowed" : "pointer",
-                }}
-              >
-                {masterClioDocumentsLoading ? "Refreshing..." : "Refresh Documents"}
-              </button>
-            </div>
-
-            {masterClioDocumentsResult && !masterClioDocumentsResult.ok && (
+          <div style={{ padding: 20, display: "grid", gap: 14, maxHeight: "calc(88vh - 154px)", overflowY: "auto" }}>
+            {masterClioDocumentsResult?.ok === false && (
               <div style={{ padding: 12, border: "1px solid #fecaca", borderRadius: 10, background: "#fef2f2", color: "#991b1b", fontWeight: 850 }}>
                 {masterDocumentPreviewText(masterClioDocumentsResult.error) || "Could not load Clio documents."}
               </div>
             )}
 
             {masterClioDocumentsLoading && (
-              <div style={{ padding: 12, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#475569", fontWeight: 800 }}>
-                Loading documents from Clio...
-              </div>
+              <div style={{ padding: 12, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#475569", fontWeight: 800 }}>Loading documents from Clio...</div>
             )}
 
             {masterClioDocumentsResult?.ok && docs.length === 0 && (
-              <div style={{ padding: 12, border: "1px dashed #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#64748b", fontWeight: 800 }}>
-                No documents are currently listed in the mapped Clio master matter Documents tab.
-              </div>
+              <div style={{ padding: 12, border: "1px dashed #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#64748b", fontWeight: 800 }}>No documents are currently listed in the mapped Clio master matter Documents tab.</div>
             )}
 
             {docs.length > 0 && (
-              <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 0.9fr) minmax(300px, 1.1fr)", gap: 12, alignItems: "start" }}>
-                <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
-                  {docs.map((doc: any) => {
-                    const id = masterDocumentPreviewText(doc.clioDocumentId);
-                    const selected = id && id === masterSelectedViewDocumentId;
-
-                    return (
-                      <button
-                        key={id || masterDocumentPreviewText(doc.clioDocumentName)}
-                        type="button"
-                        onClick={() => setMasterSelectedViewDocumentId(id)}
-                        style={{
-                          display: "block",
-                          width: "100%",
-                          textAlign: "left",
-                          border: 0,
-                          borderBottom: "1px solid #e5e7eb",
-                          background: selected ? "#eff6ff" : "#ffffff",
-                          color: "#0f172a",
-                          padding: 12,
-                          cursor: "pointer",
-                        }}
-                      >
-                        <div style={{ marginBottom: 6 }}>
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              border: "1px solid #cbd5e1",
-                              borderRadius: 999,
-                              padding: "3px 7px",
-                              background: doc.sourceRole === "lawsuit" ? "#ecfdf5" : "#eff6ff",
-                              color: doc.sourceRole === "lawsuit" ? "#166534" : "#1d4ed8",
-                              fontSize: 11,
-                              fontWeight: 950,
-                            }}
-                          >
-                            {masterDocumentPreviewText(doc.sourceLabel) || "—"}
-                          </span>
-                        </div>
-                        <div style={{ fontWeight: 950 }}>{masterDocumentPreviewText(doc.clioDocumentName) || masterDocumentPreviewText(doc.clioDocumentFilename) || "Untitled"}</div>
-                        <div style={{ marginTop: 4, color: "#64748b", fontSize: 12, fontWeight: 700 }}>
-                          {masterDocumentPreviewText(doc.latestDocumentVersion?.filename) || masterDocumentPreviewText(doc.clioDocumentFilename) || "No filename"}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div style={{ border: "1px solid #cbd5e1", borderRadius: 12, padding: 12, background: "#f8fafc", minHeight: 180 }}>
-                  {selectedDoc ? (
-                    <>
-                      <div style={{ fontSize: 12, fontWeight: 950, letterSpacing: "0.08em", textTransform: "uppercase", color: "#475569" }}>
-                        Selected Document
+              <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
+                {docs.map((doc: any) => {
+                  const id = masterDocumentPreviewText(doc.clioDocumentId);
+                  const displayName = masterViewDocumentListDisplayName(doc);
+                  const contentType = masterDocumentPreviewText(doc.latestDocumentVersion?.contentType).toLowerCase();
+                  const opensInline = displayName.toLowerCase().endsWith(".pdf") || contentType.includes("pdf");
+                  const opensEmail = displayName.toLowerCase().endsWith(".eml") || contentType.includes("message/rfc822") || contentType.includes("eml");
+                  const opensWord = displayName.toLowerCase().endsWith(".docx") || displayName.toLowerCase().endsWith(".doc") || contentType.includes("word") || contentType.includes("docx") || contentType.includes("msword");
+                  const selected = Boolean(id) && id === masterSelectedViewDocumentId;
+                  return (
+                    <button key={id || masterDocumentPreviewText(doc.clioDocumentName)} type="button" title={opensInline ? "Select and open PDF in a new tab." : opensEmail ? "Select and open email as PDF." : opensWord ? "Select and open document in Word." : "Select document."} onClick={() => { if (!id) return; setMasterSelectedViewDocumentId(id); const params = new URLSearchParams(); params.set("documentId", id); params.set("filename", displayName); if (opensInline) { params.set("mode", "inline"); window.open("/api/documents/clio-document-open?" + params.toString(), "_blank", "noopener,noreferrer"); return; } if (opensEmail) { params.set("mode", "email-pdf"); window.open("/api/documents/clio-document-open?" + params.toString(), "_blank", "noopener,noreferrer"); return; } if (opensWord) { params.set("mode", "edit"); const editUrl = window.location.origin + "/api/documents/clio-document-open?" + params.toString(); window.location.href = "ms-word:ofe|u|" + editUrl; return; } }} style={{ display: "block", width: "100%", textAlign: "left", border: 0, borderBottom: "1px solid #e5e7eb", background: selected ? "#eff6ff" : "#ffffff", color: "#0f172a", padding: 12, cursor: id ? "pointer" : "not-allowed", opacity: id ? 1 : 0.6 }}>
+                      <div style={{ fontWeight: 950 }}>{displayName}</div>
+                      <div style={{ marginTop: 4, color: "#64748b", fontSize: 12, fontWeight: 700 }}>
+                        Uploaded/Saved: {formatMasterDocumentUploadedSavedDate(doc.updatedAt || doc.latestDocumentVersion?.updatedAt)}
                       </div>
-                      <h3 style={{ margin: "6px 0 10px", fontSize: 18 }}>
-                        {masterDocumentPreviewText(selectedDoc.clioDocumentName) || masterDocumentPreviewText(selectedDoc.clioDocumentFilename) || "Untitled"}
-                      </h3>
-                      <div style={{ display: "grid", gap: 8, fontSize: 13 }}>
-                        <div><strong>Source:</strong> {masterDocumentPreviewText(selectedDoc.sourceLabel) || "—"}</div>
-                        <div><strong>Source Clio Matter:</strong> {masterDocumentPreviewText(selectedDoc.sourceClioDisplayNumber) || "—"}</div>
-                        <div><strong>Clio Document ID:</strong> {masterDocumentPreviewText(selectedDoc.clioDocumentId) || "—"}</div>
-                        <div><strong>Filename:</strong> {masterDocumentPreviewText(selectedDoc.latestDocumentVersion?.filename) || masterDocumentPreviewText(selectedDoc.clioDocumentFilename) || "—"}</div>
-                        <div><strong>Version UUID:</strong> <span style={{ fontFamily: "monospace" }}>{masterDocumentPreviewText(selectedDoc.latestDocumentVersion?.uuid) || "—"}</span></div>
-                        <div><strong>Content Type:</strong> {masterDocumentPreviewText(selectedDoc.latestDocumentVersion?.contentType) || "—"}</div>
-                        <div><strong>Size:</strong> {selectedDoc.latestDocumentVersion?.size ?? "—"}</div>
-                        <div><strong>Fully Uploaded:</strong> {selectedDoc.latestDocumentVersion?.fullyUploaded ? "Yes" : "No"}</div>
-                        <div><strong>Updated:</strong> {masterDocumentPreviewText(selectedDoc.updatedAt || selectedDoc.latestDocumentVersion?.updatedAt) || "—"}</div>
-                      </div>
-                      <div style={{ marginTop: 12, padding: 10, border: "1px solid #fde68a", borderRadius: 10, background: "#fffbeb", color: "#92400e", fontSize: 12, fontWeight: 800 }}>
-                        Document opening/viewing will be wired to a safe Clio retrieval route next.  This step only lists and selects document metadata.
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ color: "#64748b", fontWeight: 800 }}>
-                      Select a document to view its stored Clio metadata.
-                    </div>
-                  )}
-                </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
-        </div>
-      </div>
-    );
-  }
 
-  function renderMasterClioDocumentsPanel() {
-    const docs = masterClioDocumentsArray();
-
-    return (
-      <div
-        style={{
-          marginTop: 12,
-          padding: 12,
-          border: "1px solid #cbd5e1",
-          borderRadius: 10,
-          background: "#f8fafc",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 12,
-            alignItems: "flex-start",
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 950, letterSpacing: "0.08em", textTransform: "uppercase", color: "#475569" }}>
-              Clio Documents Tab
-            </div>
-            <div style={{ marginTop: 4, fontWeight: 900, color: "#0f172a" }}>
-              Read-only master matter document vault listing
-            </div>
-            <div style={{ marginTop: 4, fontSize: 12, color: "#64748b" }}>
-              Lists documents from the mapped Clio master matter only.  If no mapped Clio master matter exists, the API fails closed.
-            </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 20px 18px", borderTop: "1px solid #e2e8f0", background: "#ffffff", borderBottomLeftRadius: 18, borderBottomRightRadius: 18 }}>
+            <button type="button" onClick={closeMasterViewDocumentsPopup} disabled={masterClioDocumentsLoading} style={{ minWidth: 96, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, background: masterClioDocumentsLoading ? "#f3f4f6" : "#f8fafc", color: masterClioDocumentsLoading ? "#94a3b8" : "#334155", fontWeight: 900, cursor: masterClioDocumentsLoading ? "not-allowed" : "pointer" }}>Close</button>
+            <button type="button" onClick={() => void loadMasterClioDocuments()} disabled={masterClioDocumentsLoading} style={{ minWidth: 148, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: masterClioDocumentsLoading ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: masterClioDocumentsLoading ? "not-allowed" : "pointer" }}>{masterClioDocumentsLoading ? "Refreshing..." : "Refresh Documents"}</button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => void loadMasterClioDocuments()}
-            disabled={masterClioDocumentsLoading}
-            style={{
-              border: "1px solid #1d4ed8",
-              background: masterClioDocumentsLoading ? "#dbeafe" : "#2563eb",
-              color: "#ffffff",
-              borderRadius: 999,
-              padding: "8px 12px",
-              fontWeight: 900,
-              cursor: masterClioDocumentsLoading ? "not-allowed" : "pointer",
-            }}
-          >
-            {masterClioDocumentsLoading ? "Refreshing..." : "Refresh Clio Documents"}
-          </button>
         </div>
-
-        {masterClioDocumentsResult && (
-          <div style={{ marginTop: 12 }}>
-            {!masterClioDocumentsResult.ok && (
-              <div
-                style={{
-                  padding: 10,
-                  border: "1px solid #fecaca",
-                  borderRadius: 8,
-                  background: "#fef2f2",
-                  color: "#991b1b",
-                  fontWeight: 800,
-                }}
-              >
-                {masterDocumentPreviewText(masterClioDocumentsResult.error) || "Could not load Clio documents."}
-              </div>
-            )}
-
-            {masterClioDocumentsResult.ok && (
-              <>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-                  <span style={{ padding: "4px 8px", borderRadius: 999, border: "1px solid #cbd5e1", background: "#ffffff", fontSize: 12, fontWeight: 850 }}>
-                    Clio Matter ID: {masterDocumentPreviewText(masterClioDocumentsResult.clioMatterId) || "—"}
-                  </span>
-                  <span style={{ padding: "4px 8px", borderRadius: 999, border: "1px solid #cbd5e1", background: "#ffffff", fontSize: 12, fontWeight: 850 }}>
-                    Clio Display: {masterDocumentPreviewText(masterClioDocumentsResult.clioDisplayNumber) || "—"}
-                  </span>
-                  <span style={{ padding: "4px 8px", borderRadius: 999, border: "1px solid #cbd5e1", background: "#ffffff", fontSize: 12, fontWeight: 850 }}>
-                    Documents: {masterClioDocumentsResult.summary?.documentCount ?? docs.length}
-                  </span>
-                  <span style={{ padding: "4px 8px", borderRadius: 999, border: "1px solid #cbd5e1", background: "#ffffff", fontSize: 12, fontWeight: 850 }}>
-                    Fully Uploaded: {masterClioDocumentsResult.summary?.fullyUploadedCount ?? "—"}
-                  </span>
-                </div>
-
-                {docs.length === 0 ? (
-                  <div style={{ padding: 10, border: "1px dashed #cbd5e1", borderRadius: 8, background: "#ffffff", color: "#64748b", fontWeight: 750 }}>
-                    No documents are currently listed in the mapped Clio master matter Documents tab.
-                  </div>
-                ) : (
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                      <thead>
-                        <tr>
-                          <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #cbd5e1" }}>Document</th>
-                          <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #cbd5e1" }}>Version UUID</th>
-                          <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #cbd5e1" }}>Type</th>
-                          <th style={{ textAlign: "right", padding: 8, borderBottom: "1px solid #cbd5e1" }}>Size</th>
-                          <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #cbd5e1" }}>Uploaded</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {docs.map((doc: any) => (
-                          <tr key={masterDocumentPreviewText(doc.clioDocumentId) || masterDocumentPreviewText(doc.clioDocumentName)}>
-                            <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontWeight: 800 }}>
-                              {masterDocumentPreviewText(doc.clioDocumentName) || masterDocumentPreviewText(doc.clioDocumentFilename) || "Untitled"}
-                              <div style={{ color: "#64748b", fontWeight: 650 }}>{masterDocumentPreviewText(doc.clioDocumentFilename) || "—"}</div>
-                            </td>
-                            <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontFamily: "monospace" }}>
-                              {masterDocumentPreviewText(doc.latestDocumentVersion?.uuid) || "—"}
-                            </td>
-                            <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>
-                              {masterDocumentPreviewText(doc.latestDocumentVersion?.contentType) || "—"}
-                            </td>
-                            <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", textAlign: "right" }}>
-                              {doc.latestDocumentVersion?.size ?? "—"}
-                            </td>
-                            <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>
-                              {doc.latestDocumentVersion?.fullyUploaded ? "Yes" : "No"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
       </div>
     );
   }

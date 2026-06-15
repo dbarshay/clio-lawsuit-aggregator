@@ -4153,9 +4153,7 @@ function openClaimAmountEditDialog() {
   }
 
   async function launchMatterStep2GeneratedDocumentEdit(selectedTemplate: { key: string; label: string; description: string } | null) {
-    const masterLawsuitId = usableMasterLawsuitIdForDocuments();
-
-    if (!masterLawsuitId || !selectedTemplate?.key) {
+    if (!selectedTemplate?.key) {
       alert("Select a document before editing.");
       return;
     }
@@ -4165,10 +4163,12 @@ function openClaimAmountEditDialog() {
       textValue(matter?.displayNumber || matter?.display_number) ||
       (directMatterId ? `BRL${directMatterId}` : "");
 
-    if (!directMatterId) {
+    if (!directMatterId && !directMatterDisplayNumber) {
       alert("No valid direct matter ID is available for working-document creation.");
       return;
     }
+
+    setDocumentPreviewLoading(true);
 
     try {
       const response = await fetch("/api/documents/working-docx", {
@@ -4178,7 +4178,6 @@ function openClaimAmountEditDialog() {
         },
         body: JSON.stringify({
           confirmCreate: true,
-          masterLawsuitId,
           uploadTargetMode: "direct-matter",
           directMatterId,
           directMatterDisplayNumber,
@@ -4207,13 +4206,16 @@ function openClaimAmountEditDialog() {
         action: "working-docx-create",
         selectedDocument: json.selectedDocument,
         workingDocument: working,
-        note: "Working DOCX created in Microsoft Graph/OneDrive. Edit and save in Word Web, then finalize to create the PDF delivery document.",
+        note: "Working DOCX created from the direct matter packet. Edit and save in Word Web, then finalize to create the PDF delivery document.",
       });
       setMatterDocumentWorkflowStage("edit");
     } catch (err: any) {
       alert(err?.message || "Could not create the working Word document.");
+    } finally {
+      setDocumentPreviewLoading(false);
     }
   }
+
 
   async function launchMatterStep2PdfPreview(selectedTemplate: { key: string; label: string; description: string } | null) {
     if (!selectedTemplate?.key) {
@@ -4226,23 +4228,85 @@ function openClaimAmountEditDialog() {
       textValue(matter?.displayNumber || matter?.display_number) ||
       (directMatterId ? `BRL${directMatterId}` : "");
 
-    if (!directMatterId) {
+    if (!directMatterId && !directMatterDisplayNumber) {
       alert("No valid direct matter ID is available for PDF preview.");
       return;
     }
 
+    const previewWindow = window.open("", "_blank");
+
+    if (previewWindow) {
+      previewWindow.document.write("<!doctype html><title>Preparing PDF Preview</title><body style='font-family: system-ui, sans-serif; padding: 24px;'>Preparing PDF preview...</body>");
+      previewWindow.document.close();
+    }
+
+    setDocumentPreviewLoading(true);
     setMatterDocumentWorkflowStage("preview");
-    await loadMatterDocumentDataPreview();
-    setMatterDocumentFinalizationResult({
-      ok: true,
-      action: "direct-matter-preview-data",
-      selectedDocument: selectedTemplate,
-      note: "Direct matter document preview is now direct-matter scoped. Full PDF/DOCX generation will be wired to the direct matter packet route in the next architecture step.",
-      uploadTargetMode: "direct-matter",
-      directMatterId,
-      directMatterDisplayNumber,
-    });
+
+    try {
+      const workingResponse = await fetch("/api/documents/working-docx", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          confirmCreate: true,
+          uploadTargetMode: "direct-matter",
+          directMatterId,
+          directMatterDisplayNumber,
+          documentKeys: [selectedTemplate.key],
+        }),
+      });
+
+      const workingJson = await workingResponse.json().catch(() => null);
+
+      if (!workingResponse.ok || !workingJson?.ok || !workingJson?.workingDocument?.driveItemId) {
+        alert(workingJson?.error || "Could not create a working Word document for PDF preview.");
+        return;
+      }
+
+      const working = workingJson.workingDocument;
+      setMatterDocumentFinalizationResult({
+        ok: true,
+        action: "working-docx-create",
+        selectedDocument: workingJson.selectedDocument,
+        workingDocument: working,
+        note: "Working DOCX created from the direct matter packet for temporary PDF preview.",
+      });
+
+      const previewResponse = await fetch("/api/documents/preview-pdf", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          workingDocumentDriveItemId: working.driveItemId,
+          workingDocumentName: working.name || selectedTemplate.label,
+          filename: working.originalFilename || working.name || selectedTemplate.label,
+        }),
+      });
+
+      if (!previewResponse.ok) {
+        const errorJson = await previewResponse.json().catch(() => null);
+        alert(errorJson?.error || "Could not generate the PDF preview.");
+        return;
+      }
+
+      const pdfBlob = await previewResponse.blob();
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+
+      if (previewWindow) {
+        previewWindow.location.href = pdfUrl;
+      }
+
+      window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 120000);
+    } catch (err: any) {
+      alert(err?.message || "Could not generate the PDF preview.");
+    } finally {
+      setDocumentPreviewLoading(false);
+    }
   }
+
 
   async function finalizeMatterDocumentFromStep2(selectedTemplate: { key: string; label: string; description: string } | null) {
     if (documentPreviewLoading || finalizeUploadLoading) return;
@@ -4257,32 +4321,72 @@ function openClaimAmountEditDialog() {
       textValue(matter?.displayNumber || matter?.display_number) ||
       (directMatterId ? `BRL${directMatterId}` : "");
 
-    if (!directMatterId) {
+    if (!directMatterId && !directMatterDisplayNumber) {
       alert("No valid direct matter ID is available for finalization.");
       return;
     }
 
-    await loadMatterDocumentDataPreview();
+    const workingDocument = matterDocumentFinalizationResult?.workingDocument || null;
+    const workingDocumentDriveItemId = textValue(workingDocument?.driveItemId);
 
-    setMatterDocumentFinalizationResult({
-      ok: true,
-      action: "direct-matter-finalization-pending",
-      selectedDocument: selectedTemplate,
-      note: "Direct matter finalization is separated from lawsuit document generation. Full direct DOCX/PDF finalization will be wired to the direct matter packet route in the next architecture step.",
-      uploadTargetMode: "direct-matter",
-      directMatterId,
-      directMatterDisplayNumber,
-    });
+    if (!workingDocumentDriveItemId) {
+      alert("Use Edit Document first, save in Word Web, then click Finalize Document.");
+      return;
+    }
 
-    setFinalizeUploadResult({
-      ok: false,
-      action: "direct-matter-finalization-pending",
-      message: "Direct matter finalization is not wired yet. This workflow no longer requires a Master Lawsuit ID.",
-    });
+    const effectiveSelectedDocumentKey =
+      textValue(matterDocumentFinalizationResult?.selectedDocument?.key) ||
+      textValue(selectedTemplate.key);
+    const effectiveSelectedDocumentLabel =
+      textValue(matterDocumentFinalizationResult?.selectedDocument?.label) ||
+      textValue(selectedTemplate.label);
 
-    setMatterDocumentWorkflowStage("finalize");
+    setDocumentPreviewLoading(true);
+    setFinalizeUploadLoading(true);
+    setFinalizeUploadResult(null);
+
+    try {
+      const res = await fetch("/api/documents/finalize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          confirmUpload: true,
+          uploadTargetMode: "direct-matter",
+          directMatterId,
+          directMatterDisplayNumber,
+          documentKeys: [effectiveSelectedDocumentKey].filter(Boolean),
+          workingDocumentDriveItemId,
+          workingDocumentKey: effectiveSelectedDocumentKey,
+          selectedDocumentLabel: effectiveSelectedDocumentLabel,
+        }),
+      });
+
+      const json = await res.json().catch(() => null);
+
+      if (!res.ok || !json?.ok) {
+        setFinalizeUploadResult(json || { ok: false, error: "Direct matter document finalization failed." });
+        alert(json?.error || "Direct matter document finalization failed.");
+        return;
+      }
+
+      setFinalizeUploadResult(json);
+      setDocumentPreview(json);
+      await loadMatterClioDocuments();
+      setMatterDocumentWorkflowStage("delivery");
+    } catch (err: any) {
+      const result = {
+        ok: false,
+        error: err?.message || "Direct matter document finalization failed.",
+      };
+      setFinalizeUploadResult(result);
+      alert(result.error);
+    } finally {
+      setDocumentPreviewLoading(false);
+      setFinalizeUploadLoading(false);
+    }
   }
-
 
   function downloadBillScheduleDocx() {
     const masterLawsuitId = usableMasterLawsuitIdForDocuments();
@@ -5120,7 +5224,7 @@ function openClaimAmountEditDialog() {
   async function sendMatterDocumentToPrintQueue(selectedTemplate: { key: string; label: string; description: string } | null) {
     const context = buildMatterFinalizedPdfDeliveryContext(selectedTemplate);
     const candidate = selectedFinalizedMatterDocumentCandidate(selectedTemplate);
-    const masterLawsuitId = usableMasterLawsuitIdForDocuments();
+    const rawMasterLawsuitId = usableMasterLawsuitIdForDocuments();
     const directMatterId = directMatterNumericIdForDocuments();
     const clioTargetMatterId = Number(finalizeUploadResult?.clioUploadTarget?.matterId || 0);
     const printQueueMatterId = Number.isFinite(clioTargetMatterId) && clioTargetMatterId > 0
@@ -5130,14 +5234,22 @@ function openClaimAmountEditDialog() {
       textValue(matter?.displayNumber || matter?.display_number) ||
       textValue(finalizeUploadResult?.clioUploadTarget?.displayNumber) ||
       (directMatterId ? `BRL${directMatterId}` : "");
+    const masterLawsuitId =
+      rawMasterLawsuitId ||
+      (directMatterDisplayNumber ? `DIRECT-${directMatterDisplayNumber}` : directMatterId ? `DIRECT-BRL${directMatterId}` : "");
 
     if (!context.pdfUrl || !candidate?.clioDocumentId) {
       alert("Finalize the document before sending it to the print queue.  The queue workflow requires a finalized PDF from this matter's Clio Documents tab.");
       return;
     }
 
-    if (!masterLawsuitId || !printQueueMatterId) {
-      alert("Barsh Matters could not identify the lawsuit ID or Clio direct matter ID needed for the print queue.");
+    if (!printQueueMatterId) {
+      alert("Barsh Matters could not identify the Clio direct matter ID needed for the print queue.");
+      return;
+    }
+
+    if (!masterLawsuitId) {
+      alert("Barsh Matters could not identify a direct matter print queue grouping key.");
       return;
     }
 
@@ -6272,46 +6384,9 @@ function openClaimAmountEditDialog() {
                 )}
               </div>
 
-              {false && matterDocumentWorkflowStage === "preview" && selectedTemplate && (
-                <div
-                  style={{
-                    border: "1px solid #bfdbfe",
-                    background: "#eff6ff",
-                    borderRadius: 14,
-                    padding: 14,
-                    color: "#1e3a8a",
-                    lineHeight: 1.45,
-                  }}
-                >
-                  <strong>Preview shell:</strong> {selectedTemplate?.label || "Selected document"} will launch as a PDF preview after the PDF preview route is safely wired.  For now, this is a local preview shell using the matter document packet; no PDF or final file is generated in this placeholder state.
-                  <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-                    <div><strong>Matter:</strong> {textValue(templateFields.displayNumber) || "—"}</div>
-                    <div><strong>Provider:</strong> {textValue(templateFields.providerName) || "—"}</div>
-                    <div><strong>Patient:</strong> {textValue(templateFields.patientName) || "—"}</div>
-                    <div><strong>Insurer:</strong> {textValue(templateFields.insurerName) || "—"}</div>
-                    <div><strong>Claim:</strong> {textValue(templateFields.claimNumber) || "—"}</div>
-                    <div><strong>Balance:</strong> {money(templateFields.balancePresuit)}</div>
-                  </div>
-                </div>
-              )}
-
-              {false && matterDocumentWorkflowStage === "edit" && selectedTemplate && (
-                <div
-                  style={{
-                    border: "1px solid #ddd6fe",
-                    background: "#f5f3ff",
-                    borderRadius: 14,
-                    padding: 14,
-                    color: "#4c1d95",
-                    lineHeight: 1.45,
-                  }}
-                >
-                  <strong>Word editing placeholder:</strong> {selectedTemplate?.label || "Selected document"} will open for Word editing after safe document creation/editing infrastructure is added.  No Word integration is faked here.
-                </div>
-              )}
             </section>
 
-            {(showPreviewStep || showEditStep) && selectedTemplate && (
+            {(showPreviewStep || showEditStep || showFinalizeStep) && selectedTemplate && (
               <section
                 style={{
                   border: "1px solid #e5e7eb",
@@ -6324,142 +6399,97 @@ function openClaimAmountEditDialog() {
               >
                 <div>
                   <h3 style={{ margin: 0, fontSize: 18 }}>
-                    {showPreviewStep ? "Preview PDF" : "Edit Document"}
+                    {showPreviewStep ? "Preview PDF" : showEditStep ? "Edit Document" : "Finalize Document"}
                   </h3>
-                  <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
-                    {showPreviewStep
-                      ? "Review the PDF preview before finalizing.  The actual PDF route will be wired next; this step currently shows the safe local preview shell."
-                      : "Word editing will be wired later.  This step currently confirms the intended edit workflow without faking Word integration."}
-                  </p>
                 </div>
 
-                {showPreviewStep && (
-                  <div
-                    style={{
-                      border: "1px solid #bfdbfe",
-                      background: "#eff6ff",
-                      borderRadius: 14,
-                      padding: 14,
-                      color: "#1e3a8a",
-                      lineHeight: 1.45,
-                    }}
-                  >
-                    <strong>PDF preview:</strong> {selectedTemplate?.label || "Selected document"} opened as a temporary browser PDF preview.  This preview does not upload to Clio, create a finalization record, or affect the print queue.
-                    <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-                      <div><strong>Matter:</strong> {textValue(templateFields.displayNumber) || "—"}</div>
-                      <div><strong>Provider:</strong> {textValue(templateFields.providerName) || "—"}</div>
-                      <div><strong>Patient:</strong> {textValue(templateFields.patientName) || "—"}</div>
-                      <div><strong>Insurer:</strong> {textValue(templateFields.insurerName) || "—"}</div>
-                      <div><strong>Claim:</strong> {textValue(templateFields.claimNumber) || "—"}</div>
-                      <div><strong>Balance:</strong> {money(templateFields.balancePresuit)}</div>
-                    </div>
-                  </div>
-                )}
+                {showEditStep && matterDocumentFinalizationResult?.workingDocument && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = matterDocumentFinalizationResult?.workingDocument?.msWordEditUrl || "";
+                        if (!url) {
+                          alert("No desktop Word link is available for this working document.");
+                          return;
+                        }
+                        const link = document.createElement("a");
+                        link.href = url;
+                        link.style.display = "none";
+                        link.rel = "noopener noreferrer";
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }}
+                      disabled={!matterDocumentFinalizationResult?.workingDocument?.msWordEditUrl}
+                      style={{
+                        border: "1px solid #cbd5e1",
+                        background: "#fff",
+                        color: "#334155",
+                        borderRadius: 12,
+                        padding: "10px 14px",
+                        fontWeight: 900,
+                        cursor: matterDocumentFinalizationResult?.workingDocument?.msWordEditUrl ? "pointer" : "not-allowed",
+                        opacity: matterDocumentFinalizationResult?.workingDocument?.msWordEditUrl ? 1 : 0.55,
+                      }}
+                    >
+                      Try Desktop Word
+                    </button>
 
-                {showEditStep && (
-                  <div
-                    style={{
-                      border: "1px solid #ddd6fe",
-                      background: "#f5f3ff",
-                      borderRadius: 14,
-                      padding: 14,
-                      color: "#4c1d95",
-                      lineHeight: 1.45,
-                      display: "grid",
-                      gap: 12,
-                    }}
-                  >
-                    <div>
-                      <strong>Working Word document:</strong> {matterDocumentFinalizationResult?.workingDocument?.name || selectedTemplate?.label || "Selected document"} was created in the Barsh Matters working-docs folder.  Use Word Web for editing.  Desktop Word remains available as an experimental option, but Word Web is the reliable editing path for this SharePoint/OneDrive working document.  Save your edits in Word Web, then return here and click Finalize Document.
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = matterDocumentFinalizationResult?.workingDocument?.webUrl || "";
+                        if (!url) {
+                          alert("No Word web link is available for this working document.");
+                          return;
+                        }
+                        window.open(url, "_blank", "noopener,noreferrer");
+                      }}
+                      disabled={!matterDocumentFinalizationResult?.workingDocument?.webUrl}
+                      style={{
+                        border: "1px solid #1e3a8a",
+                        background: "#1e3a8a",
+                        color: "#fff",
+                        borderRadius: 12,
+                        padding: "10px 14px",
+                        fontWeight: 900,
+                        cursor: matterDocumentFinalizationResult?.workingDocument?.webUrl ? "pointer" : "not-allowed",
+                        opacity: matterDocumentFinalizationResult?.workingDocument?.webUrl ? 1 : 0.55,
+                      }}
+                    >
+                      Open in Word Web
+                    </button>
 
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const url = matterDocumentFinalizationResult?.workingDocument?.msWordEditUrl || "";
-                          if (!url) {
-                            alert("No desktop Word link is available for this working document.");
-                            return;
-                          }
-                          const link = document.createElement("a");
-                          link.href = url;
-                          link.style.display = "none";
-                          link.rel = "noopener noreferrer";
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }}
-                        disabled={!matterDocumentFinalizationResult?.workingDocument?.msWordEditUrl}
-                        style={{
-                          border: "1px solid #7c3aed",
-                          background: "#fff",
-                          color: "#4c1d95",
-                          borderRadius: 12,
-                          padding: "10px 14px",
-                          fontWeight: 900,
-                          cursor: matterDocumentFinalizationResult?.workingDocument?.msWordEditUrl ? "pointer" : "not-allowed",
-                          opacity: matterDocumentFinalizationResult?.workingDocument?.msWordEditUrl ? 1 : 0.55,
-                        }}
-                      >
-                        Try Desktop Word
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const url = matterDocumentFinalizationResult?.workingDocument?.webUrl || "";
-                          if (!url) {
-                            alert("No Word web link is available for this working document.");
-                            return;
-                          }
-                          window.open(url, "_blank", "noopener,noreferrer");
-                        }}
-                        disabled={!matterDocumentFinalizationResult?.workingDocument?.webUrl}
-                        style={{
-                          border: "1px solid #7c3aed",
-                          background: "#4f46e5",
-                          color: "#fff",
-                          borderRadius: 12,
-                          padding: "10px 14px",
-                          fontWeight: 900,
-                          cursor: matterDocumentFinalizationResult?.workingDocument?.webUrl ? "pointer" : "not-allowed",
-                          opacity: matterDocumentFinalizationResult?.workingDocument?.webUrl ? 1 : 0.55,
-                        }}
-                      >
-                        Open in Word Web
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const url = matterDocumentFinalizationResult?.workingDocument?.webUrl || "";
-                          if (!url) {
-                            alert("No Word web link is available to copy.");
-                            return;
-                          }
-                          try {
-                            await navigator.clipboard.writeText(url);
-                            alert("Word web link copied.");
-                          } catch {
-                            alert("Could not copy the Word web link automatically.");
-                          }
-                        }}
-                        disabled={!matterDocumentFinalizationResult?.workingDocument?.webUrl}
-                        style={{
-                          border: "1px solid #c4b5fd",
-                          background: "#fff",
-                          color: "#4c1d95",
-                          borderRadius: 12,
-                          padding: "10px 14px",
-                          fontWeight: 900,
-                          cursor: matterDocumentFinalizationResult?.workingDocument?.webUrl ? "pointer" : "not-allowed",
-                          opacity: matterDocumentFinalizationResult?.workingDocument?.webUrl ? 1 : 0.55,
-                        }}
-                      >
-                        Copy Word Web Link
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const url = matterDocumentFinalizationResult?.workingDocument?.webUrl || "";
+                        if (!url) {
+                          alert("No Word web link is available to copy.");
+                          return;
+                        }
+                        try {
+                          await navigator.clipboard.writeText(url);
+                          alert("Word web link copied.");
+                        } catch {
+                          alert("Could not copy the Word web link automatically.");
+                        }
+                      }}
+                      disabled={!matterDocumentFinalizationResult?.workingDocument?.webUrl}
+                      style={{
+                        border: "1px solid #cbd5e1",
+                        background: "#fff",
+                        color: "#334155",
+                        borderRadius: 12,
+                        padding: "10px 14px",
+                        fontWeight: 900,
+                        cursor: matterDocumentFinalizationResult?.workingDocument?.webUrl ? "pointer" : "not-allowed",
+                        opacity: matterDocumentFinalizationResult?.workingDocument?.webUrl ? 1 : 0.55,
+                      }}
+                    >
+                      Copy Word Web Link
+                    </button>
                   </div>
                 )}
 
@@ -6488,51 +6518,6 @@ function openClaimAmountEditDialog() {
                 </div>
               </section>
             )}
-
-            <section
-              style={{
-                border: "1px solid #e5e7eb",
-                borderRadius: 18,
-                padding: 18,
-                background: "#fff",
-                display: "none",
-                gap: 14,
-              }}
-            >
-              <div>
-                <h3 style={{ margin: 0, fontSize: 18 }}>Finalization Details</h3>
-                <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
-                  Finalization will later create the final document, upload it to Clio as the document vault, and make it available in the Barsh Matters Documents section.
-                </p>
-              </div>
-
-              <div>
-                {actionButton(
-                  finalizeUploadLoading ? "Uploading..." : "Upload Final Document to Clio",
-                  uploadFinalDocumentsToClio,
-                  documentPreviewLoading ||
-                    finalizeUploadLoading ||
-                    documentPreview?.action !== "finalize-preview" ||
-                    !documentPreview?.ok,
-                  "Requires a successful Finalize Document step first."
-                )}
-              </div>
-
-              {matterDocumentWorkflowStage === "delivery" && (
-                <div
-                  style={{
-                    border: "1px solid #fed7aa",
-                    background: "#fff7ed",
-                    borderRadius: 14,
-                    padding: 14,
-                    color: "#9a3412",
-                    lineHeight: 1.45,
-                  }}
-                >
-                  <strong>Finalize placeholder:</strong> This is the final review step.  When safe finalization is wired, this button will finalize the reviewed PDF, upload it to Clio as the document vault, and create the Barsh Matters document record.
-                </div>
-              )}
-            </section>
 
             {matterDocumentWorkflowStage === "finalize" && selectedTemplate && (
               <section

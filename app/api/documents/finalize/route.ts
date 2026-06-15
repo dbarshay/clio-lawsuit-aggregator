@@ -197,12 +197,23 @@ export async function POST(req: NextRequest) {
     const workingDocumentDriveItemId = clean(body?.workingDocumentDriveItemId || body?.workingDriveItemId);
     const workingDocumentKey = clean(body?.workingDocumentKey);
 
-    if (!masterLawsuitId) {
+    if (!masterLawsuitId && uploadTargetMode !== "direct-matter") {
       return NextResponse.json(
         { ok: false, error: "Missing masterLawsuitId" },
         { status: 400 }
       );
     }
+
+    if (uploadTargetMode === "direct-matter" && !masterLawsuitId && !directMatterId && !directMatterDisplayNumber) {
+      return NextResponse.json(
+        { ok: false, error: "Missing directMatterId or directMatterDisplayNumber." },
+        { status: 400 }
+      );
+    }
+
+    const effectiveMasterLawsuitId =
+      masterLawsuitId ||
+      `DIRECT-${directMatterDisplayNumber || (directMatterId ? `BRL${directMatterId}` : "MATTER")}`;
 
     if (!confirmUpload) {
       return NextResponse.json(
@@ -222,12 +233,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const preview = await loadFinalizePreview(req, {
-      masterLawsuitId,
-      uploadTargetMode,
-      directMatterId,
-      directMatterDisplayNumber,
-    });
+    const preview =
+      uploadTargetMode === "direct-matter" && !masterLawsuitId
+        ? await (async () => {
+            const previewUrl = new URL("/api/documents/direct-finalize-preview", req.nextUrl.origin);
+            if (directMatterId) previewUrl.searchParams.set("directMatterId", directMatterId);
+            if (directMatterDisplayNumber) previewUrl.searchParams.set("directMatterDisplayNumber", directMatterDisplayNumber);
+            const previewRes = await fetch(previewUrl, { method: "GET", cache: "no-store" });
+            const previewJson = await previewRes.json().catch(() => null);
+            if (!previewRes.ok || !previewJson) {
+              throw new Error(previewJson?.error || "Could not load direct matter finalization preview before upload.");
+            }
+            return previewJson;
+          })()
+        : await loadFinalizePreview(req, {
+            masterLawsuitId,
+            uploadTargetMode,
+            directMatterId,
+            directMatterDisplayNumber,
+          });
     const validation = preview?.validation || {};
 
     if (!validation.canGenerate) {
@@ -319,7 +343,7 @@ export async function POST(req: NextRequest) {
 
       if (duplicateOnlySkip) {
         const finalizationRecord = await recordDocumentFinalizationAttempt({
-          masterLawsuitId,
+          masterLawsuitId: effectiveMasterLawsuitId,
           matterId,
           preview,
           status: "nothing-uploaded-existing-documents-skipped",
@@ -438,7 +462,7 @@ export async function POST(req: NextRequest) {
 
     const finalizedAt = new Date().toISOString();
     const finalizationRecord = await recordDocumentFinalizationAttempt({
-      masterLawsuitId,
+      masterLawsuitId: effectiveMasterLawsuitId,
       matterId,
       preview,
       status: "uploaded-to-clio",
@@ -452,7 +476,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       action: "finalize-upload",
-      masterLawsuitId,
+      masterLawsuitId: effectiveMasterLawsuitId,
       finalizedAt,
       clioUploadTarget: preview.clioUploadTarget,
       uploaded,

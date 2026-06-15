@@ -55,13 +55,37 @@ const previewFnEnd = src.indexOf("async function finalizeMatterDocumentFromStep2
 const previewFn = src.slice(previewFnStart, previewFnEnd);
 requireNotIncludes(previewFn, "No valid Master Lawsuit ID is available for PDF preview", "master lawsuit PDF preview alert");
 requireNotIncludes(previewFn, "const masterLawsuitId = usableMasterLawsuitIdForDocuments();", "master lawsuit PDF preview dependency");
-requireIncludes(previewFn, "direct-matter-preview-data", "direct matter preview placeholder");
+requireIncludes(previewFn, "/api/documents/working-docx", "direct preview creates working DOCX");
+requireIncludes(previewFn, "/api/documents/preview-pdf", "direct preview converts working DOCX to PDF");
+const editFnStart = src.indexOf("async function launchMatterStep2GeneratedDocumentEdit(");
+const editFnEnd = src.indexOf("async function launchMatterStep2PdfPreview(", editFnStart);
+const editFn = src.slice(editFnStart, editFnEnd);
+requireIncludes(editFn, "/api/documents/working-docx", "direct edit creates working DOCX");
+requireIncludes(editFn, 'uploadTargetMode: "direct-matter"', "direct edit uses direct matter target");
+requireNotIncludes(editFn, "const masterLawsuitId = usableMasterLawsuitIdForDocuments();", "master lawsuit edit dependency");
+requireNotIncludes(editFn, "masterLawsuitId,", "master lawsuit edit body field");
+
 
 const finalizeFnStart = src.indexOf("async function finalizeMatterDocumentFromStep2(");
 const finalizeFnEnd = src.indexOf("function downloadBillScheduleDocx()", finalizeFnStart);
 const finalizeFn = src.slice(finalizeFnStart, finalizeFnEnd);
 requireNotIncludes(finalizeFn, "No valid Master Lawsuit ID is available for finalization", "master lawsuit finalization alert");
 requireNotIncludes(finalizeFn, "const masterLawsuitId = usableMasterLawsuitIdForDocuments();", "master lawsuit finalization dependency");
-requireIncludes(finalizeFn, "direct-matter-finalization-pending", "direct matter finalization placeholder");
+requireIncludes(finalizeFn, "/api/documents/finalize", "direct finalization uploads finalized PDF");
+requireIncludes(finalizeFn, "workingDocumentDriveItemId", "direct finalization requires working DOCX drive item");
+requireIncludes(finalizeFn, "effectiveSelectedDocumentKey", "direct finalization uses working selectedDocument key fallback");
+requireIncludes(finalizeFn, "matterDocumentFinalizationResult?.selectedDocument?.key", "direct finalization reads selectedDocument key from working result");
+
+requireIncludes(finalizeFn, 'confirmUpload: true', "direct finalization confirms upload");
+requireIncludes(finalizeFn, 'setFinalizeUploadResult(json);', "direct finalization stores upload result for delivery");
+requireIncludes(finalizeFn, 'setMatterDocumentWorkflowStage("delivery");', "successful direct finalization advances to delivery");
+
 
 console.log("PASS: direct Document Generation popup standard verifier passed");
+
+const printQueueFnStart = src.indexOf("async function sendMatterDocumentToPrintQueue(");
+const printQueueFnEnd = src.indexOf("function renderMatterDocumentGenerationPopup()", printQueueFnStart);
+const printQueueFn = src.slice(printQueueFnStart, printQueueFnEnd);
+requireIncludes(printQueueFn, "rawMasterLawsuitId", "direct print queue preserves real lawsuit id when present");
+requireIncludes(printQueueFn, "DIRECT-", "direct print queue fallback grouping key");
+requireNotIncludes(printQueueFn, "could not identify the lawsuit ID or Clio direct matter ID", "old direct print queue lawsuit-id blocker");

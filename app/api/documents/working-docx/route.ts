@@ -113,9 +113,16 @@ export async function POST(req: NextRequest) {
     const requestedKeys = asStringArray(body?.documentKeys);
     const confirmCreate = body?.confirmCreate === true;
 
-    if (!masterLawsuitId) {
+    if (!masterLawsuitId && uploadTargetMode !== "direct-matter") {
       return NextResponse.json(
         { ok: false, action: "working-docx-create", error: "Missing masterLawsuitId." },
+        { status: 400 }
+      );
+    }
+
+    if (uploadTargetMode === "direct-matter" && !masterLawsuitId && !directMatterId && !directMatterDisplayNumber) {
+      return NextResponse.json(
+        { ok: false, action: "working-docx-create", error: "Missing directMatterId or directMatterDisplayNumber." },
         { status: 400 }
       );
     }
@@ -136,14 +143,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const preview = await loadFinalizePreview(req, {
-      masterLawsuitId,
-      uploadTargetMode,
-      directMatterId,
-      directMatterDisplayNumber,
-      documentLaunchMode,
-      settlementRecordId,
-    });
+    const preview =
+      uploadTargetMode === "direct-matter" && !masterLawsuitId
+        ? await (async () => {
+            const previewUrl = new URL("/api/documents/direct-finalize-preview", req.nextUrl.origin);
+            if (directMatterId) previewUrl.searchParams.set("directMatterId", directMatterId);
+            if (directMatterDisplayNumber) previewUrl.searchParams.set("directMatterDisplayNumber", directMatterDisplayNumber);
+            const previewRes = await fetch(previewUrl, { method: "GET", cache: "no-store" });
+            const previewJson = await previewRes.json().catch(() => null);
+            if (!previewRes.ok || !previewJson) {
+              throw new Error(previewJson?.error || "Could not load direct matter finalization preview before working DOCX creation.");
+            }
+            return previewJson;
+          })()
+        : await loadFinalizePreview(req, {
+            masterLawsuitId,
+            uploadTargetMode,
+            directMatterId,
+            directMatterDisplayNumber,
+            documentLaunchMode,
+            settlementRecordId,
+          });
 
     const plannedDocuments = Array.isArray(preview?.plannedDocuments) ? preview.plannedDocuments : [];
     const selectedDocument =

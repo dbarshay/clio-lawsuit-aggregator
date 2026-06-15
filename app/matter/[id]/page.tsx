@@ -96,6 +96,14 @@ function directMatterPaymentPostedValue(matter: any): number {
 }
 
 function currentDirectMatterBalancePresuit(matter: any): number {
+  const storedBalance = num(
+    matter?.balancePresuit ??
+      matter?.balance_presuit ??
+      matter?.balanceAmount ??
+      matter?.balance_amount
+  );
+  if (storedBalance > 0) return storedBalance;
+
   const claimAmount = directMatterClaimAmountValue(matter);
   const paymentVoluntary = directMatterPaymentPostedValue(matter);
   return Math.max(claimAmount - paymentVoluntary, 0);
@@ -954,16 +962,10 @@ const activeGroupKey =
                         {textValue(selectedDoc.clioDocumentName) || textValue(selectedDoc.clioDocumentFilename) || "Untitled"}
                       </h3>
                       <div style={{ display: "grid", gap: 8, fontSize: 13 }}>
-                        <div><strong>Clio Document ID:</strong> {textValue(selectedDoc.clioDocumentId) || "—"}</div>
                         <div><strong>Filename:</strong> {textValue(selectedDoc.latestDocumentVersion?.filename) || textValue(selectedDoc.clioDocumentFilename) || "—"}</div>
-                        <div><strong>Version UUID:</strong> <span style={{ fontFamily: "monospace" }}>{textValue(selectedDoc.latestDocumentVersion?.uuid) || "—"}</span></div>
-                        <div><strong>Content Type:</strong> {textValue(selectedDoc.latestDocumentVersion?.contentType) || "—"}</div>
-                        <div><strong>Size:</strong> {selectedDoc.latestDocumentVersion?.size ?? "—"}</div>
-                        <div><strong>Fully Uploaded:</strong> {selectedDoc.latestDocumentVersion?.fullyUploaded ? "Yes" : "No"}</div>
                         <div><strong>Updated:</strong> {textValue(selectedDoc.updatedAt || selectedDoc.latestDocumentVersion?.updatedAt) || "—"}</div>
-                      </div>
-                      <div style={{ marginTop: 12, padding: 10, border: "1px solid #fde68a", borderRadius: 10, background: "#fffbeb", color: "#92400e", fontSize: 12, fontWeight: 800 }}>
-                        Document opening/viewing will be wired to a safe Clio retrieval route next.  This step only lists and selects document metadata.
+                        <div><strong>Type:</strong> {textValue(selectedDoc.latestDocumentVersion?.contentType) || "—"}</div>
+                        <div><strong>Size:</strong> {selectedDoc.latestDocumentVersion?.size ?? "—"}</div>
                       </div>
                     </>
                   ) : (
@@ -2991,10 +2993,16 @@ function openClaimAmountEditDialog() {
 
       setMatter((prev: any) => {
         if (!prev || !json?.after) return prev;
+        const nextPaymentVoluntary = json.after.paymentVoluntary ?? prev.paymentVoluntary ?? prev.payment_voluntary;
+        const nextBalancePresuit = json.after.balancePresuit ?? prev.balancePresuit ?? prev.balance_presuit;
         return {
           ...prev,
-          paymentVoluntary: json.after.paymentVoluntary ?? prev.paymentVoluntary,
-          balancePresuit: json.after.balancePresuit ?? prev.balancePresuit,
+          paymentVoluntary: nextPaymentVoluntary,
+          payment_voluntary: nextPaymentVoluntary,
+          balancePresuit: nextBalancePresuit,
+          balance_presuit: nextBalancePresuit,
+          balanceAmount: nextBalancePresuit,
+          balance_amount: nextBalancePresuit,
         };
       });
 
@@ -9769,6 +9777,8 @@ function openClaimAmountEditDialog() {
                     role="dialog"
                     aria-modal="true"
                     aria-label="Close Matter?"
+                    data-barsh-direct-payment-close-prompt-standard-modal="true"
+                    onKeyDown={(event) => { if (event.key === "Escape") setPaymentClosePromptOpen(false); }}
                     style={{
                       position: "fixed",
                       inset: 0,
@@ -9782,57 +9792,67 @@ function openClaimAmountEditDialog() {
                   >
                     <div
                       style={{
-                        width: "min(420px, calc(100vw - 48px))",
-                        border: "1px solid #fecaca",
+                        width: "min(440px, calc(100vw - 48px))",
+                        border: "1px solid #cbd5e1",
                         borderRadius: 18,
                         background: "#fff",
                         boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
-                        padding: 20,
-                        textAlign: "center",
+                        overflow: "hidden",
                       }}
                     >
-                      <div style={{ fontSize: 22, fontWeight: 950, color: "#0f172a", marginBottom: 8 }}>
-                        Close Matter?
-                      </div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#475569", marginBottom: 18 }}>
-                        Payment activity was saved.  Do you want to close this matter now?
+                      <div
+                        data-barsh-direct-payment-close-prompt-header-standard="true"
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "44px minmax(0, 1fr) 44px",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "16px 18px",
+                          borderBottom: "1px solid #1e3a8a",
+                          background: "#1e3a8a",
+                        }}
+                      >
+                        <div aria-hidden="true" />
+                        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 950, color: "#ffffff", textAlign: "center" }}>
+                          Close Matter?
+                        </h2>
+                        <div aria-hidden="true" />
                       </div>
 
-                      <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
-                        <button
-                          type="button"
-                          onClick={() => setPaymentClosePromptOpen(false)}
+                      <div style={{ padding: 18, display: "grid", gap: 12 }}>
+                        <div
+                          data-barsh-direct-payment-close-prompt-current-card="true"
                           style={{
-                            minWidth: 104,
-                            height: 40,
-                            border: "1px solid #cbd5e1",
-                            borderRadius: 12,
+                            border: "1px solid #e2e8f0",
+                            borderRadius: 14,
                             background: "#f8fafc",
-                            color: "#334155",
+                            padding: 14,
+                            color: "#0f172a",
                             fontSize: 14,
-                            fontWeight: 900,
-                            cursor: "pointer",
+                            fontWeight: 800,
+                            lineHeight: 1.45,
                           }}
                         >
+                          Payment activity was saved. Do you want to close this matter now?
+                        </div>
+                      </div>
+
+                      <div
+                        data-barsh-direct-payment-close-prompt-footer-actions="true"
+                        style={{
+                          display: "flex",
+                          justifyContent: "flex-end",
+                          gap: 10,
+                          padding: "14px 18px 18px",
+                          borderTop: "1px solid #e5e7eb",
+                          background: "#f8fafc",
+                        }}
+                      >
+                        <button type="button" onClick={() => setPaymentClosePromptOpen(false)} style={{ minWidth: 104, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, background: "#ffffff", color: "#334155", fontSize: 14, fontWeight: 900, cursor: "pointer" }}>
                           No
                         </button>
-
-                        <button
-                          type="button"
-                          onClick={openCloseMatterFromPayment}
-                          style={{
-                            minWidth: 104,
-                            height: 40,
-                            border: "1px solid #dc2626",
-                            borderRadius: 12,
-                            background: "#dc2626",
-                            color: "#fff",
-                            fontSize: 14,
-                            fontWeight: 900,
-                            cursor: "pointer",
-                          }}
-                        >
-                          Yes
+                        <button type="button" onClick={openCloseMatterFromPayment} style={{ minWidth: 148, height: 38, border: "1px solid #dc2626", borderRadius: 10, background: "#dc2626", color: "#ffffff", fontSize: 14, fontWeight: 900, cursor: "pointer" }}>
+                          Yes, Close Matter
                         </button>
                       </div>
                     </div>

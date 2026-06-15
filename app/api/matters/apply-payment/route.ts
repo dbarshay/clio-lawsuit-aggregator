@@ -177,15 +177,50 @@ async function paymentTotalsForMatter(matterId: number, claimAmount: number) {
     ],
   });
 
+  const claimIndexRow = await prisma.claimIndex.findFirst({
+    where: {
+      OR: [
+        { matter_id: matterId },
+      ],
+    },
+  }) as any;
+
   const localPaymentTotal = activePaymentTotal(rows);
+  const canonicalClaimAmount = num(
+    claimIndexRow?.claimAmount ??
+      claimIndexRow?.claim_amount ??
+      claimAmount
+  );
+  const canonicalPaymentVoluntary = num(
+    claimIndexRow?.paymentVoluntary ??
+      claimIndexRow?.payment_voluntary ??
+      claimIndexRow?.paymentAmount ??
+      claimIndexRow?.payment_amount
+  );
+  const canonicalBalancePresuit = num(
+    claimIndexRow?.balancePresuit ??
+      claimIndexRow?.balance_presuit ??
+      claimIndexRow?.balanceAmount ??
+      claimIndexRow?.balance_amount
+  );
+  const canonicalBefore = canonicalBalancePresuit > 0
+    ? {
+        claimAmount: canonicalClaimAmount,
+        paymentVoluntary: canonicalPaymentVoluntary,
+        balancePresuit: canonicalBalancePresuit,
+        paymentSource: "ClaimIndex canonical financial fields",
+        balanceSource: "ClaimIndex balance_presuit",
+      }
+    : afterSnapshot({
+        claimAmount,
+        paymentVoluntary: localPaymentTotal,
+      });
 
   return {
     rows,
     localPaymentTotal,
-    after: afterSnapshot({
-      claimAmount,
-      paymentVoluntary: localPaymentTotal,
-    }),
+    claimIndexRow,
+    after: canonicalBefore,
   };
 }
 
@@ -433,10 +468,13 @@ export async function POST(request: Request) {
 
     const beforeTotals = await paymentTotalsForMatter(matterId, claimAmount);
     const before = beforeTotals.after;
-    const after = afterSnapshot({
-      claimAmount,
-      paymentVoluntary: beforeTotals.localPaymentTotal + paymentAmount,
-    });
+    const after = {
+      claimAmount: before.claimAmount,
+      paymentVoluntary: before.paymentVoluntary + paymentAmount,
+      balancePresuit: Math.max(before.balancePresuit - paymentAmount, 0),
+      paymentSource: "ClaimIndex canonical financial fields plus posted payment",
+      balanceSource: "ClaimIndex balance_presuit minus posted payment",
+    };
 
     const isCostRecoveryPayment = isCostRecoveryTransactionType(transactionType);
 
@@ -499,7 +537,21 @@ export async function POST(request: Request) {
       },
     });
 
-    const claimIndexMirror = await mirrorLocalPaymentTotalsToClaimIndex({ matterId, claimAmount });
+    const claimIndexMirrorUpdate = await prisma.claimIndex.updateMany({
+      where: { matter_id: matterId },
+      data: {
+        payment_amount: after.paymentVoluntary,
+        payment_voluntary: after.paymentVoluntary,
+        balance_amount: after.balancePresuit,
+        balance_presuit: after.balancePresuit,
+      },
+    });
+    const claimIndexMirror = {
+      updatedCount: claimIndexMirrorUpdate.count,
+      paymentVoluntary: after.paymentVoluntary,
+      balancePresuit: after.balancePresuit,
+      source: "POST after snapshot",
+    };
 
     await writePaymentAudit({
       action: "payment.add",

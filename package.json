@@ -355,7 +355,11 @@
     "verify:direct-view-documents-popup-header-standard-safety": "node scripts/verify-direct-view-documents-popup-header-standard-safety.mjs",
     "verify:direct-view-emails-popup-modal-safety": "node scripts/verify-direct-view-emails-popup-modal-safety.mjs",
     "verify:direct-document-generation-progress-bubbles-safety": "node scripts/verify-direct-document-generation-progress-bubbles-safety.mjs",
-    "verify:direct-document-generation-popup-standard-safety": "node scripts/verify-direct-document-generation-popup-standard-safety.mjs"
+    "verify:direct-document-generation-popup-standard-safety": "node scripts/verify-direct-document-generation-popup-standard-safety.mjs",
+    "verify:direct-view-documents-popup-body-clean-safety": "node scripts/verify-direct-view-documents-popup-body-clean-safety.mjs",
+    "verify:direct-payment-close-prompt-standard-safety": "node scripts/verify-direct-payment-close-prompt-standard-safety.mjs",
+    "verify:direct-payment-balance-guard-canonical-safety": "node scripts/verify-direct-payment-balance-guard-canonical-safety.mjs",
+    "verify:direct-payment-backend-balance-guard-canonical-safety": "node scripts/verify-direct-payment-backend-balance-guard-canonical-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

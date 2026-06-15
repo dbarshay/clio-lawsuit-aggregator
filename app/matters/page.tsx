@@ -10705,10 +10705,12 @@ function masterSettlementDateFiledValue(): string {
                   position: "fixed",
                   inset: 0,
                   zIndex: 50000,
-                  display: "block",
-                  padding: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 24,
                   overflow: "hidden",
-                  background: "rgba(15, 23, 42, 0.42)",
+                  background: "rgba(15, 23, 42, 0.58)",
                 }}
                 onClick={closeMasterInfoEditDialog}
                 onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeMasterInfoEditDialog(); } }}
@@ -10718,17 +10720,13 @@ function masterSettlementDateFiledValue(): string {
                   onClick={(event) => event.stopPropagation()}
                   data-barsh-standard-modal-shell="compact-field-edit"
                   style={{
-                    position: "fixed",
-                    top: 154,
-                    left: "50%",
-                    transform: "translateX(-50%)",
                     width: "min(620px, 94vw)",
-                    maxHeight: "calc(100vh - 178px)",
+                    maxHeight: "88vh",
                     overflow: "hidden",
-                    border: "1px solid transparent",
+                    border: "1px solid #1e3a8a",
                     borderRadius: 18,
                     background: "#ffffff",
-                    boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
+                    boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
                   }}
                 >
                   <div
@@ -10744,8 +10742,8 @@ function masterSettlementDateFiledValue(): string {
                       padding: "12px 14px",
                       borderBottom: "1px solid #1e3a8a",
                       background: "#1e3a8a",
-                      borderTopLeftRadius: 0,
-                      borderTopRightRadius: 0,
+                      borderTopLeftRadius: 18,
+                      borderTopRightRadius: 18,
                     }}
                   >
                     <div style={{ gridColumn: 2, justifySelf: "center", minWidth: 0 }}>
@@ -11107,21 +11105,6 @@ function masterSettlementDateFiledValue(): string {
 
                     <div
                       style={{
-                        padding: "7px 10px",
-                        border: "1px solid #cbd5e1",
-                        borderRadius: 12,
-                        background: "#ffffff",
-                        color: "#0f172a",
-                        fontSize: 13,
-                        fontWeight: 850,
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      
-                    </div>
-
-                    <div
-                      style={{
                         display: "flex",
                         justifyContent: "flex-end",
                         gap: 10,
@@ -11134,10 +11117,10 @@ function masterSettlementDateFiledValue(): string {
                         style={{
                           minWidth: 110,
                           height: 42,
-                          border: "1px solid #cbd5e1",
-                          borderRadius: 12,
-                          background: "#ffffff",
-                          color: "#0f172a",
+                          border: "1px solid #dc2626",
+                          borderRadius: 10,
+                          background: "#dc2626",
+                          color: "#ffffff",
                           fontWeight: 900,
                           fontSize: 14,
                           cursor: "pointer",
@@ -11152,10 +11135,10 @@ function masterSettlementDateFiledValue(): string {
                         style={{
                           minWidth: 190,
                           height: 42,
-                          border: "1px solid #cbd5e1",
-                          borderRadius: 12,
-                          background: "#ffffff",
-                          color: "#0f172a",
+                          border: "1px solid #15803d",
+                          borderRadius: 10,
+                          background: "#16a34a",
+                          color: "#ffffff",
                           fontWeight: 950,
                           fontSize: 14,
                           cursor: "pointer",

@@ -1125,6 +1125,9 @@ const activeGroupKey =
         role="dialog"
         aria-modal="true"
         aria-label="Direct Matter Document Activity"
+        tabIndex={-1}
+        onClick={closeMatterDocumentActivityPopup}
+        onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeMatterDocumentActivityPopup(); } }}
         style={{
           position: "fixed",
           inset: "76px 24px 24px 24px",
@@ -1141,74 +1144,32 @@ const activeGroupKey =
           style={{
             width: "min(1180px, calc(100vw - 64px))",
             maxHeight: "calc(100vh - 124px)",
-            overflow: "auto",
-            resize: "both",
+            overflow: "hidden",
             minWidth: 780,
             minHeight: 460,
             background: "#ffffff",
-            borderRadius: 22,
-            border: "1px solid #cbd5e1",
+            borderRadius: 18,
+            border: "1px solid #1e3a8a",
             boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
-            padding: 22,
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start" }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 900, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                Document Activity
-              </div>
-              <div style={{ marginTop: 4, fontSize: 24, fontWeight: 950, color: "#0f172a" }}>
-                Matter {directMatterDisplayNumberForDocumentActivity() || "—"}
-              </div>
-              <div style={{ marginTop: 6, fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
-                Read-only local activity for finalized documents, drafted emails, print queue records, and delivery status.  This popup does not email, print, upload, queue, or write records.
-              </div>
+          <div style={{ padding: "16px 20px", background: "#1e3a8a", color: "#ffffff", textAlign: "center", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
+            <div style={{ fontSize: 20, fontWeight: 950 }}>
+              Document Activity
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                onClick={() => void loadMatterDocumentActivity()}
-                disabled={matterDocumentActivityLoading}
-                style={{
-                  border: "1px solid #bfdbfe",
-                  background: matterDocumentActivityLoading ? "#eff6ff" : "#dbeafe",
-                  color: "#1d4ed8",
-                  borderRadius: 999,
-                  padding: "9px 14px",
-                  fontSize: 13,
-                  fontWeight: 900,
-                  cursor: matterDocumentActivityLoading ? "default" : "pointer",
-                }}
-              >
-                {matterDocumentActivityLoading ? "Loading..." : "Refresh"}
-              </button>
-              <button
-                type="button"
-                onClick={closeMatterDocumentActivityPopup}
-                style={{
-                  border: "1px solid #cbd5e1",
-                  background: "#ffffff",
-                  color: "#334155",
-                  borderRadius: 999,
-                  padding: "9px 14px",
-                  fontSize: 13,
-                  fontWeight: 900,
-                  cursor: "pointer",
-                }}
-              >
-                Close
-              </button>
+            <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, opacity: 0.92 }}>
+              Matter {directMatterDisplayNumberForDocumentActivity() || "—"}
             </div>
           </div>
 
-          <div
-            style={{
-              marginTop: 18,
-              display: "grid",
-              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-              gap: 10,
-            }}
-          >
+          <div style={{ padding: 18, maxHeight: "calc(100vh - 250px)", overflowY: "auto" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                gap: 10,
+              }}
+            >
             {summaryItems.map(([label, count]) => (
               <div
                 key={String(label)}
@@ -1314,6 +1275,22 @@ const activeGroupKey =
                 </div>
               ))
             )}
+          </div>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 10,
+              padding: "14px 18px",
+              borderTop: "1px solid #e2e8f0",
+              background: "#ffffff",
+              borderBottomLeftRadius: 18,
+              borderBottomRightRadius: 18,
+            }}
+          >
+            <button type="button" onClick={closeMatterDocumentActivityPopup} style={{ minWidth: 96, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#334155", fontWeight: 900, cursor: "pointer" }}>Close</button>
+            <button type="button" onClick={() => void loadMatterDocumentActivity()} disabled={matterDocumentActivityLoading} style={{ minWidth: 104, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: matterDocumentActivityLoading ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: matterDocumentActivityLoading ? "not-allowed" : "pointer" }}>{matterDocumentActivityLoading ? "Loading..." : "Refresh"}</button>
           </div>
         </div>
       </div>
@@ -5561,13 +5538,15 @@ function openClaimAmountEditDialog() {
               onClick={loadMatterEmailThreadPreview}
               disabled={emailThreadPreviewLoading || graphThreadSyncPreviewLoading || graphThreadSyncLoading}
               style={{
-                padding: "7px 10px",
+                minWidth: 118,
+                height: 38,
+                padding: "7px 12px",
                 border: "1px solid #1e3a8a",
-                background: emailThreadPreviewLoading ? "#f3f4f6" : "#1e3a8a",
-                color: emailThreadPreviewLoading ? "#666" : "#fff",
-                borderRadius: 4,
+                background: emailThreadPreviewLoading ? "#93c5fd" : "#1e3a8a",
+                color: "#ffffff",
+                borderRadius: 10,
                 cursor: emailThreadPreviewLoading ? "not-allowed" : "pointer",
-                fontWeight: 700,
+                fontWeight: 900,
                 whiteSpace: "nowrap",
               }}
             >
@@ -6199,6 +6178,9 @@ function openClaimAmountEditDialog() {
         role="dialog"
         aria-modal="true"
         aria-label="Direct Matter Document Generation"
+        tabIndex={-1}
+        onClick={() => setMatterDocumentGenerationPopupOpen(false)}
+        onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setMatterDocumentGenerationPopupOpen(false); } }}
         style={{
           position: "fixed",
           inset: 0,
@@ -6289,7 +6271,7 @@ function openClaimAmountEditDialog() {
               <div>
                 <h3 style={{ margin: 0, fontSize: 18 }}>Step 1: Select Document</h3>
                 <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
-                  Start typing to filter available document templates.  These are sample options until the real template source is wired.
+                  Select the document template for this matter.
                 </p>
               </div>
 
@@ -6311,7 +6293,7 @@ function openClaimAmountEditDialog() {
                       setMatterDocumentWorkflowStage("select");
                     }
                   }}
-                  placeholder="Start typing or choose a document..."
+                  placeholder="Select document template"
                   style={{
                     width: "100%",
                     boxSizing: "border-box",
@@ -6550,7 +6532,7 @@ function openClaimAmountEditDialog() {
                     <input
                       value={matterDocumentDeliveryToOverride}
                       onChange={(event) => setMatterDocumentDeliveryToOverride(event.target.value)}
-                      placeholder="Enter recipient email before creating an Outlook draft"
+                      placeholder="Recipient email"
                       style={{
                         border: "1px solid #cbd5e1",
                         borderRadius: 10,
@@ -6568,7 +6550,7 @@ function openClaimAmountEditDialog() {
                       "Email Document",
                       () => launchMatterDocumentEmail(selectedTemplate),
                       Boolean(matterDocumentDeliveryToOverride.trim()) && !isValidMatterDocumentDeliveryEmail(matterDocumentDeliveryToOverride),
-                      "Create an Outlook draft with To/Cc/subject/body populated.  PDF attachment upload is still metadata-only."
+                      "Create an Outlook draft with the finalized PDF attached."
                     )}
                     {actionButton("Print Document", () => launchMatterDocumentPrint(selectedTemplate), false, "Open the finalized PDF/printable document and show the print dialog when available.")}
                     {actionButton("Send to Print Queue", () => sendMatterDocumentToPrintQueue(selectedTemplate), false, "Send this finalized document to the shared Barsh Matters print queue when backend support is available.")}
@@ -6601,7 +6583,7 @@ function openClaimAmountEditDialog() {
                     <input
                       value={matterDocumentDeliveryToOverride}
                       onChange={(event) => setMatterDocumentDeliveryToOverride(event.target.value)}
-                      placeholder="Enter recipient email before creating an Outlook draft"
+                      placeholder="Recipient email"
                       style={{
                         border: "1px solid #cbd5e1",
                         borderRadius: 10,
@@ -6619,7 +6601,7 @@ function openClaimAmountEditDialog() {
                       "Email Document",
                       () => launchMatterDocumentEmail(selectedTemplate),
                       Boolean(matterDocumentDeliveryToOverride.trim()) && !isValidMatterDocumentDeliveryEmail(matterDocumentDeliveryToOverride),
-                      "Create an Outlook draft with To/Cc/subject/body populated.  PDF attachment upload is still metadata-only."
+                      "Create an Outlook draft with the finalized PDF attached."
                     )}
                     {actionButton("Print Document", () => launchMatterDocumentPrint(selectedTemplate), false, "Open the finalized PDF/printable document and show the print dialog when available.")}
                     {actionButton("Send to Print Queue", () => sendMatterDocumentToPrintQueue(selectedTemplate), false, "Send this finalized document to the shared Barsh Matters print queue when backend support is available.")}
@@ -6708,10 +6690,10 @@ function openClaimAmountEditDialog() {
               style={{
                 minWidth: 118,
                 height: 38,
-                border: "1px solid #cbd5e1",
+                border: "1px solid #dc2626",
                 borderRadius: 10,
-                background: documentPreviewLoading || finalizeUploadLoading ? "#f3f4f6" : "#ffffff",
-                color: documentPreviewLoading || finalizeUploadLoading ? "#94a3b8" : "#334155",
+                background: documentPreviewLoading || finalizeUploadLoading ? "#fecaca" : "#dc2626",
+                color: "#ffffff",
                 fontWeight: 900,
                 cursor: documentPreviewLoading || finalizeUploadLoading ? "not-allowed" : "pointer",
               }}
@@ -6733,6 +6715,9 @@ function openClaimAmountEditDialog() {
         aria-modal="true"
         aria-label="View Emails"
         data-barsh-direct-view-emails-standard-modal="true"
+        tabIndex={-1}
+        onClick={closeMatterViewEmailsPopup}
+        onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeMatterViewEmailsPopup(); } }}
         style={{
           position: "fixed",
           inset: 0,
@@ -7974,6 +7959,7 @@ function openClaimAmountEditDialog() {
           role="dialog"
           aria-modal="true"
           aria-label="Matter Audit History"
+          tabIndex={-1}
           style={{
             position: "fixed",
             inset: 0,
@@ -7984,6 +7970,7 @@ function openClaimAmountEditDialog() {
             background: "rgba(15, 23, 42, 0.58)",
           }}
           onClick={closeMatterAuditHistoryPopup}
+          onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeMatterAuditHistoryPopup(); } }}
         >
           <div
             onClick={(event) => event.stopPropagation()}
@@ -7994,93 +7981,32 @@ function openClaimAmountEditDialog() {
               transform: "translateX(-50%)",
               width: "min(1120px, 96vw)",
               maxHeight: "calc(100vh - 178px)",
-              overflowY: "auto",
-              border: "1px solid #bfdbfe",
-              borderRadius: 22,
+              overflow: "hidden",
+              border: "1px solid #1e3a8a",
+              borderRadius: 18,
               background: "#ffffff",
               boxShadow: "0 30px 90px rgba(15, 23, 42, 0.38)",
             }}
           >
             <div
               style={{
-                position: "sticky",
-                top: 0,
-                zIndex: 1,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: 12,
-                padding: "16px 18px",
-                borderBottom: "1px solid #dbe4f0",
-                background: "#eff6ff",
-                borderTopLeftRadius: 22,
-                borderTopRightRadius: 22,
+                padding: "16px 20px",
+                background: "#1e3a8a",
+                color: "#ffffff",
+                textAlign: "center",
+                borderTopLeftRadius: 18,
+                borderTopRightRadius: 18,
               }}
             >
-              <div>
-                <div
-                  style={{
-                    fontSize: 18,
-                    fontWeight: 950,
-                    color: "#1d4ed8",
-                  }}
-                >
-                  Matter-Level Audit / History
-                </div>
-                <div
-                  style={{
-                    marginTop: 3,
-                    fontSize: 12,
-                    fontWeight: 800,
-                    color: "#1e40af",
-                  }}
-                >
-                  {textValue(matter?.displayNumber || matter?.display_number) || matterId || "Matter"} · Local database audit log.
-                </div>
+              <div style={{ fontSize: 20, fontWeight: 950 }}>
+                Matter-Level Audit / History
               </div>
-
-              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <button
-                  type="button"
-                  onClick={loadMatterAuditHistory}
-                  disabled={matterAuditHistoryLoading}
-                  style={{
-                    minWidth: 98,
-                    height: 38,
-                    border: "1px solid #bfdbfe",
-                    borderRadius: 999,
-                    background: "#ffffff",
-                    color: "#1d4ed8",
-                    fontWeight: 900,
-                    cursor: matterAuditHistoryLoading ? "default" : "pointer",
-                  }}
-                >
-                  {matterAuditHistoryLoading ? "Loading..." : "Refresh"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={closeMatterAuditHistoryPopup}
-                  style={{
-                    width: 38,
-                    height: 38,
-                    border: "1px solid #cbd5e1",
-                    borderRadius: 999,
-                    background: "#ffffff",
-                    color: "#64748b",
-                    fontSize: 26,
-                    fontWeight: 900,
-                    cursor: "pointer",
-                    lineHeight: 1,
-                  }}
-                  aria-label="Close matter audit history popup"
-                >
-                  ×
-                </button>
+              <div style={{ marginTop: 4, fontSize: 12, fontWeight: 800, opacity: 0.92 }}>
+                {textValue(matter?.displayNumber || matter?.display_number) || matterId || "Matter"}
               </div>
             </div>
 
-            <div style={{ padding: 18 }}>
+            <div style={{ padding: 18, maxHeight: "calc(100vh - 300px)", overflowY: "auto" }}>
               <div
                 style={{
                   display: "grid",
@@ -8238,6 +8164,21 @@ function openClaimAmountEditDialog() {
                   </div>
                 )}
             </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+                padding: "14px 18px",
+                borderTop: "1px solid #e2e8f0",
+                background: "#ffffff",
+                borderBottomLeftRadius: 18,
+                borderBottomRightRadius: 18,
+              }}
+            >
+              <button type="button" onClick={closeMatterAuditHistoryPopup} style={{ minWidth: 96, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#334155", fontWeight: 900, cursor: "pointer" }}>Close</button>
+              <button type="button" onClick={loadMatterAuditHistory} disabled={matterAuditHistoryLoading} style={{ minWidth: 104, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: matterAuditHistoryLoading ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: matterAuditHistoryLoading ? "not-allowed" : "pointer" }}>{matterAuditHistoryLoading ? "Loading..." : "Refresh"}</button>
+            </div>
           </div>
         </div>
       )}
@@ -8329,10 +8270,10 @@ function openClaimAmountEditDialog() {
                 style={{
                   minWidth: 96,
                   height: 38,
-                  border: "1px solid #cbd5e1",
+                  border: "1px solid #dc2626",
                   borderRadius: 10,
-                  background: "#f8fafc",
-                  color: "#334155",
+                  background: directFieldEditLoading ? "#fecaca" : "#dc2626",
+                  color: "#ffffff",
                   fontWeight: 900,
                   cursor: directFieldEditLoading ? "not-allowed" : "pointer",
                 }}
@@ -8420,7 +8361,7 @@ function openClaimAmountEditDialog() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 16px 16px", borderTop: "1px solid #e2e8f0", background: "#ffffff" }}>
-              <button type="button" onClick={() => { setDirectFieldEditModal(null); setDirectFieldEditResult(null); }} disabled={directFieldEditLoading} style={{ minWidth: 96, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#334155", fontWeight: 900, cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}>Cancel</button>
+              <button type="button" onClick={() => { setDirectFieldEditModal(null); setDirectFieldEditResult(null); }} disabled={directFieldEditLoading} style={{ minWidth: 96, height: 38, border: "1px solid #dc2626", borderRadius: 10, background: directFieldEditLoading ? "#fecaca" : "#dc2626", color: "#ffffff", fontWeight: 900, cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}>Cancel</button>
               <button type="submit" disabled={directFieldEditLoading} style={{ minWidth: 118, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: directFieldEditLoading ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}>{directFieldEditLoading ? "Saving..." : "Confirm Edit"}</button>
             </div>
           </form>
@@ -8511,7 +8452,7 @@ function openClaimAmountEditDialog() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 16px 16px", borderTop: "1px solid #e2e8f0", background: "#ffffff" }}>
-              <button type="button" onClick={() => { setDirectFieldEditModal(null); setDirectFieldEditResult(null); }} disabled={directFieldEditLoading} style={{ minWidth: 96, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#334155", fontWeight: 900, cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}>Cancel</button>
+              <button type="button" onClick={() => { setDirectFieldEditModal(null); setDirectFieldEditResult(null); }} disabled={directFieldEditLoading} style={{ minWidth: 96, height: 38, border: "1px solid #dc2626", borderRadius: 10, background: directFieldEditLoading ? "#fecaca" : "#dc2626", color: "#ffffff", fontWeight: 900, cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}>Cancel</button>
               <button type="submit" disabled={directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal)} style={{ minWidth: 118, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal) ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal) ? "not-allowed" : "pointer" }}>{directFieldEditLoading ? "Saving..." : "Confirm Edit"}</button>
             </div>
           </form>
@@ -8611,7 +8552,7 @@ function openClaimAmountEditDialog() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 16px 16px", borderTop: "1px solid #e2e8f0", background: "#ffffff" }}>
-              <button type="button" onClick={closeIdentityFieldEditDialog} disabled={identityFieldEditLoading} style={{ minWidth: 96, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#334155", fontWeight: 900, cursor: identityFieldEditLoading ? "not-allowed" : "pointer" }}>Cancel</button>
+              <button type="button" onClick={closeIdentityFieldEditDialog} disabled={identityFieldEditLoading} style={{ minWidth: 96, height: 38, border: "1px solid #dc2626", borderRadius: 10, background: identityFieldEditLoading ? "#fecaca" : "#dc2626", color: "#ffffff", fontWeight: 900, cursor: identityFieldEditLoading ? "not-allowed" : "pointer" }}>Cancel</button>
               <button type="submit" disabled={identityFieldEditLoading || !textValue(identityFieldEditInput)} style={{ minWidth: 118, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: identityFieldEditLoading || !textValue(identityFieldEditInput) ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: identityFieldEditLoading || !textValue(identityFieldEditInput) ? "not-allowed" : "pointer" }}>{identityFieldEditLoading ? "Saving..." : "Confirm Edit"}</button>
             </div>
           </form>
@@ -8672,7 +8613,7 @@ function openClaimAmountEditDialog() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 16px 16px", borderTop: "1px solid #e2e8f0", background: "#ffffff" }}>
-              <button type="button" onClick={closeTreatingProviderEditDialog} disabled={treatingProviderSaving} style={{ minWidth: 96, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#334155", fontWeight: 900, cursor: treatingProviderSaving ? "not-allowed" : "pointer" }}>Cancel</button>
+              <button type="button" onClick={closeTreatingProviderEditDialog} disabled={treatingProviderSaving} style={{ minWidth: 96, height: 38, border: "1px solid #dc2626", borderRadius: 10, background: treatingProviderSaving ? "#fecaca" : "#dc2626", color: "#ffffff", fontWeight: 900, cursor: treatingProviderSaving ? "not-allowed" : "pointer" }}>Cancel</button>
               <button type="submit" disabled={treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput} style={{ minWidth: 118, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput ? "not-allowed" : "pointer" }}>{treatingProviderSaving ? "Saving..." : "Confirm Edit"}</button>
             </div>
           </form>
@@ -13567,29 +13508,33 @@ function openClaimAmountEditDialog() {
         style={{
           position: "fixed",
           inset: 0,
-          background: "rgba(0,0,0,0.45)",
+          background: "rgba(15, 23, 42, 0.45)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           zIndex: 1000,
         }}
+        onClick={() => setShowMetadataModal(false)}
+        onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setShowMetadataModal(false); } }}
+        tabIndex={-1}
       >
         <div
+          onClick={(event) => event.stopPropagation()}
           style={{
-            width: 520,
-            maxWidth: "calc(100vw - 32px)",
-            background: "#fff",
-            borderRadius: 8,
-            padding: 22,
-            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+            width: "min(560px, calc(100vw - 32px))",
+            maxHeight: "calc(100vh - 64px)",
+            overflow: "hidden",
+            background: "#ffffff",
+            border: "1px solid #1e3a8a",
+            borderRadius: 18,
+            boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
           }}
         >
-          <h2 style={{ marginTop: 0 }}>Edit Lawsuit Metadata</h2>
+          <h2 style={{ margin: 0, padding: "14px 18px", background: "#1e3a8a", color: "#ffffff", textAlign: "center", fontSize: 20, fontWeight: 950, lineHeight: 1.15 }}>
+            Edit Lawsuit Metadata
+          </h2>
 
-          <p style={{ marginBottom: 16, color: "#444", lineHeight: 1.45 }}>
-            Venue, Amount Sought, and notes are stored locally for lawsuit metadata and document packet generation.
-            Index / AAA Number and lawsuit matter display numbers are written to Clio as post-filing fields.
-          </p>
+          <div style={{ display: "grid", gap: 12, padding: 18, maxHeight: "calc(100vh - 170px)", overflowY: "auto", background: "#ffffff" }}>
 
           <label style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>
             Venue
@@ -13605,10 +13550,10 @@ function openClaimAmountEditDialog() {
             }
             style={{
               width: "100%",
-              padding: 10,
+              padding: "11px 12px",
               marginBottom: 10,
-              border: "1px solid #bbb",
-              borderRadius: 4,
+              border: "1px solid #cbd5e1",
+              borderRadius: 10,
             }}
           >
             <option value="">Choose Court</option>
@@ -13628,21 +13573,21 @@ function openClaimAmountEditDialog() {
                   venueOther: e.target.value,
                 }))
               }
-              placeholder="Enter court / venue"
+              placeholder="Court / venue"
               style={{
                 width: "100%",
-                padding: 10,
+                padding: "11px 12px",
                 marginBottom: 14,
-                border: "1px solid #bbb",
-                borderRadius: 4,
+                border: "1px solid #cbd5e1",
+                borderRadius: 10,
               }}
             />
           )}
 
           <fieldset
             style={{
-              border: "1px solid #ddd",
-              borderRadius: 6,
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
               padding: 12,
               margin: "8px 0 14px",
             }}
@@ -13713,13 +13658,13 @@ function openClaimAmountEditDialog() {
                     customAmountSought: e.target.value,
                   }))
                 }
-                placeholder="Enter total lawsuit amount sought"
+                placeholder="Total lawsuit amount sought"
                 style={{
                   width: "100%",
-                  padding: 10,
+                  padding: "11px 12px",
                   marginTop: 2,
-                  border: "1px solid #bbb",
-                  borderRadius: 4,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 10,
                 }}
               />
             )}
@@ -13736,13 +13681,13 @@ function openClaimAmountEditDialog() {
                 indexAaaNumber: e.target.value,
               }))
             }
-            placeholder="Enter after filing"
+            placeholder="Index / AAA Number"
             style={{
               width: "100%",
-              padding: 10,
+              padding: "11px 12px",
               marginBottom: 14,
-              border: "1px solid #bbb",
-              borderRadius: 4,
+              border: "1px solid #cbd5e1",
+              borderRadius: 10,
             }}
           />
 
@@ -13757,27 +13702,32 @@ function openClaimAmountEditDialog() {
                 lawsuitNotes: e.target.value,
               }))
             }
-            placeholder="Optional"
+            placeholder="Notes"
             rows={3}
             style={{
               width: "100%",
-              padding: 10,
-              marginBottom: 18,
-              border: "1px solid #bbb",
-              borderRadius: 4,
+              padding: "11px 12px",
+              marginBottom: 0,
+              border: "1px solid #cbd5e1",
+              borderRadius: 10,
               resize: "vertical",
             }}
           />
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 18px", borderTop: "1px solid #e2e8f0", background: "#ffffff", borderBottomLeftRadius: 18, borderBottomRightRadius: 18 }}>
             <button
               onClick={() => setShowMetadataModal(false)}
               disabled={metadataSaving}
               style={{
-                padding: "8px 12px",
-                border: "1px solid #aaa",
-                background: "#fff",
-                borderRadius: 4,
+                minWidth: 96,
+                height: 38,
+                border: "1px solid #dc2626",
+                background: metadataSaving ? "#fecaca" : "#dc2626",
+                color: "#ffffff",
+                borderRadius: 10,
+                fontWeight: 900,
                 cursor: metadataSaving ? "not-allowed" : "pointer",
               }}
             >
@@ -13792,14 +13742,15 @@ function openClaimAmountEditDialog() {
                   parseMoneyInput(metadataEdit.customAmountSought) === null)
               }
               style={{
-                padding: "8px 12px",
-                border: "1px solid #2563eb",
+                minWidth: 118,
+                height: 38,
+                border: "1px solid #1e3a8a",
                 background:
                   metadataSaving ||
                   (metadataEdit.amountSoughtMode === "custom" &&
                     parseMoneyInput(metadataEdit.customAmountSought) === null)
-                    ? "#f3f4f6"
-                    : "#2563eb",
+                    ? "#93c5fd"
+                    : "#1e3a8a",
                 color:
                   metadataSaving ||
                   (metadataEdit.amountSoughtMode === "custom" &&
@@ -14041,7 +13992,7 @@ function openClaimAmountEditDialog() {
                 setStartLawsuitError("");
               }}
               disabled={submitting}
-              style={startLawsuitSecondaryButtonStyle}
+              style={{ ...startLawsuitSecondaryButtonStyle, border: "1px solid #dc2626", background: submitting ? "#fecaca" : "#dc2626", color: "#ffffff" }}
             >
               Cancel
             </button>
@@ -14133,7 +14084,7 @@ function openClaimAmountEditDialog() {
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 16px 16px", borderTop: "1px solid #e2e8f0", background: "#ffffff" }}>
-            <button type="button" onClick={() => { setShowCloseModal(false); setCloseMatterTarget(null); setCloseReason(""); }} disabled={closing} style={{ minWidth: 96, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#334155", fontWeight: 900, cursor: closing ? "not-allowed" : "pointer" }}>Cancel</button>
+            <button type="button" onClick={() => { setShowCloseModal(false); setCloseMatterTarget(null); setCloseReason(""); }} disabled={closing} style={{ minWidth: 96, height: 38, border: "1px solid #dc2626", borderRadius: 10, background: closing ? "#fecaca" : "#dc2626", color: "#ffffff", fontWeight: 900, cursor: closing ? "not-allowed" : "pointer" }}>Cancel</button>
             <button type="submit" disabled={!closeReason || closing} style={{ minWidth: 118, height: 38, border: "1px solid #dc2626", borderRadius: 10, background: !closeReason || closing ? "#fecaca" : "#dc2626", color: !closeReason || closing ? "#7f1d1d" : "#ffffff", fontWeight: 900, cursor: !closeReason || closing ? "not-allowed" : "pointer" }}>{closing ? "Closing..." : "Close Matter"}</button>
           </div>
         </form>

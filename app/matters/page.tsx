@@ -12414,26 +12414,26 @@ function masterSettlementDateFiledValue(): string {
                   position: "fixed",
                   inset: 0,
                   zIndex: 50000,
-                  display: "block",
-                  padding: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 24,
                   background: "rgba(15, 23, 42, 0.58)",
                 }}
                 onClick={() => setMasterPaymentFormOpen(false)}
+                onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setMasterPaymentFormOpen(false); } }}
+                tabIndex={-1}
               >
                 <div
                   onClick={(event) => event.stopPropagation()}
                   style={{
-                    position: "fixed",
-                    top: 104,
-                    left: "50%",
-                    transform: "translateX(-50%)",
                     width: "min(1080px, 96vw)",
-                    maxHeight: "calc(100vh - 178px)",
+                    maxHeight: "88vh",
                     overflowY: "auto",
-                    border: "1px solid #bbf7d0",
-                    borderRadius: 22,
+                    border: "1px solid #1e3a8a",
+                    borderRadius: 18,
                     background: "#ffffff",
-                    boxShadow: "0 30px 90px rgba(15, 23, 42, 0.38)",
+                    boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
                   }}
                 >
                   <div
@@ -12442,51 +12442,30 @@ function masterSettlementDateFiledValue(): string {
                       top: 0,
                       zIndex: 1,
                       display: "grid",
-                      gridTemplateColumns: "38px minmax(0, 1fr) 38px",
+                      gridTemplateColumns: "32px minmax(0, 1fr) 32px",
                       alignItems: "center",
-                      gap: 12,
-                      padding: "16px 18px",
-                      borderBottom: "1px solid #dbe4f0",
-                      background: "#f0fdf4",
-                      borderTopLeftRadius: 22,
-                      borderTopRightRadius: 22,
+                      gap: 8,
+                      padding: "16px 20px",
+                      borderBottom: "1px solid #1e3a8a",
+                      background: "#1e3a8a",
+                      borderTopLeftRadius: 18,
+                      borderTopRightRadius: 18,
                     }}
                   >
                     <div aria-hidden="true" />
 
                     <div
                       style={{
-                        fontSize: 18,
+                        fontSize: 20,
                         fontWeight: 950,
-                        color: "#14532d",
+                        color: "#ffffff",
                         textAlign: "center",
                       }}
                     >
                       Post Lawsuit Payment
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        resetMasterPaymentPreviewForm();
-                        setMasterPaymentFormOpen(false);
-                      }}
-                      style={{
-                        width: 38,
-                        height: 38,
-                        border: "1px solid #cbd5e1",
-                        borderRadius: 999,
-                        background: "#ffffff",
-                        color: "#64748b",
-                        fontSize: 26,
-                        fontWeight: 900,
-                        cursor: "pointer",
-                        lineHeight: 1,
-                      }}
-                      aria-label="Close lawsuit payment preview popup"
-                    >
-                      ×
-                    </button>
+                    <span data-barsh-standard-modal-close="removed" aria-hidden="true" />
                   </div>
 
                   <div
@@ -12861,9 +12840,9 @@ function masterSettlementDateFiledValue(): string {
                       gap: 14,
                       padding: "14px 18px",
                       borderTop: "1px solid #e5e7eb",
-                      background: "#f8fafc",
-                      borderBottomLeftRadius: 22,
-                      borderBottomRightRadius: 22,
+                      background: "#ffffff",
+                      borderBottomLeftRadius: 18,
+                      borderBottomRightRadius: 18,
                     }}
                   >
                     <button

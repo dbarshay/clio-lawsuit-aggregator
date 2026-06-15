@@ -4221,13 +4221,6 @@ function openClaimAmountEditDialog() {
       return;
     }
 
-    const masterLawsuitId = usableMasterLawsuitIdForDocuments();
-
-    if (!masterLawsuitId) {
-      alert("No valid Master Lawsuit ID is available for PDF preview.  Load or connect a lawsuit first.");
-      return;
-    }
-
     const directMatterId = directMatterNumericIdForDocuments();
     const directMatterDisplayNumber =
       textValue(matter?.displayNumber || matter?.display_number) ||
@@ -4238,80 +4231,17 @@ function openClaimAmountEditDialog() {
       return;
     }
 
-    const previewWindow = window.open("", "_blank");
-
-    if (previewWindow) {
-      previewWindow.document.write("<!doctype html><title>Preparing PDF Preview</title><body style='font-family: system-ui, sans-serif; padding: 24px;'>Preparing PDF preview...</body>");
-      previewWindow.document.close();
-    }
-
-    try {
-      setMatterDocumentWorkflowStage("preview");
-
-      let workingDocumentForPreview = matterDocumentFinalizationResult?.workingDocument || null;
-
-      if (!workingDocumentForPreview?.driveItemId) {
-        const workingResponse = await fetch("/api/documents/working-docx", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            confirmCreate: true,
-            masterLawsuitId,
-            uploadTargetMode: "direct-matter",
-            directMatterId,
-            directMatterDisplayNumber,
-            documentKeys: [selectedTemplate.key],
-          }),
-        });
-
-        const workingJson = await workingResponse.json().catch(() => null);
-
-        if (!workingResponse.ok || !workingJson?.ok || !workingJson?.workingDocument?.driveItemId) {
-          alert(workingJson?.error || "Could not create a working Word document for PDF preview.");
-          return;
-        }
-
-        workingDocumentForPreview = workingJson.workingDocument;
-        setMatterDocumentFinalizationResult({
-          ok: true,
-          action: "working-docx-create",
-          selectedDocument: workingJson.selectedDocument,
-          workingDocument: workingDocumentForPreview,
-          note: "Working DOCX created in Microsoft Graph/OneDrive for temporary PDF preview.",
-        });
-      }
-
-      const previewResponse = await fetch("/api/documents/preview-pdf", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          workingDocumentDriveItemId: workingDocumentForPreview.driveItemId,
-          workingDocumentName: workingDocumentForPreview.name || selectedTemplate.label,
-          filename: workingDocumentForPreview.originalFilename || workingDocumentForPreview.name || selectedTemplate.label,
-        }),
-      });
-
-      if (!previewResponse.ok) {
-        const errorJson = await previewResponse.json().catch(() => null);
-        alert(errorJson?.error || "Could not generate the PDF preview.");
-        return;
-      }
-
-      const pdfBlob = await previewResponse.blob();
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-
-      if (previewWindow) {
-        previewWindow.location.href = pdfUrl;
-      }
-
-      window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 120000);
-    } catch (err: any) {
-      alert(err?.message || "Could not generate the PDF preview.");
-    }
+    setMatterDocumentWorkflowStage("preview");
+    await loadMatterDocumentDataPreview();
+    setMatterDocumentFinalizationResult({
+      ok: true,
+      action: "direct-matter-preview-data",
+      selectedDocument: selectedTemplate,
+      note: "Direct matter document preview is now direct-matter scoped. Full PDF/DOCX generation will be wired to the direct matter packet route in the next architecture step.",
+      uploadTargetMode: "direct-matter",
+      directMatterId,
+      directMatterDisplayNumber,
+    });
   }
 
   async function finalizeMatterDocumentFromStep2(selectedTemplate: { key: string; label: string; description: string } | null) {
@@ -4322,122 +4252,37 @@ function openClaimAmountEditDialog() {
       return;
     }
 
-    const masterLawsuitId = usableMasterLawsuitIdForDocuments();
-
-    if (!masterLawsuitId) {
-      alert("No valid Master Lawsuit ID is available for finalization.  Load or connect a lawsuit first.");
-      return;
-    }
-
     const directMatterId = directMatterNumericIdForDocuments();
     const directMatterDisplayNumber =
       textValue(matter?.displayNumber || matter?.display_number) ||
       (directMatterId ? `BRL${directMatterId}` : "");
 
-    let workingDocumentForFinalization = matterDocumentFinalizationResult?.workingDocument || null;
-
-    if (!workingDocumentForFinalization?.driveItemId) {
-      try {
-        const params = new URLSearchParams();
-        params.set("templateKey", selectedTemplate.key);
-        params.set("templateLabel", selectedTemplate.label || selectedTemplate.key);
-
-        const latestResponse = await fetch("/api/documents/working-docx-latest?" + params.toString(), {
-          cache: "no-store",
-        });
-        const latestJson = await latestResponse.json().catch(() => null);
-
-        if (latestResponse.ok && latestJson?.ok && latestJson?.workingDocument?.driveItemId) {
-          workingDocumentForFinalization = latestJson.workingDocument;
-          setMatterDocumentFinalizationResult({
-            ok: true,
-            action: "working-docx-recovered",
-            selectedDocument: {
-              key: selectedTemplate.key,
-              label: selectedTemplate.label,
-            },
-            workingDocument: workingDocumentForFinalization,
-            note: "Recovered latest working DOCX from Microsoft Graph/OneDrive for Direct Matter PDF finalization.",
-          });
-        }
-      } catch {
-        // Fall through to user-facing block below.
-      }
-    }
-
-    if (!workingDocumentForFinalization?.driveItemId) {
-      alert("Barsh Matters could not find the working Word document.  Click Edit Document first, save in Word Web, then Finalize Document.");
+    if (!directMatterId) {
+      alert("No valid direct matter ID is available for finalization.");
       return;
     }
 
-    const confirmed = confirm(
-      "FINALIZE PDF TO CLIO\n\n" +
-        "Document: " + (selectedTemplate.label || selectedTemplate.key) + "\n" +
-        "Matter: " + (directMatterDisplayNumber || directMatterId || "Direct Matter") + "\n\n" +
-        "Barsh Matters will convert the latest saved working Word document to PDF and upload the PDF to this direct bill matter's Clio Documents tab.  Exact duplicate filenames are skipped.\n\n" +
-        "Continue?"
-    );
+    await loadMatterDocumentDataPreview();
 
-    if (!confirmed) return;
+    setMatterDocumentFinalizationResult({
+      ok: true,
+      action: "direct-matter-finalization-pending",
+      selectedDocument: selectedTemplate,
+      note: "Direct matter finalization is separated from lawsuit document generation. Full direct DOCX/PDF finalization will be wired to the direct matter packet route in the next architecture step.",
+      uploadTargetMode: "direct-matter",
+      directMatterId,
+      directMatterDisplayNumber,
+    });
 
-    setDocumentPreviewLoading(true);
-    setFinalizeUploadLoading(true);
-    setFinalizeUploadResult(null);
-    setDocumentPreview(null);
+    setFinalizeUploadResult({
+      ok: false,
+      action: "direct-matter-finalization-pending",
+      message: "Direct matter finalization is not wired yet. This workflow no longer requires a Master Lawsuit ID.",
+    });
 
-    try {
-      const res = await fetch("/api/documents/finalize", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          masterLawsuitId,
-          uploadTargetMode: "direct-matter",
-          directMatterId,
-          directMatterDisplayNumber,
-          confirmUpload: true,
-          documentKeys: [selectedTemplate.key],
-          workingDocumentDriveItemId: workingDocumentForFinalization?.driveItemId || "",
-          workingDocumentKey: matterDocumentFinalizationResult?.selectedDocument?.key || selectedTemplate.key,
-        }),
-      });
-
-      const json = await res.json().catch(() => null);
-
-      if (!res.ok || !json?.ok) {
-        const result = json || { ok: false, error: "Document finalization failed." };
-        setFinalizeUploadResult(result);
-        alert(result.error || "Document finalization failed.");
-        return;
-      }
-
-      setFinalizeUploadResult(json);
-      setMatterDocumentWorkflowStage("delivery");
-      await loadFinalizationHistory(masterLawsuitId);
-      await loadPrintQueuePreview(masterLawsuitId);
-      await loadMatterClioDocuments();
-
-      const uploadedCount = Array.isArray(json.uploaded) ? json.uploaded.length : 0;
-      const skippedCount = Array.isArray(json.skipped) ? json.skipped.length : 0;
-
-      alert(
-        "Document finalization complete.\n\n" +
-          "Uploaded to Clio: " + uploadedCount + " document(s).\n" +
-          "Skipped duplicates: " + skippedCount + " document(s)."
-      );
-    } catch (err: any) {
-      const result = {
-        ok: false,
-        error: err?.message || "Document finalization failed.",
-      };
-      setFinalizeUploadResult(result);
-      alert(result.error);
-    } finally {
-      setDocumentPreviewLoading(false);
-      setFinalizeUploadLoading(false);
-    }
+    setMatterDocumentWorkflowStage("finalize");
   }
+
 
   function downloadBillScheduleDocx() {
     const masterLawsuitId = usableMasterLawsuitIdForDocuments();
@@ -6132,9 +5977,9 @@ function openClaimAmountEditDialog() {
           gap: 8,
           padding: "8px 10px",
           borderRadius: 999,
-          border: active ? "1px solid #4f46e5" : "1px solid #e5e7eb",
-          background: active ? "#eef2ff" : complete ? "#f0fdf4" : "#f9fafb",
-          color: active ? "#3730a3" : complete ? "#166534" : "#374151",
+          border: complete ? "1px solid #16a34a" : "1px solid #bbf7d0",
+          background: complete ? "#16a34a" : "#dcfce7",
+          color: complete ? "#ffffff" : "#166534",
           fontSize: 12,
           fontWeight: 900,
           whiteSpace: "nowrap",
@@ -6148,8 +5993,8 @@ function openClaimAmountEditDialog() {
             width: 22,
             height: 22,
             borderRadius: 999,
-            background: active ? "#4f46e5" : complete ? "#16a34a" : "#e5e7eb",
-            color: active || complete ? "#fff" : "#374151",
+            background: complete ? "#15803d" : "#bbf7d0",
+            color: complete ? "#ffffff" : "#166534",
           }}
         >
           {step}
@@ -6170,14 +6015,14 @@ function openClaimAmountEditDialog() {
         disabled={disabled}
         title={title}
         style={{
-          border: disabled ? "1px solid #d1d5db" : "1px solid #4f46e5",
-          background: disabled ? "#f3f4f6" : "#4f46e5",
+          border: disabled ? "1px solid #d1d5db" : "1px solid #1e3a8a",
+          background: disabled ? "#f3f4f6" : "#1e3a8a",
           color: disabled ? "#6b7280" : "#fff",
           borderRadius: 12,
           padding: "10px 14px",
           fontWeight: 900,
           cursor: disabled ? "not-allowed" : "pointer",
-          boxShadow: disabled ? "none" : "0 10px 20px rgba(79, 70, 229, 0.18)",
+          boxShadow: disabled ? "none" : "0 10px 20px rgba(30, 58, 138, 0.18)",
         }}
       >
         {label}
@@ -6206,6 +6051,28 @@ function openClaimAmountEditDialog() {
     const step2Complete =
       matterDocumentWorkflowStage === "finalize" || matterDocumentWorkflowStage === "delivery";
     const step3Complete = matterDocumentWorkflowStage === "delivery";
+
+    const canGoBackMatterDocumentGeneration = matterDocumentWorkflowStage !== "select";
+    const goBackMatterDocumentGeneration = () => {
+      if (matterDocumentWorkflowStage === "delivery") {
+        setMatterDocumentWorkflowStage("finalize");
+        return;
+      }
+
+      if (matterDocumentWorkflowStage === "finalize") {
+        setMatterDocumentWorkflowStage("chooseAction");
+        return;
+      }
+
+      if (matterDocumentWorkflowStage === "preview" || matterDocumentWorkflowStage === "edit" || matterDocumentWorkflowStage === "chooseAction") {
+        setMatterSelectedDocumentTemplateKey("");
+        setMatterDocumentTemplateQuery("");
+        setDocumentPreview(null);
+        setMatterDocumentFinalizationResult(null);
+        setFinalizeUploadResult(null);
+        setMatterDocumentWorkflowStage("select");
+      }
+    };
 
     return (
       <div
@@ -6236,35 +6103,32 @@ function openClaimAmountEditDialog() {
           }}
         >
           <div
+            data-barsh-direct-document-generation-header-standard="true"
             style={{
-              padding: "22px 24px",
-              borderBottom: "1px solid #e5e7eb",
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              gap: 18,
+              display: "grid",
+              gridTemplateColumns: "90px minmax(0, 1fr) 90px",
+              alignItems: "center",
+              gap: 14,
+              padding: "16px 20px",
+              borderBottom: "1px solid #1e3a8a",
+              background: "#1e3a8a",
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
             }}
           >
-            <div>
-              <h2 style={{ margin: 0, fontSize: 22 }}>Document Generation</h2>
-              <p style={{ margin: "8px 0 0", color: "#475569", lineHeight: 1.45 }}>
-                Select a document, preview the PDF, edit in Word if needed, or finalize directly to this matter's Clio Documents tab.  Delivery options are available after finalization.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setMatterDocumentGenerationPopupOpen(false)}
+            <div aria-hidden="true" />
+            <h2
               style={{
-                border: "1px solid #d1d5db",
-                background: "#fff",
-                borderRadius: 999,
-                padding: "8px 12px",
-                fontWeight: 900,
-                cursor: "pointer",
+                margin: 0,
+                fontSize: 20,
+                fontWeight: 950,
+                color: "#ffffff",
+                textAlign: "center",
               }}
             >
-              Close
-            </button>
+              Document Generation
+            </h2>
+            <div aria-hidden="true" />
           </div>
 
           <div style={{ padding: 24, display: "grid", gap: 18 }}>
@@ -6812,6 +6676,55 @@ function openClaimAmountEditDialog() {
                 <div style={{ display: "none" }}>{renderMatterDocumentDataPreviewPanel()}</div>
               </div>
             </details>
+          </div>
+
+          <div
+            data-barsh-direct-document-generation-footer-actions="true"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              padding: "14px 24px 18px",
+              borderTop: "1px solid #e5e7eb",
+              background: "#f8fafc",
+            }}
+          >
+            <button
+              type="button"
+              onClick={goBackMatterDocumentGeneration}
+              disabled={!canGoBackMatterDocumentGeneration || documentPreviewLoading || finalizeUploadLoading}
+              style={{
+                minWidth: 118,
+                height: 38,
+                border: "1px solid #cbd5e1",
+                borderRadius: 10,
+                background: !canGoBackMatterDocumentGeneration || documentPreviewLoading || finalizeUploadLoading ? "#f3f4f6" : "#ffffff",
+                color: !canGoBackMatterDocumentGeneration || documentPreviewLoading || finalizeUploadLoading ? "#94a3b8" : "#334155",
+                fontWeight: 900,
+                cursor: !canGoBackMatterDocumentGeneration || documentPreviewLoading || finalizeUploadLoading ? "not-allowed" : "pointer",
+              }}
+            >
+              Back
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMatterDocumentGenerationPopupOpen(false)}
+              disabled={documentPreviewLoading || finalizeUploadLoading}
+              style={{
+                minWidth: 118,
+                height: 38,
+                border: "1px solid #cbd5e1",
+                borderRadius: 10,
+                background: documentPreviewLoading || finalizeUploadLoading ? "#f3f4f6" : "#ffffff",
+                color: documentPreviewLoading || finalizeUploadLoading ? "#94a3b8" : "#334155",
+                fontWeight: 900,
+                cursor: documentPreviewLoading || finalizeUploadLoading ? "not-allowed" : "pointer",
+              }}
+            >
+              Cancel
+            </button>
           </div>
         </div>
       </div>

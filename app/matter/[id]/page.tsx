@@ -815,44 +815,37 @@ const activeGroupKey =
           }}
         >
           <div
+            data-barsh-direct-view-documents-header-standard="true"
             style={{
               position: "sticky",
               top: 0,
               zIndex: 2,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
+              display: "grid",
+              gridTemplateColumns: "90px minmax(0, 1fr) 90px",
+              alignItems: "center",
               gap: 14,
-              padding: "18px 20px",
-              borderBottom: "1px solid #e5e7eb",
-              background: "#ffffff",
+              padding: "16px 20px",
+              borderBottom: "1px solid #1e3a8a",
+              background: "#1e3a8a",
               borderTopLeftRadius: 22,
               borderTopRightRadius: 22,
             }}
           >
-            <div>
-              <h2 style={{ margin: 0, fontSize: 22 }}>View Documents</h2>
-              <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: 13, lineHeight: 1.45 }}>
-                Pick a document from this matter's Clio Documents tab.  This popup is read-only and does not upload, download, generate, email, print, queue, or write anything.
-              </p>
-            </div>
+            <div aria-hidden="true" />
 
-            <button
-              type="button"
-              onClick={closeMatterViewDocumentsPopup}
-              disabled={matterClioDocumentsLoading}
+            <h2
               style={{
-                border: "1px solid #cbd5e1",
-                borderRadius: 999,
-                background: "#f8fafc",
-                color: "#0f172a",
-                padding: "8px 12px",
-                fontWeight: 900,
-                cursor: matterClioDocumentsLoading ? "not-allowed" : "pointer",
+                margin: 0,
+                fontSize: 20,
+                fontWeight: 950,
+                color: "#ffffff",
+                textAlign: "center",
               }}
             >
-              Close
-            </button>
+              View Documents
+            </h2>
+
+            <div aria-hidden="true" />
           </div>
 
           <div style={{ padding: 20, display: "grid", gap: 14 }}>
@@ -866,12 +859,6 @@ const activeGroupKey =
               }}
             >
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ padding: "4px 8px", borderRadius: 999, border: "1px solid #cbd5e1", background: "#f8fafc", fontSize: 12, fontWeight: 850 }}>
-                  Matter: {textValue(matter?.displayNumber || matter?.display_number) || matterId || "—"}
-                </span>
-                <span style={{ padding: "4px 8px", borderRadius: 999, border: "1px solid #cbd5e1", background: "#f8fafc", fontSize: 12, fontWeight: 850 }}>
-                  Clio Matter ID: {textValue(matterClioDocumentsResult?.clioMatterId) || textValue(directMatterNumericIdForDocuments()) || "—"}
-                </span>
                 <span style={{ padding: "4px 8px", borderRadius: 999, border: "1px solid #cbd5e1", background: "#f8fafc", fontSize: 12, fontWeight: 850 }}>
                   Documents: {matterClioDocumentsResult?.summary?.documentCount ?? docs.length}
                 </span>
@@ -918,7 +905,7 @@ const activeGroupKey =
 
             {matterClioDocumentsResult?.ok && docs.length === 0 && (
               <div style={{ padding: 12, border: "1px dashed #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#64748b", fontWeight: 800 }}>
-                No documents are currently listed in this Clio matter Documents tab.
+                No documents are currently saved for this matter.
               </div>
             )}
 
@@ -985,6 +972,35 @@ const activeGroupKey =
                 </div>
               </div>
             )}
+          </div>
+
+          <div
+            data-barsh-direct-view-documents-footer-actions="true"
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              padding: "14px 20px 18px",
+              borderTop: "1px solid #e5e7eb",
+              background: "#f8fafc",
+            }}
+          >
+            <button
+              type="button"
+              onClick={closeMatterViewDocumentsPopup}
+              disabled={matterClioDocumentsLoading}
+              style={{
+                minWidth: 118,
+                height: 38,
+                border: "1px solid #cbd5e1",
+                borderRadius: 10,
+                background: "#ffffff",
+                color: "#334155",
+                fontWeight: 900,
+                cursor: matterClioDocumentsLoading ? "not-allowed" : "pointer",
+              }}
+            >
+              Close
+            </button>
           </div>
         </div>
       </div>
@@ -1386,7 +1402,7 @@ const activeGroupKey =
 
                 {docs.length === 0 ? (
                   <div style={{ padding: 10, border: "1px dashed #cbd5e1", borderRadius: 8, background: "#ffffff", color: "#64748b", fontWeight: 750 }}>
-                    No documents are currently listed in this Clio matter Documents tab.
+                    No documents are currently saved for this matter.
                   </div>
                 ) : (
                   <div style={{ overflowX: "auto" }}>

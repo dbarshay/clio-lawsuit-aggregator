@@ -118,9 +118,8 @@ function dateOnly(value: unknown): string {
 
 
 function money(value: unknown) {
-  const amount = Number(value ?? 0);
-  if (!Number.isFinite(amount) || Math.abs(amount) < 0.005) return "—";
-  return amount.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  const formatted = printableMoney(value);
+  return formatted || "—";
 }
 
 function safeExportCell(value: unknown): string {
@@ -132,15 +131,17 @@ function safeHtml(value: unknown): string {
   return text(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function printableMoney(value: unknown): string {
-  const amount = Number(value ?? 0);
-  if (Number.isFinite(amount) === false || Math.abs(amount) < 0.005) return "";
-  return amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function printableMoney(value: unknown) {
+  const raw = text(value).trim();
+  if (!raw) return "";
+  const numeric = typeof value === "number" ? value : Number(raw.replace(/[$,]/g, ""));
+  if (!Number.isFinite(numeric)) return raw.startsWith("$") ? raw : "$" + raw;
+  return "$" + numeric.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function printableResultLines(): string {
   return "<div class=\"adj-line\"><span>Adj.</span><span class=\"date-write-line\"></span></div>" +
-    ["Final?", "Conf.?", "Settled?", "Discon?"].map((label) => "<div class=\"scan-choice\"><span class=\"scan-label\">" + label + "</span><span class=\"bubble\"></span><span>Yes</span><span class=\"bubble\"></span><span>No</span></div>").join("");
+    ["Final?", "Conf.?", "Settled?", "Discon.?"].map((label) => "<div class=\"scan-choice\"><span class=\"scan-label\">" + label + "</span><span class=\"bubble\"></span><span>Yes</span><span class=\"bubble\"></span><span>No</span></div>").join("");
 }
 
 function timestampForFilename(): string {
@@ -313,6 +314,8 @@ export default function CourtCalendarPage() {
   const [webCivilImportText, setWebCivilImportText] = useState("");
   const [webCivilImportLoading, setWebCivilImportLoading] = useState(false);
   const [webCivilImportResult, setWebCivilImportResult] = useState<WebCivilImportResult | null>(null);
+  const [calendarNumberDrafts, setCalendarNumberDrafts] = useState<Record<string, string>>({});
+  const [calendarNumberSaving, setCalendarNumberSaving] = useState(false);
   const [form, setForm] = useState({
     masterLawsuitId: "",
     eventType: "appearance",
@@ -405,6 +408,23 @@ export default function CourtCalendarPage() {
 
   const venueOptions = useMemo(() => Array.isArray(filterOptions?.venues) ? filterOptions.venues : [], [filterOptions]);
   const clientNameOptions = useMemo(() => Array.isArray(filterOptions?.clientNames) ? filterOptions.clientNames : [], [filterOptions]);
+
+  function resetCourtCalendarFilters() {
+    setMasterLawsuitId("");
+    setEventType("all");
+    setStatus("scheduled");
+    setDateFrom("");
+    setDateTo("");
+    setAppearanceTypeFilter("all");
+    setVenueFilter("all");
+    setClientNameFilter("all");
+    setHideClosedMatters(false);
+    setQuery("");
+    setReportType("all");
+    setResult(null);
+    setCalendarNumberDrafts({});
+    setWebCivilImportResult(null);
+  }
 
   function buildSearchParams() {
     const params = new URLSearchParams();
@@ -535,10 +555,22 @@ export default function CourtCalendarPage() {
   }
 
   function printableCourtCalendarReportTable(groupEvents: CalendarEvent[], activeReportType = reportType) {
+    function printableAppearanceCaption(rawCaption: string) {
+      const caption = text(rawCaption);
+      const marker = " v. ";
+      const last = caption.lastIndexOf(marker);
+      if (last > 0) {
+        const lead = caption.slice(0, last).trim();
+        const insurer = caption.slice(last + marker.length).trim();
+        return safeHtml(lead) + "<br/><span class=\"caption-insurer-line\">v. " + safeHtml(insurer) + "</span>";
+      }
+      return safeHtml(caption);
+    }
+
     if (activeReportType === "appearance-calendar") {
       let rowsHtml = "";
       for (const event of groupEvents) {
-        rowsHtml += "<tr><td class=\"cal-no\">" + safeHtml(event.calendarNumber || "") + "</td><td class=\"index-no\">" + safeHtml(event.indexAaaNumber) + "</td><td class=\"packet-id\">" + safeHtml(event.displayNumber || event.masterLawsuitId) + "</td><td class=\"case-status\">" + safeHtml(event.caseData?.lawsuitStatus || "") + "</td><td class=\"money\">" + safeHtml(printableMoney(event.caseData?.lawsuitAmount)) + "</td><td class=\"money\">" + safeHtml(printableMoney(event.caseData?.lawsuitBalance)) + "</td><td class=\"caption\">" + safeHtml(event.caseData?.caption || event.title) + "</td><td class=\"adversary-attorney\">" + safeHtml(event.caseData?.adversaryAttorney || "") + "</td><td class=\"appearance-type\">" + safeHtml(event.appearanceType || labelFromCode(event.eventType)) + "</td><td class=\"result-cell\">" + printableResultLines() + "</td></tr>";
+        rowsHtml += "<tr><td class=\"cal-no\">" + safeHtml(event.calendarNumber || "") + "</td><td class=\"index-no\">" + safeHtml(event.indexAaaNumber) + "</td><td class=\"packet-id\">" + safeHtml(event.displayNumber || event.masterLawsuitId) + "</td><td class=\"case-status\">" + safeHtml(event.caseData?.lawsuitStatus || "") + "</td><td class=\"money\">" + safeHtml(printableMoney(event.caseData?.lawsuitAmount)) + "</td><td class=\"money\">" + safeHtml(printableMoney(event.caseData?.lawsuitBalance)) + "</td><td class=\"caption\">" + printableAppearanceCaption(event.caseData?.caption || event.title) + "</td><td class=\"adversary-attorney\">" + safeHtml(event.caseData?.adversaryAttorney || "") + "</td><td class=\"appearance-type\">" + safeHtml(event.appearanceType || labelFromCode(event.eventType)) + "</td><td class=\"result-cell\">" + printableResultLines() + "</td></tr>";
       }
       return "<table class=\"appearance-report court-appearance-report\"><thead><tr><th>Calendar<br/>Number</th><th>Index<br/>Number</th><th>Lawsuit<br/>Number</th><th>Status</th><th>Lawsuit<br/>Amount</th><th>Lawsuit<br/>Balance</th><th>Caption</th><th>Adversary<br/>Attorney</th><th>Appearance<br/>Type</th><th>Result</th></tr></thead><tbody>" + rowsHtml + "</tbody></table>";
     }
@@ -581,7 +613,7 @@ export default function CourtCalendarPage() {
         groupsHtml += "<section class=\"court-group\"><div class=\"court-heading\"><span>" + safeHtml(dateOnly(reportDate)) + "</span><span>" + safeHtml(groupName) + "</span></div>" + printableCourtCalendarReportTable(groupEvents, activeReportType) + "</section>";
       }
     }
-    const html = "<!doctype html><html><head><meta charset=\"utf-8\" /><title>" + safeHtml(reportTitle) + "</title><style>@page { size: landscape; margin: 0.28in 0.22in; } * { box-sizing: border-box; } body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111827; background: #fff; font-size: 9px; } .report-title { text-align: center; font-size: 18px; font-weight: 800; margin: 0 0 6px; } .report-meta { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 6px; font-size: 8px; color: #334155; } .court-heading { display: grid; grid-template-columns: 115px 1fr; align-items: end; gap: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; border-bottom: 1px solid #cbd5e1; padding: 0 0 3px; margin: 0 0 3px; } .court-group { margin-bottom: 10px; } table { width: 100%; border-collapse: collapse; table-layout: fixed; page-break-inside: auto; } thead { display: table-header-group; } tfoot { display: table-footer-group; } tbody { display: table-row-group; } tr { page-break-inside: avoid; break-inside: avoid; } tbody tr { page-break-inside: avoid; break-inside: avoid; } th { text-align: left; vertical-align: bottom; font-size: 7.5px; font-weight: 900; color: #475569; border-bottom: 1px solid #cbd5e1; padding: 2px 3px; line-height: 1.05; page-break-inside: avoid; break-inside: avoid; } td { vertical-align: top; border-bottom: 1px solid #d7dde5; padding: 3px 3px; line-height: 1.08; word-break: break-word; overflow-wrap: anywhere; page-break-inside: avoid; break-inside: avoid; } .money { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; } .trial-result { white-space: nowrap; } .result-line { display: grid; grid-template-columns: 34px 1fr; align-items: end; gap: 2px; line-height: 1.08; } .blank-line { border-bottom: 1px solid #9ca3af; height: 8px; min-width: 72px; } .appearance-date { text-align: center; font-size: 13px; font-weight: 900; margin: -3px 0 8px; } .result-cell { font-size: 7.5px; line-height: 1.12; } .adj-line { display: grid; grid-template-columns: 22px 1fr; gap: 4px; align-items: end; margin-bottom: 2px; } .date-write-line { border-bottom: 1px solid #111827; min-width: 56px; height: 9px; } .scan-choice { display: grid; grid-template-columns: 38px 8px 16px 8px 14px; gap: 2px; align-items: center; margin-top: 1px; white-space: nowrap; } .bubble { display: inline-block; width: 7px; height: 7px; border: 1px solid #111827; border-radius: 999px; } .trial-report th:nth-child(1), .trial-report td:nth-child(1) { width: 5.8%; } .trial-report th:nth-child(2), .trial-report td:nth-child(2) { width: 9.3%; } .trial-report th:nth-child(3), .trial-report td:nth-child(3) { width: 9.3%; } .trial-report th:nth-child(4), .trial-report td:nth-child(4) { width: 9.3%; } .trial-report th:nth-child(5), .trial-report td:nth-child(5) { width: 7.2%; } .trial-report th:nth-child(6), .trial-report td:nth-child(6) { width: 7.4%; } .trial-report th:nth-child(7), .trial-report td:nth-child(7) { width: 17.8%; } .trial-report th:nth-child(8), .trial-report td:nth-child(8) { width: 10%; } .trial-report th:nth-child(9), .trial-report td:nth-child(9) { width: 8.7%; } .trial-report th:nth-child(10), .trial-report td:nth-child(10) { width: 15.2%; } .appearance-report th:nth-child(1), .appearance-report td:nth-child(1) { width: 7.2%; } .appearance-report th:nth-child(2), .appearance-report td:nth-child(2) { width: 5.2%; } .appearance-report th:nth-child(3), .appearance-report td:nth-child(3) { width: 5.4%; } .appearance-report th:nth-child(4), .appearance-report td:nth-child(4) { width: 9%; } .appearance-report th:nth-child(5), .appearance-report td:nth-child(5) { width: 8.2%; } .appearance-report th:nth-child(6), .appearance-report td:nth-child(6) { width: 8.5%; } .appearance-report th:nth-child(7), .appearance-report td:nth-child(7) { width: 7%; } .appearance-report th:nth-child(8), .appearance-report td:nth-child(8) { width: 7%; } .appearance-report th:nth-child(9), .appearance-report td:nth-child(9) { width: 24%; } .appearance-report th:nth-child(10), .appearance-report td:nth-child(10) { width: 8%; } .appearance-report th:nth-child(11), .appearance-report td:nth-child(11) { width: 10.5%; } .court-appearance-report th, .court-appearance-report td { font-size: 7.2px; line-height: 1.05; padding: 2px 3px; } .court-appearance-report th { text-align: center; } .court-appearance-report th:nth-child(1), .court-appearance-report td:nth-child(1) { width: 3.2%; white-space: nowrap; } .court-appearance-report th:nth-child(2), .court-appearance-report td:nth-child(2) { width: 6.3%; white-space: nowrap; } .court-appearance-report th:nth-child(3), .court-appearance-report td:nth-child(3) { width: 6.2%; white-space: normal; overflow-wrap: anywhere; } .court-appearance-report th:nth-child(4), .court-appearance-report td:nth-child(4) { width: 8%; } .court-appearance-report th:nth-child(5), .court-appearance-report td:nth-child(5) { width: 5%; white-space: nowrap; text-align: right; } .court-appearance-report th:nth-child(6), .court-appearance-report td:nth-child(6) { width: 5%; white-space: nowrap; text-align: right; } .court-appearance-report th:nth-child(7), .court-appearance-report td:nth-child(7) { width: 30%; padding-left: 10px; } .court-appearance-report th:nth-child(8), .court-appearance-report td:nth-child(8) { width: 12%; } .court-appearance-report th:nth-child(9), .court-appearance-report td:nth-child(9) { width: 7%; } .court-appearance-report th:nth-child(10), .court-appearance-report td:nth-child(10) { width: 16.3%; } .court-appearance-report .result-cell { font-size: 7px; line-height: 1.05; white-space: nowrap; } .court-appearance-report .scan-choice { grid-template-columns: 36px 7px 14px 7px 12px; gap: 2px; } .court-appearance-report .caption { line-height: 1.08; } .all-report th:nth-child(1), .all-report td:nth-child(1) { width: 6.5%; } .all-report th:nth-child(2), .all-report td:nth-child(2) { width: 4.8%; } .all-report th:nth-child(3), .all-report td:nth-child(3) { width: 5%; } .all-report th:nth-child(4), .all-report td:nth-child(4) { width: 8.2%; } .all-report th:nth-child(5), .all-report td:nth-child(5) { width: 7.8%; } .all-report th:nth-child(6), .all-report td:nth-child(6) { width: 7%; } .all-report th:nth-child(7), .all-report td:nth-child(7) { width: 8%; } .all-report th:nth-child(8), .all-report td:nth-child(8) { width: 6.5%; } .all-report th:nth-child(9), .all-report td:nth-child(9) { width: 6.5%; } .all-report th:nth-child(10), .all-report td:nth-child(10) { width: 31.7%; } .all-report th:nth-child(11), .all-report td:nth-child(11) { width: 8%; } .screen-only { margin: 10px 0; text-align: center; } @media print { .screen-only { display: none; } body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }</style></head><body><div class=\"screen-only\"><button onclick=\"window.print()\">Print / Save PDF</button></div>" + (activeReportType === "appearance-calendar" ? "" : "<h1 class=\"report-title\">" + safeHtml(reportTitle) + "</h1>") + "<div class=\"report-meta\"><div>" + safeHtml(filterSummary) + "</div><div>" + safeHtml(events.length) + " matters from current filtered results · Generated " + safeHtml(generatedAt) + "</div></div>" + groupsHtml + "<script>setTimeout(() => window.print(), 250);</script></body></html>";
+    const html = "<!doctype html><html><head><meta charset=\"utf-8\" /><title>" + safeHtml(reportTitle) + "</title><style>@page { size: landscape; margin: 0.28in 0.22in; } * { box-sizing: border-box; } body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111827; background: #fff; font-size: 9px; } .report-title { text-align: center; font-size: 22px; font-weight: 900; margin: 0 0 14px; } .report-meta { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 6px; font-size: 8px; color: #334155; } .court-heading { display: grid; grid-template-columns: 115px 1fr; align-items: end; gap: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; border-bottom: 1px solid #cbd5e1; padding: 0 0 3px; margin: 0 0 3px; } .court-group { margin-bottom: 14px; } .court-appearance-report { margin-top: 4px; } table { width: 100%; border-collapse: collapse; table-layout: fixed; page-break-inside: auto; } thead { display: table-header-group; } tfoot { display: table-footer-group; } tbody { display: table-row-group; } tr { page-break-inside: avoid; break-inside: avoid; } tbody tr { page-break-inside: avoid; break-inside: avoid; } th { text-align: left; vertical-align: bottom; font-size: 7.5px; font-weight: 900; color: #475569; border-bottom: 1px solid #cbd5e1; padding: 2px 3px; line-height: 1.05; page-break-inside: avoid; break-inside: avoid; } td { vertical-align: top; border-bottom: 1px solid #d7dde5; padding: 3px 3px; line-height: 1.08; word-break: break-word; overflow-wrap: anywhere; page-break-inside: avoid; break-inside: avoid; } .money { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; } .trial-result { white-space: nowrap; } .result-line { display: grid; grid-template-columns: 34px 1fr; align-items: end; gap: 2px; line-height: 1.08; } .blank-line { border-bottom: 1px solid #9ca3af; height: 8px; min-width: 72px; } .appearance-date { text-align: center; font-size: 17px; font-weight: 950; margin: 4px 0 18px; } .result-cell { font-size: 7.5px; line-height: 1.12; } .adj-line { display: grid; grid-template-columns: 28px 1fr; gap: 5px; align-items: end; margin-bottom: 4px; } .date-write-line { border-bottom: 1px solid #111827; min-width: 70px; height: 14px; } .scan-choice { display: grid; grid-template-columns: 38px 8px 16px 8px 14px; gap: 2px; align-items: center; margin-top: 1px; white-space: nowrap; } .bubble { display: inline-block; width: 7px; height: 7px; border: 1px solid #111827; border-radius: 999px; } .trial-report th:nth-child(1), .trial-report td:nth-child(1) { width: 5.8%; } .trial-report th:nth-child(2), .trial-report td:nth-child(2) { width: 9.3%; } .trial-report th:nth-child(3), .trial-report td:nth-child(3) { width: 9.3%; } .trial-report th:nth-child(4), .trial-report td:nth-child(4) { width: 9.3%; } .trial-report th:nth-child(5), .trial-report td:nth-child(5) { width: 7.2%; } .trial-report th:nth-child(6), .trial-report td:nth-child(6) { width: 7.4%; } .trial-report th:nth-child(7), .trial-report td:nth-child(7) { width: 17.8%; } .trial-report th:nth-child(8), .trial-report td:nth-child(8) { width: 10%; } .trial-report th:nth-child(9), .trial-report td:nth-child(9) { width: 8.7%; } .trial-report th:nth-child(10), .trial-report td:nth-child(10) { width: 15.2%; } .appearance-report th:nth-child(1), .appearance-report td:nth-child(1) { width: 7.2%; } .appearance-report th:nth-child(2), .appearance-report td:nth-child(2) { width: 5.2%; } .appearance-report th:nth-child(3), .appearance-report td:nth-child(3) { width: 5.4%; } .appearance-report th:nth-child(4), .appearance-report td:nth-child(4) { width: 9%; } .appearance-report th:nth-child(5), .appearance-report td:nth-child(5) { width: 8.2%; } .appearance-report th:nth-child(6), .appearance-report td:nth-child(6) { width: 8.5%; } .appearance-report th:nth-child(7), .appearance-report td:nth-child(7) { width: 7%; } .appearance-report th:nth-child(8), .appearance-report td:nth-child(8) { width: 7%; } .appearance-report th:nth-child(9), .appearance-report td:nth-child(9) { width: 24%; } .appearance-report th:nth-child(10), .appearance-report td:nth-child(10) { width: 8%; } .appearance-report th:nth-child(11), .appearance-report td:nth-child(11) { width: 10.5%; } .court-appearance-report th, .court-appearance-report td { font-size: 9.6px; line-height: 1.18; padding: 5px 5px; } .court-appearance-report tbody tr { min-height: 74px; } .court-appearance-report th { text-align: center; } .court-appearance-report th:nth-child(1), .court-appearance-report td:nth-child(1) { width: 3.2%; white-space: nowrap; } .court-appearance-report th:nth-child(2), .court-appearance-report td:nth-child(2) { width: 6.3%; white-space: nowrap; } .court-appearance-report th:nth-child(3), .court-appearance-report td:nth-child(3) { width: 6.2%; white-space: normal; overflow-wrap: anywhere; } .court-appearance-report th:nth-child(4), .court-appearance-report td:nth-child(4) { width: 8%; } .court-appearance-report th:nth-child(5), .court-appearance-report td:nth-child(5) { width: 5%; white-space: nowrap; text-align: right; } .court-appearance-report th:nth-child(6), .court-appearance-report td:nth-child(6) { width: 5%; white-space: nowrap; text-align: right; } .court-appearance-report th:nth-child(7), .court-appearance-report td:nth-child(7) { width: 30%; padding-left: 10px; } .court-appearance-report th:nth-child(8), .court-appearance-report td:nth-child(8) { width: 12%; } .court-appearance-report th:nth-child(9), .court-appearance-report td:nth-child(9) { width: 7%; } .court-appearance-report th:nth-child(10), .court-appearance-report td:nth-child(10) { width: 16.3%; } .court-appearance-report .result-cell { font-size: 9.2px; line-height: 1.36; white-space: nowrap; padding-top: 8px; padding-bottom: 8px; } .court-appearance-report .scan-choice { grid-template-columns: 54px 14px 22px 14px 20px; column-gap: 5px; row-gap: 7px; margin-top: 8px; margin-bottom: 6px; } .court-appearance-report .bubble { width: 14px; height: 14px; border-width: 1.4px; } .court-appearance-report th:nth-child(2), .court-appearance-report td:nth-child(2), .court-appearance-report th:nth-child(3), .court-appearance-report td:nth-child(3) { white-space: nowrap; word-break: keep-all; overflow-wrap: normal; } .court-appearance-report th:nth-child(4), .court-appearance-report td:nth-child(4) { padding-left: 10px; } .court-appearance-report th:nth-child(9), .court-appearance-report td:nth-child(9) { white-space: nowrap; word-break: keep-all; overflow-wrap: normal; } .court-appearance-report .caption-insurer-line { display: block; margin-top: 2px; } .court-appearance-report .caption { line-height: 1.08; } .all-report th:nth-child(1), .all-report td:nth-child(1) { width: 6.5%; } .all-report th:nth-child(2), .all-report td:nth-child(2) { width: 4.8%; } .all-report th:nth-child(3), .all-report td:nth-child(3) { width: 5%; } .all-report th:nth-child(4), .all-report td:nth-child(4) { width: 8.2%; } .all-report th:nth-child(5), .all-report td:nth-child(5) { width: 7.8%; } .all-report th:nth-child(6), .all-report td:nth-child(6) { width: 7%; } .all-report th:nth-child(7), .all-report td:nth-child(7) { width: 8%; } .all-report th:nth-child(8), .all-report td:nth-child(8) { width: 6.5%; } .all-report th:nth-child(9), .all-report td:nth-child(9) { width: 6.5%; } .all-report th:nth-child(10), .all-report td:nth-child(10) { width: 31.7%; } .all-report th:nth-child(11), .all-report td:nth-child(11) { width: 8%; } .screen-only { margin: 10px 0; text-align: center; } @media print { .screen-only { display: none; } body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }</style></head><body><div class=\"screen-only\"><button onclick=\"window.print()\">Print / Save PDF</button></div>" + (activeReportType === "appearance-calendar" ? "" : "<h1 class=\"report-title\">" + safeHtml(reportTitle) + "</h1>") + (activeReportType === "appearance-calendar" ? "" : "<div class=\"report-meta\"><div>" + safeHtml(filterSummary) + "</div><div>" + safeHtml(events.length) + " matters from current filtered results · Generated " + safeHtml(generatedAt) + "</div></div>") + groupsHtml + "<script>setTimeout(() => window.print(), 250);</script></body></html>";
     printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
@@ -607,6 +639,80 @@ export default function CourtCalendarPage() {
 
   function printCourtAppearanceReport() {
     printCalendarReport("appearance-calendar");
+  }
+
+  function calendarNumberDraftChanged(event: CalendarEvent) {
+    const eventKey = String(event.id);
+    if (!Object.prototype.hasOwnProperty.call(calendarNumberDrafts, eventKey)) return false;
+    return calendarNumberDrafts[eventKey].trim() !== text(event.calendarNumber).trim();
+  }
+
+  function hasCalendarNumberChanges() {
+    return events.some((event) => calendarNumberDraftChanged(event));
+  }
+
+  async function saveCalendarNumbers() {
+    const changedEvents = events.filter((event) => calendarNumberDraftChanged(event));
+    if (!changedEvents.length) return;
+    setCalendarNumberSaving(true);
+    try {
+      for (const event of changedEvents) {
+        const eventKey = String(event.id);
+        const next = (calendarNumberDrafts[eventKey] ?? "").trim();
+        const response = await fetch("/api/court-calendar/events", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: event.id,
+            masterLawsuitId: event.masterLawsuitId,
+            eventDate: event.eventDate,
+            eventTime: event.eventTime,
+            court: event.court || event.venue,
+            venue: event.venue || event.court,
+            eventType: event.eventType || event.status,
+            status: event.status || event.eventType,
+            appearanceType: event.appearanceType,
+            indexAaaNumber: event.indexAaaNumber,
+            calendarNumber: next,
+          }),
+        });
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok || !json?.ok) {
+          alert(json?.error || "Calendar Number save failed.");
+          return;
+        }
+      }
+      setResult((prev) => prev ? {
+        ...prev,
+        events: Array.isArray(prev.events) ? prev.events.map((row) => {
+          const rowKey = String(row.id);
+          if (!Object.prototype.hasOwnProperty.call(calendarNumberDrafts, rowKey)) return row;
+          return { ...row, calendarNumber: (calendarNumberDrafts[rowKey] ?? "").trim() || null };
+        }) : prev.events,
+      } : prev);
+      setCalendarNumberDrafts({});
+    } catch (error: any) {
+      alert(error?.message || "Calendar Number save failed.");
+    } finally {
+      setCalendarNumberSaving(false);
+    }
+  }
+
+  function renderCalendarNumberCell(event: CalendarEvent) {
+    const eventKey = String(event.id);
+    const current = text(event.calendarNumber);
+    const draft = Object.prototype.hasOwnProperty.call(calendarNumberDrafts, eventKey) ? calendarNumberDrafts[eventKey] : current;
+    return (
+      <td style={{ ...tdStyle, ...nowrapCellStyle }} data-barsh-court-calendar-calendar-number-cell="true">
+        <input
+          value={draft}
+          onChange={(changeEvent) => setCalendarNumberDrafts((prev) => ({ ...prev, [eventKey]: changeEvent.target.value }))}
+          placeholder="Cal. #"
+          style={{ ...inputStyle, width: 76, height: 28, padding: "3px 6px", fontSize: 12, fontWeight: 850 }}
+          data-barsh-court-calendar-calendar-number-input="true"
+        />
+      </td>
+    );
   }
 
   function webCivilImportTemplateText() {
@@ -657,6 +763,11 @@ export default function CourtCalendarPage() {
       });
       const json = await response.json().catch(() => ({}));
       setWebCivilImportResult(json);
+      if (json?.ok && !json?.previewOnly) {
+        const refreshedResponse = await fetch(`/api/court-calendar/events?${buildSearchParams().toString()}`, { cache: "no-store" });
+        const refreshedJson = await refreshedResponse.json().catch(() => null);
+        if (refreshedJson?.ok) setResult(refreshedJson);
+      }
       if (!response.ok || !json?.ok) {
         alert(json?.error || "WebCivil Local import failed.");
         return;
@@ -700,6 +811,7 @@ export default function CourtCalendarPage() {
             <button type="button" onClick={() => void searchEvents()} style={primaryButtonStyle} disabled={loading}>
               {loading ? "Searching..." : "Search Calendar"}
             </button>
+            <button type="button" onClick={resetCourtCalendarFilters} style={{ ...secondaryButtonStyle, border: "1px solid #64748b", background: "#f8fafc", color: "#334155" }} data-barsh-court-calendar-reset-filters="true">Reset Filters</button>
           </div>
         </div>
 
@@ -891,7 +1003,7 @@ export default function CourtCalendarPage() {
                   <tr key={event.id} data-barsh-court-calendar-result-row="true" style={{ verticalAlign: "top" }}>
                     <td style={{ ...tdStyle, ...nowrapCellStyle, fontWeight: 950 }}>{dateOnly(event.eventDate)}</td>
                     <td style={{ ...tdStyle, ...wrapCellStyle }}>{text(event.court || event.venue) || "—"}</td>
-                    <td style={{ ...tdStyle, ...nowrapCellStyle }}>{text(event.calendarNumber) || "—"}</td>
+                    {renderCalendarNumberCell(event)}
                     <td style={{ ...tdStyle, ...compactIdCellStyle }} title={text(event.indexAaaNumber)}>{text(event.indexAaaNumber) || "—"}</td>
                     <td style={{ ...tdStyle, ...compactIdCellStyle }} title={text(event.displayNumber || event.masterLawsuitId)}>
                       <a href={`/matters?master=${encodeURIComponent(text(event.displayNumber || event.masterLawsuitId))}`} style={{ color: "#1d4ed8", fontWeight: 900, textDecoration: "underline", display: "inline-block", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", verticalAlign: "top" }}>
@@ -914,6 +1026,9 @@ export default function CourtCalendarPage() {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-start" }} data-barsh-court-calendar-left-actions="true">
             <button type="button" onClick={printCourtAppearanceReport} style={{ ...secondaryButtonStyle, border: "1px solid #ea580c", background: events.length === 0 ? "#fed7aa" : "#ea580c", color: "#ffffff" }} disabled={events.length === 0} data-barsh-court-calendar-print-appearance-report="true">Print Court Appearance Report</button>
             <button type="button" onClick={() => setWebCivilImportOpen((open) => !open)} style={{ ...secondaryButtonStyle, border: "1px solid #1e3a8a", background: "#eff6ff", color: "#1e3a8a" }} data-barsh-court-calendar-webcivil-local-import-toggle="true">Import Calendar Numbers from WebCivil Local</button>
+            {hasCalendarNumberChanges() && (
+              <button type="button" onClick={() => void saveCalendarNumbers()} disabled={calendarNumberSaving} style={{ ...secondaryButtonStyle, border: "1px solid #15803d", background: calendarNumberSaving ? "#bbf7d0" : "#15803d", color: "#ffffff" }} data-barsh-court-calendar-calendar-number-save-all="true">{calendarNumberSaving ? "Saving..." : "Save Calendar Numbers"}</button>
+            )}
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }} data-barsh-court-calendar-right-actions="true">
             <button type="button" onClick={() => printCalendarReport("all")} style={{ ...secondaryButtonStyle, border: "1px solid #1e3a8a", background: events.length === 0 ? "#bfdbfe" : "#1e3a8a", color: "#ffffff" }} disabled={events.length === 0} data-barsh-court-calendar-print-filtered-results="true">Print / Save PDF</button>

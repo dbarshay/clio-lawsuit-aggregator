@@ -310,6 +310,84 @@ export async function GET(req: NextRequest) {
   }
 }
 
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json().catch(() => ({}));
+    const id = clean(body?.id);
+    const hasEventId = Boolean(id);
+    const masterLawsuitId = clean(body?.masterLawsuitId);
+    const originalEventDate = clean(body?.originalEventDate);
+    const originalEventTime = clean(body?.originalEventTime);
+    const originalCourt = clean(body?.originalCourt);
+    const originalCalendarNumber = clean(body?.originalCalendarNumber);
+    const originalAppearanceType = clean(body?.originalAppearanceType);
+    const eventDate = clean(body?.eventDate);
+    const eventTime = clean(body?.eventTime) || "09:30";
+    const court = clean(body?.court);
+    const calendarNumber = clean(body?.calendarNumber);
+    const judgeOrArbitrator = clean(body?.judgeOrArbitrator);
+    const appearanceType = clean(body?.appearanceType);
+    const notes = clean(body?.notes);
+
+    if (!masterLawsuitId) return jsonError("masterLawsuitId is required.");
+    if (!eventDate) return jsonError("eventDate is required.");
+    if (!validDateOnly(eventDate)) return jsonError("eventDate must be YYYY-MM-DD.");
+    if (!eventTime) return jsonError("eventTime is required.");
+    if (!court) return jsonError("court is required.");
+    if (!appearanceType) return jsonError("appearanceType is required.");
+
+    const existing = hasEventId
+      ? await prisma.courtCalendarEvent.findFirst({
+          where: { id, masterLawsuitId },
+          select: eventSelect(),
+        })
+      : await prisma.courtCalendarEvent.findFirst({
+          where: {
+            masterLawsuitId,
+            eventDate: originalEventDate || eventDate,
+            eventTime: originalEventTime || eventTime,
+            court: originalCourt || court,
+            calendarNumber: originalCalendarNumber || null,
+            appearanceType: originalAppearanceType || appearanceType,
+          },
+          select: eventSelect(),
+        });
+
+    if (!existing) return jsonError("Court Calendar event was not found.", 404);
+
+    const savedEvent = await prisma.courtCalendarEvent.update({
+      where: { id: existing.id },
+      data: {
+        eventDate,
+        eventTime,
+        court,
+        venue: court,
+        calendarNumber: calendarNumber || null,
+        judgeOrArbitrator: judgeOrArbitrator || null,
+        appearanceType,
+        notes: notes || null,
+        title: `${appearanceType} - ${masterLawsuitId}`,
+        sourcePage: clean(body?.sourcePage) || "court-calendar",
+        sourceAction: clean(body?.sourceAction) || "edit-court-calendar-event",
+        updatedBy: "barsh-matters",
+        metadata: {
+          ...(existing.metadata && typeof existing.metadata === "object" && !Array.isArray(existing.metadata) ? existing.metadata : {}),
+          lastEditedFrom: clean(body?.sourcePage) || "court-calendar",
+          lastEditedAt: new Date().toISOString(),
+        },
+      },
+      select: eventSelect(),
+    });
+
+    return NextResponse.json({ ok: true, event: savedEvent });
+  } catch (error: any) {
+    console.error("[court-calendar-events:PATCH]", error);
+    return jsonError(error?.message || "Court Calendar event update failed.", 500);
+  }
+}
+
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));

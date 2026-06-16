@@ -525,6 +525,12 @@ export default function FilteredMattersPage() {
   const [masterCourtDatesListLoading, setMasterCourtDatesListLoading] = useState(false);
   const [masterCourtDatesListError, setMasterCourtDatesListError] = useState("");
   const [masterAddCourtDateForm, setMasterAddCourtDateForm] = useState({ eventDate: "", eventTime: "09:30", court: "", calendarNumber: "", judgeOrArbitrator: "", appearanceType: "", notes: "" });
+  const [masterEditCourtDatesDialogOpen, setMasterEditCourtDatesDialogOpen] = useState(false);
+  const [masterEditCourtDatesSavingId, setMasterEditCourtDatesSavingId] = useState<number | null>(null);
+  const [masterEditCourtDatesResult, setMasterEditCourtDatesResult] = useState<any>(null);
+  const [masterEditCourtDatesSelectedId, setMasterEditCourtDatesSelectedId] = useState<string>("");
+  const [masterEditCourtDatesSelectedEvent, setMasterEditCourtDatesSelectedEvent] = useState<any>(null);
+  const [masterEditCourtDatesForms, setMasterEditCourtDatesForms] = useState<Record<string, { eventDate: string; eventTime: string; court: string; calendarNumber: string; judgeOrArbitrator: string; appearanceType: string; notes: string }>>({});
   const [masterActionGroup, setMasterActionGroup] = useState<"payments" | "settlement" | "documents" | "court_dates" | null>(null);
   const [masterPaymentsPanelOpen, setMasterPaymentsPanelOpen] = useState(false);
   const [masterCloseReason, setMasterCloseReason] = useState("");
@@ -2565,6 +2571,220 @@ function masterMetadataMoneyDisplayValue(field: "filingFee" | "serviceFee" | "ot
             {courtDates.map((courtEvent: any) => renderMasterCourtDateCard(courtEvent))}
           </div>
         )}
+      </div>
+    );
+  }
+
+  function masterCourtDateInputDateValue(value: any) {
+    const raw = clean(value);
+    if (!raw) return "";
+    const match = raw.match(/^\d{4}-\d{2}-\d{2}/);
+    return match ? match[0] : "";
+  }
+
+  function masterCourtDateEventKey(courtEvent: any) {
+    const rawId = courtEvent?.id;
+    const idKey = rawId === null || rawId === undefined ? "" : String(rawId).trim();
+    if (idKey) return idKey;
+    return [
+      masterCourtDateInputDateValue(courtEvent?.eventDate),
+      clean(courtEvent?.eventTime),
+      clean(courtEvent?.court || courtEvent?.venue),
+      clean(courtEvent?.calendarNumber),
+      clean(courtEvent?.appearanceType || courtEvent?.eventType),
+    ].join("|");
+  }
+
+  function masterCourtDateEditFormFromEvent(courtEvent: any) {
+    return {
+      eventDate: masterCourtDateInputDateValue(courtEvent?.eventDate),
+      eventTime: clean(courtEvent?.eventTime) || "09:30",
+      court: clean(courtEvent?.court || courtEvent?.venue),
+      calendarNumber: clean(courtEvent?.calendarNumber),
+      judgeOrArbitrator: clean(courtEvent?.judgeOrArbitrator),
+      appearanceType: clean(courtEvent?.appearanceType || courtEvent?.eventType),
+      notes: clean(courtEvent?.notes),
+    };
+  }
+
+  function seedMasterEditCourtDatesForms() {
+    const next: Record<string, { eventDate: string; eventTime: string; court: string; calendarNumber: string; judgeOrArbitrator: string; appearanceType: string; notes: string }> = {};
+    for (const courtEvent of masterCourtDatesList) {
+      const key = masterCourtDateEventKey(courtEvent);
+      if (!key) continue;
+      next[key] = masterCourtDateEditFormFromEvent(courtEvent);
+    }
+    setMasterEditCourtDatesForms(next);
+  }
+
+  function updateMasterEditCourtDateForm(eventKey: string, field: "eventDate" | "eventTime" | "court" | "calendarNumber" | "judgeOrArbitrator" | "appearanceType" | "notes", value: string) {
+    setMasterEditCourtDatesResult(null);
+    setMasterEditCourtDatesForms((current) => ({
+      ...current,
+      [eventKey]: {
+        ...(current[eventKey] || { eventDate: "", eventTime: "09:30", court: "", calendarNumber: "", judgeOrArbitrator: "", appearanceType: "", notes: "" }),
+        [field]: value,
+      },
+    }));
+  }
+
+  function masterEditCourtDateFormReady(eventKey: string) {
+    const selectedEvent = selectedMasterEditCourtDate();
+    const fallbackForm = selectedEvent && masterCourtDateEventKey(selectedEvent) === eventKey ? masterCourtDateEditFormFromEvent(selectedEvent) : null;
+    const form = masterEditCourtDatesForms[eventKey] || fallbackForm;
+    return Boolean(form?.eventDate && form?.eventTime && form?.appearanceType && form?.court);
+  }
+
+  function masterEditableCourtDatesInDisplayOrder() {
+    const courtDateGroups = splitMasterCourtDatesByTiming();
+    return [...courtDateGroups.upcoming, ...courtDateGroups.past];
+  }
+
+  function selectedMasterEditCourtDate() {
+    if (masterEditCourtDatesSelectedEvent) return masterEditCourtDatesSelectedEvent;
+    if (!masterEditCourtDatesSelectedId) return null;
+    return masterEditableCourtDatesInDisplayOrder().find((courtEvent: any) => String(courtEvent?.id || "") === masterEditCourtDatesSelectedId) || null;
+  }
+
+  function masterCourtDateChoiceLabel(courtEvent: any) {
+    return [
+      displayDate(courtEvent?.eventDate),
+      clean(courtEvent?.eventTime),
+      clean(courtEvent?.appearanceType) || clean(courtEvent?.eventType) || "Court Date",
+      clean(courtEvent?.court || courtEvent?.venue),
+      clean(courtEvent?.calendarNumber) ? "Cal. " + clean(courtEvent?.calendarNumber) : "",
+    ].filter(Boolean).join(" · ");
+  }
+
+  function openMasterEditCourtDatesDialog() {
+    const masterId = currentMasterLawsuitIdForDocumentPreview();
+    setMasterEditCourtDatesResult(null);
+    setMasterEditCourtDatesSelectedId("");
+    setMasterEditCourtDatesSelectedEvent(null);
+    seedMasterEditCourtDatesForms();
+    setMasterEditCourtDatesDialogOpen(true);
+    if (masterId) void loadMasterAddCourtDateCourtOptions(masterId);
+  }
+
+  function closeMasterEditCourtDatesDialog() {
+    if (masterEditCourtDatesSavingId !== null) return;
+    setMasterEditCourtDatesDialogOpen(false);
+    setMasterEditCourtDatesSelectedId("");
+    setMasterEditCourtDatesSelectedEvent(null);
+    setMasterEditCourtDatesResult(null);
+  }
+
+  async function saveMasterCourtDateEdit(courtEvent: any) {
+    setMasterEditCourtDatesResult(null);
+    const selectedEvent = courtEvent || masterEditCourtDatesSelectedEvent || selectedMasterEditCourtDate();
+    const eventKey = masterCourtDateEventKey(selectedEvent) || masterEditCourtDatesSelectedId;
+    const eventId = eventKey;
+    const hasEventId = Boolean(eventId);
+    const masterId = currentMasterLawsuitIdForDocumentPreview();
+    const form = masterEditCourtDatesForms[eventKey] || (selectedEvent ? masterCourtDateEditFormFromEvent(selectedEvent) : null);
+    if (!selectedEvent || !eventKey || !form) {
+      setMasterEditCourtDatesResult({ ok: false, error: "Selected appearance could not be saved because the selected appearance is missing." });
+      return;
+    }
+    if (!form.eventDate) {
+      setMasterEditCourtDatesResult({ ok: false, error: "Court Date is required." });
+      return;
+    }
+    if (!form.eventTime) {
+      setMasterEditCourtDatesResult({ ok: false, error: "Time is required." });
+      return;
+    }
+    if (!form.appearanceType) {
+      setMasterEditCourtDatesResult({ ok: false, error: "Appearance Type is required." });
+      return;
+    }
+    if (!form.court) {
+      setMasterEditCourtDatesResult({ ok: false, error: "Court is required." });
+      return;
+    }
+
+    setMasterEditCourtDatesSavingId(hasEventId ? Number(eventId) || null : null);
+    setMasterEditCourtDatesResult(null);
+    try {
+      const response = await fetch("/api/court-calendar/events", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: hasEventId ? eventId : null,
+          masterLawsuitId: masterId,
+          originalEventDate: masterCourtDateInputDateValue(selectedEvent?.eventDate),
+          originalEventTime: clean(selectedEvent?.eventTime),
+          originalCourt: clean(selectedEvent?.court || selectedEvent?.venue),
+          originalCalendarNumber: clean(selectedEvent?.calendarNumber),
+          originalAppearanceType: clean(selectedEvent?.appearanceType || selectedEvent?.eventType),
+          eventDate: form.eventDate,
+          eventTime: form.eventTime || "09:30",
+          court: form.court,
+          calendarNumber: form.calendarNumber,
+          judgeOrArbitrator: form.judgeOrArbitrator,
+          appearanceType: form.appearanceType,
+          notes: form.notes,
+          sourcePage: "matters-master-court-dates",
+          sourceAction: "edit-court-date",
+        }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || !json?.ok) throw new Error(json?.error || "Edit Court Date failed.");
+      if (json?.event) setMasterEditCourtDatesSelectedEvent(json.event);
+      setMasterEditCourtDatesForms((current) => ({ ...current, [eventKey]: { ...form } }));
+      if (masterId) await loadMasterCourtDatesForStatusBox(masterId);
+      setMasterEditCourtDatesResult({ ok: true, message: "Appearance changes saved." });
+      window.setTimeout(() => {
+        setMasterEditCourtDatesDialogOpen(false);
+        setMasterEditCourtDatesSelectedId("");
+        setMasterEditCourtDatesSelectedEvent(null);
+        setMasterEditCourtDatesResult(null);
+      }, 900);
+    } catch (error: any) {
+      setMasterEditCourtDatesResult({ ok: false, error: error?.message || "Edit Court Date failed." });
+    } finally {
+      setMasterEditCourtDatesSavingId(null);
+    }
+  }
+
+  function masterCourtDateEditFieldChanged(courtEvent: any, field: "eventDate" | "eventTime" | "court" | "calendarNumber" | "judgeOrArbitrator" | "appearanceType" | "notes") {
+    const eventKey = masterCourtDateEventKey(courtEvent);
+    const form = masterEditCourtDatesForms[eventKey] || masterCourtDateEditFormFromEvent(courtEvent);
+    const original = masterCourtDateEditFormFromEvent(courtEvent);
+    return clean(form[field]) !== clean(original[field]);
+  }
+
+  function masterCourtDateEditInputStyle(courtEvent: any, field: "eventDate" | "eventTime" | "court" | "calendarNumber" | "judgeOrArbitrator" | "appearanceType" | "notes"): React.CSSProperties {
+    const changed = masterCourtDateEditFieldChanged(courtEvent, field);
+    return { height: 38, width: "100%", minWidth: 0, boxSizing: "border-box", border: changed ? "2px solid #f97316" : "1px solid #cbd5e1", borderRadius: 10, padding: "0 10px", fontWeight: 800, background: changed ? "#fff7ed" : "#ffffff" };
+  }
+
+  function masterCourtDateEditTextareaStyle(courtEvent: any, field: "notes"): React.CSSProperties {
+    const changed = masterCourtDateEditFieldChanged(courtEvent, field);
+    return { minHeight: 68, width: "100%", minWidth: 0, boxSizing: "border-box", border: changed ? "2px solid #f97316" : "1px solid #cbd5e1", borderRadius: 10, padding: 10, fontWeight: 800, background: changed ? "#fff7ed" : "#ffffff" };
+  }
+
+  function renderMasterEditCourtDateRow(courtEvent: any) {
+    const eventKey = masterCourtDateEventKey(courtEvent);
+    const eventId = eventKey;
+    const form = masterEditCourtDatesForms[eventKey] || masterCourtDateEditFormFromEvent(courtEvent);
+    const saving = masterEditCourtDatesSavingId === (Number(eventId) || null);
+    return (
+      <div key={eventKey || `${courtEvent.eventDate}-${courtEvent.eventTime}-${courtEvent.appearanceType}`} style={{ border: "1px solid #e2e8f0", borderRadius: 14, background: "#ffffff", padding: 12, display: "grid", gap: 10, minWidth: 0, overflow: "hidden", boxSizing: "border-box" }} data-barsh-master-edit-court-date-row="true">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, minWidth: 0 }}>
+          <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>Court Date<input type="date" required value={form.eventDate} onChange={(event) => updateMasterEditCourtDateForm(eventKey, "eventDate", event.target.value)} style={masterCourtDateEditInputStyle(courtEvent, "eventDate")} /></label>
+          <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>Time<input type="time" required value={form.eventTime} onChange={(event) => updateMasterEditCourtDateForm(eventKey, "eventTime", event.target.value)} style={masterCourtDateEditInputStyle(courtEvent, "eventTime")} /></label>
+          <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>Appearance Type<select required value={form.appearanceType} onChange={(event) => updateMasterEditCourtDateForm(eventKey, "appearanceType", event.target.value)} style={masterCourtDateEditInputStyle(courtEvent, "appearanceType")} data-barsh-master-edit-court-date-appearance-type-required="true"><option value="">Select Appearance Type</option><option value="Motion">Motion</option><option value="Trial/Arbitration">Trial/Arbitration</option><option value="Conference">Conference</option><option value="Other">Other</option></select></label>
+          <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>Court<select required value={form.court} onChange={(event) => updateMasterEditCourtDateForm(eventKey, "court", event.target.value)} style={masterCourtDateEditInputStyle(courtEvent, "court")} data-barsh-master-edit-court-date-court-dropdown="true"><option value="">{masterAddCourtDateCourtOptionsLoading ? "Loading Courts..." : "Select Court"}</option>{masterCourtDateCourtOptions().map((court) => <option key={court} value={court}>{court}</option>)}</select></label>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, minWidth: 0 }}>
+          <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>Calendar Number<input value={form.calendarNumber} onChange={(event) => updateMasterEditCourtDateForm(eventKey, "calendarNumber", event.target.value)} style={masterCourtDateEditInputStyle(courtEvent, "calendarNumber")} /></label>
+          <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>Judge / Arbitrator<input value={form.judgeOrArbitrator} onChange={(event) => updateMasterEditCourtDateForm(eventKey, "judgeOrArbitrator", event.target.value)} style={masterCourtDateEditInputStyle(courtEvent, "judgeOrArbitrator")} /></label>
+        </div>
+        <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>Notes<textarea value={form.notes} onChange={(event) => updateMasterEditCourtDateForm(eventKey, "notes", event.target.value)} style={masterCourtDateEditTextareaStyle(courtEvent, "notes")} /></label>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button type="button" onClick={() => void saveMasterCourtDateEdit(courtEvent)} disabled={saving || !masterEditCourtDateFormReady(eventKey)} style={{ minHeight: 34, border: "1px solid #1e3a8a", borderRadius: 999, background: saving || !masterEditCourtDateFormReady(eventKey) ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 950, padding: "0 14px", cursor: saving || !masterEditCourtDateFormReady(eventKey) ? "not-allowed" : "pointer" }} data-barsh-master-edit-court-date-save-button="true">{saving ? "Saving..." : "Save Changes"}</button>
+        </div>
       </div>
     );
   }
@@ -6855,7 +7075,7 @@ function masterSettlementDateFiledValue(): string {
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, minWidth: 0 }}>
                     <div><div style={{ fontSize: 11, color: colors.subtle, fontWeight: 900, textTransform: "uppercase" }}>Source</div><div style={{ marginTop: 3, fontSize: 13, fontWeight: 850, color: colors.ink }}>{clean(thread.source) || "—"}</div></div>
                     <div><div style={{ fontSize: 11, color: colors.subtle, fontWeight: 900, textTransform: "uppercase" }}>Direction</div><div style={{ marginTop: 3, fontSize: 13, fontWeight: 850, color: colors.ink }}>{clean(thread.direction) || "—"}</div></div>
                     <div><div style={{ fontSize: 11, color: colors.subtle, fontWeight: 900, textTransform: "uppercase" }}>Conversation ID</div><div style={{ marginTop: 3, fontSize: 13, fontWeight: 850, color: colors.ink, overflowWrap: "anywhere" }}>{clean(thread.conversationId) || "—"}</div></div>
@@ -10328,11 +10548,48 @@ function masterSettlementDateFiledValue(): string {
                       {masterActionGroup === "court_dates" && (
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }} data-barsh-master-action-section="court-dates">
                           <button type="button" onClick={openMasterAddCourtDateDialog} title="Add a new Court Date for this lawsuit." style={{ minHeight: 36, border: "1px solid #ea580c", borderRadius: 999, background: "#fff7ed", color: "#c2410c", fontSize: 12, fontWeight: 950, cursor: "pointer", padding: "0 14px" }} data-barsh-master-add-new-court-date-button="true">Add New Court Date</button>
-                          <button type="button" onClick={() => window.alert("View / Edit Court Dates will be wired after Add New Court Date.")} title="View and edit Court Calendar dates, appearance results, and notes for this lawsuit." style={{ minHeight: 36, border: "1px solid #ea580c", borderRadius: 999, background: "#fff7ed", color: "#c2410c", fontSize: 12, fontWeight: 950, cursor: "pointer", padding: "0 14px" }} data-barsh-master-view-edit-court-dates-placeholder="true">View / Edit Court Dates</button>
+                          <button type="button" onClick={openMasterEditCourtDatesDialog} title="Edit Court Calendar dates, appearance results, and notes for this lawsuit." style={{ minHeight: 36, border: "1px solid #ea580c", borderRadius: 999, background: "#fff7ed", color: "#c2410c", fontSize: 12, fontWeight: 950, cursor: "pointer", padding: "0 14px" }} data-barsh-master-edit-court-dates-button="true">Edit Court Dates</button>
                         </div>
                       )}
                     </div>
                   </div>
+
+                      {masterEditCourtDatesDialogOpen && (
+                        <div role="dialog" aria-modal="true" aria-label="Edit Court Dates" onClick={closeMasterEditCourtDatesDialog} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeMasterEditCourtDatesDialog(); } }} tabIndex={-1} style={{ position: "fixed", inset: 0, zIndex: 50000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "rgba(15, 23, 42, 0.58)" }} data-barsh-master-edit-court-dates-popup="true">
+                          <div onClick={(event) => event.stopPropagation()} style={{ width: "min(920px, calc(100vw - 48px))", maxHeight: "88vh", overflow: "auto", borderRadius: 18, background: "#ffffff", boxShadow: "0 28px 80px rgba(15, 23, 42, 0.35)", boxSizing: "border-box" }}>
+                            <div style={{ background: "#1e3a8a", color: "#ffffff", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 950, color: "#ffffff" }}>Edit Court Dates</h2>
+                            </div>
+                            <div style={{ padding: 18, display: "grid", gap: 14 }}>
+                              {masterEditCourtDatesResult && !masterEditCourtDatesResult.ok && (<div style={{ border: "1px solid #fecaca", borderRadius: 12, background: "#fef2f2", color: "#991b1b", padding: 10, fontWeight: 900 }}>{masterEditCourtDatesResult.error || "Edit Court Date failed."}</div>)}
+                              {masterEditCourtDatesResult?.ok && (<div style={{ border: "1px solid #bbf7d0", borderRadius: 12, background: "#f0fdf4", color: "#166534", padding: 10, fontWeight: 900 }}>{masterEditCourtDatesResult.message || "Court Date saved."}</div>)}
+                              {masterCourtDatesList.length === 0 ? (
+                                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, background: "#f8fafc", color: "#64748b", padding: 12, fontWeight: 900 }}>No Court Dates to edit.</div>
+                              ) : !masterEditCourtDatesSelectedId ? (
+                                <div style={{ display: "grid", gap: 12 }} data-barsh-master-edit-court-date-chooser="true">
+                                  <div style={{ fontSize: 14, fontWeight: 950, color: "#0f172a" }}>Which Court Date do you want to edit?</div>
+                                  <div style={{ display: "grid", gap: 8 }}>
+                                    {masterEditableCourtDatesInDisplayOrder().map((courtEvent: any) => (
+                                      <button key={courtEvent.id || `${courtEvent.eventDate}-${courtEvent.eventTime}-${courtEvent.appearanceType}`} type="button" onClick={() => { const selectedId = masterCourtDateEventKey(courtEvent); setMasterEditCourtDatesResult(null); setMasterEditCourtDatesSelectedEvent(courtEvent); setMasterEditCourtDatesForms((current) => ({ ...current, [selectedId]: masterCourtDateEditFormFromEvent(courtEvent) })); setMasterEditCourtDatesSelectedId(selectedId); }} style={{ minHeight: 42, border: "1px solid #e2e8f0", borderRadius: 12, background: "#f8fafc", color: "#0f172a", fontWeight: 900, textAlign: "left", padding: "8px 12px", cursor: "pointer" }} data-barsh-master-edit-court-date-choice-button="true">{masterCourtDateChoiceLabel(courtEvent)}</button>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : selectedMasterEditCourtDate() ? (
+                                <div style={{ display: "grid", gap: 12 }} data-barsh-master-edit-court-date-selected-editor="true">
+                                  <div style={{ fontSize: 13, fontWeight: 950, color: "#0f172a" }}>{masterCourtDateChoiceLabel(selectedMasterEditCourtDate())}</div>
+                                  {renderMasterEditCourtDateRow(selectedMasterEditCourtDate())}
+                                </div>
+                              ) : (
+                                <div style={{ border: "1px solid #fecaca", borderRadius: 12, background: "#fef2f2", color: "#991b1b", padding: 12, fontWeight: 900, display: "grid", gap: 10 }}><div>Selected Court Date could not be found.</div><button type="button" onClick={() => { setMasterEditCourtDatesSelectedId(""); setMasterEditCourtDatesSelectedEvent(null); setMasterEditCourtDatesResult(null); }} style={{ minHeight: 32, border: "1px solid #1e3a8a", borderRadius: 999, background: "#eff6ff", color: "#1e3a8a", fontWeight: 950, padding: "0 12px", cursor: "pointer" }}>Choose Court Date</button></div>
+                              )}
+                            </div>
+                            <div style={{ padding: "0 18px 18px", display: "flex", justifyContent: masterEditCourtDatesSelectedId ? "space-between" : "flex-end", gap: 10 }}>
+                              {masterEditCourtDatesSelectedId && (<button type="button" onClick={() => { setMasterEditCourtDatesSelectedId(""); setMasterEditCourtDatesSelectedEvent(null); setMasterEditCourtDatesResult(null); }} disabled={masterEditCourtDatesSavingId !== null} style={{ minHeight: 38, border: "1px solid #1e3a8a", borderRadius: 999, background: "#eff6ff", color: "#1e3a8a", fontWeight: 950, padding: "0 16px", cursor: masterEditCourtDatesSavingId !== null ? "not-allowed" : "pointer" }} data-barsh-master-edit-court-date-back-button="true">Back</button>)}
+                              <button type="button" onClick={closeMasterEditCourtDatesDialog} disabled={masterEditCourtDatesSavingId !== null} style={{ minHeight: 38, border: "1px solid #dc2626", borderRadius: 999, background: "#dc2626", color: "#ffffff", fontWeight: 950, padding: "0 16px", cursor: masterEditCourtDatesSavingId !== null ? "not-allowed" : "pointer" }}>Cancel</button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {masterAddCourtDateDialogOpen && (
                         <div role="dialog" aria-modal="true" aria-label="Add New Court Date" onClick={closeMasterAddCourtDateDialog} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeMasterAddCourtDateDialog(); } }} tabIndex={-1} style={{ position: "fixed", inset: 0, zIndex: 50000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "rgba(15, 23, 42, 0.58)" }} data-barsh-master-add-new-court-date-popup="true">

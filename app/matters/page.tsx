@@ -2500,6 +2500,75 @@ function masterMetadataMoneyDisplayValue(field: "filingFee" | "serviceFee" | "ot
     Boolean(masterAddCourtDateForm.appearanceType) &&
     Boolean(masterAddCourtDateForm.court);
 
+  function masterCourtDateTodayKey() {
+    const now = new Date();
+    const yyyy = String(now.getFullYear());
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function masterCourtDateDateKey(courtEvent: any) {
+    return clean(courtEvent?.eventDate);
+  }
+
+  function masterCourtDateTimeKey(courtEvent: any) {
+    return clean(courtEvent?.eventTime) || "00:00";
+  }
+
+  function compareMasterCourtDatesSoonest(a: any, b: any) {
+    const dateCompare = masterCourtDateDateKey(a).localeCompare(masterCourtDateDateKey(b));
+    if (dateCompare !== 0) return dateCompare;
+    return masterCourtDateTimeKey(a).localeCompare(masterCourtDateTimeKey(b));
+  }
+
+  function compareMasterCourtDatesLatest(a: any, b: any) {
+    const dateCompare = masterCourtDateDateKey(b).localeCompare(masterCourtDateDateKey(a));
+    if (dateCompare !== 0) return dateCompare;
+    return masterCourtDateTimeKey(b).localeCompare(masterCourtDateTimeKey(a));
+  }
+
+  function splitMasterCourtDatesByTiming() {
+    const today = masterCourtDateTodayKey();
+    const upcoming: any[] = [];
+    const past: any[] = [];
+    for (const courtEvent of masterCourtDatesList) {
+      const eventDate = masterCourtDateDateKey(courtEvent);
+      if (eventDate && eventDate < today) past.push(courtEvent);
+      else upcoming.push(courtEvent);
+    }
+    upcoming.sort(compareMasterCourtDatesSoonest);
+    past.sort(compareMasterCourtDatesLatest);
+    return { upcoming, past };
+  }
+
+  function renderMasterCourtDateCard(courtEvent: any) {
+    return (
+      <div key={courtEvent.id || `${courtEvent.eventDate}-${courtEvent.eventTime}-${courtEvent.appearanceType}`} style={{ border: "1px solid #e2e8f0", borderRadius: 10, background: "#ffffff", padding: "7px 8px", display: "grid", gap: 2 }}>
+        <div style={{ fontSize: 12, fontWeight: 950, color: "#0f172a" }}>{displayDate(courtEvent.eventDate)}{courtEvent.eventTime ? " · " + courtEvent.eventTime : ""} · {clean(courtEvent.appearanceType) || clean(courtEvent.eventType) || "Court Date"}</div>
+        <div style={{ fontSize: 11, fontWeight: 800, color: "#64748b" }}>{clean(courtEvent.court || courtEvent.venue) || "—"}{clean(courtEvent.calendarNumber) ? " · Cal. " + clean(courtEvent.calendarNumber) : ""}</div>
+      </div>
+    );
+  }
+
+  function renderMasterCourtDateSection(title: string, courtDates: any[], emptyText: string, marker: string) {
+    return (
+      <div style={{ display: "grid", gap: 6 }} data-barsh-master-court-dates-section={marker}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 950, color: "#334155", textTransform: "uppercase", letterSpacing: 0.4 }}>{title}</div>
+          <div style={{ fontSize: 11, fontWeight: 900, color: "#64748b" }}>{courtDates.length}</div>
+        </div>
+        {courtDates.length === 0 ? (
+          <div style={{ fontSize: 12, color: "#64748b", fontWeight: 800 }}>{emptyText}</div>
+        ) : (
+          <div style={{ display: "grid", gap: 6 }}>
+            {courtDates.map((courtEvent: any) => renderMasterCourtDateCard(courtEvent))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function resetMasterAddCourtDateForm(defaultCourt = "") {
     setMasterAddCourtDateResult(null);
     setMasterAddCourtDateForm({ eventDate: "", eventTime: "09:30", court: clean(defaultCourt), calendarNumber: "", judgeOrArbitrator: "", appearanceType: "", notes: "" });
@@ -10140,16 +10209,15 @@ function masterSettlementDateFiledValue(): string {
                           <div style={{ fontSize: 12, color: "#991b1b", fontWeight: 850 }}>{masterCourtDatesListError}</div>
                         ) : masterCourtDatesList.length === 0 ? (
                           <div style={{ fontSize: 12, color: "#64748b", fontWeight: 800 }}>No Court Dates.</div>
-                        ) : (
-                          <div style={{ display: "grid", gap: 6 }}>
-                            {masterCourtDatesList.map((courtEvent: any) => (
-                              <div key={courtEvent.id || `${courtEvent.eventDate}-${courtEvent.eventTime}-${courtEvent.appearanceType}`} style={{ border: "1px solid #e2e8f0", borderRadius: 10, background: "#ffffff", padding: "7px 8px", display: "grid", gap: 2 }}>
-                                <div style={{ fontSize: 12, fontWeight: 950, color: "#0f172a" }}>{displayDate(courtEvent.eventDate)}{courtEvent.eventTime ? " · " + courtEvent.eventTime : ""} · {clean(courtEvent.appearanceType) || clean(courtEvent.eventType) || "Court Date"}</div>
-                                <div style={{ fontSize: 11, fontWeight: 800, color: "#64748b" }}>{clean(courtEvent.court || courtEvent.venue) || "—"}{clean(courtEvent.calendarNumber) ? " · Cal. " + clean(courtEvent.calendarNumber) : ""}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        ) : (() => {
+                          const courtDateGroups = splitMasterCourtDatesByTiming();
+                          return (
+                            <div style={{ display: "grid", gap: 10 }} data-barsh-master-court-dates-upcoming-past="true">
+                              {renderMasterCourtDateSection("Upcoming Appearances", courtDateGroups.upcoming, "No upcoming appearances.", "upcoming")}
+                              {renderMasterCourtDateSection("Past Appearances", courtDateGroups.past, "No past appearances.", "past")}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </section>

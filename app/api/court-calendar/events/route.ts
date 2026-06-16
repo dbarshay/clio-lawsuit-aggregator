@@ -148,6 +148,19 @@ async function enrichEvents(events: Array<any>, options: { hideClosedMatters?: b
 
   if (!masterIds.length) return events.map((event) => ({ ...event, caseData: { childCount: 0, matters: [] } }));
 
+  const lawsuits = await prisma.lawsuit.findMany({
+    where: { masterLawsuitId: { in: masterIds } },
+    select: { masterLawsuitId: true, lawsuitOptions: true },
+  });
+  const lawsuitOptionsByMaster = new Map<string, Record<string, any>>();
+  for (const lawsuit of lawsuits) {
+    const options =
+      lawsuit.lawsuitOptions && typeof lawsuit.lawsuitOptions === "object" && !Array.isArray(lawsuit.lawsuitOptions)
+        ? (lawsuit.lawsuitOptions as Record<string, any>)
+        : {};
+    lawsuitOptionsByMaster.set(clean(lawsuit.masterLawsuitId), options);
+  }
+
   const claims = await prisma.claimIndex.findMany({
     where: { master_lawsuit_id: { in: masterIds } },
     orderBy: [{ display_number: "asc" }],
@@ -187,6 +200,9 @@ async function enrichEvents(events: Array<any>, options: { hideClosedMatters?: b
 
   return events.map((event) => {
     const rows = byMaster.get(clean(event.masterLawsuitId)) || [];
+    const lawsuitOptions = lawsuitOptionsByMaster.get(clean(event.masterLawsuitId)) || {};
+    const lawsuitStatus = clean(lawsuitOptions.status || lawsuitOptions.matter_status || lawsuitOptions.workflow_status);
+    const adversaryAttorney = clean(lawsuitOptions.adversaryAttorney);
     const patients = Array.from(new Set(rows.map((row) => displayEntityName(row.patient_name)).filter(Boolean)));
     const providers = Array.from(new Set(rows.map((row) => displayEntityName(row.provider_name || row.client_name)).filter(Boolean)));
     const insurers = Array.from(new Set(rows.map((row) => displayEntityName(row.insurer_name)).filter(Boolean)));
@@ -204,6 +220,8 @@ async function enrichEvents(events: Array<any>, options: { hideClosedMatters?: b
         providers,
         insurers,
         claimNumbers: claims,
+        lawsuitStatus,
+        adversaryAttorney,
         lawsuitAmount,
         lawsuitBalance,
         caption,

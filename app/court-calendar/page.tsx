@@ -483,21 +483,21 @@ export default function CourtCalendarPage() {
     }
   }
 
-  function selectedCourtCalendarReportTitle() {
-    if (reportType === "trial-calendar") return "Trial Calendar Report";
-    if (reportType === "appearance-calendar") return "Court Appearance Report";
+  function selectedCourtCalendarReportTitle(activeReportType = reportType) {
+    if (activeReportType === "trial-calendar") return "Trial Calendar Report";
+    if (activeReportType === "appearance-calendar") return "Court Appearance Report";
     return "Court Calendar Report";
   }
 
-  function selectedCourtCalendarReportSlug() {
-    if (reportType === "trial-calendar") return "trial-calendar-report";
-    if (reportType === "appearance-calendar") return "appearance-calendar-report";
+  function selectedCourtCalendarReportSlug(activeReportType = reportType) {
+    if (activeReportType === "trial-calendar") return "trial-calendar-report";
+    if (activeReportType === "appearance-calendar") return "appearance-calendar-report";
     return "court-calendar-report";
   }
 
-  function selectedCourtCalendarReportSheetName() {
-    if (reportType === "trial-calendar") return "Trial Calendar";
-    if (reportType === "appearance-calendar") return "Appearance Calendar";
+  function selectedCourtCalendarReportSheetName(activeReportType = reportType) {
+    if (activeReportType === "trial-calendar") return "Trial Calendar";
+    if (activeReportType === "appearance-calendar") return "Appearance Calendar";
     return "Court Calendar";
   }
 
@@ -523,8 +523,8 @@ export default function CourtCalendarPage() {
     return Array.from(groupMap.entries());
   }
 
-  function printableCourtCalendarReportTable(groupEvents: CalendarEvent[]) {
-    if (reportType === "appearance-calendar") {
+  function printableCourtCalendarReportTable(groupEvents: CalendarEvent[], activeReportType = reportType) {
+    if (activeReportType === "appearance-calendar") {
       let rowsHtml = "";
       for (const event of groupEvents) {
         rowsHtml += "<tr><td class=\"cal-no\">" + safeHtml(event.calendarNumber || "") + "</td><td class=\"index-no\">" + safeHtml(event.indexAaaNumber) + "</td><td class=\"packet-id\">" + safeHtml(event.displayNumber || event.masterLawsuitId) + "</td><td class=\"case-status\">" + safeHtml(event.caseData?.lawsuitStatus || "") + "</td><td class=\"money\">" + safeHtml(printableMoney(event.caseData?.lawsuitAmount)) + "</td><td class=\"money\">" + safeHtml(printableMoney(event.caseData?.lawsuitBalance)) + "</td><td class=\"caption\">" + safeHtml(event.caseData?.caption || event.title) + "</td><td class=\"adversary-attorney\">" + safeHtml(event.caseData?.adversaryAttorney || "") + "</td><td class=\"appearance-type\">" + safeHtml(event.appearanceType || labelFromCode(event.eventType)) + "</td><td class=\"result-cell\">" + printableResultLines() + "</td></tr>";
@@ -532,7 +532,7 @@ export default function CourtCalendarPage() {
       return "<table class=\"appearance-report court-appearance-report\"><thead><tr><th>Calendar<br/>Number</th><th>Index<br/>Number</th><th>Lawsuit<br/>Number</th><th>Status</th><th>Lawsuit<br/>Amount</th><th>Lawsuit<br/>Balance</th><th>Caption</th><th>Adversary<br/>Attorney</th><th>Appearance<br/>Type</th><th>Result</th></tr></thead><tbody>" + rowsHtml + "</tbody></table>";
     }
 
-    if (reportType === "trial-calendar") {
+    if (activeReportType === "trial-calendar") {
       let rowsHtml = "";
       for (const event of groupEvents) {
         rowsHtml += "<tr><td class=\"cal-no\">" + safeHtml(event.calendarNumber || "0") + "</td><td class=\"index-no\">" + safeHtml(event.indexAaaNumber) + "</td><td class=\"packet-id\">" + safeHtml(event.displayNumber || event.masterLawsuitId) + "</td><td class=\"case-status\">" + safeHtml(labelFromCode(event.status || event.eventType)) + "</td><td class=\"money\">" + safeHtml(printableMoney(event.caseData?.lawsuitAmount)) + "</td><td class=\"money\">" + safeHtml(printableMoney(event.caseData?.lawsuitBalance)) + "</td><td class=\"caption\">" + safeHtml(event.caseData?.caption || event.title) + "</td><td class=\"defense-attorney\"></td><td class=\"trial-status\">" + safeHtml(event.appearanceType || labelFromCode(event.eventType)) + "</td><td class=\"trial-result\">" + printableResultLines() + "</td></tr>";
@@ -547,7 +547,7 @@ export default function CourtCalendarPage() {
     return "<table class=\"all-report\"><thead><tr><th>Date</th><th>Time</th><th>Cal.<br/>No.</th><th>Index / AAA<br/>Number</th><th>Lawsuit<br/>Number</th><th>Status</th><th>Appearance<br/>Type</th><th>Claim<br/>Amount</th><th>Balance<br/>Amount</th><th>Caption</th><th>Judge /<br/>Arbitrator</th></tr></thead><tbody>" + rowsHtml + "</tbody></table>";
   }
 
-  function printCalendarReport() {
+  function printCalendarReport(activeReportType = "all") {
     if (events.length === 0) {
       alert("Run a search before printing the Court Calendar report.");
       return;
@@ -560,30 +560,30 @@ export default function CourtCalendarPage() {
     const reportDate = dateFrom || events[0]?.eventDate || new Date().toISOString().slice(0, 10);
     const generatedAt = new Date().toLocaleString();
     const filterSummary = buildCourtCalendarFilterSummary();
-    const reportTitle = selectedCourtCalendarReportTitle();
+    const reportTitle = selectedCourtCalendarReportTitle(activeReportType);
     let groupsHtml = "";
     for (const [groupName, groupEvents] of groupedCourtCalendarEvents()) {
       const groupDate = groupEvents[0]?.eventDate || reportDate;
-      if (reportType === "appearance-calendar") {
-        groupsHtml += "<section class=\"court-group court-appearance-group\"><h1 class=\"report-title\">Court Appearance Report" + (groupName ? " for " + safeHtml(groupName) : "") + "</h1><div class=\"appearance-date\">" + safeHtml(dateOnly(groupDate)) + "</div>" + printableCourtCalendarReportTable(groupEvents) + "</section>";
+      if (activeReportType === "appearance-calendar") {
+        groupsHtml += "<section class=\"court-group court-appearance-group\"><h1 class=\"report-title\">Court Appearance Report" + (groupName ? " for " + safeHtml(groupName) : "") + "</h1><div class=\"appearance-date\">" + safeHtml(dateOnly(groupDate)) + "</div>" + printableCourtCalendarReportTable(groupEvents, activeReportType) + "</section>";
       } else {
-        groupsHtml += "<section class=\"court-group\"><div class=\"court-heading\"><span>" + safeHtml(dateOnly(reportDate)) + "</span><span>" + safeHtml(groupName) + "</span></div>" + printableCourtCalendarReportTable(groupEvents) + "</section>";
+        groupsHtml += "<section class=\"court-group\"><div class=\"court-heading\"><span>" + safeHtml(dateOnly(reportDate)) + "</span><span>" + safeHtml(groupName) + "</span></div>" + printableCourtCalendarReportTable(groupEvents, activeReportType) + "</section>";
       }
     }
-    const html = "<!doctype html><html><head><meta charset=\"utf-8\" /><title>" + safeHtml(reportTitle) + "</title><style>@page { size: landscape; margin: 0.28in 0.22in; } * { box-sizing: border-box; } body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111827; background: #fff; font-size: 9px; } .report-title { text-align: center; font-size: 18px; font-weight: 800; margin: 0 0 6px; } .report-meta { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 6px; font-size: 8px; color: #334155; } .court-heading { display: grid; grid-template-columns: 115px 1fr; align-items: end; gap: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; border-bottom: 1px solid #cbd5e1; padding: 0 0 3px; margin: 0 0 3px; } .court-group { margin-bottom: 10px; } table { width: 100%; border-collapse: collapse; table-layout: fixed; } thead { display: table-header-group; } tr { page-break-inside: avoid; } th { text-align: left; vertical-align: bottom; font-size: 7.5px; font-weight: 900; color: #475569; border-bottom: 1px solid #cbd5e1; padding: 2px 3px; line-height: 1.05; } td { vertical-align: top; border-bottom: 1px solid #d7dde5; padding: 3px 3px; line-height: 1.08; word-break: break-word; overflow-wrap: anywhere; } .money { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; } .trial-result { white-space: nowrap; } .result-line { display: grid; grid-template-columns: 34px 1fr; align-items: end; gap: 2px; line-height: 1.08; } .blank-line { border-bottom: 1px solid #9ca3af; height: 8px; min-width: 72px; } .appearance-date { text-align: center; font-size: 13px; font-weight: 900; margin: -3px 0 8px; } .result-cell { font-size: 7.5px; line-height: 1.12; } .adj-line { display: grid; grid-template-columns: 22px 1fr; gap: 4px; align-items: end; margin-bottom: 2px; } .date-write-line { border-bottom: 1px solid #111827; min-width: 56px; height: 9px; } .scan-choice { display: grid; grid-template-columns: 38px 8px 16px 8px 14px; gap: 2px; align-items: center; margin-top: 1px; white-space: nowrap; } .bubble { display: inline-block; width: 7px; height: 7px; border: 1px solid #111827; border-radius: 999px; } .trial-report th:nth-child(1), .trial-report td:nth-child(1) { width: 5.8%; } .trial-report th:nth-child(2), .trial-report td:nth-child(2) { width: 9.3%; } .trial-report th:nth-child(3), .trial-report td:nth-child(3) { width: 9.3%; } .trial-report th:nth-child(4), .trial-report td:nth-child(4) { width: 9.3%; } .trial-report th:nth-child(5), .trial-report td:nth-child(5) { width: 7.2%; } .trial-report th:nth-child(6), .trial-report td:nth-child(6) { width: 7.4%; } .trial-report th:nth-child(7), .trial-report td:nth-child(7) { width: 17.8%; } .trial-report th:nth-child(8), .trial-report td:nth-child(8) { width: 10%; } .trial-report th:nth-child(9), .trial-report td:nth-child(9) { width: 8.7%; } .trial-report th:nth-child(10), .trial-report td:nth-child(10) { width: 15.2%; } .appearance-report th:nth-child(1), .appearance-report td:nth-child(1) { width: 7.2%; } .appearance-report th:nth-child(2), .appearance-report td:nth-child(2) { width: 5.2%; } .appearance-report th:nth-child(3), .appearance-report td:nth-child(3) { width: 5.4%; } .appearance-report th:nth-child(4), .appearance-report td:nth-child(4) { width: 9%; } .appearance-report th:nth-child(5), .appearance-report td:nth-child(5) { width: 8.2%; } .appearance-report th:nth-child(6), .appearance-report td:nth-child(6) { width: 8.5%; } .appearance-report th:nth-child(7), .appearance-report td:nth-child(7) { width: 7%; } .appearance-report th:nth-child(8), .appearance-report td:nth-child(8) { width: 7%; } .appearance-report th:nth-child(9), .appearance-report td:nth-child(9) { width: 24%; } .appearance-report th:nth-child(10), .appearance-report td:nth-child(10) { width: 8%; } .appearance-report th:nth-child(11), .appearance-report td:nth-child(11) { width: 10.5%; } .all-report th:nth-child(1), .all-report td:nth-child(1) { width: 6.5%; } .all-report th:nth-child(2), .all-report td:nth-child(2) { width: 4.8%; } .all-report th:nth-child(3), .all-report td:nth-child(3) { width: 5%; } .all-report th:nth-child(4), .all-report td:nth-child(4) { width: 8.2%; } .all-report th:nth-child(5), .all-report td:nth-child(5) { width: 7.8%; } .all-report th:nth-child(6), .all-report td:nth-child(6) { width: 7%; } .all-report th:nth-child(7), .all-report td:nth-child(7) { width: 8%; } .all-report th:nth-child(8), .all-report td:nth-child(8) { width: 6.5%; } .all-report th:nth-child(9), .all-report td:nth-child(9) { width: 6.5%; } .all-report th:nth-child(10), .all-report td:nth-child(10) { width: 31.7%; } .all-report th:nth-child(11), .all-report td:nth-child(11) { width: 8%; } .screen-only { margin: 10px 0; text-align: center; } @media print { .screen-only { display: none; } body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }</style></head><body><div class=\"screen-only\"><button onclick=\"window.print()\">Print / Save PDF</button></div>" + (reportType === "appearance-calendar" ? "" : "<h1 class=\"report-title\">" + safeHtml(reportTitle) + "</h1>") + "<div class=\"report-meta\"><div>" + safeHtml(filterSummary) + "</div><div>" + safeHtml(events.length) + " matters from current filtered results · Generated " + safeHtml(generatedAt) + "</div></div>" + groupsHtml + "<script>setTimeout(() => window.print(), 250);</script></body></html>";
+    const html = "<!doctype html><html><head><meta charset=\"utf-8\" /><title>" + safeHtml(reportTitle) + "</title><style>@page { size: landscape; margin: 0.28in 0.22in; } * { box-sizing: border-box; } body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111827; background: #fff; font-size: 9px; } .report-title { text-align: center; font-size: 18px; font-weight: 800; margin: 0 0 6px; } .report-meta { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 6px; font-size: 8px; color: #334155; } .court-heading { display: grid; grid-template-columns: 115px 1fr; align-items: end; gap: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; border-bottom: 1px solid #cbd5e1; padding: 0 0 3px; margin: 0 0 3px; } .court-group { margin-bottom: 10px; } table { width: 100%; border-collapse: collapse; table-layout: fixed; } thead { display: table-header-group; } tr { page-break-inside: avoid; } th { text-align: left; vertical-align: bottom; font-size: 7.5px; font-weight: 900; color: #475569; border-bottom: 1px solid #cbd5e1; padding: 2px 3px; line-height: 1.05; } td { vertical-align: top; border-bottom: 1px solid #d7dde5; padding: 3px 3px; line-height: 1.08; word-break: break-word; overflow-wrap: anywhere; } .money { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; } .trial-result { white-space: nowrap; } .result-line { display: grid; grid-template-columns: 34px 1fr; align-items: end; gap: 2px; line-height: 1.08; } .blank-line { border-bottom: 1px solid #9ca3af; height: 8px; min-width: 72px; } .appearance-date { text-align: center; font-size: 13px; font-weight: 900; margin: -3px 0 8px; } .result-cell { font-size: 7.5px; line-height: 1.12; } .adj-line { display: grid; grid-template-columns: 22px 1fr; gap: 4px; align-items: end; margin-bottom: 2px; } .date-write-line { border-bottom: 1px solid #111827; min-width: 56px; height: 9px; } .scan-choice { display: grid; grid-template-columns: 38px 8px 16px 8px 14px; gap: 2px; align-items: center; margin-top: 1px; white-space: nowrap; } .bubble { display: inline-block; width: 7px; height: 7px; border: 1px solid #111827; border-radius: 999px; } .trial-report th:nth-child(1), .trial-report td:nth-child(1) { width: 5.8%; } .trial-report th:nth-child(2), .trial-report td:nth-child(2) { width: 9.3%; } .trial-report th:nth-child(3), .trial-report td:nth-child(3) { width: 9.3%; } .trial-report th:nth-child(4), .trial-report td:nth-child(4) { width: 9.3%; } .trial-report th:nth-child(5), .trial-report td:nth-child(5) { width: 7.2%; } .trial-report th:nth-child(6), .trial-report td:nth-child(6) { width: 7.4%; } .trial-report th:nth-child(7), .trial-report td:nth-child(7) { width: 17.8%; } .trial-report th:nth-child(8), .trial-report td:nth-child(8) { width: 10%; } .trial-report th:nth-child(9), .trial-report td:nth-child(9) { width: 8.7%; } .trial-report th:nth-child(10), .trial-report td:nth-child(10) { width: 15.2%; } .appearance-report th:nth-child(1), .appearance-report td:nth-child(1) { width: 7.2%; } .appearance-report th:nth-child(2), .appearance-report td:nth-child(2) { width: 5.2%; } .appearance-report th:nth-child(3), .appearance-report td:nth-child(3) { width: 5.4%; } .appearance-report th:nth-child(4), .appearance-report td:nth-child(4) { width: 9%; } .appearance-report th:nth-child(5), .appearance-report td:nth-child(5) { width: 8.2%; } .appearance-report th:nth-child(6), .appearance-report td:nth-child(6) { width: 8.5%; } .appearance-report th:nth-child(7), .appearance-report td:nth-child(7) { width: 7%; } .appearance-report th:nth-child(8), .appearance-report td:nth-child(8) { width: 7%; } .appearance-report th:nth-child(9), .appearance-report td:nth-child(9) { width: 24%; } .appearance-report th:nth-child(10), .appearance-report td:nth-child(10) { width: 8%; } .appearance-report th:nth-child(11), .appearance-report td:nth-child(11) { width: 10.5%; } .all-report th:nth-child(1), .all-report td:nth-child(1) { width: 6.5%; } .all-report th:nth-child(2), .all-report td:nth-child(2) { width: 4.8%; } .all-report th:nth-child(3), .all-report td:nth-child(3) { width: 5%; } .all-report th:nth-child(4), .all-report td:nth-child(4) { width: 8.2%; } .all-report th:nth-child(5), .all-report td:nth-child(5) { width: 7.8%; } .all-report th:nth-child(6), .all-report td:nth-child(6) { width: 7%; } .all-report th:nth-child(7), .all-report td:nth-child(7) { width: 8%; } .all-report th:nth-child(8), .all-report td:nth-child(8) { width: 6.5%; } .all-report th:nth-child(9), .all-report td:nth-child(9) { width: 6.5%; } .all-report th:nth-child(10), .all-report td:nth-child(10) { width: 31.7%; } .all-report th:nth-child(11), .all-report td:nth-child(11) { width: 8%; } .screen-only { margin: 10px 0; text-align: center; } @media print { .screen-only { display: none; } body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }</style></head><body><div class=\"screen-only\"><button onclick=\"window.print()\">Print / Save PDF</button></div>" + (activeReportType === "appearance-calendar" ? "" : "<h1 class=\"report-title\">" + safeHtml(reportTitle) + "</h1>") + "<div class=\"report-meta\"><div>" + safeHtml(filterSummary) + "</div><div>" + safeHtml(events.length) + " matters from current filtered results · Generated " + safeHtml(generatedAt) + "</div></div>" + groupsHtml + "<script>setTimeout(() => window.print(), 250);</script></body></html>";
     printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
   }
 
-  function exportCalendarReport() {
+  function exportCalendarReport(activeReportType = "all") {
     let headers: string[];
     let rows: any[][];
 
-    if (reportType === "trial-calendar") {
+    if (activeReportType === "trial-calendar") {
       headers = ["Event Date", "Event Time", "Court", "Daily Court Cal. No", "Index / AAA Number", "Packet ID / Case ID", "Case Status", "Claim Amount", "Balance Amount", "Case Caption", "Defendant Attorney", "Trial Status", "Trial Result"];
       rows = events.map((event) => [safeExportCell(event.eventDate), safeExportCell(event.eventTime), safeExportCell(event.court || event.venue), safeExportCell(event.calendarNumber || "0"), safeExportCell(event.indexAaaNumber), safeExportCell(event.displayNumber || event.masterLawsuitId), safeExportCell(labelFromCode(event.status || event.eventType)), safeExportCell(printableMoney(event.caseData?.lawsuitAmount)), safeExportCell(printableMoney(event.caseData?.lawsuitBalance)), safeExportCell(event.caseData?.caption || event.title), "", safeExportCell(event.appearanceType || labelFromCode(event.eventType)), ""]);
-    } else if (reportType === "appearance-calendar") {
+    } else if (activeReportType === "appearance-calendar") {
       headers = ["Event Date", "Event Time", "Court", "Calendar Number", "Index / AAA", "Master Lawsuit", "Appearance Type", "Claim Amount", "Balance Amount", "Caption", "Judge / Arbitrator", "Notes"];
       rows = events.map((event) => [safeExportCell(event.eventDate), safeExportCell(event.eventTime), safeExportCell(event.court || event.venue), safeExportCell(event.calendarNumber), safeExportCell(event.indexAaaNumber), safeExportCell(event.displayNumber || event.masterLawsuitId), safeExportCell(event.appearanceType || labelFromCode(event.eventType)), safeExportCell(printableMoney(event.caseData?.lawsuitAmount)), safeExportCell(printableMoney(event.caseData?.lawsuitBalance)), safeExportCell(event.caseData?.caption || event.title), safeExportCell(event.judgeOrArbitrator), safeExportCell(event.notes)]);
     } else {
@@ -591,7 +591,11 @@ export default function CourtCalendarPage() {
       rows = events.map((event) => [safeExportCell(event.eventDate), safeExportCell(event.eventTime), safeExportCell(event.court || event.venue), safeExportCell(event.calendarNumber), safeExportCell(event.indexAaaNumber), safeExportCell(event.displayNumber || event.masterLawsuitId), safeExportCell(labelFromCode(event.status || event.eventType)), safeExportCell(event.appearanceType || labelFromCode(event.eventType)), safeExportCell(printableMoney(event.caseData?.lawsuitAmount)), safeExportCell(printableMoney(event.caseData?.lawsuitBalance)), safeExportCell(event.caseData?.caption || event.title), safeExportCell(event.judgeOrArbitrator), safeExportCell(event.notes)]);
     }
 
-    downloadWorkbookRows(headers, rows, `barsh-matters-${selectedCourtCalendarReportSlug()}-${timestampForFilename()}.xlsx`, selectedCourtCalendarReportSheetName());
+    downloadWorkbookRows(headers, rows, `barsh-matters-${selectedCourtCalendarReportSlug(activeReportType)}-${timestampForFilename()}.xlsx`, selectedCourtCalendarReportSheetName(activeReportType));
+  }
+
+  function printCourtAppearanceReport() {
+    printCalendarReport("appearance-calendar");
   }
 
   function webCivilImportTemplateText() {
@@ -894,8 +898,9 @@ export default function CourtCalendarPage() {
         </div>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", marginTop: 14 }} data-barsh-court-calendar-result-bottom-actions="true">
-          <button type="button" onClick={printCalendarReport} style={secondaryButtonStyle} disabled={events.length === 0} data-barsh-court-calendar-print-filtered-results="true">Print / Save PDF</button>
-          <button type="button" onClick={exportCalendarReport} style={secondaryButtonStyle} disabled={!events.length} data-barsh-court-calendar-export-xlsx="true">Export XLSX</button>
+          <button type="button" onClick={() => printCalendarReport("all")} style={secondaryButtonStyle} disabled={events.length === 0} data-barsh-court-calendar-print-filtered-results="true">Print / Save PDF</button>
+          <button type="button" onClick={() => exportCalendarReport("all")} style={secondaryButtonStyle} disabled={!events.length} data-barsh-court-calendar-export-xlsx="true">Export XLSX</button>
+          <button type="button" onClick={printCourtAppearanceReport} style={secondaryButtonStyle} disabled={events.length === 0} data-barsh-court-calendar-print-appearance-report="true">Print Court Appearance Report</button>
           <button type="button" onClick={() => setWebCivilImportOpen((open) => !open)} style={secondaryButtonStyle} data-barsh-court-calendar-webcivil-local-import-toggle="true">Import Calendar Numbers from WebCivil Local</button>
         </div>
       </section>

@@ -37,13 +37,13 @@ if (matter.includes("/api/court-calendar/events") || matter.includes('data-barsh
 }
 
 
-if (!page.includes("function selectedCourtCalendarReportTitle()")) failures.push("page missing report-type title helper");
+if (!page.includes("function selectedCourtCalendarReportTitle(activeReportType = reportType)")) failures.push("page missing report-type title helper");
 if (!page.includes("function printableCourtCalendarReportTable(groupEvents")) failures.push("page missing report-type printable table helper");
 if (!page.includes("Report Type: \" + selectedCourtCalendarReportTitle()")) failures.push("page missing report type in printable filter summary");
-if (!page.includes("reportType === \"appearance-calendar\"")) failures.push("page missing appearance-calendar output branch");
-if (!page.includes("reportType === \"trial-calendar\"")) failures.push("page missing trial-calendar output branch");
-if (!page.includes("barsh-matters-${selectedCourtCalendarReportSlug()}")) failures.push("page missing report-type XLSX filename wiring");
-if (!page.includes("selectedCourtCalendarReportSheetName()")) failures.push("page missing report-type XLSX sheet wiring");
+if (!page.includes("activeReportType === \"appearance-calendar\"")) failures.push("page missing appearance-calendar output branch");
+if (!page.includes("activeReportType === \"trial-calendar\"")) failures.push("page missing trial-calendar output branch");
+if (!page.includes("barsh-matters-${selectedCourtCalendarReportSlug(activeReportType)}")) failures.push("page missing report-type XLSX filename wiring");
+if (!page.includes("selectedCourtCalendarReportSheetName(activeReportType)")) failures.push("page missing report-type XLSX sheet wiring");
 
 if (failures.length) {
   console.error("FAIL: court calendar page safety");
@@ -92,6 +92,11 @@ if (!page.includes('data-barsh-court-calendar-webcivil-local-helper')) failures.
 if (!page.includes('Confirm manually in WebCivil Local using court, date range, and index number.')) failures.push('page missing WebCivil Local calendar-number helper token Confirm manually in WebCivil Local using court, date range, and index number.');
 if (!page.includes('Open WebCivil Local Court Calendars')) failures.push('page missing WebCivil Local calendar-number helper token Open WebCivil Local Court Calendars');
 if (page.includes("function printCalendarReport") === false) failures.push("page missing printCalendarReport");
+if (!page.includes('function printCalendarReport(activeReportType = "all")')) failures.push("page missing split printCalendarReport helper");
+if (!page.includes('onClick={() => printCalendarReport("all")}')) failures.push("calendar result Print / Save PDF must force all-report output");
+if (!page.includes('function printCourtAppearanceReport()')) failures.push("page missing Print Court Appearance Report helper");
+if (!page.includes('printCalendarReport("appearance-calendar")')) failures.push("Print Court Appearance Report must force appearance report output");
+if (!page.includes('onClick={() => exportCalendarReport("all")}')) failures.push("calendar result XLSX export must force all-report output");
 if (page.includes("data-barsh-court-calendar-print-filtered-results=\"true\"") === false) failures.push("page missing printable filtered-results button");
 if (page.includes("Trial Calendar Report") === false) failures.push("page missing Trial Calendar Report printable title");
 if (page.includes("matters from current filtered results") === false) failures.push("page missing current filtered results printable count");

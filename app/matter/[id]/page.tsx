@@ -1558,25 +1558,19 @@ const activeGroupKey =
   }
 
   async function runAdministratorGate(actionLabel: string, onAuthorized: () => void) {
-    const password = window.prompt(`ADMINISTRATOR ACCESS REQUIRED\n\n${actionLabel}\n\nEnter administrator password:`);
-    if (password === null) return;
-
     try {
-      const response = await fetch("/api/admin/authorize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, action: actionLabel }),
-      });
+      const response = await fetch("/api/auth/session", { cache: "no-store" });
       const json = await response.json().catch(() => null);
 
-      if (!response.ok || !json?.ok || !json?.authorized) {
-        window.alert(json?.error || "Administrator authorization failed.");
+      if (response.ok && json?.ok && json?.authenticated) {
+        onAuthorized();
         return;
       }
 
-      onAuthorized();
+      const fromPath = `${window.location.pathname}${window.location.search}`;
+      window.location.href = `/login?from=${encodeURIComponent(fromPath || "/admin")}`;
     } catch (error: any) {
-      window.alert(error?.message || "Administrator authorization failed.");
+      window.alert(error?.message || "Administrator session check failed.");
     }
   }
 

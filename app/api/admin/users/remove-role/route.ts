@@ -408,7 +408,7 @@ export async function POST(req: NextRequest) {
       actorRoleRequired: "owner_admin",
       actorEffectivePermissionCount: actorEffectivePermissionKeys.length,
       enforcementChanged: false,
-      note: "Admin role removed. Permission enforcement remains disabled and unchanged.",
+      note: "Admin role removed. Permission enforcement setting was not changed.",
     });
   } catch (error: any) {
     return NextResponse.json(

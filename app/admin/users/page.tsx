@@ -174,7 +174,7 @@ export default function AdminUsersPlanningPage() {
         return;
       }
       if (apply) {
-        setCreateMessage("Admin user created. Roles were not assigned and enforcement remains disabled.");
+        setCreateMessage("Admin user created. Roles were not assigned. Permission enforcement setting was not changed.");
         setCreateEmail("");
         setCreateDisplayName("");
         setCreateNotes("");
@@ -213,7 +213,7 @@ export default function AdminUsersPlanningPage() {
         return;
       }
       if (apply) {
-        setAssignMessage("Admin role assigned. Permission enforcement remains disabled.");
+        setAssignMessage("Admin role assigned. Permission enforcement setting was not changed.");
         setAssignRoleKey("");
         setAssignResult(null);
         await loadAdminUsersPlanning();
@@ -250,7 +250,7 @@ export default function AdminUsersPlanningPage() {
         return;
       }
       if (apply) {
-        setRemoveMessage("Admin role removed. Permission enforcement remains disabled.");
+        setRemoveMessage("Admin role removed. Permission enforcement setting was not changed.");
         setRemoveRoleKey("");
         setRemoveResult(null);
         await loadAdminUsersPlanning();
@@ -289,7 +289,7 @@ export default function AdminUsersPlanningPage() {
         return;
       }
       if (apply) {
-        setOverrideMessage("Admin permission override saved. Permission enforcement remains disabled.");
+        setOverrideMessage("Admin permission override saved. Permission enforcement setting was not changed.");
         setOverrideResult(null);
         await loadAdminUsersPlanning();
       } else {

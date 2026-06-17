@@ -20,6 +20,21 @@ export async function GET(req: NextRequest) {
   const pathname = safePath(url.searchParams.get("path"));
   const method = safeMethod(url.searchParams.get("method"));
   const decision = adminPermissionEnforcementDecision(pathname, method);
+
+  if (decision.enforcementEnabled && decision.blocked) {
+    return NextResponse.json(
+      {
+        ok: false,
+        action: "admin-permission-check-blocked",
+        pathname,
+        method,
+        decision,
+        error: "Permission check target is blocked by current admin permission overrides.",
+      },
+      { status: 403 }
+    );
+  }
+
   return NextResponse.json({
     ok: true,
     action: "admin-permission-check",

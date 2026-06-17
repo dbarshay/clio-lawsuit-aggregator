@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const [dbUsers, dbRoles, dbRolePermissions, dbUserRoles, dbUserPermissionOverrides] = await Promise.all([
-    prisma.adminUser.findMany({ orderBy: [{ email: "asc" }], take: 200, include: { roles: { include: { role: true } }, permissionOverrides: true } }),
+    prisma.adminUser.findMany({ orderBy: [{ email: "asc" }], take: 200, include: { roles: { include: { role: { include: { permissions: true } } } }, permissionOverrides: true } }),
     prisma.adminRole.findMany({ orderBy: [{ key: "asc" }], take: 200, include: { permissions: true } }),
     prisma.adminRolePermission.count(),
     prisma.adminUserRole.count(),

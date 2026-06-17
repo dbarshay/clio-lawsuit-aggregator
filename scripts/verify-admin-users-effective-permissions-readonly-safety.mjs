@@ -11,6 +11,7 @@ for (const required of [
   "explicitBlocks",
   "explicitAllows",
   "databasePreview",
+  "role: { include: { permissions: true } }",
 ]) {
   if (!api.includes(required)) failures.push("API missing effective permissions read-only fragment: " + required);
 }

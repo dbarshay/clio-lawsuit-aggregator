@@ -76,8 +76,12 @@ async function main() {
     if (session.status !== 200) fail("/api/auth/session must return 200 for rollback/session proof");
     if (!session.body.includes("permissionsEnforced")) fail("/api/auth/session response should include permissionsEnforced rollback diagnostic");
     if (session.body.includes('"permissionsEnforced":true')) fail("/api/auth/session should not show lingering permissionsEnforced true");
-    if (session.body.includes('"authenticated":true')) console.log("SESSION_AUTHENTICATED=1");
-    else console.log("SESSION_AUTHENTICATED=0");
+    const sessionAuthenticated = session.body.includes('"authenticated":true');
+    if (sessionAuthenticated) console.log("SESSION_AUTHENTICATED=1");
+    else {
+      console.log("SESSION_AUTHENTICATED=0");
+      if (AUTH_COOKIE) fail("BARSH_PHASE9D_AUTH_COOKIE was supplied but /api/auth/session did not report authenticated=true");
+    }
   }
 
   const neverBlockPaths = ["/admin", "/admin/permissions", "/api/admin/permissions", "/api/admin/permissions/check"];
@@ -94,7 +98,7 @@ async function main() {
   } else {
     const audit = await request("/admin/audit-history", { auth: true });
     console.log("AUTHENTICATED_AUDIT_HISTORY_STATUS=" + audit.status);
-    if (![200, 302, 307, 308].includes(audit.status)) fail("authenticated audit-history reachability should return 200 or redirect, got " + audit.status);
+    if (audit.status !== 200) fail("authenticated audit-history reachability must return 200 after a valid authenticated admin cookie, got " + audit.status);
     if (audit.status === 200 && !audit.body.includes("data-barsh-admin-audit-history")) fail("authenticated audit-history 200 body should include audit-history marker");
   }
 

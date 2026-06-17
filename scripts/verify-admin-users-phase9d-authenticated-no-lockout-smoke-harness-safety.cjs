@@ -27,6 +27,8 @@ for (const path of ["/admin", "/admin/permissions", "/api/admin/permissions", "/
   assert(harness.includes(path), `harness checks never-block path: ${path}`);
 }
 assert(harness.includes("AUTHENTICATED_REACHABILITY=SKIPPED_NO_BARSH_PHASE9D_AUTH_COOKIE"), "harness skips authenticated target only when no auth cookie is supplied");
+assert(harness.includes("did not report authenticated=true"), "harness fails when auth cookie is supplied but session is not authenticated");
+assert(harness.includes("authenticated audit-history reachability must return 200"), "harness requires true authenticated audit-history 200 reachability when auth cookie is supplied");
 assert(harness.includes("child.kill") && harness.includes("SIGTERM"), "harness stops its child process");
 assert(harness.includes("BARSH_ADMIN_PERMISSIONS_ENFORCEMENT: \"\""), "harness clears enforcement env for child process");
 assert(harness.includes("BARSH_ADMIN_PERMISSION_OVERRIDES_JSON: \"\""), "harness clears override env for child process");

@@ -6,6 +6,7 @@ import {
   configuredAdminPermissionOverridesFromEnv,
   adminPermissionDryRunDecisions,
   adminRoutePermissionDryRunDecisions,
+  configuredAdminPermissionsEnforcementEnabled,
 } from "@/lib/adminPermissions";
 
 export const runtime = "nodejs";
@@ -15,7 +16,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     action: "admin-permissions-read-only",
-    enforcementEnabled: false,
+    enforcementEnabled: configuredAdminPermissionsEnforcementEnabled(),
     mode: "default-admin-allow-all",
     note: "Read-only permissions registry. User-configurable allow/block enforcement is planned for a later phase.",
     permissions: ADMIN_PERMISSION_DEFINITIONS,

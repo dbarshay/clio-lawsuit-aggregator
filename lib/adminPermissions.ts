@@ -164,7 +164,7 @@ export type AdminPermissionOverride = {
 export type AdminPermissionOverrideConfig = {
   ok: boolean;
   source: "BARSH_ADMIN_PERMISSION_OVERRIDES_JSON";
-  enforcementEnabled: false;
+  enforcementEnabled: boolean;
   overrides: AdminPermissionOverride[];
   errors: string[];
 };
@@ -188,15 +188,15 @@ export function configuredAdminPermissionOverridesFromEnv(): AdminPermissionOver
   const raw = String(process.env.BARSH_ADMIN_PERMISSION_OVERRIDES_JSON ?? "").trim();
   const errors: string[] = [];
   if (!raw) {
-    return { ok: true, source: "BARSH_ADMIN_PERMISSION_OVERRIDES_JSON", enforcementEnabled: false, overrides: [], errors };
+    return { ok: true, source: "BARSH_ADMIN_PERMISSION_OVERRIDES_JSON", enforcementEnabled: configuredAdminPermissionsEnforcementEnabled(), overrides: [], errors };
   }
   try {
     const parsed = JSON.parse(raw);
     const allow = permissionOverrideEntriesFromArray(parsed?.allow, "allow", errors);
     const block = permissionOverrideEntriesFromArray(parsed?.block, "block", errors);
-    return { ok: errors.length === 0, source: "BARSH_ADMIN_PERMISSION_OVERRIDES_JSON", enforcementEnabled: false, overrides: [...allow, ...block], errors };
+    return { ok: errors.length === 0, source: "BARSH_ADMIN_PERMISSION_OVERRIDES_JSON", enforcementEnabled: configuredAdminPermissionsEnforcementEnabled(), overrides: [...allow, ...block], errors };
   } catch (error: any) {
-    return { ok: false, source: "BARSH_ADMIN_PERMISSION_OVERRIDES_JSON", enforcementEnabled: false, overrides: [], errors: [error?.message || "Invalid permission override JSON."] };
+    return { ok: false, source: "BARSH_ADMIN_PERMISSION_OVERRIDES_JSON", enforcementEnabled: configuredAdminPermissionsEnforcementEnabled(), overrides: [], errors: [error?.message || "Invalid permission override JSON."] };
   }
 }
 
@@ -207,7 +207,7 @@ export type AdminPermissionDryRunDecision = {
   overrideAction: AdminPermissionOverrideAction | null;
   wouldAllow: boolean;
   wouldBlock: boolean;
-  enforcementEnabled: false;
+  enforcementEnabled: boolean;
 };
 
 export type AdminRoutePermissionDryRunDecision = AdminPermissionDryRunDecision & {
@@ -223,7 +223,7 @@ export function adminPermissionDryRunDecisions(overrides = configuredAdminPermis
     const overrideAction = overrideMap.get(definition.key) || null;
     const defaultAllowed = defaultAdminPermissionAllowed(definition.key);
     const wouldAllow = overrideAction === "allow" ? true : overrideAction === "block" ? false : defaultAllowed;
-    return { permission: definition.key, defaultAllowed, overrideAction, wouldAllow, wouldBlock: !wouldAllow, enforcementEnabled: false };
+    return { permission: definition.key, defaultAllowed, overrideAction, wouldAllow, wouldBlock: !wouldAllow, enforcementEnabled: configuredAdminPermissionsEnforcementEnabled() };
   });
 }
 
@@ -240,7 +240,12 @@ export function adminRoutePermissionDryRunDecisions(overrides = configuredAdminP
       overrideAction: decision?.overrideAction ?? null,
       wouldAllow: decision?.wouldAllow ?? true,
       wouldBlock: !(decision?.wouldAllow ?? true),
-      enforcementEnabled: false,
+      enforcementEnabled: configuredAdminPermissionsEnforcementEnabled(),
     };
   });
+}
+
+
+export function configuredAdminPermissionsEnforcementEnabled(): boolean {
+  return String(process.env.BARSH_ADMIN_PERMISSIONS_ENFORCEMENT ?? "").trim() === "1";
 }

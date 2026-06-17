@@ -100,7 +100,7 @@ export const ADMIN_ROUTE_PERMISSIONS: AdminRoutePermission[] = [
   { pattern: "/admin/permissions", permission: "admin.home.view", accessType: "page", enforcementPlanned: false },
   { pattern: "/admin/users", permission: "admin.home.view", accessType: "page", enforcementPlanned: false },
   { pattern: "/admin/reference-data", permission: "admin.referenceData.view", accessType: "page", enforcementPlanned: false },
-  { pattern: "/admin/audit-history", permission: "admin.auditHistory.view", accessType: "page", enforcementPlanned: false },
+  { pattern: "/admin/audit-history", permission: "admin.auditHistory.view", accessType: "page", enforcementPlanned: true },
   { pattern: "/admin/document-templates", permission: "admin.documentTemplates.view", accessType: "page", enforcementPlanned: false },
   { pattern: "/admin/document-templates/:key", permission: "admin.documentTemplates.view", accessType: "page", enforcementPlanned: false },
   { pattern: "/admin/backup-restore", permission: "admin.backups.view", accessType: "page", enforcementPlanned: false },

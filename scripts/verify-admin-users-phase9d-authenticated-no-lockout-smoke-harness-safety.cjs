@@ -31,12 +31,20 @@ assert(harness.includes("AUTHENTICATED_REACHABILITY=SKIPPED_NO_BARSH_PHASE9D_AUT
 assert(harness.includes("did not report authenticated=true"), "harness fails when auth cookie is supplied but session is not authenticated");
 assert(harness.includes("authenticated audit-history reachability must return 200"), "harness requires true authenticated audit-history 200 reachability when auth cookie is supplied");
 assert(harness.includes("child.kill") && harness.includes("SIGTERM"), "harness stops its child process");
-assert(harness.includes("BARSH_ADMIN_PERMISSIONS_ENFORCEMENT: \"\""), "harness clears enforcement env for child process");
-assert(harness.includes("BARSH_ADMIN_PERMISSION_OVERRIDES_JSON: \"\""), "harness clears override env for child process");
+assert(harness.includes('BARSH_ADMIN_PERMISSIONS_ENFORCEMENT: ""'), "harness clears enforcement env for child process");
+assert(harness.includes('BARSH_ADMIN_PERMISSION_OVERRIDES_JSON: ""'), "harness clears override env for child process");
 assert(!harness.includes("BARSH_ADMIN_PERMISSIONS_ENFORCEMENT=1"), "harness does not persistently activate enforcement");
-assert(!harness.includes("enforcementPlanned: true"), "harness does not set first-target enforcement planning true");
 
-assert(registry.includes('enforcementPlanned: false') && !registry.includes('enforcementPlanned: true'), "registry remains enforcementPlanned false");
+const plannedMatches = [...registry.matchAll(/enforcementPlanned:\s*true/g)];
+assert(plannedMatches.length <= 1, "registry has at most one enforcementPlanned true target");
+if (plannedMatches.length === 1) {
+  const pos = plannedMatches[0].index || 0;
+  const start = registry.lastIndexOf("pattern:", pos);
+  const endRaw = registry.indexOf("pattern:", pos + 1);
+  const block = registry.slice(start, endRaw > 0 ? endRaw : registry.length);
+  assert(block.includes('pattern: "/admin/audit-history"') && block.includes('permission: "admin.auditHistory.view"'), "the only enforcementPlanned true target is /admin/audit-history :: admin.auditHistory.view");
+}
+
 assert(sessionRoute.includes("permissionsEnforced") && sessionRoute.includes("authenticated"), "session route exposes rollback/auth diagnostics");
 
 for (const [name, value] of Object.entries(scripts)) {
@@ -62,12 +70,18 @@ for (const file of [
   const src = read(file);
   assert(!/process[.]env[.]BARSH_ADMIN_PERMISSIONS_ENFORCEMENT\s*=/.test(src), `source does not assign process.env enforcement flag: ${file}`);
   assert(!/^\s*BARSH_ADMIN_PERMISSIONS_ENFORCEMENT\s*=\s*1\s*$/m.test(src), `source does not contain standalone BARSH_ADMIN_PERMISSIONS_ENFORCEMENT=1 activation line: ${file}`);
-  assert(!/enforcementPlanned\s*[:=]\s*true/.test(src), `source does not set enforcementPlanned true: ${file}`);
+  if (file === "lib/adminPermissions.ts") {
+    const matches = [...src.matchAll(/enforcementPlanned:\s*true/g)];
+    assert(matches.length <= 1, "lib/adminPermissions.ts has at most one enforcementPlanned true target");
+  } else {
+    assert(!/enforcementPlanned\s*[:=]\s*true/.test(src), `source does not set enforcementPlanned true: ${file}`);
+  }
 }
 
 console.log("PHASE_9D_BOUNDARY=smoke harness is opt-in only; normal verifiers do not execute it");
 console.log("PHASE_9D_AUTH_MODE=BARSH_PHASE9D_AUTH_COOKIE supplies authenticated admin session Cookie header when available");
-console.log("PHASE_9D_NEXT=run opt-in harness manually with authenticated cookie, then decide whether first-target enforcement planning can be separately guarded");
+console.log("PHASE_9D_PHASE10B_COMPAT=allows at most one planned first target: /admin/audit-history :: admin.auditHistory.view");
+console.log("PHASE_9D_NEXT=run opt-in harness manually with authenticated cookie before any enforcement activation");
 
 if (failures.length) {
   console.error("FAILURES:");
@@ -75,4 +89,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log("PASS: Phase 9D opt-in authenticated/no-lockout smoke harness is registered and safety-guarded without persistent activation.");
+console.log("PASS: Phase 9D opt-in authenticated/no-lockout smoke harness is safety-guarded and compatible with the Phase 10B single planned target.");

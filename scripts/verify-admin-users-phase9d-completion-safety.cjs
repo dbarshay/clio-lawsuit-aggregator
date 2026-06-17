@@ -2,10 +2,7 @@ const fs = require("fs");
 
 const failures = [];
 const read = (file) => fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
-
-function assert(condition, message) {
-  if (!condition) failures.push(message);
-}
+function assert(condition, message) { if (!condition) failures.push(message); }
 
 const pkg = JSON.parse(read("package.json"));
 const scripts = pkg.scripts || {};
@@ -30,7 +27,16 @@ for (const name of [
 assert(phase9d.includes("opt-in only") && phase9d.includes("normal verifiers do not execute it"), "Phase 9D safety verifier locks opt-in-only boundary");
 assert(phase9c.includes("without activating enforcement"), "Phase 9C readiness remains non-activating");
 assert(phase9b.includes("without activating enforcement"), "Phase 9B readiness remains non-activating");
-assert(registry.includes('enforcementPlanned: false') && !registry.includes('enforcementPlanned: true'), "registry remains non-activating after Phase 9D");
+
+const plannedMatches = [...registry.matchAll(/enforcementPlanned:\s*true/g)];
+assert(plannedMatches.length <= 1, "registry has at most one enforcementPlanned true target after Phase 9D/10B");
+if (plannedMatches.length === 1) {
+  const pos = plannedMatches[0].index || 0;
+  const start = registry.lastIndexOf("pattern:", pos);
+  const endRaw = registry.indexOf("pattern:", pos + 1);
+  const block = registry.slice(start, endRaw > 0 ? endRaw : registry.length);
+  assert(block.includes('pattern: "/admin/audit-history"') && block.includes('permission: "admin.auditHistory.view"'), "the only enforcementPlanned true target is /admin/audit-history :: admin.auditHistory.view");
+}
 
 for (const [name, value] of Object.entries(scripts)) {
   const text = String(value);
@@ -41,8 +47,8 @@ for (const [name, value] of Object.entries(scripts)) {
 }
 
 console.log("PHASE_9D_COMPLETE=opt_in_authenticated_no_lockout_smoke_harness_registered_safety_verified");
-console.log("PHASE_9D_CURRENT_STATE=enforcement_disabled_and_first_target_enforcement_planning_unchanged");
-console.log("PHASE_9D_NEXT=manual opt-in smoke execution with authenticated cookie, then separate guarded first-target enforcement-planning phase only if preconditions pass");
+console.log("PHASE_9D_CURRENT_STATE=enforcement_disabled_and_at_most_one_first_target_planned");
+console.log("PHASE_9D_NEXT=manual opt-in smoke execution with authenticated cookie before any enforcement activation");
 
 if (failures.length) {
   console.error("FAILURES:");
@@ -50,4 +56,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log("PASS: Phase 9D is complete without persistent activation and without automatic smoke execution.");
+console.log("PASS: Phase 9D is complete without activation and remains compatible with at most one planned first target.");

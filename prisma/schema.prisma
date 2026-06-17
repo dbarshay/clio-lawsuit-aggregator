@@ -948,3 +948,78 @@ model ProviderClientInvoiceAudit {
   @@index([eventType])
   @@index([createdAt])
 }
+
+
+model AdminUser {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  displayName   String?
+  status        String   @default("active")
+  bootstrapSafe Boolean  @default(false)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  roles               AdminUserRole[]
+  permissionOverrides AdminUserPermissionOverride[]
+
+  @@index([status])
+}
+
+model AdminRole {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  label       String
+  description String?
+  status      String   @default("active")
+  systemRole  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       AdminUserRole[]
+  permissions AdminRolePermission[]
+
+  @@index([status])
+}
+
+model AdminRolePermission {
+  id            String   @id @default(cuid())
+  roleId        String
+  permissionKey String
+  createdAt     DateTime @default(now())
+
+  role AdminRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionKey])
+  @@index([permissionKey])
+}
+
+model AdminUserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+
+  user AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role AdminRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([roleId])
+}
+
+model AdminUserPermissionOverride {
+  id            String   @id @default(cuid())
+  userId        String
+  permissionKey String
+  action        String
+  reason        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionKey])
+  @@index([permissionKey])
+  @@index([action])
+}
+

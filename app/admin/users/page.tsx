@@ -57,6 +57,12 @@ export default function AdminUsersPlanningPage() {
   const [createBusy, setCreateBusy] = useState(false);
   const [createMessage, setCreateMessage] = useState("");
   const [createResult, setCreateResult] = useState<any>(null);
+  const [assignTargetEmail, setAssignTargetEmail] = useState("");
+  const [assignRoleKey, setAssignRoleKey] = useState("");
+  const [assignActorEmail, setAssignActorEmail] = useState("dbarshay15@gmail.com");
+  const [assignBusy, setAssignBusy] = useState(false);
+  const [assignMessage, setAssignMessage] = useState("");
+  const [assignResult, setAssignResult] = useState<any>(null);
 
   async function loadAdminUsersPlanning() {
     try {
@@ -78,7 +84,15 @@ export default function AdminUsersPlanningPage() {
   const dbUsers = Array.isArray(data?.databasePreview?.users) ? data.databasePreview.users : [];
   const dbRoles = Array.isArray(data?.databasePreview?.roles) ? data.databasePreview.roles : [];
   const enforcementLabel = useMemo(() => (data?.enforcementEnabled ? "Yes" : "No"), [data?.enforcementEnabled]);
+  const activeDbUsers = dbUsers.filter((user: any) => user.status === "active");
+  const activeDbRoles = dbRoles.filter((role: any) => role.status === "active");
   const previewReady = Boolean(createResult?.ok && createResult?.mode === "preview" && createResult?.wouldCreate?.email === cleanEmail(createEmail));
+  const assignPreviewReady = Boolean(
+    assignResult?.ok &&
+      assignResult?.mode === "preview" &&
+      assignResult?.wouldAssign?.email === cleanEmail(assignTargetEmail) &&
+      assignResult?.wouldAssign?.roleKey === assignRoleKey
+  );
 
   async function submitCreateAdminUser(apply: boolean) {
     try {
@@ -121,13 +135,50 @@ export default function AdminUsersPlanningPage() {
     }
   }
 
+  async function submitAssignAdminRole(apply: boolean) {
+    try {
+      setAssignBusy(true);
+      setAssignMessage(apply ? "Applying guarded assign-role request..." : "Previewing guarded assign-role request...");
+      const response = await fetch("/api/admin/users/assign-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({
+          apply,
+          targetEmail: assignTargetEmail,
+          roleKey: assignRoleKey,
+          actorEmail: assignActorEmail,
+        }),
+      });
+      const json = await response.json().catch(() => ({ ok: false, error: "Assign role route did not return JSON." }));
+      setAssignResult({ ...json, httpStatus: response.status });
+      if (!response.ok || !json?.ok) {
+        setAssignMessage(json?.error || `Assign role request failed with HTTP ${response.status}.`);
+        return;
+      }
+      if (apply) {
+        setAssignMessage("Admin role assigned. Permission enforcement remains disabled.");
+        setAssignRoleKey("");
+        setAssignResult(null);
+        await loadAdminUsersPlanning();
+      } else {
+        setAssignMessage("Preview complete. No AdminUserRole row was created. Review the result before Apply.");
+      }
+    } catch (err: any) {
+      setAssignMessage(err?.message || "Assign role request failed.");
+      setAssignResult({ ok: false, error: err?.message || "Assign role request failed." });
+    } finally {
+      setAssignBusy(false);
+    }
+  }
+
   return (
     <main data-barsh-admin-users-planning-page="phase3-guarded" style={{ minHeight: "100vh", background: "#f8fafc", color: "#0f172a", padding: 30, boxSizing: "border-box" }}>
       <div style={{ maxWidth: 1220, margin: "0 auto", display: "grid", gap: 18 }}>
         <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 24, padding: 22 }}>
           <p style={{ margin: "0 0 8px", color: "#64748b", fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", fontSize: 12 }}>Phase 3 Guarded Write Controls</p>
           <h1 style={{ margin: 0, fontSize: 30 }}>Admin Users / Roles</h1>
-          <p style={{ margin: "10px 0 0", color: "#475569", lineHeight: 1.5 }}>Guarded administrator user management surface. The only active write control in this phase is Create Admin User, which uses preview/apply mode, requires an authenticated administrator session, requires an active owner_admin actor, prevents duplicate emails, validates active/inactive status, and does not assign roles or enable enforcement.</p>
+          <p style={{ margin: "10px 0 0", color: "#475569", lineHeight: 1.5 }}>Guarded administrator user management surface. Active write controls in this phase are Create Admin User and Assign Role. Both use preview/apply mode, require an authenticated administrator session, require an active owner_admin actor, preserve lockout safety, and do not enable enforcement.</p>
         </section>
 
         {error ? <section data-barsh-admin-users-planning-error="true" style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", borderRadius: 18, padding: 16 }}>{error}</section> : null}
@@ -190,6 +241,51 @@ export default function AdminUsersPlanningPage() {
           </div>
         </section>
 
+        <section data-barsh-admin-users-assign-role-control="phase3-guarded" style={{ ...cardStyle, border: "1px solid #bbf7d0", boxShadow: "0 12px 26px rgba(22, 101, 52, 0.08)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14, flexWrap: "wrap" }}>
+            <div>
+              <h2 style={{ margin: 0 }}>Assign Admin Role</h2>
+              <p style={{ margin: "8px 0 0", color: "#475569", lineHeight: 1.5 }}>Phase 3 guarded route. Preview is the default. Apply creates only an AdminUserRole join row; it requires an active target user, an active role, an active owner_admin actor, duplicate-assignment prevention, and active bootstrapSafe owner_admin preservation. It does not create users, create roles, create permission overrides, enable enforcement, write Clio, send email, generate documents, or change the print queue.</p>
+            </div>
+            <span data-barsh-admin-users-assign-role-enforcement-disabled="true" style={{ border: "1px solid #fde68a", background: "#fefce8", color: "#713f12", borderRadius: 999, padding: "7px 10px", fontWeight: 950, fontSize: 12 }}>Enforcement Disabled</span>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginTop: 14 }}>
+            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
+              Target Active Admin User
+              <select data-barsh-admin-users-assign-target-email="true" value={assignTargetEmail} onChange={(event) => { setAssignTargetEmail(event.target.value); setAssignResult(null); }} style={inputStyle}>
+                <option value="">Choose active user...</option>
+                {activeDbUsers.map((user: any) => <option key={user.email} value={user.email}>{user.email}{user.displayName ? ` — ${user.displayName}` : ""}</option>)}
+              </select>
+            </label>
+            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
+              Active Role
+              <select data-barsh-admin-users-assign-role-key="true" value={assignRoleKey} onChange={(event) => { setAssignRoleKey(event.target.value); setAssignResult(null); }} style={inputStyle}>
+                <option value="">Choose active role...</option>
+                {activeDbRoles.map((role: any) => <option key={role.key} value={role.key}>{role.key} — {role.label}</option>)}
+              </select>
+            </label>
+            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
+              Owner Admin Actor Email
+              <input data-barsh-admin-users-assign-actor-email="true" value={assignActorEmail} onChange={(event) => setAssignActorEmail(event.target.value)} style={inputStyle} placeholder="owner_admin email" />
+            </label>
+          </div>
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
+            <button data-barsh-admin-users-assign-preview-button="true" type="button" onClick={() => void submitAssignAdminRole(false)} disabled={assignBusy} style={{ ...secondaryButtonStyle, opacity: assignBusy ? 0.7 : 1 }}>
+              {assignBusy ? "Working..." : "Preview Assign Role"}
+            </button>
+            <button data-barsh-admin-users-assign-apply-button="true" type="button" onClick={() => void submitAssignAdminRole(true)} disabled={assignBusy || !assignPreviewReady} style={{ ...primaryButtonStyle, opacity: assignBusy || !assignPreviewReady ? 0.55 : 1, cursor: assignBusy || !assignPreviewReady ? "not-allowed" : "pointer" }}>
+              Apply Assign Role
+            </button>
+          </div>
+
+          <div data-barsh-admin-users-assign-result="true" style={{ marginTop: 14, background: assignResult?.ok ? "#f0fdf4" : assignResult ? "#fef2f2" : "#f8fafc", border: `1px solid ${assignResult?.ok ? "#bbf7d0" : assignResult ? "#fecaca" : "#e2e8f0"}`, borderRadius: 14, padding: 12 }}>
+            <div style={{ fontWeight: 950, color: assignResult?.ok ? "#166534" : assignResult ? "#991b1b" : "#475569" }}>{assignMessage || "Preview the role assignment before applying. Apply remains disabled until a matching preview succeeds."}</div>
+            {assignResult ? <pre style={{ margin: "10px 0 0", whiteSpace: "pre-wrap", fontSize: 12, fontFamily: "monospace" }}>{JSON.stringify(assignResult, null, 2)}</pre> : null}
+          </div>
+        </section>
+
         <section data-barsh-admin-users-db-preview="read-only" style={{ ...cardStyle, overflowX: "auto" }}>
           <h2 style={{ marginTop: 0 }}>Database-Backed Preview</h2>
           <p style={{ color: "#475569" }}>Preview of persisted admin users and roles. These records are not used for enforcement yet.</p>
@@ -216,7 +312,7 @@ export default function AdminUsersPlanningPage() {
 
         <section data-barsh-admin-users-write-controls-preview="phase3-mixed" style={{ ...cardStyle, overflowX: "auto" }}>
           <h2 style={{ marginTop: 0 }}>Write Controls Roadmap</h2>
-          <p style={{ color: "#475569", lineHeight: 1.5 }}>Create Admin User is active in guarded preview/apply mode. All other controls remain planning only and do not write records.</p>
+          <p style={{ color: "#475569", lineHeight: 1.5 }}>Create Admin User and Assign Role are active in guarded preview/apply mode. All other controls remain planning only and do not write records.</p>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr>
@@ -226,7 +322,7 @@ export default function AdminUsersPlanningPage() {
             <tbody>
               {[
                 ["Create Admin User", "Requires active admin session, active owner_admin actor, duplicate-email check, active/inactive status validation, preview/apply, and audit logging on apply.", "Active guarded route"],
-                ["Assign Role", "Require owner_admin role, preserve at least one bootstrapSafe owner_admin user, and audit every change.", "Preview only"],
+                ["Assign Role", "Requires active admin session, active owner_admin actor, active target user, active role, duplicate-assignment prevention, preview/apply, bootstrap owner preservation, and audit logging on apply.", "Active guarded route"],
                 ["Remove Role", "Block removal if it would leave no active bootstrapSafe owner_admin user.", "Preview only"],
                 ["Permission Override", "Require explicit allow/block reason, never permit blocking /admin or /admin/permissions safety routes.", "Preview only"],
                 ["Enable Enforcement", "Separate phase only after persisted permissions are verified and lockout simulations pass.", "Not available"],

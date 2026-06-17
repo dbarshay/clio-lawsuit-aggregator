@@ -405,7 +405,8 @@
     "apply:admin-user-role-seed": "node scripts/apply-admin-user-role-seed.mjs",
     "verify:admin-user-role-seed-apply-guard-safety": "node scripts/verify-admin-user-role-seed-apply-guard-safety.mjs",
     "verify:admin-users-effective-permissions-readonly-safety": "node scripts/verify-admin-users-effective-permissions-readonly-safety.mjs",
-    "verify:admin-users-write-controls-preview-safety": "node scripts/verify-admin-users-write-controls-preview-safety.mjs"
+    "verify:admin-users-write-controls-preview-safety": "node scripts/verify-admin-users-write-controls-preview-safety.mjs",
+    "verify:admin-users-write-contract-preview-safety": "node scripts/verify-admin-users-write-contract-preview-safety.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

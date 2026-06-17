@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminRequestAuthorized } from "@/lib/adminAuth";
+import { adminSessionIdentityDiagnostics, isAdminRequestAuthorized } from "@/lib/adminAuth";
 import { allAdminPermissionKeys, configuredAdminPermissionOverridesFromEnv, adminPermissionDryRunDecisions, configuredAdminPermissionsEnforcementEnabled } from "@/lib/adminPermissions";
 
 export const runtime = "nodejs";
@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const authenticated = isAdminRequestAuthorized(req);
+  const identityDiagnostics = adminSessionIdentityDiagnostics(req);
   const permissions = authenticated ? allAdminPermissionKeys() : [];
   const permissionOverrideConfig = configuredAdminPermissionOverridesFromEnv();
   const permissionDryRun = authenticated ? adminPermissionDryRunDecisions(permissionOverrideConfig) : [];
@@ -16,10 +17,13 @@ export async function GET(req: NextRequest) {
     action: "auth-session",
     authenticated,
     authorized: authenticated,
+    identityDiagnostics,
     user: authenticated
       ? {
           role: "admin",
           displayName: "Administrator",
+          email: identityDiagnostics.email,
+          identityBound: identityDiagnostics.identityBound,
         }
       : null,
     permissions,

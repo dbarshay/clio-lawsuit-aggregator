@@ -441,7 +441,9 @@
     "verify:admin-users-phase9c-opt-in-authenticated-no-lockout-smoke-readiness-safety": "node scripts/verify-admin-users-phase9c-opt-in-authenticated-no-lockout-smoke-readiness-safety.cjs",
     "smoke:admin-users-phase9d-authenticated-no-lockout": "node scripts/smoke-admin-users-phase9d-authenticated-no-lockout.cjs",
     "verify:admin-users-phase9d-authenticated-no-lockout-smoke-harness-safety": "node scripts/verify-admin-users-phase9d-authenticated-no-lockout-smoke-harness-safety.cjs",
-    "verify:admin-users-phase9d-completion-safety": "node scripts/verify-admin-users-phase9d-completion-safety.cjs"
+    "verify:admin-users-phase9d-completion-safety": "node scripts/verify-admin-users-phase9d-completion-safety.cjs",
+    "verify:admin-users-phase10a-first-target-enforcement-planning-readiness-safety": "node scripts/verify-admin-users-phase10a-first-target-enforcement-planning-readiness-safety.cjs",
+    "verify:admin-users-phase10a-completion-safety": "node scripts/verify-admin-users-phase10a-completion-safety.cjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

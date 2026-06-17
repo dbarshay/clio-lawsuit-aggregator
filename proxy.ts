@@ -17,22 +17,32 @@ export function proxy(req: NextRequest) {
   }
 
   if (isAdminRequestAuthorized(req)) {
-    if (isAdminApiRequest) {
-      const permissionDecision = adminPermissionEnforcementDecision(pathname, req.method);
-      if (permissionDecision.enforcementEnabled && permissionDecision.blocked) {
-        return NextResponse.json(
-          {
-            ok: false,
-            action: "admin-api-permission-blocked",
-            authorized: true,
-            permission: permissionDecision.permission,
-            decision: permissionDecision,
-            error: "Admin API route is blocked by current admin permission overrides.",
-          },
-          { status: 403 }
-        );
-      }
+    const permissionDecision = adminPermissionEnforcementDecision(pathname, isAdminApiRequest ? req.method : "GET");
+
+    if (isAdminApiRequest && permissionDecision.enforcementEnabled && permissionDecision.blocked) {
+      return NextResponse.json(
+        {
+          ok: false,
+          action: "admin-api-permission-blocked",
+          authorized: true,
+          permission: permissionDecision.permission,
+          decision: permissionDecision,
+          error: "Admin API route is blocked by current admin permission overrides.",
+        },
+        { status: 403 }
+      );
     }
+
+    if (isAdminPageRequest && permissionDecision.enforcementEnabled && permissionDecision.blocked) {
+      const blockedUrl = req.nextUrl.clone();
+      blockedUrl.pathname = "/admin/permissions";
+      blockedUrl.search = "";
+      blockedUrl.searchParams.set("blocked", "1");
+      blockedUrl.searchParams.set("from", `${pathname}${req.nextUrl.search}`);
+      if (permissionDecision.permission) blockedUrl.searchParams.set("permission", permissionDecision.permission);
+      return NextResponse.redirect(blockedUrl);
+    }
+
     return NextResponse.next();
   }
 

@@ -151,7 +151,10 @@ export const ADMIN_PERMISSION_NEVER_BLOCK_PATTERNS = [
 
 export function isAdminPermissionNeverBlockPath(pathname: string): boolean {
   const cleanPath = String(pathname || "").split("?")[0];
-  return ADMIN_PERMISSION_NEVER_BLOCK_PATTERNS.some((pattern) => cleanPath === pattern || cleanPath.startsWith(`${pattern}/`));
+  return ADMIN_PERMISSION_NEVER_BLOCK_PATTERNS.some((pattern) => {
+    if (pattern === "/admin") return cleanPath === "/admin";
+    return cleanPath === pattern || cleanPath.startsWith(`${pattern}/`);
+  });
 }
 
 export function adminPermissionForRoute(pathname: string, method = "GET"): AdminRoutePermission | null {

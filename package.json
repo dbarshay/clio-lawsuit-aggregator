@@ -456,7 +456,8 @@
     "verify:vercel-backups-trace-exclusion-safety": "node scripts/verify-vercel-backups-trace-exclusion-safety.cjs",
     "verify:admin-users-phase10i-production-activation-proof-safety": "node scripts/verify-admin-users-phase10i-production-activation-proof-safety.cjs",
     "apply:admin-users-phase11a-jane-doe-limited-test-user": "node scripts/apply-admin-users-phase11a-jane-doe-limited-test-user.cjs",
-    "verify:admin-users-phase11a-limited-test-user-simulation-safety": "node scripts/verify-admin-users-phase11a-limited-test-user-simulation-safety.cjs"
+    "verify:admin-users-phase11a-limited-test-user-simulation-safety": "node scripts/verify-admin-users-phase11a-limited-test-user-simulation-safety.cjs",
+    "verify:admin-users-phase12b-auth-identity-planning-safety": "node scripts/verify-admin-users-phase12b-auth-identity-planning-safety.cjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

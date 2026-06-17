@@ -60,6 +60,13 @@ const adminCards = [
       "Review local client/provider records, imported client fields, child matters, and child-matter-based invoicing/remittance previews.",
   },
   {
+    label: "Permissions",
+    href: "/admin/permissions",
+    description:
+      "Read-only view of admin permission keys and route/function mappings before enforcement is enabled.",
+    icon: "Permissions",
+  },
+  {
     label: "Reference Data Import",
     href: "/admin/reference-data",
     description:

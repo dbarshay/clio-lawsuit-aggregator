@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminRequestAuthorized } from "@/lib/adminAuth";
+import { allAdminPermissionKeys } from "@/lib/adminPermissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const authenticated = isAdminRequestAuthorized(req);
+  const permissions = authenticated ? allAdminPermissionKeys() : [];
 
   return NextResponse.json({
     ok: true,
@@ -18,6 +20,9 @@ export async function GET(req: NextRequest) {
           displayName: "Administrator",
         }
       : null,
+    permissions,
+    permissionsMode: "default-admin-allow-all",
+    permissionsEnforced: false,
     twoFactorRequired: false,
     twoFactorMethod: null,
     twoFactorPlanned: "SMS or phone push 2FA is planned for a later auth phase.",

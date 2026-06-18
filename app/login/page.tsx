@@ -236,7 +236,7 @@ export default function LoginPage() {
             {busy ? "Checking..." : "Login"}
           </button>
 
-          
+
         </form>
       </section>
     </main>

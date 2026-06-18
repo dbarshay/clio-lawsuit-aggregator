@@ -197,6 +197,18 @@ export default function AdminPermissionsPage() {
   const selectedUserEffectiveOnlyKeys = selectedUserEffectiveKeys.filter((key: string) => !selectedUserMatrixAllowedKeys.includes(key));
   const selectedUserMatrixOnlyKeys = selectedUserMatrixAllowedKeys.filter((key: string) => !selectedUserEffectiveKeys.includes(key));
   const selectedUserMismatchCount = selectedUserEffectiveOnlyKeys.length + selectedUserMatrixOnlyKeys.length;
+  const activationRouteMappingCount = routes.length;
+  const activationCatalogCount = catalog.length;
+  const activationRoleMatrixCount = roleMatrix.length;
+  const activationUserPreviewCount = userPreviewRows.length;
+  const activationReadinessWarnings = [
+    activationCatalogCount ? "" : "Static permission catalog has no rows.",
+    activationRouteMappingCount ? "" : "Route/function mapping has no rows.",
+    activationRoleMatrixCount ? "" : "Static role matrix has no rows.",
+    activationUserPreviewCount ? "" : "User planning preview has no users.",
+    selectedUserMismatchCount ? "Selected user has effective-permission mismatch diagnostics to review." : "",
+  ].filter(Boolean);
+  const activationReadyForReview = activationReadinessWarnings.length === 0;
   const blockedRouteLabel = useMemo(() => blockedNotice.from || "the requested administrator page", [blockedNotice.from]);
   const blockedPermissionLabel = useMemo(() => blockedNotice.permission || "the mapped administrator permission", [blockedNotice.permission]);
 
@@ -315,6 +327,22 @@ export default function AdminPermissionsPage() {
             </div>
             <pre data-barsh-admin-permissions-route-simulator-row="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify({ roleKey: simulatorRoleKey, route: simulatorRoute ? { pattern: simulatorRoute.pattern || "", method: simulatorRoute.method || "ANY", permission: simulatorRoutePermission } : null, decision: simulatorRouteDecision || "unmapped", reason: simulatorRouteReason || "No matching matrix row", enforcementStatus: simulatorRouteEnforcementStatus || "planning-only", allowed: simulatorRouteAllowed, matchedMatrixRow: simulatorRouteMatrixRow || null, runtimeEnforcementChanged: false }, null, 2)}</pre>
           </div>
+        </section>
+
+        <section data-barsh-admin-permissions-activation-readiness="read-only" style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 22, padding: 18 }}>
+          <h2 style={{ marginTop: 0 }}>Phase 18A Permission Activation Readiness</h2>
+          <p style={{ color: "#475569", lineHeight: 1.45 }}>Read-only readiness dashboard. This summarizes whether the catalog, route/function mappings, role matrix, and user preview data are present before any later activation decision. It does not enable enforcement, save settings, assign roles, edit overrides, lock users, block pages, block API routes, or modify records.</p>
+          <div data-barsh-admin-permissions-activation-runtime-flag="true" style={{ border: "1px solid #dbeafe", background: "#eff6ff", color: "#1e3a8a", borderRadius: 14, padding: 12, marginBottom: 14 }}>
+            <strong>Runtime Enforcement Changed:</strong> No | <strong>Readiness Mode:</strong> read-only | <strong>Next Step:</strong> review before any activation phase
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 10 }}>
+            <div data-barsh-admin-permissions-activation-catalog-count="true" style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}><strong>Catalog:</strong> {activationCatalogCount}</div>
+            <div data-barsh-admin-permissions-activation-route-count="true" style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}><strong>Routes / Functions:</strong> {activationRouteMappingCount}</div>
+            <div data-barsh-admin-permissions-activation-matrix-count="true" style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}><strong>Role Matrix:</strong> {activationRoleMatrixCount}</div>
+            <div data-barsh-admin-permissions-activation-user-count="true" style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}><strong>User Preview:</strong> {activationUserPreviewCount}</div>
+            <div data-barsh-admin-permissions-activation-status="true" style={{ border: activationReadyForReview ? "1px solid #bbf7d0" : "1px solid #fed7aa", background: activationReadyForReview ? "#f0fdf4" : "#fff7ed", color: activationReadyForReview ? "#166534" : "#9a3412", borderRadius: 12, padding: 10, fontWeight: 950 }}>Status: {activationReadyForReview ? "READY FOR REVIEW" : "REVIEW WARNINGS"}</div>
+          </div>
+          <pre data-barsh-admin-permissions-activation-readiness-json="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify({ catalogCount: activationCatalogCount, routeMappingCount: activationRouteMappingCount, roleMatrixCount: activationRoleMatrixCount, userPreviewCount: activationUserPreviewCount, selectedUserMismatchCount, warnings: activationReadinessWarnings, readyForReview: activationReadyForReview, runtimeEnforcementChanged: false }, null, 2)}</pre>
         </section>
 
         <section data-barsh-admin-permissions-user-effective-preview="read-only" style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 22, padding: 18 }}>

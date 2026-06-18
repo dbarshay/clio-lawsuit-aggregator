@@ -218,6 +218,17 @@ export default function AdminPermissionsPage() {
     { key: "runtime-still-read-only", label: "Runtime enforcement remains unchanged", passed: !data?.enforcementEnabled && !catalogData?.runtimeEnforcementChanged && !roleMatrixData?.runtimeEnforcementChanged },
   ];
   const activationPreflightPassedCount = activationPreflightChecks.filter((check) => check.passed).length;
+  const activationDecisionPackage = {
+    proposedScope: "admin-functions-only",
+    runtimeEnforcementChanged: false,
+    enforcementCurrentlyEnabled: Boolean(data?.enforcementEnabled),
+    readyForReview: activationReadyForReview,
+    preflightPassedCount: activationPreflightPassedCount,
+    preflightTotalCount: activationPreflightChecks.length,
+    warnings: activationReadinessWarnings,
+    selectedUserMismatchCount,
+    nextHumanDecision: "Review this package before any later activation phase.",
+  };
   const blockedRouteLabel = useMemo(() => blockedNotice.from || "the requested administrator page", [blockedNotice.from]);
   const blockedPermissionLabel = useMemo(() => blockedNotice.permission || "the mapped administrator permission", [blockedNotice.permission]);
 
@@ -372,7 +383,18 @@ export default function AdminPermissionsPage() {
               </tbody>
             </table>
           </section>
-          <pre data-barsh-admin-permissions-activation-readiness-json="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify({ catalogCount: activationCatalogCount, routeMappingCount: activationRouteMappingCount, roleMatrixCount: activationRoleMatrixCount, userPreviewCount: activationUserPreviewCount, selectedUserMismatchCount, preflightChecks: activationPreflightChecks, preflightPassedCount: activationPreflightPassedCount, warnings: activationReadinessWarnings, readyForReview: activationReadyForReview, runtimeEnforcementChanged: false }, null, 2)}</pre>
+          <section data-barsh-admin-permissions-activation-decision-package="read-only" style={{ borderTop: "1px solid #e5e7eb", marginTop: 16, paddingTop: 16 }}>
+            <h3 style={{ margin: "0 0 8px" }}>Activation Decision Package</h3>
+            <p style={{ color: "#475569", lineHeight: 1.45, marginTop: 0 }}>Read-only go/no-go summary for later review. This section does not create an activation button, does not change environment flags, does not enable enforcement, and does not modify users, roles, overrides, routes, or records.</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+              <div data-barsh-admin-permissions-activation-decision-scope="true" style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}><strong>Proposed Scope:</strong> {activationDecisionPackage.proposedScope}</div>
+              <div data-barsh-admin-permissions-activation-decision-enforcement="true" style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}><strong>Enforcement Enabled:</strong> {activationDecisionPackage.enforcementCurrentlyEnabled ? "Yes" : "No"}</div>
+              <div data-barsh-admin-permissions-activation-decision-preflight="true" style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}><strong>Preflight:</strong> {activationDecisionPackage.preflightPassedCount} / {activationDecisionPackage.preflightTotalCount}</div>
+              <div data-barsh-admin-permissions-activation-decision-warning-count="true" style={{ border: activationDecisionPackage.warnings.length ? "1px solid #fed7aa" : "1px solid #bbf7d0", background: activationDecisionPackage.warnings.length ? "#fff7ed" : "#f0fdf4", color: activationDecisionPackage.warnings.length ? "#9a3412" : "#166534", borderRadius: 12, padding: 10, fontWeight: 950 }}>Warnings: {activationDecisionPackage.warnings.length}</div>
+            </div>
+            <pre data-barsh-admin-permissions-activation-decision-json="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify(activationDecisionPackage, null, 2)}</pre>
+          </section>
+          <pre data-barsh-admin-permissions-activation-readiness-json="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify({ catalogCount: activationCatalogCount, routeMappingCount: activationRouteMappingCount, roleMatrixCount: activationRoleMatrixCount, userPreviewCount: activationUserPreviewCount, selectedUserMismatchCount, preflightChecks: activationPreflightChecks, preflightPassedCount: activationPreflightPassedCount, decisionPackage: activationDecisionPackage, warnings: activationReadinessWarnings, readyForReview: activationReadyForReview, runtimeEnforcementChanged: false }, null, 2)}</pre>
         </section>
 
         <section data-barsh-admin-permissions-user-effective-preview="read-only" style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 22, padding: 18 }}>

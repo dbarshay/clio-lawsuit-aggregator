@@ -192,6 +192,11 @@ export default function AdminPermissionsPage() {
   const selectedUserRouteBlocked = selectedUserRouteRows.some((row) => ["block", "blocked", "deny", "denied", "false", "no"].includes(String(row.decision || "").toLowerCase()));
   const selectedUserRouteAllowed = selectedUserRouteRows.length ? !selectedUserRouteBlocked : selectedUserPrimaryRole === "owner_admin";
   const selectedUserRouteDecision = selectedUserRouteRows.length ? (selectedUserRouteAllowed ? "allow" : "block") : "unmapped";
+  const selectedUserEffectiveKeys = selectedUserPreview && Array.isArray((selectedUserPreview as any).effectivePermissionKeys) ? (selectedUserPreview as any).effectivePermissionKeys.map((value: any) => String(value)).sort() : [];
+  const selectedUserMatrixAllowedKeys = Array.from(new Set(selectedUserPermissionRows.filter((row) => !["block", "blocked", "deny", "denied", "false", "no"].includes(String(row.decision || "").toLowerCase())).map((row) => row.permissionKey))).sort();
+  const selectedUserEffectiveOnlyKeys = selectedUserEffectiveKeys.filter((key: string) => !selectedUserMatrixAllowedKeys.includes(key));
+  const selectedUserMatrixOnlyKeys = selectedUserMatrixAllowedKeys.filter((key: string) => !selectedUserEffectiveKeys.includes(key));
+  const selectedUserMismatchCount = selectedUserEffectiveOnlyKeys.length + selectedUserMatrixOnlyKeys.length;
   const blockedRouteLabel = useMemo(() => blockedNotice.from || "the requested administrator page", [blockedNotice.from]);
   const blockedPermissionLabel = useMemo(() => blockedNotice.permission || "the mapped administrator permission", [blockedNotice.permission]);
 
@@ -336,6 +341,16 @@ export default function AdminPermissionsPage() {
               <div data-barsh-admin-permissions-user-route-effective-decision="true" style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}><strong>Decision:</strong> {selectedUserRouteDecision}</div>
             </div>
             <pre data-barsh-admin-permissions-user-route-effective-json="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify({ selectedUser: selectedUserPreview ? { id: selectedUserPreview.id || "", name: selectedUserPreview.displayName || selectedUserPreview.name || "", username: selectedUserPreview.username || "", emailPresent: Boolean(selectedUserPreview.email), locked: Boolean(selectedUserPreview.locked || selectedUserPreview.lockout || selectedUserPreview.isLocked), roles: selectedUserRoles } : null, route: simulatorRoute ? { pattern: simulatorRoute.pattern || "", method: simulatorRoute.method || "ANY", permission: simulatorRoutePermission } : null, decision: selectedUserRouteDecision, allowed: selectedUserRouteAllowed, matchedMatrixRows: selectedUserRouteRows, runtimeEnforcementChanged: false }, null, 2)}</pre>
+          </div>
+          <div data-barsh-admin-permissions-user-effective-mismatch-diagnostics="read-only" style={{ borderTop: "1px solid #e5e7eb", marginTop: 16, paddingTop: 16 }}>
+            <h3 style={{ margin: "0 0 8px" }}>Effective Permission Mismatch Diagnostics</h3>
+            <p style={{ color: "#475569", lineHeight: 1.45, marginTop: 0 }}>Read-only diagnostic comparing the selected user's current effective permission keys from the planning endpoint with the permissions allowed by the Phase 15 static role matrix. Differences are informational only.</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+              <div data-barsh-admin-permissions-user-effective-mismatch-count="true" style={{ border: selectedUserMismatchCount ? "1px solid #fed7aa" : "1px solid #bbf7d0", background: selectedUserMismatchCount ? "#fff7ed" : "#f0fdf4", color: selectedUserMismatchCount ? "#9a3412" : "#166534", borderRadius: 12, padding: 10, fontWeight: 950 }}>Mismatch Count: {selectedUserMismatchCount}</div>
+              <div data-barsh-admin-permissions-user-effective-endpoint-count="true" style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}><strong>Endpoint Effective Keys:</strong> {selectedUserEffectiveKeys.length}</div>
+              <div data-barsh-admin-permissions-user-effective-matrix-count="true" style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}><strong>Matrix Allowed Keys:</strong> {selectedUserMatrixAllowedKeys.length}</div>
+            </div>
+            <pre data-barsh-admin-permissions-user-effective-mismatch-json="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify({ effectiveOnlyKeys: selectedUserEffectiveOnlyKeys, matrixOnlyKeys: selectedUserMatrixOnlyKeys, mismatchCount: selectedUserMismatchCount, runtimeEnforcementChanged: false }, null, 2)}</pre>
           </div>
           <pre data-barsh-admin-permissions-user-effective-json="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify({ selectedUser: selectedUserPreview ? { id: selectedUserPreview.id || "", name: selectedUserPreview.displayName || selectedUserPreview.name || "", username: selectedUserPreview.username || "", emailPresent: Boolean(selectedUserPreview.email), locked: Boolean(selectedUserPreview.locked || selectedUserPreview.lockout || selectedUserPreview.isLocked), roles: selectedUserRoles } : null, allowedCount: selectedUserAllowedCount, blockedCount: selectedUserBlockedCount, matrixRows: selectedUserPermissionRows, runtimeEnforcementChanged: false }, null, 2)}</pre>
         </section>

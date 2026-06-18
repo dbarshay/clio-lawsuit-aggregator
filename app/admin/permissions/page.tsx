@@ -110,6 +110,7 @@ export default function AdminPermissionsPage() {
   const [blockedNotice, setBlockedNotice] = useState<{ blocked: boolean; from: string; permission: string }>({ blocked: false, from: "", permission: "" });
   const [simulatorRoleKey, setSimulatorRoleKey] = useState("read_only_admin");
   const [simulatorPermissionKey, setSimulatorPermissionKey] = useState("admin.home.view");
+  const [simulatorRouteIndex, setSimulatorRouteIndex] = useState("0");
 
   useEffect(() => {
     fetch("/api/admin/permissions", { cache: "no-store" })
@@ -150,6 +151,11 @@ export default function AdminPermissionsPage() {
   const simulatorRow = roleMatrix.find((row: any) => row.roleKey === simulatorRoleKey && row.permissionKey === simulatorPermissionKey);
   const simulatorDecision = simulatorRow ? String(simulatorRow.decision || "").toLowerCase() : "";
   const simulatorAllowed = simulatorRow ? !["block", "blocked", "deny", "denied", "false", "no"].includes(simulatorDecision) : simulatorRoleKey === "owner_admin";
+  const simulatorRoute = routes[Number(simulatorRouteIndex)] || null;
+  const simulatorRoutePermission = simulatorRoute ? String(simulatorRoute.permission || "") : "";
+  const simulatorRouteMatrixRow = roleMatrix.find((row) => row.roleKey === simulatorRoleKey && row.permissionKey === simulatorRoutePermission);
+  const simulatorRouteDecision = simulatorRouteMatrixRow ? String(simulatorRouteMatrixRow.decision || "").toLowerCase() : "";
+  const simulatorRouteAllowed = simulatorRouteMatrixRow ? !["block", "blocked", "deny", "denied", "false", "no"].includes(simulatorRouteDecision) : simulatorRoleKey === "owner_admin";
   const blockedRouteLabel = useMemo(() => blockedNotice.from || "the requested administrator page", [blockedNotice.from]);
   const blockedPermissionLabel = useMemo(() => blockedNotice.permission || "the mapped administrator permission", [blockedNotice.permission]);
 
@@ -242,6 +248,21 @@ export default function AdminPermissionsPage() {
             </div>
           </div>
           <pre data-barsh-admin-permissions-simulator-row="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify({ roleKey: simulatorRoleKey, permissionKey: simulatorPermissionKey, allowed: simulatorAllowed, matchedMatrixRow: simulatorRow || null, runtimeEnforcementChanged: false }, null, 2)}</pre>
+          <div data-barsh-admin-permissions-route-simulator="read-only" style={{ borderTop: "1px solid #e5e7eb", marginTop: 16, paddingTop: 16 }}>
+            <h3 style={{ margin: "0 0 8px" }}>Route / Function Simulator</h3>
+            <p style={{ color: "#475569", lineHeight: 1.45, marginTop: 0 }}>Read-only route simulation. It maps the selected route/function to its permission key and evaluates that key against the selected role. It does not enforce, save, or modify anything.</p>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 1fr) minmax(180px, 260px)", gap: 12, alignItems: "end" }}>
+              <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>Route / Function
+                <select data-barsh-admin-permissions-route-simulator-route="true" value={simulatorRouteIndex} onChange={(event) => setSimulatorRouteIndex(event.target.value)} style={{ padding: 10, border: "1px solid #cbd5e1", borderRadius: 10 }}>
+                  {routes.map((route: any, index: number) => <option key={`${route.pattern || "route"}:${route.method || "ANY"}:${index}`} value={String(index)}>{`${route.method || "ANY"} ${route.pattern || "(unmapped route)"} → ${route.permission || "(no permission)"}`}</option>)}
+                </select>
+              </label>
+              <div data-barsh-admin-permissions-route-simulator-result="true" style={{ border: simulatorRouteAllowed ? "1px solid #bbf7d0" : "1px solid #fecaca", background: simulatorRouteAllowed ? "#f0fdf4" : "#fef2f2", color: simulatorRouteAllowed ? "#166534" : "#991b1b", borderRadius: 14, padding: 12, fontWeight: 950 }}>
+                Route Result: {simulatorRouteAllowed ? "ALLOW" : "BLOCK"}
+              </div>
+            </div>
+            <pre data-barsh-admin-permissions-route-simulator-row="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify({ roleKey: simulatorRoleKey, route: simulatorRoute ? { pattern: simulatorRoute.pattern || "", method: simulatorRoute.method || "ANY", permission: simulatorRoutePermission } : null, allowed: simulatorRouteAllowed, matchedMatrixRow: simulatorRouteMatrixRow || null, runtimeEnforcementChanged: false }, null, 2)}</pre>
+          </div>
         </section>
 
         <section data-barsh-admin-permissions-role-matrix="true" style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 22, padding: 18, overflowX: "auto" }}>

@@ -126,7 +126,7 @@ async function recordSuccessfulCredentialLogin(userId: string): Promise<void> {
   );
 }
 
-function userIsEligibleForPhase12GOwnerLogin(user: AdminCredentialUser): boolean {
+function userIsEligibleForPhase13CUsernamePasswordLogin(user: AdminCredentialUser): boolean {
   return (
     user.status === "active" &&
     user.bootstrapSafe === true &&
@@ -135,7 +135,7 @@ function userIsEligibleForPhase12GOwnerLogin(user: AdminCredentialUser): boolean
   );
 }
 
-async function tryOwnerUsernamePasswordLogin(username: string, password: string) {
+async function tryUsernamePasswordLogin(username: string, password: string) {
   const normalizedUsername = normalizeUsername(username);
 
   if (!normalizedUsername || !password) {
@@ -148,7 +148,7 @@ async function tryOwnerUsernamePasswordLogin(username: string, password: string)
 
   const user = await findAdminCredentialUser(normalizedUsername);
 
-  if (!user || !user.passwordHash || !userIsEligibleForPhase12GOwnerLogin(user)) {
+  if (!user || !user.passwordHash || !userIsEligibleForPhase13CUsernamePasswordLogin(user)) {
     if (user?.id) await recordFailedCredentialLogin(user.id);
     return {
       ok: false,
@@ -203,7 +203,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (username) {
-      const credentialResult = await tryOwnerUsernamePasswordLogin(username, password);
+      const credentialResult = await tryUsernamePasswordLogin(username, password);
 
       if (!credentialResult.ok || !credentialResult.user) {
         return NextResponse.json(
@@ -214,7 +214,7 @@ export async function POST(req: NextRequest) {
             error: credentialResult.error || "Invalid administrator username or password.",
             passwordConfigured: adminPassword.configured,
             devFallback: adminPassword.devFallback,
-            credentialMode: "owner-username-password",
+            credentialMode: "username-password",
           },
           { status: credentialResult.status || 401 }
         );
@@ -228,7 +228,7 @@ export async function POST(req: NextRequest) {
         authorized: true,
         adminAction: action,
         returnTo,
-        credentialMode: "owner-username-password",
+        credentialMode: "username-password",
         identityBound: true,
         user: {
           role: "admin",
@@ -247,7 +247,7 @@ export async function POST(req: NextRequest) {
         twoFactorMethod: null,
         twoFactorPlanned: "SMS or phone push 2FA is planned for a later auth phase.",
         passwordChangeRequired: user.passwordChangeRequired,
-        note: "Owner username/password accepted. Phase 12H writes a signed AdminUser identity cookie for owner username/password login; permission enforcement remains disabled.",
+        note: "Username/password accepted for active AdminUser. Phase 13C allows active non-owner credential login with signed AdminUser identity; permission enforcement remains disabled.",
       });
 
       setAdminGateCookie(response);

@@ -269,6 +269,31 @@ export default function AdminPermissionsPage() {
     ],
     runtimeEnforcementChanged: false,
   };
+  const activationSmokePlan = {
+    phase: "19C",
+    mode: "smoke-plan-only",
+    smokeTargets: [
+      { actor: "owner_admin", path: "/admin", expected: "allow" },
+      { actor: "owner_admin", path: "/admin/permissions", expected: "allow" },
+      { actor: "read_only_admin", path: "/admin", expected: "block administrator function after later activation" },
+      { actor: "read_only_admin", path: "/admin/permissions", expected: "allow safety review page or configured no-lockout fallback" },
+      { actor: "read_only_admin", path: "non-admin operational pages", expected: "allow unless later narrowed by approved rule" },
+    ],
+    requiredAssertions: [
+      "Smoke must prove owner_admin is not locked out.",
+      "Smoke must prove administrator-function blocking is limited to the approved target scope.",
+      "Smoke must prove rollback can be applied in the same session before push.",
+      "Smoke must not require password visibility, impersonation, or access-as another user.",
+    ],
+    forbiddenInThisPhase: [
+      "No executable activation script.",
+      "No runtime enforcement change.",
+      "No environment flag change.",
+      "No write route invocation.",
+      "No mutation of users, roles, overrides, sessions, Clio, documents, email, or print queue.",
+    ],
+    runtimeEnforcementChanged: false,
+  };
   const blockedRouteLabel = useMemo(() => blockedNotice.from || "the requested administrator page", [blockedNotice.from]);
   const blockedPermissionLabel = useMemo(() => blockedNotice.permission || "the mapped administrator permission", [blockedNotice.permission]);
 
@@ -454,7 +479,17 @@ export default function AdminPermissionsPage() {
             </div>
             <pre data-barsh-admin-permissions-activation-rollback-json="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify(activationRollbackPlan, null, 2)}</pre>
           </section>
-          <pre data-barsh-admin-permissions-activation-readiness-json="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify({ catalogCount: activationCatalogCount, routeMappingCount: activationRouteMappingCount, roleMatrixCount: activationRoleMatrixCount, userPreviewCount: activationUserPreviewCount, selectedUserMismatchCount, preflightChecks: activationPreflightChecks, preflightPassedCount: activationPreflightPassedCount, decisionPackage: activationDecisionPackage, designContract: activationDesignContract, rollbackPlan: activationRollbackPlan, warnings: activationReadinessWarnings, readyForReview: activationReadyForReview, runtimeEnforcementChanged: false }, null, 2)}</pre>
+          <section data-barsh-admin-permissions-activation-smoke-plan="read-only" style={{ borderTop: "1px solid #e5e7eb", marginTop: 16, paddingTop: 16 }}>
+            <h3 style={{ margin: "0 0 8px" }}>Phase 19C Activation Smoke-Test Plan</h3>
+            <p style={{ color: "#475569", lineHeight: 1.45, marginTop: 0 }}>Read-only smoke-test plan for a later activation phase. This records target actors, paths, expectations, and forbidden actions. It does not create an executable activation script, enable enforcement, change environment flags, call write routes, or mutate users, roles, overrides, sessions, Clio, documents, email, or the print queue.</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
+              <div data-barsh-admin-permissions-activation-smoke-owner="true" style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534", borderRadius: 12, padding: 10, fontWeight: 950 }}>Owner No-Lockout: Required</div>
+              <div data-barsh-admin-permissions-activation-smoke-readonly="true" style={{ border: "1px solid #dbeafe", background: "#eff6ff", color: "#1e3a8a", borderRadius: 12, padding: 10, fontWeight: 950 }}>read_only_admin Scope: Admin Functions Only</div>
+              <div data-barsh-admin-permissions-activation-smoke-rollback="true" style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534", borderRadius: 12, padding: 10, fontWeight: 950 }}>Rollback Before Push: Required</div>
+            </div>
+            <pre data-barsh-admin-permissions-activation-smoke-json="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify(activationSmokePlan, null, 2)}</pre>
+          </section>
+          <pre data-barsh-admin-permissions-activation-readiness-json="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify({ catalogCount: activationCatalogCount, routeMappingCount: activationRouteMappingCount, roleMatrixCount: activationRoleMatrixCount, userPreviewCount: activationUserPreviewCount, selectedUserMismatchCount, preflightChecks: activationPreflightChecks, preflightPassedCount: activationPreflightPassedCount, decisionPackage: activationDecisionPackage, designContract: activationDesignContract, rollbackPlan: activationRollbackPlan, smokePlan: activationSmokePlan, warnings: activationReadinessWarnings, readyForReview: activationReadyForReview, runtimeEnforcementChanged: false }, null, 2)}</pre>
         </section>
 
         <section data-barsh-admin-permissions-user-effective-preview="read-only" style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 22, padding: 18 }}>

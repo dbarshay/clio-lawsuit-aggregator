@@ -209,6 +209,15 @@ export default function AdminPermissionsPage() {
     selectedUserMismatchCount ? "Selected user has effective-permission mismatch diagnostics to review." : "",
   ].filter(Boolean);
   const activationReadyForReview = activationReadinessWarnings.length === 0;
+  const activationPreflightChecks = [
+    { key: "catalog-present", label: "Static permission catalog present", passed: activationCatalogCount > 0 },
+    { key: "route-mapping-present", label: "Route/function permission mapping present", passed: activationRouteMappingCount > 0 },
+    { key: "role-matrix-present", label: "Static role matrix present", passed: activationRoleMatrixCount > 0 },
+    { key: "user-preview-present", label: "Admin user planning preview present", passed: activationUserPreviewCount > 0 },
+    { key: "selected-user-mismatch-reviewed", label: "Selected-user mismatch diagnostics reviewed", passed: selectedUserMismatchCount === 0 },
+    { key: "runtime-still-read-only", label: "Runtime enforcement remains unchanged", passed: !data?.enforcementEnabled && !catalogData?.runtimeEnforcementChanged && !roleMatrixData?.runtimeEnforcementChanged },
+  ];
+  const activationPreflightPassedCount = activationPreflightChecks.filter((check) => check.passed).length;
   const blockedRouteLabel = useMemo(() => blockedNotice.from || "the requested administrator page", [blockedNotice.from]);
   const blockedPermissionLabel = useMemo(() => blockedNotice.permission || "the mapped administrator permission", [blockedNotice.permission]);
 
@@ -342,7 +351,28 @@ export default function AdminPermissionsPage() {
             <div data-barsh-admin-permissions-activation-user-count="true" style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}><strong>User Preview:</strong> {activationUserPreviewCount}</div>
             <div data-barsh-admin-permissions-activation-status="true" style={{ border: activationReadyForReview ? "1px solid #bbf7d0" : "1px solid #fed7aa", background: activationReadyForReview ? "#f0fdf4" : "#fff7ed", color: activationReadyForReview ? "#166534" : "#9a3412", borderRadius: 12, padding: 10, fontWeight: 950 }}>Status: {activationReadyForReview ? "READY FOR REVIEW" : "REVIEW WARNINGS"}</div>
           </div>
-          <pre data-barsh-admin-permissions-activation-readiness-json="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify({ catalogCount: activationCatalogCount, routeMappingCount: activationRouteMappingCount, roleMatrixCount: activationRoleMatrixCount, userPreviewCount: activationUserPreviewCount, selectedUserMismatchCount, warnings: activationReadinessWarnings, readyForReview: activationReadyForReview, runtimeEnforcementChanged: false }, null, 2)}</pre>
+          <section data-barsh-admin-permissions-activation-preflight-checklist="read-only" style={{ borderTop: "1px solid #e5e7eb", marginTop: 16, paddingTop: 16 }}>
+            <h3 style={{ margin: "0 0 8px" }}>Activation Preflight Checklist</h3>
+            <p style={{ color: "#475569", lineHeight: 1.45, marginTop: 0 }}>Read-only checklist for review only. Failed checks do not block navigation, change access, enable enforcement, or write configuration.</p>
+            <div data-barsh-admin-permissions-activation-preflight-summary="true" style={{ border: activationPreflightPassedCount === activationPreflightChecks.length ? "1px solid #bbf7d0" : "1px solid #fed7aa", background: activationPreflightPassedCount === activationPreflightChecks.length ? "#f0fdf4" : "#fff7ed", color: activationPreflightPassedCount === activationPreflightChecks.length ? "#166534" : "#9a3412", borderRadius: 12, padding: 10, fontWeight: 950, marginBottom: 10 }}>Preflight: {activationPreflightPassedCount} / {activationPreflightChecks.length} checks passing</div>
+            <table data-barsh-admin-permissions-activation-preflight-table="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Check</th>
+                  <th style={thStyle}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activationPreflightChecks.map((check) => (
+                  <tr key={check.key} data-barsh-admin-permissions-activation-preflight-row={check.key}>
+                    <td style={tdStyle}>{check.label}</td>
+                    <td style={tdStyle}><span style={badgeStyle(check.passed ? "allow" : "block")}>{check.passed ? "PASS" : "REVIEW"}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+          <pre data-barsh-admin-permissions-activation-readiness-json="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify({ catalogCount: activationCatalogCount, routeMappingCount: activationRouteMappingCount, roleMatrixCount: activationRoleMatrixCount, userPreviewCount: activationUserPreviewCount, selectedUserMismatchCount, preflightChecks: activationPreflightChecks, preflightPassedCount: activationPreflightPassedCount, warnings: activationReadinessWarnings, readyForReview: activationReadyForReview, runtimeEnforcementChanged: false }, null, 2)}</pre>
         </section>
 
         <section data-barsh-admin-permissions-user-effective-preview="read-only" style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 22, padding: 18 }}>

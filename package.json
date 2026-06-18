@@ -485,7 +485,8 @@
     "verify:admin-users-phase17b-user-route-effective-preview-safety": "node scripts/verify-admin-users-phase17b-user-route-effective-preview-safety.cjs",
     "verify:admin-users-phase17c-effective-mismatch-diagnostics-safety": "node scripts/verify-admin-users-phase17c-effective-mismatch-diagnostics-safety.cjs",
     "verify:admin-users-phase17d-user-preview-closeout-safety": "node scripts/verify-admin-users-phase17d-user-preview-closeout-safety.cjs",
-    "verify:admin-users-phase18a-activation-readiness-safety": "node scripts/verify-admin-users-phase18a-activation-readiness-safety.cjs"
+    "verify:admin-users-phase18a-activation-readiness-safety": "node scripts/verify-admin-users-phase18a-activation-readiness-safety.cjs",
+    "verify:admin-users-phase18b-activation-preflight-checklist-safety": "node scripts/verify-admin-users-phase18b-activation-preflight-checklist-safety.cjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

@@ -1,0 +1,56 @@
+{
+  "phase": "23-final-production-manual-smoke-proof",
+  "generatedAt": "2026-06-18T20:36:34.596Z",
+  "productionUrl": "https://clio-lawsuit-aggregator.vercel.app",
+  "status": {
+    "action": "admin-permissions-phase20-activation-status",
+    "ok": true,
+    "phase": "20-combined",
+    "scope": "admin-functions-only",
+    "enforcementEnabled": true,
+    "runtimeDefault": "off-unless-env-enabled",
+    "activationFlag": "BARSH_ADMIN_PERMISSIONS_ENFORCEMENT_ENABLED",
+    "overrideFlag": "BARSH_ADMIN_PERMISSION_OVERRIDES_JSON",
+    "recommendedOverrides": {
+      "block": [
+        "admin.users.manage",
+        "admin.lawsuitCleanup.confirm",
+        "admin.ticklers.run",
+        "admin.clients.edit",
+        "admin.invoices.create",
+        "admin.invoices.finalize",
+        "admin.invoices.void",
+        "admin.referenceData.import",
+        "admin.documentTemplates.manage",
+        "admin.backups.run",
+        "admin.backups.restorePreview"
+      ],
+      "allow": [
+        "admin.home.view"
+      ]
+    },
+    "configuredOverrideCount": 12,
+    "missingRequiredBlocks": [],
+    "readyForActivation": true,
+    "rollbackExpectation": "Unset BARSH_ADMIN_PERMISSIONS_ENFORCEMENT_ENABLED or set it false, then redeploy/restart.",
+    "noLockoutPaths": [
+      "/admin",
+      "/admin/permissions",
+      "/api/admin/permissions",
+      "/api/admin/permissions/check"
+    ],
+    "note": "Read-only Phase 20 activation status. This endpoint does not enable enforcement, write configuration, edit users, expose passwords, impersonate users, call Clio, send email, generate documents, or change the print queue."
+  },
+  "activationStatus": "live-enforcement-on",
+  "scope": "admin-functions-only",
+  "manualSmokeConfirmedByUser": true,
+  "manualSmokeResults": {
+    "ownerAdminLoginWorks": true,
+    "ownerAdminPermissionsPageWorks": true,
+    "janeDoeReadOnlyAdminWorksAsIntended": true,
+    "janeDoeAdminFunctionRestrictionsWork": true,
+    "janeDoeNonAdminOperationalAccessWorks": true
+  },
+  "rollback": "Set BARSH_ADMIN_PERMISSIONS_ENFORCEMENT_ENABLED=false in Vercel Production and redeploy/restart.",
+  "finalConclusion": "Production admin-functions-only enforcement is active and manual smoke was reported successful."
+}

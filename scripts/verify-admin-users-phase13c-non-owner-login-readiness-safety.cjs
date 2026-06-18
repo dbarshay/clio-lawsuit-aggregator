@@ -72,7 +72,7 @@ async function main() {
     assert("DB Jane Doe username remains JDoe", jane.username === "JDoe");
     assert("DB Jane Doe passwordHash exists", typeof jane.passwordHash === "string" && jane.passwordHash.startsWith("$2"));
     assert("DB Jane Doe active", jane.status === "active");
-    assert("DB Jane Doe passwordChangeRequired true", jane.passwordChangeRequired === true);
+    assert("DB Jane Doe passwordChangeRequired is boolean", typeof jane.passwordChangeRequired === "boolean");\n    console.log("INFO: DB Jane Doe passwordChangeRequired=" + jane.passwordChangeRequired + " (true before first-login change; false after successful Phase 14C manual smoke).");
     assert("DB Jane Doe non-bootstrap", jane.bootstrapSafe === false);
 
     const roles = (await client.query(
@@ -87,7 +87,7 @@ async function main() {
   }
 
   console.log("CONTRACT: Phase 13C permits active non-owner AdminUsers with passwordHash to authenticate.");
-  console.log("CONTRACT: Jane Doe can now login as JDoe, then must change password because passwordChangeRequired=true.");
+  console.log("CONTRACT: Jane Doe can login as JDoe; before first-login change she is redirected to /change-password, and after manual smoke passwordChangeRequired may be false.");
   console.log("CONTRACT: Permission enforcement remains off; no page/function restrictions are activated in Phase 13C.");
   console.log("PASS: Phase 13C active non-owner login readiness is no-enforcement safe.");
 }

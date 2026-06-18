@@ -72,7 +72,8 @@ async function main() {
     assert("DB Jane Doe username remains JDoe", jane.username === "JDoe");
     assert("DB Jane Doe passwordHash exists", typeof jane.passwordHash === "string" && jane.passwordHash.startsWith("$2"));
     assert("DB Jane Doe active", jane.status === "active");
-    assert("DB Jane Doe passwordChangeRequired is boolean", typeof jane.passwordChangeRequired === "boolean");\n    console.log("INFO: DB Jane Doe passwordChangeRequired=" + jane.passwordChangeRequired + " (true before first-login change; false after successful Phase 14C manual smoke).");
+    assert("DB Jane Doe passwordChangeRequired is boolean", typeof jane.passwordChangeRequired === "boolean");
+    console.log("INFO: DB Jane Doe passwordChangeRequired=" + jane.passwordChangeRequired + " (true before first-login change; false after successful Phase 14C manual smoke).");
     assert("DB Jane Doe non-bootstrap", jane.bootstrapSafe === false);
 
     const roles = (await client.query(

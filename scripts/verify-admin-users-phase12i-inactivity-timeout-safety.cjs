@@ -17,6 +17,14 @@ function assert(label, ok) {
   console.log("PASS: " + label);
 }
 
+function functionBody(source, name) {
+  const marker = `export function ${name}`;
+  const start = source.indexOf(marker);
+  if (start < 0) return "";
+  const next = source.indexOf("\nexport function ", start + marker.length);
+  return source.slice(start, next < 0 ? source.length : next);
+}
+
 console.log("RUN: Phase 12I 60-minute inactivity timeout safety verifier");
 
 const pkg = JSON.parse(read("package.json"));
@@ -26,15 +34,22 @@ const session = read("app/api/auth/session/route.ts");
 const logout = read("app/api/auth/logout/route.ts");
 const permissions = read("lib/adminPermissions.ts");
 
+const authorizeBody = functionBody(adminAuth, "isAdminRequestAuthorized");
+const gateSetterBody = functionBody(adminAuth, "setAdminGateCookie");
+const identitySetterBody = functionBody(adminAuth, "setAdminIdentityCookie");
+
 assert("package script registered for Phase 12I", pkg.scripts && pkg.scripts["verify:admin-users-phase12i-inactivity-timeout-safety"] === "node scripts/verify-admin-users-phase12i-inactivity-timeout-safety.cjs");
 assert("60-minute timeout constant exists", adminAuth.includes("ADMIN_SESSION_INACTIVITY_TIMEOUT_SECONDS = 60 * 60"));
 assert("generic gate cookie is signed", adminAuth.includes("createSignedAdminGateCookieValue") && adminAuth.includes('source: "signed-gate"'));
 assert("generic gate cookie includes lastActivityAt", adminAuth.includes("lastActivityAt"));
-assert("authorization reads signed gate cookie", adminAuth.includes("readSignedAdminGateCookie") && adminAuth.includes("req.cookies.get(ADMIN_COOKIE_NAME)?.value"));
+assert("authorization reads signed gate cookie", authorizeBody.includes("readSignedAdminGateCookie") && authorizeBody.includes("req.cookies.get(ADMIN_COOKIE_NAME)?.value"));
+assert("authorization no longer uses raw token equality", !authorizeBody.includes("actualToken === expectedToken") && !authorizeBody.includes("configuredAdminSessionToken()"));
 assert("old raw token is not treated as active session", adminAuth.includes("if (!cookieValue.includes(\".\")) return null;"));
 assert("timeout compares inactive age", adminAuth.includes("inactiveForMs") && adminAuth.includes("ADMIN_SESSION_INACTIVITY_TIMEOUT_SECONDS * 1000"));
-assert("gate cookie maxAge is 60 minutes", adminAuth.includes("response.cookies.set(ADMIN_COOKIE_NAME") && adminAuth.includes("maxAge: ADMIN_SESSION_INACTIVITY_TIMEOUT_SECONDS"));
-assert("identity cookie maxAge is 60 minutes", adminAuth.includes("response.cookies.set(ADMIN_IDENTITY_COOKIE_NAME") && adminAuth.includes("maxAge: ADMIN_SESSION_INACTIVITY_TIMEOUT_SECONDS"));
+assert("gate cookie setter uses signed gate value", gateSetterBody.includes("createSignedAdminGateCookieValue()") && gateSetterBody.includes("signedGateCookieValue"));
+assert("gate cookie setter does not write raw session token", !gateSetterBody.includes("response.cookies.set(ADMIN_COOKIE_NAME, sessionToken"));
+assert("gate cookie maxAge is 60 minutes", gateSetterBody.includes("maxAge: ADMIN_SESSION_INACTIVITY_TIMEOUT_SECONDS"));
+assert("identity cookie maxAge is 60 minutes", identitySetterBody.includes("response.cookies.set(ADMIN_IDENTITY_COOKIE_NAME") && identitySetterBody.includes("maxAge: ADMIN_SESSION_INACTIVITY_TIMEOUT_SECONDS"));
 assert("login still sets generic gate cookie", login.includes("setAdminGateCookie(response)"));
 assert("login still supports owner username password", login.includes("bcrypt.compare(password, user.passwordHash)") && login.includes("body?.username"));
 assert("login still supports legacy fallback", login.includes('credentialMode: "legacy-admin-password"'));
@@ -47,5 +62,6 @@ assert("session does not query AdminUser table", /prisma\.adminUser|adminUser\.f
 assert("never-block routes remain present", permissions.includes("/admin") && permissions.includes("/admin/permissions") && permissions.includes("/api/admin/permissions") && permissions.includes("/api/admin/permissions/check"));
 
 console.log("CONTRACT: Phase 12I requires re-login after 60 minutes of inactivity.");
+console.log("CONTRACT: Phase 12I actually authorizes through the signed activity gate, not the old raw token.");
 console.log("CONTRACT: Phase 12I refreshes activity through /api/auth/session while keeping permission enforcement off.");
-console.log("PASS: Phase 12I inactivity timeout is locked as no-enforcement.");
+console.log("PASS: Phase 12I inactivity timeout is locked as signed-gate no-enforcement.");

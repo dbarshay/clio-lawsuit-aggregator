@@ -133,12 +133,12 @@ export function adminSessionIdentityDiagnostics(req: NextRequest): AdminSessionI
   };
 }
 
-export function isAdminRequestAuthorized(req: NextRequest): boolean { const expectedToken = configuredAdminSessionToken(); const actualToken = cleanAdminAuthValue(req.cookies.get(ADMIN_COOKIE_NAME)?.value); return Boolean(expectedToken && actualToken === expectedToken); }
+export function isAdminRequestAuthorized(req: NextRequest): boolean { return Boolean(readSignedAdminGateCookie(req.cookies.get(ADMIN_COOKIE_NAME)?.value)); }
 
 export function setAdminGateCookie(response: NextResponse): void {
-  const sessionToken = configuredAdminSessionToken();
-  if (!sessionToken) return;
-  response.cookies.set(ADMIN_COOKIE_NAME, sessionToken, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: ADMIN_SESSION_INACTIVITY_TIMEOUT_SECONDS });
+  const signedGateCookieValue = createSignedAdminGateCookieValue();
+  if (!signedGateCookieValue) return;
+  response.cookies.set(ADMIN_COOKIE_NAME, signedGateCookieValue, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: ADMIN_SESSION_INACTIVITY_TIMEOUT_SECONDS });
 }
 
 export function setAdminIdentityCookie(response: NextResponse, identity: AdminIdentityCookieInput): void {

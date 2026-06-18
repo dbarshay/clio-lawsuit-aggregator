@@ -23,6 +23,7 @@ type PermissionsData = {
   routeDryRun?: any[];
   overrideConfig?: any;
   phase20Activation?: any;
+  phase21DeploymentPackage?: any;
 };
 
 type CatalogData = {
@@ -220,6 +221,7 @@ export default function AdminPermissionsPage() {
   ];
   const activationPreflightPassedCount = activationPreflightChecks.filter((check) => check.passed).length;
   const phase20Activation = data?.phase20Activation || null;
+  const phase21DeploymentPackage = data?.phase21DeploymentPackage || null;
   const activationDecisionPackage = {
     proposedScope: "admin-functions-only",
     runtimeEnforcementChanged: false,
@@ -414,6 +416,18 @@ export default function AdminPermissionsPage() {
             </div>
             <pre data-barsh-admin-permissions-route-simulator-row="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify({ roleKey: simulatorRoleKey, route: simulatorRoute ? { pattern: simulatorRoute.pattern || "", method: simulatorRoute.method || "ANY", permission: simulatorRoutePermission } : null, decision: simulatorRouteDecision || "unmapped", reason: simulatorRouteReason || "No matching matrix row", enforcementStatus: simulatorRouteEnforcementStatus || "planning-only", allowed: simulatorRouteAllowed, matchedMatrixRow: simulatorRouteMatrixRow || null, runtimeEnforcementChanged: false }, null, 2)}</pre>
           </div>
+        </section>
+
+        <section data-barsh-admin-permissions-phase21-deployment-package="read-only" style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 22, padding: 18 }}>
+          <h2 style={{ marginTop: 0 }}>Phase 21 Deployment / Rollback Package</h2>
+          <p style={{ color: "#475569", lineHeight: 1.45 }}>Read-only deployment package for manual review. It shows the recommended environment variables and rollback flag. This page does not enable enforcement, create an activation button, write environment variables, edit users, expose passwords, impersonate users, call Clio, send email, generate documents, or change the print queue.</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10 }}>
+            <div data-barsh-admin-permissions-phase21-mode="true" style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}><strong>Mode:</strong> {phase21DeploymentPackage?.mode || "deployment-package-only"}</div>
+            <div data-barsh-admin-permissions-phase21-activation-flag="true" style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}><strong>Activation Flag:</strong> {phase21DeploymentPackage?.activationFlag || "BARSH_ADMIN_PERMISSIONS_ENFORCEMENT_ENABLED"}</div>
+            <div data-barsh-admin-permissions-phase21-rollback="true" style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534", borderRadius: 12, padding: 10, fontWeight: 950 }}>Rollback: Set Enforcement False</div>
+            <div data-barsh-admin-permissions-phase21-runtime="true" style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534", borderRadius: 12, padding: 10, fontWeight: 950 }}>Runtime Changed: No</div>
+          </div>
+          <pre data-barsh-admin-permissions-phase21-json="true" style={{ whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 14 }}>{JSON.stringify(phase21DeploymentPackage || { phase: "21-combined", status: "loading" }, null, 2)}</pre>
         </section>
 
         <section data-barsh-admin-permissions-phase20-activation-status="read-only" style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 22, padding: 18 }}>

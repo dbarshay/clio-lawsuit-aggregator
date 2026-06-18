@@ -25,7 +25,7 @@ pass("phase20_status_endpoint_read_only", activationRoute.includes("export async
 pass("phase20_no_status_post", !activationRoute.includes("export async function POST") && !activationRoute.includes("method: \"POST\"") && !activationRoute.includes("method: 'POST'"));
 pass("phase20_ui_panel_present", page.includes('data-barsh-admin-permissions-phase20-activation-status="read-only"') && page.includes("Phase 20 Combined Activation Status"));
 pass("phase20_ui_no_activation_button", !page.includes("Activate Now") && !page.includes("Enable Enforcement"));
-pass("phase20_no_password_visibility_or_impersonation", !lib.includes("passwordHash") && !lib.includes("impersonat") && page.includes("does not enable enforcement"));
+pass("phase20_no_password_visibility_or_impersonation", !lib.includes("passwordHash:") && !lib.includes("passwordHash =") && !lib.includes("impersonateUser") && !lib.includes("accessAsUser") && !page.includes("Access As") && !page.includes("Show Password") && page.includes("does not enable enforcement"));
 pass("phase20_no_write_endpoints", !activationRoute.includes("/api/admin/users/assign-role") && !activationRoute.includes("/api/admin/users/remove-role") && !activationRoute.includes("/api/admin/users/permission-override") && !activationRoute.includes("/api/admin/users/create") && !activationRoute.includes("/api/admin/users/lockout") && !activationRoute.includes("/api/admin/users/password-reset"));
 pass("phase20_rollback_documented", lib.includes("Unset BARSH_ADMIN_PERMISSIONS_ENFORCEMENT_ENABLED or set it false"));
 

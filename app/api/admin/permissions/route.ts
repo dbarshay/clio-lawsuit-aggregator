@@ -8,6 +8,7 @@ import {
   adminRoutePermissionDryRunDecisions,
   configuredAdminPermissionsEnforcementEnabled,
   phase20ActivationStatus,
+  phase21ActivationDeploymentPackage,
 } from "@/lib/adminPermissions";
 
 export const runtime = "nodejs";
@@ -27,5 +28,6 @@ export async function GET() {
     permissionDryRun: adminPermissionDryRunDecisions(),
     routeDryRun: adminRoutePermissionDryRunDecisions(),
     phase20Activation: phase20ActivationStatus(),
+    phase21DeploymentPackage: phase21ActivationDeploymentPackage(),
   });
 }

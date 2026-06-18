@@ -361,3 +361,51 @@ export function adminPermissionEnforcementDecision(pathname: string, method = "G
   }
   return { enforcementEnabled, matchedRoute, permission: matchedRoute.permission, allowed: wouldAllow, blocked: !wouldAllow, reason: wouldAllow ? "Permission allowed by current defaults/overrides." : "Permission blocked by current overrides." };
 }
+
+export const PHASE21_ADMIN_PERMISSIONS_DEPLOYMENT_PACKAGE = {
+  phase: "21-combined",
+  mode: "deployment-package-only",
+  activationCommandLabel: "set BARSH_ADMIN_PERMISSIONS_ENFORCEMENT_ENABLED=true and BARSH_ADMIN_PERMISSION_OVERRIDES_JSON to the recommended JSON in the deployment environment only after review",
+  rollbackCommandLabel: "set BARSH_ADMIN_PERMISSIONS_ENFORCEMENT_ENABLED=false or remove the flag, then redeploy/restart",
+  requiredPreActivationProofs: [
+    "Phase 20 combined verifier passes.",
+    "Phase 20 env smoke passes.",
+    "Owner admin no-lockout path is known.",
+    "Rollback command is available before activation.",
+    "read_only_admin/Jane Doe admin-function blocking scope is confirmed.",
+  ],
+  forbiddenInThisPackage: [
+    "No hard-coded runtime enforcement flip.",
+    "No app-side activation button.",
+    "No user, role, override, password, session, Clio, document, email, or print queue mutation.",
+    "No password visibility.",
+    "No impersonation or access-as.",
+  ],
+  runtimeEnforcementChanged: false,
+} as const;
+
+export function phase21ActivationDeploymentPackage() {
+  const phase20 = phase20ActivationStatus();
+  const recommendedOverrides = phase20RecommendedOverrideJson();
+  return {
+    ok: true,
+    phase: PHASE21_ADMIN_PERMISSIONS_DEPLOYMENT_PACKAGE.phase,
+    mode: PHASE21_ADMIN_PERMISSIONS_DEPLOYMENT_PACKAGE.mode,
+    runtimeEnforcementChanged: false,
+    activationFlag: PHASE20_ADMIN_FUNCTIONS_ONLY_ACTIVATION.activationFlag,
+    overrideFlag: PHASE20_ADMIN_FUNCTIONS_ONLY_ACTIVATION.overrideFlag,
+    activationEnv: {
+      BARSH_ADMIN_PERMISSIONS_ENFORCEMENT_ENABLED: "true",
+      BARSH_ADMIN_PERMISSION_OVERRIDES_JSON: JSON.stringify(recommendedOverrides),
+    },
+    rollbackEnv: {
+      BARSH_ADMIN_PERMISSIONS_ENFORCEMENT_ENABLED: "false",
+    },
+    recommendedOverrides,
+    phase20Status: phase20,
+    requiredPreActivationProofs: [...PHASE21_ADMIN_PERMISSIONS_DEPLOYMENT_PACKAGE.requiredPreActivationProofs],
+    forbiddenInThisPackage: [...PHASE21_ADMIN_PERMISSIONS_DEPLOYMENT_PACKAGE.forbiddenInThisPackage],
+    note: "Deployment package only. Apply environment variables manually after review; the app does not self-activate enforcement.",
+  };
+}
+

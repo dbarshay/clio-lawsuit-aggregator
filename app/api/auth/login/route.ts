@@ -127,12 +127,7 @@ async function recordSuccessfulCredentialLogin(userId: string): Promise<void> {
 }
 
 function userIsEligibleForPhase13CUsernamePasswordLogin(user: AdminCredentialUser): boolean {
-  return (
-    user.status === "active" &&
-    user.bootstrapSafe === true &&
-    Array.isArray(user.roleKeys) &&
-    user.roleKeys.includes("owner_admin")
-  );
+  return user.status === "active" && Boolean(user.passwordHash);
 }
 
 async function tryUsernamePasswordLogin(username: string, password: string) {

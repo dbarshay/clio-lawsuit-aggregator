@@ -21,6 +21,18 @@ function loadLocalEnv() {
 function read(path){ if(fs.existsSync(path) === false){ console.error("FAIL missing "+path); process.exit(1); } return fs.readFileSync(path,"utf8"); }
 function assert(label, ok){ if(ok === false){ console.error("FAIL: "+label); process.exit(1); } console.log("PASS: "+label); }
 
+function functionBody(source, name) {
+  const marker = `function ${name}`;
+  const start = source.indexOf(marker);
+  if (start < 0) return "";
+  const next = source.indexOf("\nasync function", start + marker.length);
+  const nextFunction = source.indexOf("\nfunction ", start + marker.length);
+  const candidates = [next, nextFunction].filter((value) => value > start);
+  const end = candidates.length ? Math.min(...candidates) : source.length;
+  return source.slice(start, end);
+}
+
+
 async function main() {
   loadLocalEnv();
   console.log("RUN: Phase 13C active non-owner login readiness safety verifier");
@@ -30,13 +42,14 @@ async function main() {
   const loginPage = read("app/login/page.tsx");
   const session = read("app/api/auth/session/route.ts");
   const permissions = read("lib/adminPermissions.ts");
+  const loginEligibilityBody = functionBody(login, "userIsEligibleForPhase13CUsernamePasswordLogin");
 
   assert("package script registered for Phase 13C", pkg.scripts && pkg.scripts["verify:admin-users-phase13c-non-owner-login-readiness-safety"] === "node scripts/verify-admin-users-phase13c-non-owner-login-readiness-safety.cjs");
   assert("login route has Phase 13C eligibility helper", login.includes("userIsEligibleForPhase13CUsernamePasswordLogin"));
-  assert("login eligibility requires active status", login.includes('user.status === "active"'));
-  assert("login eligibility requires passwordHash", login.includes("Boolean(user.passwordHash)"));
-  assert("login eligibility no longer requires bootstrapSafe", !/bootstrapSafe\s*===\s*true/.test(login));
-  assert("login eligibility no longer requires owner_admin", !/roleKeys\.includes\("owner_admin"\)/.test(login));
+  assert("login eligibility requires active status", loginEligibilityBody.includes('user.status === "active"'));
+  assert("login eligibility requires passwordHash", loginEligibilityBody.includes("Boolean(user.passwordHash)"));
+  assert("login eligibility no longer requires bootstrapSafe", !/bootstrapSafe\s*===\s*true/.test(loginEligibilityBody));
+  assert("login eligibility no longer requires owner_admin", !/roleKeys\.includes\("owner_admin"\)/.test(loginEligibilityBody));
   assert("login still verifies bcrypt password hash", login.includes("bcrypt.compare(password, user.passwordHash)"));
   assert("login still records failed login", login.includes("recordFailedCredentialLogin"));
   assert("login still records successful login", login.includes("recordSuccessfulCredentialLogin"));

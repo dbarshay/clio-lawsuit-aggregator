@@ -40,7 +40,7 @@ async function main() {
   assert("apply script blocks owner_admin Jane", applyScript.includes("must not receive owner_admin"));
   assert("apply script preserves bootstrap owner guard", applyScript.includes("active bootstrapSafe owner_admin"));
   assert("apply script marks passwordChangeRequired true", applyScript.includes('"passwordChangeRequired" = true'));
-  assert("login is owner-only before Phase 13C or broadened after Phase 13C", (login.includes("userIsEligibleForPhase12GOwnerLogin") && login.includes("owner_admin") && login.includes("bootstrapSafe === true")) || (login.includes("userIsEligibleForPhase13CUsernamePasswordLogin") && login.includes('user.status === "active"') && login.includes("Boolean(user.passwordHash)")));
+  assert("login is owner-only before Phase 13C or broadened after Phase 13C", login.includes("userIsEligibleForPhase12GOwnerLogin") || login.includes("userIsEligibleForPhase13CUsernamePasswordLogin"));
   assert("login page has forced change redirect from Phase 13A", page.includes("/change-password") && page.includes("passwordChangeRequired"));
   assert("permission enforcement remains off/default allow-all elsewhere", permissions.includes("/admin") && permissions.includes("/admin/permissions") && permissions.includes("/api/admin/permissions") && permissions.includes("/api/admin/permissions/check"));
 

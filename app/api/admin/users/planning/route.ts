@@ -47,6 +47,7 @@ export async function GET() {
           lockoutEligible: !user.bootstrapSafe,
           lockedOut: user.status !== "active",
           passwordConfigured: Boolean(user.passwordHash),
+          passwordChangeRequired: Boolean(user.passwordChangeRequired),
           twoFactorRequired: Boolean(user.twoFactorRequired),
         };
       }),

@@ -111,6 +111,13 @@ export default function AdminUsersPlanningPage() {
   const [lockoutBusy, setLockoutBusy] = useState(false);
   const [lockoutMessage, setLockoutMessage] = useState("");
   const [lockoutResult, setLockoutResult] = useState<any>(null);
+  const [passwordResetTargetEmail, setPasswordResetTargetEmail] = useState("");
+  const [passwordResetTemporaryPassword, setPasswordResetTemporaryPassword] = useState("");
+  const [passwordResetReason, setPasswordResetReason] = useState("");
+  const [passwordResetActorEmail, setPasswordResetActorEmail] = useState("dbarshay15@gmail.com");
+  const [passwordResetBusy, setPasswordResetBusy] = useState(false);
+  const [passwordResetMessage, setPasswordResetMessage] = useState("");
+  const [passwordResetResult, setPasswordResetResult] = useState<any>(null);
 
   async function loadAdminUsersPlanning() {
     try {
@@ -162,6 +169,12 @@ export default function AdminUsersPlanningPage() {
       lockoutResult?.mode === "preview" &&
       lockoutResult?.wouldChange?.email === cleanEmail(lockoutTargetEmail) &&
       lockoutResult?.wouldChange?.lockoutAction === lockoutAction
+  );
+
+  const passwordResetPreviewReady = Boolean(
+    passwordResetResult?.ok &&
+      passwordResetResult?.mode === "preview" &&
+      passwordResetResult?.wouldReset?.email === cleanEmail(passwordResetTargetEmail)
   );
 
   async function submitCreateAdminUser(apply: boolean) {
@@ -280,6 +293,45 @@ export default function AdminUsersPlanningPage() {
   }
 
 
+
+  async function submitAdminUserPasswordReset(apply: boolean) {
+    try {
+      setPasswordResetBusy(true);
+      setPasswordResetMessage(apply ? "Applying guarded password reset request..." : "Previewing guarded password reset request...");
+      const response = await fetch("/api/admin/users/password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({
+          apply,
+          targetEmail: passwordResetTargetEmail,
+          temporaryPassword: passwordResetTemporaryPassword,
+          reason: passwordResetReason,
+          actorEmail: passwordResetActorEmail,
+        }),
+      });
+      const json = await response.json().catch(() => ({ ok: false, error: "Password reset route did not return JSON." }));
+      setPasswordResetResult({ ...json, httpStatus: response.status });
+      if (!response.ok || !json?.ok) {
+        setPasswordResetMessage(json?.error || `Password reset request failed with HTTP ${response.status}.`);
+        return;
+      }
+      if (apply) {
+        setPasswordResetMessage("Password reset applied. Password was hashed, not displayed, and change-required is set.");
+        setPasswordResetTemporaryPassword("");
+        setPasswordResetResult(null);
+        await loadAdminUsersPlanning();
+      } else {
+        setPasswordResetMessage("Preview complete. No password hash was changed. Review the result before Apply.");
+      }
+    } catch (err: any) {
+      setPasswordResetMessage(err?.message || "Password reset request failed.");
+      setPasswordResetResult({ ok: false, error: err?.message || "Password reset request failed." });
+    } finally {
+      setPasswordResetBusy(false);
+    }
+  }
+
   async function submitAdminUserLockout(apply: boolean) {
     try {
       setLockoutBusy(true);
@@ -370,6 +422,44 @@ export default function AdminUsersPlanningPage() {
           <strong>Mode:</strong> {data?.mode || "loading"} | <strong>Enforcement Enabled:</strong> {enforcementLabel} | <strong>Planning Roles:</strong> {roles.length} | <strong>Planning Users:</strong> {users.length} | <strong>DB Roles:</strong> {data?.databasePreview?.roleCount ?? 0} | <strong>DB Users:</strong> {data?.databasePreview?.userCount ?? 0}
         </section>
 
+
+
+        <section data-barsh-admin-users-password-reset-card="true" style={cardStyle}>
+          <h2 style={{ marginTop: 0 }}>Reset Temporary Password</h2>
+          <p style={{ margin: "8px 0 0", color: "#475569", lineHeight: 1.5 }}>Phase 12K guarded route. Preview is the default. Apply hashes the temporary password immediately, sets passwordChangeRequired, resets failed login counters, and never returns or displays the password. This does not enable impersonation and does not enable permission enforcement.</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginTop: 14 }}>
+            <label style={{ fontSize: 12, fontWeight: 900, color: "#334155" }}>
+              Target User
+              <select data-barsh-admin-users-password-reset-target-email="true" value={passwordResetTargetEmail} onChange={(event) => { setPasswordResetTargetEmail(event.target.value); setPasswordResetResult(null); }} style={inputStyle}>
+                <option value="">Choose user</option>
+                {dbUsers.map((user: any) => <option key={user.email} value={user.email}>{user.displayName || user.email} · {user.username || "no username"} · {user.status}</option>)}
+              </select>
+            </label>
+            <label style={{ fontSize: 12, fontWeight: 900, color: "#334155" }}>
+              Temporary Password
+              <input data-barsh-admin-users-password-reset-temporary-password="true" type="password" value={passwordResetTemporaryPassword} onChange={(event) => { setPasswordResetTemporaryPassword(event.target.value); setPasswordResetResult(null); }} style={inputStyle} placeholder="Min 10 + upper/lower/number/symbol" />
+            </label>
+            <label style={{ fontSize: 12, fontWeight: 900, color: "#334155" }}>
+              Actor Email
+              <input data-barsh-admin-users-password-reset-actor-email="true" value={passwordResetActorEmail} onChange={(event) => setPasswordResetActorEmail(event.target.value)} style={inputStyle} placeholder="owner_admin email" />
+            </label>
+            <label style={{ fontSize: 12, fontWeight: 900, color: "#334155" }}>
+              Reason
+              <input data-barsh-admin-users-password-reset-reason="true" value={passwordResetReason} onChange={(event) => { setPasswordResetReason(event.target.value); setPasswordResetResult(null); }} style={inputStyle} placeholder="Required reason" />
+            </label>
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 14 }}>
+            <button data-barsh-admin-users-password-reset-preview-button="true" type="button" onClick={() => void submitAdminUserPasswordReset(false)} disabled={passwordResetBusy} style={{ ...secondaryButtonStyle, opacity: passwordResetBusy ? 0.7 : 1 }}>
+              Preview Password Reset
+            </button>
+            <button data-barsh-admin-users-password-reset-apply-button="true" type="button" onClick={() => void submitAdminUserPasswordReset(true)} disabled={passwordResetBusy || !passwordResetPreviewReady} style={{ ...primaryButtonStyle, opacity: passwordResetBusy || !passwordResetPreviewReady ? 0.55 : 1, cursor: passwordResetBusy || !passwordResetPreviewReady ? "not-allowed" : "pointer" }}>
+              Apply Password Reset
+            </button>
+            <span data-barsh-admin-users-password-reset-message="true" style={{ color: passwordResetResult?.ok ? "#166534" : "#991b1b", fontWeight: 900 }}>{passwordResetMessage}</span>
+          </div>
+          {passwordResetResult ? <pre data-barsh-admin-users-password-reset-result="true" style={{ marginTop: 12, whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, maxHeight: 260, overflow: "auto" }}>{JSON.stringify(passwordResetResult, null, 2)}</pre> : null}
+          <p style={{ margin: "12px 0 0", color: "#991b1b", fontWeight: 900 }}>Safety: passwords are not viewable or recoverable. This route hashes the temporary password and never returns it. Login impersonation remains intentionally unavailable.</p>
+        </section>
 
         <section data-barsh-admin-users-lockout-card="true" style={cardStyle}>
           <h2 style={{ marginTop: 0 }}>Lock / Unlock Admin User</h2>

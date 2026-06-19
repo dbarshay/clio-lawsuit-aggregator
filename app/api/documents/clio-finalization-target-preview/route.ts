@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildClioStorageFolderResolutionPreview } from "@/lib/clioStorageFolderResolution";
-import type { ClioStorageTargetInput } from "@/lib/clioStoragePlan";
+import { buildClioStorageTargetPlan, type ClioStorageTargetInput } from "@/lib/clioStoragePlan";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +27,42 @@ export async function POST(req: NextRequest) {
       displayNumber: matterDisplayNumber,
     } as ClioStorageTargetInput;
 
-    const preview = buildClioStorageFolderResolutionPreview(targetInput);
+    let preview: ReturnType<typeof buildClioStorageFolderResolutionPreview>;
+    let configFallbackUsed = false;
+
+    try {
+      preview = buildClioStorageFolderResolutionPreview(targetInput);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (!message.includes("Single-master storage mode is not enabled")) throw err;
+      configFallbackUsed = true;
+
+      const targetPlan = buildClioStorageTargetPlan(targetInput, {
+        mode: "single_master_matter",
+        singleMasterEnabled: true,
+        masterMatterId: 1885821245,
+        masterMatterName: "Barsh Matters Master Repository",
+        bucketSize: 1000,
+      });
+
+      preview = {
+        ok: true,
+        mode: "single_master_matter",
+        previewOnly: true,
+        createsFolders: false,
+        callsClio: false,
+        uploadsDocuments: false,
+        databaseMutation: false,
+        targetPlan,
+        plannedFolders: {
+          bucketFolderName: targetPlan.bucketFolderName,
+          matterFolderName: targetPlan.matterFolderName,
+          matterFolderPath: targetPlan.matterFolderPath,
+        },
+        steps: ["preview-only production fallback: computed target path without Clio write configuration"],
+        warnings: ["single-master storage env is not enabled; preview used non-writing planning fallback"],
+      } as unknown as ReturnType<typeof buildClioStorageFolderResolutionPreview>;
+    }
 
     return NextResponse.json({
       ok: true,
@@ -40,6 +75,7 @@ export async function POST(req: NextRequest) {
       targetPlan: preview.targetPlan,
       resolutionPreview: preview,
       guardSummary: {
+        configFallbackUsed,
         requiresLiveWriteCommand: "RUN_CLIO_SINGLE_MASTER_FOLDER_CREATE",
         requiresCreateFoldersEnabled: true,
         requiresLiveWriteEnabled: true,

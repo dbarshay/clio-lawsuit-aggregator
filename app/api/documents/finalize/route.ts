@@ -157,10 +157,18 @@ function buildSingleMasterFinalizeTargetInput(preview: any, params: {
   directMatterDisplayNumber?: string;
 }): ClioStorageTargetInput {
   const target = preview?.clioUploadTarget || {};
+  const isDirectMatter = params.uploadTargetMode === "direct-matter";
+
+  if (isDirectMatter) {
+    throw new Error(
+      "Single-master Clio storage for direct matters is blocked until Barsh Matters direct-matter numbering/folder convention is defined."
+    );
+  }
+
   const displayNumber = clean(
-    target?.displayNumber ||
-      params.directMatterDisplayNumber ||
-      params.masterLawsuitId
+    params.masterLawsuitId ||
+      target?.lawsuitId ||
+      target?.masterLawsuitId
   );
   const lawsuitId = clean(
     params.masterLawsuitId ||
@@ -169,17 +177,16 @@ function buildSingleMasterFinalizeTargetInput(preview: any, params: {
       displayNumber
   );
   const bmMatterId = clean(
-    params.directMatterId ||
+    params.masterLawsuitId ||
       target?.bmMatterId ||
-      target?.bmMatterNumber ||
-      target?.localMatterId ||
+      target?.masterLawsuitId ||
       lawsuitId ||
       displayNumber
   );
 
   if (!bmMatterId && !lawsuitId && !displayNumber) {
     throw new Error(
-      "Single-master Clio storage target cannot be derived without a Barsh Matters matter or lawsuit identifier."
+      "Single-master Clio storage target cannot be derived without a Barsh Matters lawsuit identifier."
     );
   }
 

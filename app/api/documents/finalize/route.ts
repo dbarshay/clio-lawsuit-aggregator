@@ -237,6 +237,9 @@ export async function POST(req: NextRequest) {
     const directMatterId = clean(body?.directMatterId);
     const directMatterDisplayNumber = clean(body?.directMatterDisplayNumber);
     const confirmUpload = body?.confirmUpload === true;
+    const useSingleMasterClioStorage = body?.useSingleMasterClioStorage === true;
+    const singleMasterDryRun = body?.singleMasterDryRun !== false;
+    const singleMasterResolveFolders = body?.singleMasterResolveFolders === true;
     const requestedKeys = asStringArray(body?.documentKeys);
     const workingDocumentDriveItemId = clean(body?.workingDocumentDriveItemId || body?.workingDriveItemId);
     const workingDocumentKey = clean(body?.workingDocumentKey);
@@ -259,18 +262,19 @@ export async function POST(req: NextRequest) {
       masterLawsuitId ||
       `DIRECT-${directMatterDisplayNumber || (directMatterId ? `BRL${directMatterId}` : "MATTER")}`;
 
-    if (!confirmUpload) {
+    if (!confirmUpload && !(useSingleMasterClioStorage && singleMasterDryRun)) {
       return NextResponse.json(
         {
           ok: false,
           action: "finalize-upload",
           error:
-            "Upload not performed. This endpoint requires confirmUpload: true.",
+            "Upload not performed. This endpoint requires confirmUpload: true unless useSingleMasterClioStorage dry-run mode is requested.",
           safety: {
             noUploadPerformed: true,
             duplicatePreventionDefault: !allowDuplicateUploads,
             noDatabaseRecordsChanged: true,
             noOneDriveOrSharePointFoldersCreated: true,
+            singleMasterDryRunAllowedWithoutConfirmUpload: true,
           },
         },
         { status: 400 }
@@ -297,10 +301,6 @@ export async function POST(req: NextRequest) {
             directMatterDisplayNumber,
           });
     const validation = preview?.validation || {};
-
-    const useSingleMasterClioStorage = body?.useSingleMasterClioStorage === true;
-    const singleMasterDryRun = body?.singleMasterDryRun !== false;
-    const singleMasterResolveFolders = body?.singleMasterResolveFolders === true;
 
     if (useSingleMasterClioStorage) {
       const singleMasterTargetInput = buildSingleMasterFinalizeTargetInput(preview, {
@@ -338,6 +338,7 @@ export async function POST(req: NextRequest) {
         databaseMutation: false,
         clioWrite: singleMasterResolveFolders,
         noUploadPerformed: true,
+        confirmUploadRequired: false,
         generationSkipped: true,
         singleMasterDryRun,
         singleMasterResolveFolders,

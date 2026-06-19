@@ -528,7 +528,8 @@
     "verify:clio-storage-refactor-phase28-storage-plan-typescript-safety": "node scripts/verify-clio-storage-refactor-phase28-storage-plan-typescript-safety.cjs",
     "verify:admin-auth-prisma-bcrypt-typescript-build-safety": "node scripts/verify-admin-auth-prisma-bcrypt-typescript-build-safety.cjs",
     "verify:phase31-production-build-confirmation-safety": "node scripts/verify-phase31-production-build-confirmation-safety.cjs",
-    "verify:phase32a-preview-route-env-fallback-safety": "node scripts/verify-phase32a-preview-route-env-fallback-safety.cjs"
+    "verify:phase32a-preview-route-env-fallback-safety": "node scripts/verify-phase32a-preview-route-env-fallback-safety.cjs",
+    "verify:phase32-vercel-production-smoke-safety": "node scripts/verify-phase32-vercel-production-smoke-safety.cjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

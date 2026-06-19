@@ -540,7 +540,10 @@
     "verify:phase34f-multisegment-folder-resolver-safety": "node scripts/verify-phase34f-multisegment-folder-resolver-safety.cjs",
     "verify:phase34g-disabled-multisegment-resolver-smoke-safety": "node scripts/verify-phase34g-disabled-multisegment-resolver-smoke-safety.cjs",
     "smoke:phase34g-disabled-multisegment-resolver": "node scripts/smoke-phase34g-disabled-multisegment-resolver.cjs",
-    "verify:phase34h-finalize-live-resolver-block-text-safety": "node scripts/verify-phase34h-finalize-live-resolver-block-text-safety.cjs"
+    "verify:phase34h-finalize-live-resolver-block-text-safety": "node scripts/verify-phase34h-finalize-live-resolver-block-text-safety.cjs",
+    "verify:phase34i-finalize-live-folder-resolution-no-upload-safety": "node scripts/verify-phase34i-finalize-live-folder-resolution-no-upload-safety.cjs",
+    "verify:phase34i-finalize-live-folder-resolution-disabled-env-smoke-safety": "node scripts/verify-phase34i-finalize-live-folder-resolution-disabled-env-smoke-safety.cjs",
+    "smoke:phase34i-finalize-live-folder-resolution-disabled-env": "node scripts/smoke-phase34i-finalize-live-folder-resolution-disabled-env.cjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

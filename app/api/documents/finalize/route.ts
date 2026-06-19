@@ -333,27 +333,9 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      if (singleMasterResolveFolders) {
-        return NextResponse.json(
-          {
-            ok: false,
-            action: "finalize-upload",
-            error: "Live folder resolution remains disabled until finalize live folder resolution is explicitly enabled and smoke-tested.",
-            finalizeRewired: true,
-            uploadRewired: false,
-            databaseMutation: false,
-            clioWrite: false,
-            noUploadPerformed: true,
-            generationSkipped: true,
-            resolverBlocked: true,
-            resolverName: resolveClioMatterFolderWithGuard.name,
-            singleMasterTargetInput,
-          },
-          { status: 400 }
-        );
-      }
-
-      const folderResolution = buildClioStorageFolderResolutionPreview(singleMasterTargetInput);
+      const folderResolution = singleMasterResolveFolders
+        ? await resolveClioMatterFolderWithGuard(singleMasterTargetInput)
+        : buildClioStorageFolderResolutionPreview(singleMasterTargetInput);
 
       return NextResponse.json({
         ok: true,
@@ -361,7 +343,7 @@ export async function POST(req: NextRequest) {
         finalizeRewired: true,
         uploadRewired: false,
         databaseMutation: false,
-        clioWrite: false,
+        clioWrite: singleMasterResolveFolders,
         noUploadPerformed: true,
         confirmUploadRequired: false,
         generationSkipped: true,

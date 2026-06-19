@@ -338,7 +338,7 @@ export async function POST(req: NextRequest) {
           {
             ok: false,
             action: "finalize-upload",
-            error: "Live folder resolution is blocked in Phase 34E until the resolver supports the locked multi-segment folder taxonomy.",
+            error: "Live folder resolution remains disabled until finalize live folder resolution is explicitly enabled and smoke-tested.",
             finalizeRewired: true,
             uploadRewired: false,
             databaseMutation: false,

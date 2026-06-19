@@ -93,7 +93,7 @@ function assert(condition, message) {
     console.log("HTTP_STATUS=" + res.status);
     console.log("RESPONSE_JSON=" + JSON.stringify(res.json, null, 2));
 
-    assert(res.status === 400, "finalize returns 400 when live resolver is requested in Phase 34G");
+    assert(res.status === 400, "finalize returns 400 when live resolver is requested");
     assert(res.json && res.json.ok === false, "response ok false");
     assert(res.json.finalizeRewired === true, "finalizeRewired true");
     assert(res.json.uploadRewired === false, "uploadRewired false");
@@ -102,7 +102,7 @@ function assert(condition, message) {
     assert(res.json.noUploadPerformed === true, "noUploadPerformed true");
     assert(res.json.generationSkipped === true, "generationSkipped true");
     assert(res.json.resolverBlocked === true, "resolverBlocked true");
-    assert(res.json.error && res.json.error.includes("Live folder resolution is blocked in Phase 34E"), "blocked error explains resolver remains disabled");
+    assert(res.json.error === "Live folder resolution remains disabled until finalize live folder resolution is explicitly enabled and smoke-tested.", "blocked error uses current resolver-disabled message");
     assert(res.json.singleMasterTargetInput.displayNumber === "2026.05.00001", "target displayNumber remains lawsuit number");
     assert(res.json.singleMasterTargetInput.bmMatterId === "2026.05.00001", "target bmMatterId remains lawsuit number");
     assert(res.json.singleMasterTargetInput.lawsuitId === "2026.05.00001", "target lawsuitId remains lawsuit number");

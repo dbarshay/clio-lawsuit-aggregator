@@ -32,7 +32,7 @@ if (pkg.scripts && pkg.scripts[smokeScript] === "node scripts/smoke-phase34g-dis
 
 const requiredTokens = [
   "singleMasterResolveFolders: true",
-  "Live folder resolution is blocked in Phase 34E",
+  "Live folder resolution remains disabled until finalize live folder resolution is explicitly enabled and smoke-tested.",
   "resolverBlocked true",
   "clioWrite false",
   "uploadRewired false",
@@ -45,11 +45,8 @@ const requiredTokens = [
 ];
 
 for (const token of requiredTokens) {
-  if (smoke.includes(token)) {
-    pass("smoke contains required token: " + token);
-  } else {
-    fail("smoke missing required token: " + token);
-  }
+  if (smoke.includes(token)) pass("smoke contains required token: " + token);
+  else fail("smoke missing required token: " + token);
 }
 
 const forbiddenEnabledForms = [
@@ -59,15 +56,13 @@ const forbiddenEnabledForms = [
   "confirmUpload: true",
   "uploadRewired: true",
   "databaseMutation: true",
-  "clioWrite: true"
+  "clioWrite: true",
+  "Live folder resolution is blocked in Phase 34E until the resolver supports the locked multi-segment folder taxonomy."
 ];
 
 for (const token of forbiddenEnabledForms) {
-  if (!smoke.includes(token)) {
-    pass("smoke does not include enabled/write token: " + token);
-  } else {
-    fail("smoke unexpectedly includes enabled/write token: " + token);
-  }
+  if (!smoke.includes(token)) pass("smoke does not include enabled/stale token: " + token);
+  else fail("smoke unexpectedly includes enabled/stale token: " + token);
 }
 
 console.log("RESULT: Phase 34G finalize live resolver blocked API smoke safety verifier");

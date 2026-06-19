@@ -539,7 +539,8 @@
     "verify:phase34e-folder-taxonomy-planner-safety": "node scripts/verify-phase34e-folder-taxonomy-planner-safety.cjs",
     "verify:phase34f-multisegment-folder-resolver-safety": "node scripts/verify-phase34f-multisegment-folder-resolver-safety.cjs",
     "verify:phase34g-disabled-multisegment-resolver-smoke-safety": "node scripts/verify-phase34g-disabled-multisegment-resolver-smoke-safety.cjs",
-    "smoke:phase34g-disabled-multisegment-resolver": "node scripts/smoke-phase34g-disabled-multisegment-resolver.cjs"
+    "smoke:phase34g-disabled-multisegment-resolver": "node scripts/smoke-phase34g-disabled-multisegment-resolver.cjs",
+    "verify:phase34h-finalize-live-resolver-block-text-safety": "node scripts/verify-phase34h-finalize-live-resolver-block-text-safety.cjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

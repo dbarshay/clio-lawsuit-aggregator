@@ -2,19 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CLAIM_INDEX_SELECT } from "@/lib/claimIndexQuery";
 
-function clean(v: string | null) {
+function clean(v: string | null | undefined) {
   return (v || "").trim();
 }
 
 function normalizePrefix(input: string | null) {
-  const q = clean(input);
+  const q = clean(input).toUpperCase();
 
   if (!q) return "";
 
-  const brl = q.match(/^BRL\s*-?\s*(\d*)$/i);
-  if (brl) return `BRL${brl[1] || ""}`;
+  const full = q.match(/^BRL[_\s-]?(\d{4})(\d{5})$/);
+  if (full) return `BRL_${full[1]}${full[2]}`;
 
-  if (/^\d+$/.test(q)) return `BRL${q}`;
+  const digits = q.replace(/\D+/g, "");
+  if (digits.length === 9) return `BRL_${digits}`;
 
   return q;
 }
@@ -27,9 +28,8 @@ function displayNumberSortValue(displayNumber: string | null) {
   return Number.isFinite(n) ? n : null;
 }
 
-function isBrl30000Plus(row: { display_number?: string | null }) {
-  const n = displayNumberSortValue(row.display_number || null);
-  return n != null && n >= 30000;
+function isBrlNewConvention(row: { display_number?: string | null }) {
+  return /^BRL_\d{9}$/i.test(clean(row.display_number));
 }
 
 export async function GET(req: NextRequest) {
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
     select: CLAIM_INDEX_SELECT,
   });
 
-  const rows = candidateRows.filter(isBrl30000Plus).slice(0, limit);
+  const rows = candidateRows.filter(isBrlNewConvention).slice(0, limit);
 
   return NextResponse.json({
     ok: true,

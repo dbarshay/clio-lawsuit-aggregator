@@ -37,7 +37,7 @@ mustInclude("court datalist", page, 'list="admin-tickler-court-options"');
 mustInclude("patient remains free text", page, 'placeholder="Patient name"');
 mustInclude("claim remains free text", page, 'placeholder="Claim number"');
 mustInclude("status remains free text", page, 'placeholder="Matter status"');
-mustInclude("matter number remains free text", page, 'placeholder="BRL30121"');
+mustInclude("matter number remains free text", page, 'placeholder="BRL_202600001"');
 
 mustNotInclude("Run Ticklers button", page, "Run Ticklers");
 mustNotInclude("Process Ticklers button", page, "Process Ticklers");

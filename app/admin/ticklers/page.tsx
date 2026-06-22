@@ -1176,7 +1176,7 @@ export default function AdminTicklersPage() {
 
             <label style={{ display: "grid", gap: 6, fontWeight: 800, color: "#334155" }}>
               Matter Number
-              <input value={displayNumber} onChange={(event) => setDisplayNumber(event.target.value)} onKeyDown={handleTicklerSearchKeyDown} placeholder="BRL30121" style={inputStyle} />
+              <input value={displayNumber} onChange={(event) => setDisplayNumber(event.target.value)} onKeyDown={handleTicklerSearchKeyDown} placeholder="BRL_202600001" style={inputStyle} />
             </label>
 
             <div />

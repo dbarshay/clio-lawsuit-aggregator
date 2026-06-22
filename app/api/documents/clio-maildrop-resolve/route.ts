@@ -84,7 +84,7 @@ async function resolveDirectMatter(url: URL) {
 
   let matter: any = null;
 
-  // Direct UI ids may be BRL30121, 30121, or a real Clio numeric id.  Five-digit BRL-style ids should be searched as display numbers.
+  // Direct UI ids may be BRL_202600001, 202600001, or a real Clio numeric id. Barsh Matters display numbers should be searched as display numbers.
   if (normalizedDisplayNumber && /^BRL\d+$/.test(normalizedDisplayNumber)) {
     matter = await searchMatterByDisplayNumber(normalizedDisplayNumber);
   }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { CLAIM_INDEX_SELECT } from "@/lib/claimIndexQuery";
+import { CLAIM_INDEX_SELECT, buildBarshMatterDisplayNumberScopeWhere } from "@/lib/claimIndexQuery";
 
 export const dynamic = "force-dynamic";
 
@@ -85,17 +85,7 @@ function equalsOrContains(field: string, value: string): Prisma.ClaimIndexWhereI
 }
 
 function appScopeWhere(): Prisma.ClaimIndexWhereInput {
-  return {
-    OR: [
-      { display_number: { startsWith: "BRL3", mode: "insensitive" } },
-      { display_number: { startsWith: "BRL4", mode: "insensitive" } },
-      { display_number: { startsWith: "BRL5", mode: "insensitive" } },
-      { display_number: { startsWith: "BRL6", mode: "insensitive" } },
-      { display_number: { startsWith: "BRL7", mode: "insensitive" } },
-      { display_number: { startsWith: "BRL8", mode: "insensitive" } },
-      { display_number: { startsWith: "BRL9", mode: "insensitive" } },
-    ],
-  };
+  return buildBarshMatterDisplayNumberScopeWhere();
 }
 
 function picklistOptionValue(labelOrValue: string, options: Record<string, string>) {

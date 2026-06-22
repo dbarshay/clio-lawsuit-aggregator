@@ -450,7 +450,7 @@ export default function AdminClaimIndexPage() {
             </label>
             <label style={labelStyle}>
               BRL / Display #
-              <input value={filters.displayNumber} onChange={(event) => setFilter("displayNumber", event.target.value)} style={inputStyle} placeholder="BRL30121" />
+              <input value={filters.displayNumber} onChange={(event) => setFilter("displayNumber", event.target.value)} style={inputStyle} placeholder="BRL_202600001" />
             </label>
             <label style={labelStyle}>
               Matter ID

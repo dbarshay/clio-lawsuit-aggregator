@@ -14,6 +14,16 @@ function clean(v?: string | null) {
   return (v || "").trim();
 }
 
+
+export function buildBarshMatterDisplayNumberScopeWhere(): Prisma.ClaimIndexWhereInput {
+  return {
+    display_number: {
+      startsWith: "BRL_",
+      mode: "insensitive",
+    },
+  };
+}
+
 export function buildClaimIndexWhere(params: ClaimIndexSearchParams): Prisma.ClaimIndexWhereInput {
   const and: Prisma.ClaimIndexWhereInput[] = [];
 
@@ -122,20 +132,8 @@ export function buildClaimIndexWhere(params: ClaimIndexSearchParams): Prisma.Cla
     });
   }
 
-  // App scope: this lawsuit aggregation app is for BRL30000 and later.
-  // Keep this at the query layer so older indexed matters do not enter
-  // seed hydration, selector expansion, or grouped UI results.
-  and.push({
-    OR: [
-      { display_number: { startsWith: "BRL3", mode: "insensitive" } },
-      { display_number: { startsWith: "BRL4", mode: "insensitive" } },
-      { display_number: { startsWith: "BRL5", mode: "insensitive" } },
-      { display_number: { startsWith: "BRL6", mode: "insensitive" } },
-      { display_number: { startsWith: "BRL7", mode: "insensitive" } },
-      { display_number: { startsWith: "BRL8", mode: "insensitive" } },
-      { display_number: { startsWith: "BRL9", mode: "insensitive" } },
-    ],
-  });
+  // App scope: Barsh Matters-owned individual/direct convention BRL_YYYYNNNNN only.
+  and.push(buildBarshMatterDisplayNumberScopeWhere());
 
   if (indexAaaNumber) {
     and.push({

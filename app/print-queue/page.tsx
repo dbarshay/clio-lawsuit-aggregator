@@ -72,7 +72,7 @@ function queueSourceLabel(row: any): string {
 
   if (source === "direct_matter") return display ? `${display} - Direct Matter` : "Direct Matter";
   if (display && display.startsWith("BRL")) {
-    if (display === "BRL30148") return `${display} - Lawsuit`;
+    if (/^\d{4}\.\d{2}\.\d{5}$/.test(display)) return `${display} - Lawsuit`;
     return `${display} - Matter`;
   }
   if (textValue(row?.documentKey).toLowerCase().includes("settlement")) return "Settlement / Local";
@@ -83,7 +83,7 @@ function barshMatterHref(row: any): string {
   const snap = rowSnapshot(row);
   const display = textValue(row?.masterDisplayNumber || snap.directMatterDisplayNumber || snap.masterDisplayNumber);
 
-  if (display.startsWith("BRL30148")) {
+  if (/^\d{4}\.\d{2}\.\d{5}/.test(display)) {
     return `/matters?master=${encodeURIComponent(textValue(row?.masterLawsuitId))}`;
   }
 

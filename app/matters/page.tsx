@@ -6619,7 +6619,7 @@ function masterDocumentPreviewText(value: unknown): string {
         await waitForWordWebAutosaveBeforeFinalize();
       }
 
-      setMasterSettlementUploadNotice("Uploading finalized PDF to Clio matter BRL30148");
+      setMasterSettlementUploadNotice("Uploading finalized PDF to Barsh Matters Master Repository lawsuit storage.");
 
       const response = await fetch("/api/settlements/documents-finalize-local", {
         method: "POST",
@@ -6652,7 +6652,7 @@ function masterDocumentPreviewText(value: unknown): string {
 
       const settlementUploadedCount = Array.isArray(json.uploaded) ? json.uploaded.length : 0;
       const settlementSkippedCount = Array.isArray(json.skipped) ? json.skipped.length : 0;
-      const settlementClioDisplayNumber = json?.clioUploadTarget?.displayNumber || "BRL30148";
+      const settlementClioDisplayNumber = json?.clioUploadTarget?.displayNumber || json?.masterLawsuitId || "Barsh Matters Master Repository";
       const settlementUploadMessage =
         settlementUploadedCount > 0
           ? `Uploaded finalized PDF to Clio matter ${settlementClioDisplayNumber}`

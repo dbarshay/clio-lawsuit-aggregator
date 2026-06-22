@@ -1847,8 +1847,17 @@ export default function Home() {
   }
 
   function normalizeBrlEntryInput(v: string) {
-    const digits = clean(v).replace(/^BRL/i, "").replace(/[^0-9]/g, "");
-    return digits;
+    const raw = String(v || "").trim().toUpperCase();
+
+    if (!raw) return "";
+
+    const full = raw.match(/^BRL[_\\s-]?(\\d{4})(\\d{5})$/);
+    if (full) return `BRL_${full[1]}${full[2]}`;
+
+    const digits = raw.replace(/\\D+/g, "");
+    if (digits.length === 9) return `BRL_${digits}`;
+
+    return raw.replace(/[^A-Z0-9_]+/g, "");
   }
 
   function normalizeLawsuitNumberEntryInput(v: string) {
@@ -1976,8 +1985,7 @@ export default function Home() {
   }
 
   async function runBrlNumberSearch() {
-    const digits = normalizeBrlEntryInput(brlNumberInput);
-    const display = digits ? `BRL${digits}` : "";
+    const display = normalizeBrlEntryInput(brlNumberInput);
 
     setLoading(true);
     setSearched(false);
@@ -1990,7 +1998,7 @@ export default function Home() {
 
     try {
       if (!display) {
-        throw new Error("Enter the BRL number digits.");
+        throw new Error("Enter the Barsh Matters file number, e.g., BRL_202600001 or 202600001.");
       }
 
       const rows = await fetchMatterByDisplayNumber(display);
@@ -2375,22 +2383,19 @@ export default function Home() {
 
             <div style={knownInformationGridStyle}>
               <label style={structuredFieldStyle}>
-                <span style={labelStyle}>BRL Number</span>
-                <div style={brlInputWrapStyle}>
-                  <span style={brlPrefixStyle}>BRL</span>
-                  <input
-                    value={brlNumberInput}
-                    onChange={(e) => setBrlNumberInput(normalizeBrlEntryInput(e.target.value))}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") void runBrlNumberSearch();
-                    }}
-                    placeholder="30095"
-                    className="barsh-brl-direct-input"
-                    style={prefixedInputStyle}
-                    inputMode="numeric"
-                    autoFocus
-                  />
-                </div>
+                <span style={labelStyle}>Barsh Matters File Number</span>
+                <input
+                  value={brlNumberInput}
+                  onChange={(e) => setBrlNumberInput(normalizeBrlEntryInput(e.target.value))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void runBrlNumberSearch();
+                  }}
+                  placeholder="BRL_202600001 or 202600001"
+                  className="barsh-brl-direct-input"
+                  style={inputStyle}
+                  inputMode="text"
+                  autoFocus
+                />
               </label>
 
               <label style={structuredFieldStyle}>

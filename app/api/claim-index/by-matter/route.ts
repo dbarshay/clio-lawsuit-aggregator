@@ -41,10 +41,14 @@ export async function GET(request: Request) {
       url.searchParams.get("displayNumber") ||
       url.searchParams.get("matterDisplayNumber")
     );
-    const normalizedDisplayNumber =
-      displayNumber && /^\d+$/.test(displayNumber)
-        ? `BRL${displayNumber}`
-        : displayNumber;
+    const normalizedDisplayNumber = (() => {
+      const cleaned = displayNumber.toUpperCase();
+      const full = cleaned.match(/^BRL[_\s-]?(\d{4})(\d{5})$/);
+      if (full) return `BRL_${full[1]}${full[2]}`;
+      const digits = cleaned.replace(/\D+/g, "");
+      if (digits.length === 9) return `BRL_${digits}`;
+      return cleaned;
+    })();
 
     if ((!Number.isFinite(matterId) || matterId <= 0) && !displayNumber) {
       return jsonError("A valid matterId or displayNumber is required.");

@@ -572,7 +572,9 @@
     "smoke:phase41a-direct-individual-folder-resolution-no-upload": "node scripts/smoke-phase41a-direct-individual-folder-resolution-no-upload.cjs",
     "verify:phase41b-live-direct-individual-exact-child-reuse-no-upload-safety": "node scripts/verify-phase41b-live-direct-individual-exact-child-reuse-no-upload-safety.cjs",
     "smoke:phase41b-live-direct-individual-exact-child-reuse-no-upload": "node scripts/smoke-phase41b-live-direct-individual-exact-child-reuse-no-upload.cjs",
-    "verify:phase41c-direct-individual-finalize-wiring-design-safety": "node scripts/verify-phase41c-direct-individual-finalize-wiring-design-safety.cjs"
+    "verify:phase41c-direct-individual-finalize-wiring-design-safety": "node scripts/verify-phase41c-direct-individual-finalize-wiring-design-safety.cjs",
+    "smoke:phase41d-direct-individual-finalize-disabled-guard-no-upload": "node scripts/smoke-phase41d-direct-individual-finalize-disabled-guard-no-upload.cjs",
+    "verify:phase41d-direct-individual-finalize-disabled-guard-safety": "node scripts/verify-phase41d-direct-individual-finalize-disabled-guard-safety.cjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

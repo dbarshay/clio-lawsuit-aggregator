@@ -461,6 +461,17 @@ function buildDirectMatterSingleMasterFinalizePayload(params: DirectMatterSingle
   };
 }
 
+function buildDirectMatterSingleMasterFinalizeDryRunPayload(
+  params: Omit<DirectMatterSingleMasterDocumentPayloadParams, "confirmUpload" | "singleMasterDryRun" | "singleMasterResolveFolders">
+) {
+  return buildDirectMatterSingleMasterFinalizePayload({
+    ...params,
+    confirmUpload: false,
+    singleMasterDryRun: true,
+    singleMasterResolveFolders: true,
+  });
+}
+
 export default function FilteredMattersPage() {
   const [kind, setKind] = useState<FilterKind | "">("");
   const [workflowKind, setWorkflowKind] = useState<WorkflowKind>("");

@@ -431,6 +431,7 @@ type DirectMatterSingleMasterDocumentPayloadParams = {
   confirmUpload?: boolean;
   singleMasterDryRun?: boolean;
   singleMasterResolveFolders?: boolean;
+  allowDuplicateUploads?: boolean;
 };
 
 function buildDirectMatterSingleMasterWorkingDocxPayload(params: DirectMatterSingleMasterDocumentPayloadParams) {
@@ -4875,6 +4876,8 @@ function masterSettlementDateFiledValue(): string {
 
   // Phase 43E static/no-server/no-upload guarded direct matter dry-run control.
   const directMatterSingleMasterDryRunControlEnabled = false;
+  const directMatterSingleMasterLiveFinalizeControlEnabled =
+    String(process.env.NEXT_PUBLIC_BARSH_DIRECT_MATTER_CLIO_LIVE_FINALIZE_ENABLED || "").trim() === "1";
 
   async function handleDirectMatterSingleMasterDryRunControl(params: DirectMatterSingleMasterDocumentPayloadParams) {
     return runDirectMatterSingleMasterFinalizeDryRunFromUi({
@@ -4885,7 +4888,36 @@ function masterSettlementDateFiledValue(): string {
     });
   }
 
-  function renderDirectMatterSingleMasterDryRunControl(params: DirectMatterSingleMasterDocumentPayloadParams) {
+
+  async function handleDirectMatterSingleMasterLiveFinalizeControl(params: DirectMatterSingleMasterDocumentPayloadParams) {
+    const payload = buildDirectMatterSingleMasterFinalizePayload({
+      ...params,
+      confirmUpload: true,
+      singleMasterDryRun: false,
+      singleMasterResolveFolders: true,
+      allowDuplicateUploads: false,
+    });
+
+    const response = await fetch("/api/documents/finalize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...payload,
+        uiOriginatedDirectMatterLiveFinalize: true,
+      }),
+    });
+
+    const json = await response.json().catch(() => null);
+    if (!response.ok || !json?.ok) {
+      window.alert(json?.error || "Direct matter Clio finalization failed.");
+      return { ok: false, responseStatus: response.status, payload, result: json };
+    }
+
+    window.alert("Direct matter finalized to Clio storage.");
+    return { ok: true, responseStatus: response.status, payload, result: json };
+  }
+
+function renderDirectMatterSingleMasterDryRunControl(params: DirectMatterSingleMasterDocumentPayloadParams) {
     if (!directMatterSingleMasterDryRunControlEnabled) return null;
 
     return (
@@ -4910,7 +4942,33 @@ function masterSettlementDateFiledValue(): string {
   }
 
 
-  function directMatterSingleMasterDryRunSurfaceRow(): MatterRow | null {
+
+  function renderDirectMatterSingleMasterLiveFinalizeControl(params: DirectMatterSingleMasterDocumentPayloadParams) {
+    if (!directMatterSingleMasterLiveFinalizeControlEnabled) return null;
+
+    return (
+      <button
+        type="button"
+        data-phase44d-direct-matter-live-finalize-control="true"
+        onClick={() => void handleDirectMatterSingleMasterLiveFinalizeControl(params)}
+        title="Owner/admin only. Server-side admin authorization is required before direct matter live finalize can upload to Clio storage."
+        style={{
+          border: "1px solid #1e3a8a",
+          borderRadius: 999,
+          background: "#1e3a8a",
+          color: "white",
+          fontSize: 12,
+          fontWeight: 950,
+          padding: "6px 10px",
+          cursor: "pointer",
+        }}
+      >
+        Admin Finalize Direct Matter to Clio
+      </button>
+    );
+  }
+
+function directMatterSingleMasterDryRunSurfaceRow(): MatterRow | null {
     const directRows = rows.filter((row: any) => row && !row.isMaster && !row.is_master);
     return directRows[0] || null;
   }
@@ -4921,14 +4979,14 @@ function masterSettlementDateFiledValue(): string {
     workingDocumentKey: string;
   };
 
-  function renderDirectMatterSingleMasterDryRunControlForRow(row: MatterRow, selection: DirectMatterSingleMasterDryRunSelection) {
+    function renderDirectMatterSingleMasterDryRunControlForRow(row: MatterRow, selection: DirectMatterSingleMasterDryRunSelection) {
     const selectedDocumentKey = String(selection.selectedDocumentKey || "").trim();
     const workingDocumentDriveItemId = String(selection.workingDocumentDriveItemId || "").trim();
     const workingDocumentKey = String(selection.workingDocumentKey || "").trim();
 
     if (!selectedDocumentKey || !workingDocumentDriveItemId || !workingDocumentKey) return null;
 
-    return renderDirectMatterSingleMasterDryRunControl({
+    const params: DirectMatterSingleMasterDocumentPayloadParams = {
       directMatterId: row.id,
       directMatterDisplayNumber: row.displayNumber,
       documentKeys: [selectedDocumentKey],
@@ -4937,10 +4995,18 @@ function masterSettlementDateFiledValue(): string {
       confirmUpload: false,
       singleMasterDryRun: true,
       singleMasterResolveFolders: true,
-    });
+      allowDuplicateUploads: false,
+    };
+
+    return (
+      <>
+        {renderDirectMatterSingleMasterDryRunControl(params)}
+        {renderDirectMatterSingleMasterLiveFinalizeControl(params)}
+      </>
+    );
   }
 
-  function masterDocumentPreviewText(value: unknown): string {
+function masterDocumentPreviewText(value: unknown): string {
     return String(value ?? "").trim();
   }
 
@@ -5047,7 +5113,7 @@ function masterSettlementDateFiledValue(): string {
     setMasterDocumentDraftCreateLoading(false);
     setMasterDocumentDeliveryToOverride("");
     setMasterDocumentGenerationPopupOpen(true);
-    
+
     await Promise.all([
       loadMasterDocumentDataPreview({ mode, settlementRecordId }),
       loadMasterDocumentRepositoryTemplates({ mode }),
@@ -7157,7 +7223,7 @@ function masterSettlementDateFiledValue(): string {
               const threadExpanded = expandedMasterEmailThreadId === threadKey;
               const messages = Array.isArray(thread.messages) ? thread.messages : [];
               const anyMasterMessageOutlookLinkAvailable = messages.some((message: any) => Boolean(clean(message.webLink)));
-              
+
 
               return (
                 <article key={threadKey} style={{ display: "grid", gap: 10, padding: 14, borderRadius: 16, border: "1px solid #e2e8f0", background: "#ffffff", boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)" }}>
@@ -7850,7 +7916,7 @@ function masterSettlementDateFiledValue(): string {
                 >
                   <h3 style={{ margin: 0, fontSize: 18 }}>Preview PDF</h3>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    
+
                     {actionButton(masterFinalizeUploadLoading || masterDocumentFinalizing ? "Finalizing..." : "Finalize Document", () => finalizeMasterDocumentFromStep2(displayedSelectedTemplate), masterFinalizeUploadLoading || masterDocumentFinalizing)}
                   </div>
                 </div>
@@ -8011,7 +8077,7 @@ function masterSettlementDateFiledValue(): string {
             )}
 
 
-            
+
             <section
               style={{
                 border: "1px solid #e5e7eb",
@@ -8064,7 +8130,7 @@ function masterSettlementDateFiledValue(): string {
               )}
             </section>
 
-            
+
             {masterFinalizePreview && (
               <section
                 style={{
@@ -8136,7 +8202,7 @@ function masterSettlementDateFiledValue(): string {
               </section>
             )}
 
-            
+
 
             {masterSettlementUploadNotice && (
               <section
@@ -8317,7 +8383,7 @@ function masterSettlementDateFiledValue(): string {
               </div>
             )}
 
-            
+
             {masterDocumentPrintQueueResult && (
               <section
                 style={{
@@ -8345,7 +8411,7 @@ function masterSettlementDateFiledValue(): string {
               </section>
             )}
 
-            
+
             {masterDocumentDataPreview?.error && (
               <div style={{ color: "#991b1b", fontWeight: 900 }}>
                 Error: {masterDocumentPreviewText(masterDocumentDataPreview.error)}
@@ -9968,8 +10034,8 @@ function masterSettlementDateFiledValue(): string {
                   <div style={masterWorkspaceCardStyle}>
                     <div style={masterWorkspaceCardLabelStyle}>Next UI Step</div>
                     <div style={masterWorkspaceCardTextStyle}>
-                      
-      
+
+
               "Move settlement close preview into this Close Paid Settlements workspace."
                     </div>
                   </div>
@@ -12835,7 +12901,7 @@ function masterSettlementDateFiledValue(): string {
                     position: "fixed",
                     top: 104,
                     left: "50%",
-                    
+
                     width: "min(1120px, 96vw)",
                     maxHeight: "calc(100vh - 178px)",
                     overflowY: "auto",

@@ -1,28 +1,53 @@
 const fs = require("fs");
 const path = require("path");
-let failed = false;
-const pass = (m) => console.log("PASS: " + m);
-const fail = (m) => { failed = true; console.error("FAIL: " + m); };
-const root = process.cwd();
-const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
-const exists = (p) => fs.existsSync(path.join(root, p));
-function contains(label, text, token) { text.includes(token) ? pass(label) : fail(label + " missing token: " + token); }
-function notContains(label, text, token) { !text.includes(token) ? pass(label) : fail(label + " contains forbidden token: " + token); }
 
-const docPath = "docs/clio-storage-refactor/phase43e-explicit-direct-matter-ui-dry-run-control-smoke.md";
-for (const f of [
-  docPath,
-  "app/matters/page.tsx",
-  "scripts/smoke-phase43e-explicit-direct-matter-ui-dry-run-control.cjs",
-  "package.json",
-]) {
-  exists(f) ? pass("required Phase 43E file exists: " + f) : fail("missing required Phase 43E file: " + f);
+let failed = false;
+function pass(message) {
+  console.log(`PASS: ${message}`);
+}
+function fail(message) {
+  failed = true;
+  console.error(`FAIL: ${message}`);
+}
+function requiredFile(file) {
+  if (fs.existsSync(path.join(process.cwd(), file))) pass(`required Phase 43E file exists: ${file}`);
+  else fail(`required Phase 43E file missing: ${file}`);
+}
+function contains(label, source, token) {
+  if (source.includes(token)) pass(label);
+  else fail(`${label} missing token: ${token}`);
+}
+function notContains(label, source, token) {
+  if (!source.includes(token)) pass(label);
+  else fail(`${label} contains forbidden token: ${token}`);
+}
+function functionBlock(source, name) {
+  const start = source.indexOf(`function ${name}`);
+  if (start < 0) return "";
+  const brace = source.indexOf("{", start);
+  if (brace < 0) return "";
+  let depth = 0;
+  for (let i = brace; i < source.length; i += 1) {
+    if (source[i] === "{") depth += 1;
+    if (source[i] === "}") {
+      depth -= 1;
+      if (depth === 0) return source.slice(start, i + 1);
+    }
+  }
+  return "";
 }
 
-const doc = read(docPath);
-const page = read("app/matters/page.tsx");
-const smoke = read("scripts/smoke-phase43e-explicit-direct-matter-ui-dry-run-control.cjs");
-const pkg = JSON.parse(read("package.json"));
+const docPath = "docs/clio-storage-refactor/phase43e-explicit-direct-matter-ui-dry-run-control-smoke.md";
+const pagePath = "app/matters/page.tsx";
+const smokePath = "scripts/smoke-phase43e-explicit-direct-matter-ui-dry-run-control.cjs";
+const pkgPath = "package.json";
+
+for (const file of [docPath, pagePath, smokePath, pkgPath]) requiredFile(file);
+
+const doc = fs.readFileSync(path.join(process.cwd(), docPath), "utf8");
+const page = fs.readFileSync(path.join(process.cwd(), pagePath), "utf8");
+const smoke = fs.readFileSync(path.join(process.cwd(), smokePath), "utf8");
+const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), pkgPath), "utf8"));
 
 for (const token of [
   "Phase 43E",
@@ -32,9 +57,9 @@ for (const token of [
   "singleMasterDryRun: true",
   "singleMasterResolveFolders: true",
   "does not include `masterLawsuitId`",
-  "static/no-server/no-upload"
+  "static/no-server/no-upload",
 ]) {
-  contains("doc contains " + token, doc, token);
+  contains(`doc contains ${token}`, doc, token);
 }
 
 for (const token of [
@@ -46,36 +71,38 @@ for (const token of [
   "runDirectMatterSingleMasterFinalizeDryRunFromUi",
   "confirmUpload: false",
   "singleMasterDryRun: true",
-  "singleMasterResolveFolders: true"
+  "singleMasterResolveFolders: true",
 ]) {
-  contains("matters page contains Phase 43E control token " + token, page, token);
+  contains(`matters page contains Phase 43E control token ${token}`, page, token);
 }
 
-const controlStart = page.indexOf("const directMatterSingleMasterDryRunControlEnabled = false");
-const controlEndCandidates = [
-  page.indexOf("\n  function masterDocumentPreviewText", controlStart + 10),
-  page.indexOf("\n  async function loadMasterDocumentDataPreview", controlStart + 10),
-].filter((index) => index > controlStart);
-const controlEnd = controlEndCandidates.length ? Math.min(...controlEndCandidates) : Math.min(page.length, controlStart + 2600);
-const controlBlock = controlStart >= 0 ? page.slice(controlStart, controlEnd) : "";
-contains("control block captured", controlBlock, "renderDirectMatterSingleMasterDryRunControl");
-contains("control block is guarded off by default", controlBlock, "directMatterSingleMasterDryRunControlEnabled = false");
-contains("control block calls dry-run handler", controlBlock, "handleDirectMatterSingleMasterDryRunControl(params)");
-contains("control block forces confirmUpload false", controlBlock, "confirmUpload: false");
-contains("control block forces singleMasterDryRun true", controlBlock, "singleMasterDryRun: true");
-contains("control block forces folder resolution true", controlBlock, "singleMasterResolveFolders: true");
+const controlBlock = functionBlock(page, "renderDirectMatterSingleMasterDryRunControl");
+if (!controlBlock) fail("control block captured");
+else pass("control block captured");
+
+contains("control block is guarded off by default", controlBlock, "directMatterSingleMasterDryRunControlEnabled");
+contains("control block calls dry-run handler", controlBlock, "handleDirectMatterSingleMasterDryRunControl");
 notContains("control block does not include masterLawsuitId", controlBlock, "masterLawsuitId");
 notContains("control block does not call working-docx", controlBlock, "/api/documents/working-docx");
 notContains("control block does not call Clio upload helper", controlBlock, "uploadBufferToClioMatterDocuments");
 notContains("control block does not hard-code confirmUpload true", controlBlock, "confirmUpload: true");
 
+const dryRunHandlerBlock = functionBlock(page, "handleDirectMatterSingleMasterDryRunControl");
+if (!dryRunHandlerBlock) fail("dry-run handler block captured");
+else pass("dry-run handler block captured");
+contains("dry-run handler forces confirmUpload false", dryRunHandlerBlock, "confirmUpload: false");
+contains("dry-run handler forces singleMasterDryRun true", dryRunHandlerBlock, "singleMasterDryRun: true");
+contains("dry-run handler forces folder resolution true", dryRunHandlerBlock, "singleMasterResolveFolders: true");
+notContains("dry-run handler does not include masterLawsuitId", dryRunHandlerBlock, "masterLawsuitId");
+notContains("dry-run handler does not hard-code confirmUpload true", dryRunHandlerBlock, "confirmUpload: true");
+
 for (const token of [
   "runDirectMatterSingleMasterFinalizeDryRunFromUi",
   "buildDirectMatterSingleMasterFinalizeDryRunPayload(params)",
-  'fetch("/api/documents/finalize"',
-  "uiOriginatedDirectMatterDryRun: true"
+  "fetch(\"/api/documents/finalize\"",
+  "uiOriginatedDirectMatterDryRun: true",
 ]) {
-  contains("Phase 43D handler retained " + token, page, token);
+  contains(`Phase 43D handler retained ${token}`, page, token);
 }
 
 for (const token of [
@@ -84,13 +111,14 @@ for (const token of [
   "handleDirectMatterSingleMasterDryRunControl",
   "renderDirectMatterSingleMasterDryRunControl",
   "confirmUpload: false",
-  "singleMasterDryRun: true"
+  "singleMasterDryRun: true",
 ]) {
-  contains("smoke contains " + token, smoke, token);
+  contains(`smoke contains ${token}`, smoke, token);
 }
 
 contains("package Phase 43E verifier registered", JSON.stringify(pkg.scripts || {}), "verify:phase43e-explicit-direct-matter-ui-dry-run-control-safety");
 contains("package Phase 43E smoke registered", JSON.stringify(pkg.scripts || {}), "smoke:phase43e-explicit-direct-matter-ui-dry-run-control");
+
 console.log("CONTRACT: Phase 43E adds a guarded explicit UI dry-run control path only; no upload path is enabled.");
 console.log("RESULT: Phase 43E explicit direct matter UI dry-run control safety verifier");
 if (failed) process.exit(1);

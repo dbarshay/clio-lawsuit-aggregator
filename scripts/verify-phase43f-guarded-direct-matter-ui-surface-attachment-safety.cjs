@@ -33,7 +33,7 @@ for (const token of [
 
 for (const token of [
   "renderDirectMatterSingleMasterDryRunControlForRow",
-  "renderDirectMatterSingleMasterDryRunControl({",
+  "renderDirectMatterSingleMasterDryRunControl",
   "directMatterId: row.id",
   "directMatterDisplayNumber: row.displayNumber",
   "documentKeys: [selectedDocumentKey]",

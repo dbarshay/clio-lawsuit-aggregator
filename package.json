@@ -624,7 +624,9 @@
     "verify:phase45b-finalized-storage-identity-filenames": "node scripts/verify-phase45b-finalized-storage-identity-filenames.cjs",
     "verify:phase45j-normal-user-direct-finalize-access": "node scripts/verify-phase45j-normal-user-direct-finalize-access.cjs",
     "verify:ui-single-master-live-finalize-payload-safety": "node scripts/verify-ui-single-master-live-finalize-payload-safety.cjs",
-    "verify:working-docx-single-master-preview-propagation": "node scripts/verify-working-docx-single-master-preview-propagation.cjs"
+    "verify:working-docx-single-master-preview-propagation": "node scripts/verify-working-docx-single-master-preview-propagation.cjs",
+    "smoke:production-single-master-finalize-no-upload-contract": "node scripts/smoke-production-single-master-finalize-no-upload-contract.cjs",
+    "verify:production-ui-single-master-finalize-bundle-tokens": "node scripts/verify-production-ui-single-master-finalize-bundle-tokens.cjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

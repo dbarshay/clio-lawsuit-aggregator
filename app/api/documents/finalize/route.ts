@@ -323,6 +323,14 @@ export async function POST(req: NextRequest) {
     confirmUpload === true &&
     singleMasterDryRun !== true;
 
+  const directMatterLiveFinalizeServerEnabled =
+    String(process.env.BARSH_DIRECT_MATTER_CLIO_LIVE_FINALIZE_ENABLED || "").trim() === "1";
+
+  if (isDirectMatterLiveFinalizeRequest && !directMatterLiveFinalizeServerEnabled) {
+    return adminUnauthorizedJson(403);
+  }
+
+
   if (isDirectMatterLiveFinalizeRequest && !isAdminRequestAuthorized(req as any)) {
     return adminUnauthorizedJson(403);
   }

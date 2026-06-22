@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { clioFetch } from "@/lib/clio";
-import {
-  listClioMatterDocuments,
-} from "@/lib/clioDocumentUpload";
 
 export const runtime = "nodejs";
 
@@ -20,77 +16,9 @@ function numberOrNull(value: unknown): number | null {
 function normalizeBrl(value: unknown): string {
   const raw = clean(value).toUpperCase();
   if (!raw) return "";
-  if (/^BRL\d+$/.test(raw)) return raw;
-  if (/^\d+$/.test(raw)) return `BRL${raw}`;
+  if (/^BRL_\d{9}$/.test(raw)) return raw;
+  if (/^\d{9}$/.test(raw)) return `BRL_${raw}`;
   return raw;
-}
-
-async function readClioJson(res: Response, fallback: string): Promise<any> {
-  const text = await res.text();
-  let json: any = null;
-
-  try {
-    json = text ? JSON.parse(text) : null;
-  } catch {
-    json = null;
-  }
-
-  if (!res.ok) {
-    throw new Error(
-      `${fallback}: ${res.status} ${res.statusText}${json ? ` ${JSON.stringify(json)}` : text ? ` ${text}` : ""}`
-    );
-  }
-
-  return json;
-}
-
-async function resolveClioMatterByDisplayNumber(displayNumberInput: string) {
-  const displayNumber = normalizeBrl(displayNumberInput);
-
-  if (!displayNumber) {
-    return {
-      ok: false,
-      displayNumber: "",
-      clioMatterId: null,
-      clioDisplayNumber: "",
-      error: "Missing Clio display number.",
-    };
-  }
-
-  const params = new URLSearchParams();
-  params.set("query", displayNumber);
-  params.set("limit", "20");
-  params.set("fields", "id,display_number,description");
-
-  const res = await clioFetch(`/matters.json?${params.toString()}`);
-  const json = await readClioJson(res, `Clio matter lookup failed for ${displayNumber}`);
-  const rows = Array.isArray(json?.data) ? json.data : [];
-
-  const exact = rows
-    .map((row: any) => ({
-      id: numberOrNull(row?.id),
-      displayNumber: normalizeBrl(row?.display_number),
-      description: clean(row?.description),
-    }))
-    .find((row: any) => row.id && row.displayNumber === displayNumber);
-
-  if (!exact?.id) {
-    return {
-      ok: false,
-      displayNumber,
-      clioMatterId: null,
-      clioDisplayNumber: "",
-      error: `Could not resolve Clio matter id for ${displayNumber}.`,
-    };
-  }
-
-  return {
-    ok: true,
-    displayNumber,
-    clioMatterId: exact.id,
-    clioDisplayNumber: exact.displayNumber,
-    error: "",
-  };
 }
 
 function safeFilePart(value: unknown, maxLength = 120): string {
@@ -250,15 +178,13 @@ export async function GET(req: NextRequest) {
         directMatterDisplayNumber ||
         (directMatterId ? `BRL${directMatterId}` : "")
     );
-    const clioResolution = singleMasterDirectStorage
-      ? {
-          ok: true,
-          displayNumber: resolvedDisplay,
-          clioMatterId: null,
-          clioDisplayNumber: resolvedDisplay,
-          error: "",
-        }
-      : await resolveClioMatterByDisplayNumber(resolvedDisplay);
+    const clioResolution = {
+      ok: true,
+      displayNumber: resolvedDisplay,
+      clioMatterId: null,
+      clioDisplayNumber: resolvedDisplay,
+      error: "",
+    };
 
     const validation = {
       warnings: [] as string[],
@@ -266,12 +192,13 @@ export async function GET(req: NextRequest) {
       canGenerate: true,
     };
 
-    if (!singleMasterDirectStorage && (!clioResolution.ok || !clioResolution.clioMatterId)) {
-      validation.blockingErrors.push(clioResolution.error || "Could not resolve direct matter Clio upload target.");
+    if (!singleMasterDirectStorage) {
+      validation.blockingErrors.push("Legacy Clio matter-shell direct finalization preview is disabled. Use single-master repository storage.");
       validation.canGenerate = false;
     }
 
-    const canGenerate = Boolean(validation.canGenerate && (singleMasterDirectStorage || clioResolution.clioMatterId));
+    const canGenerate = Boolean(validation.canGenerate && singleMasterDirectStorage);
+
     const baseName = directBaseName(packet, resolvedDisplay);
     const plannedDocuments = await buildStoredDbDocxTemplateDocuments(baseName, canGenerate);
 
@@ -284,11 +211,7 @@ export async function GET(req: NextRequest) {
     let existingDocumentLookupError = "";
 
     if (canGenerate && clioResolution.clioMatterId) {
-      try {
-        existingClioDocuments = await listClioMatterDocuments(Number(clioResolution.clioMatterId));
-      } catch (err: any) {
-        existingDocumentLookupError = err?.message || "Could not check existing Clio documents.";
-      }
+      existingDocumentLookupError = "Legacy direct Clio matter duplicate lookup is disabled under single-master storage.";
     }
 
     const existingFilenames = new Set(
@@ -300,7 +223,7 @@ export async function GET(req: NextRequest) {
       const alreadyExists = existingFilenames.has(filename.toLowerCase());
       return {
         ...doc,
-        alreadyExistsInClio: alreadyExists,
+        alreadyExistsInRepository: alreadyExists,
         wouldUploadToClio: Boolean(doc.wouldUploadToClio && !alreadyExists),
         duplicateUploadBlocked: alreadyExists,
       };
@@ -313,7 +236,7 @@ export async function GET(req: NextRequest) {
       directMatterDisplayNumber: resolvedDisplay,
       uploadTargetMode: "direct-matter",
       clioUploadTarget: {
-        type: singleMasterDirectStorage ? "single-master-direct-individual-storage" : "direct-matter-documents-tab",
+        type: "single-master-direct-individual-storage",
         directMatterFileNumber: singleMasterDirectStorage ? resolvedDisplay : null,
         matterDisplayNumber: resolvedDisplay,
         matterId: clioResolution.clioMatterId,
@@ -349,7 +272,7 @@ export async function GET(req: NextRequest) {
         documentsGenerated: false,
         printQueueChanged: false,
       },
-      note: "Direct matter finalization preview mirrors the lawsuit document workflow using the direct matter packet and direct matter Clio Documents tab.",
+      note: "Direct matter finalization preview mirrors the lawsuit document workflow using Barsh Matters Master Repository storage.",
     });
   } catch (err: any) {
     return NextResponse.json(

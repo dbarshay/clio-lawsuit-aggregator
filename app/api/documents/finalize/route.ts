@@ -168,6 +168,7 @@ async function loadFinalizePreview(req: NextRequest, params: {
   uploadTargetMode?: string;
   directMatterId?: string | number | null;
   directMatterDisplayNumber?: string | null;
+  useSingleMasterClioStorage?: boolean;
 }) {
   const previewUrl = new URL("/api/documents/finalize-preview", req.nextUrl.origin);
   previewUrl.searchParams.set("masterLawsuitId", params.masterLawsuitId);
@@ -182,6 +183,10 @@ async function loadFinalizePreview(req: NextRequest, params: {
 
   if (clean(params.directMatterDisplayNumber)) {
     previewUrl.searchParams.set("directMatterDisplayNumber", clean(params.directMatterDisplayNumber));
+  }
+
+  if (params.useSingleMasterClioStorage) {
+    previewUrl.searchParams.set("singleMasterClioStorage", "1");
   }
 
   const previewRes = await fetch(previewUrl, {
@@ -217,6 +222,7 @@ function buildSingleMasterFinalizeTargetInput(preview: any, params: {
   uploadTargetMode?: string;
   directMatterId?: string;
   directMatterDisplayNumber?: string;
+  singleMasterDryRun?: boolean;
 }): ClioStorageTargetInput {
   const target = preview?.clioUploadTarget || {};
   const isDirectMatter = params.uploadTargetMode === "direct-matter";
@@ -230,7 +236,10 @@ function buildSingleMasterFinalizeTargetInput(preview: any, params: {
         params.directMatterId
     );
 
-    if (process.env.CLIO_DIRECT_INDIVIDUAL_FINALIZE_TARGET_INPUT_ENABLED !== "1") {
+    if (
+      process.env.CLIO_DIRECT_INDIVIDUAL_FINALIZE_TARGET_INPUT_ENABLED !== "1" &&
+      !(params as any).singleMasterDryRun
+    ) {
       throw new Error(
         "Single-master Clio storage for direct/individual matters is blocked until CLIO_DIRECT_INDIVIDUAL_FINALIZE_TARGET_INPUT_ENABLED=1."
       );
@@ -422,6 +431,7 @@ export async function POST(req: NextRequest) {
             uploadTargetMode,
             directMatterId,
             directMatterDisplayNumber,
+            useSingleMasterClioStorage,
           });
     const validation = preview?.validation || {};
 
@@ -436,12 +446,23 @@ export async function POST(req: NextRequest) {
         uploadTargetMode,
         directMatterId,
         directMatterDisplayNumber,
+        singleMasterDryRun,
       });
 
       if (singleMasterDryRun) {
         const folderResolution = singleMasterResolveFolders
           ? await resolveClioMatterFolderWithGuard(singleMasterTargetInput)
-          : buildClioStorageFolderResolutionPreview(singleMasterTargetInput);
+          : {
+              ok: true,
+              previewOnly: true,
+              noClioCall: true,
+              noConfigRequired: true,
+              targetInput: singleMasterTargetInput,
+              plannedPath:
+                singleMasterTargetInput.storageTargetKind === "individual_matter"
+                  ? `Individual Matters / ${singleMasterTargetInput.directMatterFileNumber}`
+                  : `Lawsuits / ${singleMasterTargetInput.lawsuitId || singleMasterTargetInput.displayNumber}`,
+            };
 
         return NextResponse.json({
           ok: true,

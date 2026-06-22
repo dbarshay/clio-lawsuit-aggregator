@@ -268,11 +268,9 @@ export async function GET(req: NextRequest) {
   const blockingErrors: string[] = [];
   const hasMappedClioMasterMatter =
     Boolean(lawsuit?.clioMasterMatterId) || Boolean(clean(lawsuit?.clioMasterDisplayNumber));
+  const hasLocalOnlyLawsuit = Boolean(lawsuit?.masterLawsuitId);
 
   if (rows.length === 0) blockingErrors.push("No ClaimIndex rows found for MASTER_LAWSUIT_ID.");
-  if (masterRows.length === 0 && !hasMappedClioMasterMatter) {
-    blockingErrors.push("No master matter found for MASTER_LAWSUIT_ID.");
-  }
   if (masterRows.length > 1) blockingErrors.push("Multiple master matters found for MASTER_LAWSUIT_ID.");
   if (childRows.length === 0) blockingErrors.push("No child bill matters found for MASTER_LAWSUIT_ID.");
 
@@ -581,6 +579,23 @@ export async function GET(req: NextRequest) {
           claimNumber: master.claim_number_raw || master.claim_number_normalized || "",
           indexAaaNumber: master.index_aaa_number || "",
           status: master.status || "",
+          source: "claim-index-master-row",
+        }
+      : lawsuit
+      ? {
+          matterId: null,
+          id: null,
+          displayNumber: masterLawsuitId,
+          display_number: masterLawsuitId,
+          description: `Local-only Barsh Matters lawsuit ${masterLawsuitId}`,
+          localMasterLawsuitId: masterLawsuitId,
+          providerName: provider.value,
+          patientName: patient.value,
+          insurerName: insurer.value,
+          claimNumber: claimNumber.value,
+          indexAaaNumber: indexAaaNumber.value,
+          status: "",
+          source: "local-lawsuit-row",
         }
       : null,
 
@@ -593,6 +608,7 @@ export async function GET(req: NextRequest) {
       canGenerate: blockingErrors.length === 0,
       hasClaimIndexMasterMatter: masterRows.length > 0,
       hasMappedClioMasterMatter,
+      hasLocalOnlyLawsuit,
     },
 
     refresh: {

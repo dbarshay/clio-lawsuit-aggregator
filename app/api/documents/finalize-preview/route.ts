@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { clioFetch } from "@/lib/clio";
 import {
   findExistingClioDocumentsByFilename,
-  listClioMatterDocuments,
 } from "@/lib/clioDocumentUpload";
 
 export const runtime = "nodejs";
@@ -12,87 +10,6 @@ function clean(value: unknown): string {
   return String(value ?? "").trim();
 }
 
-function numberOrNull(value: unknown): number | null {
-  if (value === null || value === undefined || value === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
-
-function normalizeBrl(value: unknown): string {
-  const raw = clean(value).toUpperCase();
-  if (!raw) return "";
-  if (/^BRL\d+$/.test(raw)) return raw;
-  if (/^\d+$/.test(raw)) return `BRL${raw}`;
-  return raw;
-}
-
-async function readClioJson(res: Response, fallback: string): Promise<any> {
-  const text = await res.text();
-  let json: any = null;
-
-  try {
-    json = text ? JSON.parse(text) : null;
-  } catch {
-    json = null;
-  }
-
-  if (!res.ok) {
-    throw new Error(
-      `${fallback}: ${res.status} ${res.statusText}${json ? ` ${JSON.stringify(json)}` : text ? ` ${text}` : ""}`
-    );
-  }
-
-  return json;
-}
-
-async function resolveClioMatterByDisplayNumber(displayNumberInput: string) {
-  const displayNumber = normalizeBrl(displayNumberInput);
-
-  if (!displayNumber) {
-    return {
-      ok: false,
-      displayNumber: "",
-      clioMatterId: null,
-      clioDisplayNumber: "",
-      error: "Missing Clio display number.",
-    };
-  }
-
-  const params = new URLSearchParams();
-  params.set("query", displayNumber);
-  params.set("limit", "20");
-  params.set("fields", "id,display_number,description");
-
-  const res = await clioFetch(`/matters.json?${params.toString()}`);
-  const json = await readClioJson(res, `Clio matter lookup failed for ${displayNumber}`);
-  const rows = Array.isArray(json?.data) ? json.data : [];
-
-  const exact = rows
-    .map((row: any) => ({
-      id: numberOrNull(row?.id),
-      displayNumber: normalizeBrl(row?.display_number),
-      description: clean(row?.description),
-    }))
-    .find((row: any) => row.id && row.displayNumber === displayNumber);
-
-  if (!exact?.id) {
-    return {
-      ok: false,
-      displayNumber,
-      clioMatterId: null,
-      clioDisplayNumber: "",
-      error: `Could not resolve Clio matter id for ${displayNumber}.`,
-    };
-  }
-
-  return {
-    ok: true,
-    displayNumber,
-    clioMatterId: exact.id,
-    clioDisplayNumber: exact.displayNumber,
-    error: "",
-  };
-}
 
 function safeFilePart(value: unknown, maxLength = 120): string {
   return clean(value)
@@ -286,8 +203,9 @@ export async function GET(req: NextRequest) {
     }
 
     const uploadTargetMode = clean(req.nextUrl.searchParams.get("uploadTarget")) || "master-lawsuit";
-    const directMatterDisplayNumber = normalizeBrl(req.nextUrl.searchParams.get("directMatterDisplayNumber"));
-    const directMatterId = numberOrNull(req.nextUrl.searchParams.get("directMatterId"));
+    const useSingleMasterClioStorage = req.nextUrl.searchParams.get("singleMasterClioStorage") === "1";
+    const directMatterDisplayNumber = clean(req.nextUrl.searchParams.get("directMatterDisplayNumber")).toUpperCase();
+    const directMatterId = clean(req.nextUrl.searchParams.get("directMatterId"));
 
     const packet = await loadPacket(req, masterLawsuitId);
     const metadata = packet.metadata || {};
@@ -304,35 +222,44 @@ export async function GET(req: NextRequest) {
     const masterDisplayNumber = clean(masterMatter.displayNumber || masterLawsuitId);
 
     let uploadTarget = {
-      type: "master-matter-documents-tab",
-      matterId: masterMatterId,
+      type: useSingleMasterClioStorage ? "single-master-lawsuit-storage" : "legacy-master-matter-documents-tab",
+      matterId: useSingleMasterClioStorage ? null : masterMatterId,
       displayNumber: masterDisplayNumber,
       masterLawsuitId,
+      lawsuitId: masterLawsuitId,
       uploadTargetMode: "master-lawsuit",
       wouldUploadToClio: Boolean(validation.canGenerate),
+      singleMasterStorage: useSingleMasterClioStorage,
     };
 
     if (uploadTargetMode === "direct-matter") {
-      const directDisplay = directMatterDisplayNumber || (directMatterId ? `BRL${directMatterId}` : "");
-      const directResolution = await resolveClioMatterByDisplayNumber(directDisplay);
+      const numericDirect = directMatterId ? String(directMatterId).replace(/\D+/g, "") : "";
+      const directDisplay =
+        /^BRL_\d{9}$/.test(directMatterDisplayNumber)
+          ? directMatterDisplayNumber
+          : numericDirect
+            ? `BRL_${numericDirect.padStart(9, "0")}`
+            : directMatterDisplayNumber;
 
       uploadTarget = {
-        type: "direct-matter-documents-tab",
-        matterId: directResolution.clioMatterId,
-        displayNumber: directResolution.clioDisplayNumber || directDisplay,
+        type: useSingleMasterClioStorage ? "single-master-direct-individual-storage" : "legacy-direct-matter-documents-tab",
+        matterId: null,
+        displayNumber: directDisplay,
+        directMatterFileNumber: directDisplay,
         masterLawsuitId,
         uploadTargetMode: "direct-matter",
-        wouldUploadToClio: Boolean(validation.canGenerate && directResolution.ok && directResolution.clioMatterId),
+        wouldUploadToClio: Boolean(validation.canGenerate),
+        singleMasterStorage: useSingleMasterClioStorage,
       } as any;
 
-      if (!directResolution.ok || !directResolution.clioMatterId) {
+      if (!useSingleMasterClioStorage) {
         validation.blockingErrors = Array.isArray(validation.blockingErrors) ? validation.blockingErrors : [];
-        validation.blockingErrors.push(directResolution.error || "Could not resolve direct matter Clio upload target.");
+        validation.blockingErrors.push("Legacy Clio matter-shell finalization preview is disabled. Use single-master repository storage.");
         validation.canGenerate = false;
       }
     }
 
-    const canGenerate = Boolean(validation.canGenerate) && Boolean(uploadTarget.matterId);
+    const canGenerate = Boolean(validation.canGenerate) && Boolean(useSingleMasterClioStorage || uploadTarget.matterId);
     const baseName = buildBaseName(
       {
         ...packet,
@@ -350,13 +277,8 @@ export async function GET(req: NextRequest) {
     let existingClioDocuments: any[] = [];
     let existingDocumentLookupError = "";
 
-    if (canGenerate && uploadTarget.matterId) {
-      try {
-        existingClioDocuments = await listClioMatterDocuments(Number(uploadTarget.matterId));
-      } catch (err: any) {
-        existingDocumentLookupError =
-          err?.message || "Could not check existing Clio documents.";
-      }
+    if (canGenerate && uploadTarget.matterId && !useSingleMasterClioStorage) {
+      existingDocumentLookupError = "Legacy direct Clio matter duplicate lookup is disabled under single-master storage.";
     }
 
     const plannedDocumentsWithExistingStatus = plannedDocuments.map((document) => {
@@ -418,7 +340,7 @@ export async function GET(req: NextRequest) {
       plannedDocuments: plannedDocumentsWithExistingStatus,
 
       existingDocumentCheck: {
-        attempted: Boolean(canGenerate && uploadTarget.matterId),
+        attempted: Boolean(canGenerate && uploadTarget.matterId && !useSingleMasterClioStorage),
         error: existingDocumentLookupError,
         matchCount: existingUploadMatches.length,
         matches: existingUploadMatches,
@@ -440,7 +362,7 @@ export async function GET(req: NextRequest) {
       },
 
       note:
-        "Dry run only. This endpoint previews finalization/upload targets only. No files were persisted, no documents were uploaded to Clio, no Clio records were changed, no folders were created, and no database records were changed.",
+        "Dry run only. This endpoint previews finalization/upload targets only. No files were persisted, no documents were uploaded, no Clio records were changed, no folders were created, and no database records were changed.",
     });
   } catch (err: any) {
     return NextResponse.json(

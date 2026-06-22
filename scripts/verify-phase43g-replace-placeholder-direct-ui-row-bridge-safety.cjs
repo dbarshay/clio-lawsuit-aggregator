@@ -34,7 +34,7 @@ for (const token of [
   "const directRows = rows.filter",
   "!row.isMaster",
   "!row.is_master",
-  "return directRows[0] || rows[0] || null",
+  "return directRows[0] || null",
   "const phase43fDirectMatterDryRunRow = directMatterSingleMasterDryRunSurfaceRow()",
   "phase43fDirectMatterDryRunRow ? renderDirectMatterSingleMasterDryRunControlForRow(phase43fDirectMatterDryRunRow) : null",
   "phase43f-direct-matter-ui-surface-attachment",
@@ -49,7 +49,8 @@ const resolverBlock = resolverStart >= 0 && resolverEnd > resolverStart ? page.s
 contains("resolver block captured", resolverBlock, "directMatterSingleMasterDryRunSurfaceRow");
 contains("resolver block filters rows", resolverBlock, "rows.filter");
 contains("resolver block excludes master rows", resolverBlock, "!row.isMaster");
-contains("resolver block falls back safely", resolverBlock, "return directRows[0] || rows[0] || null");
+contains("resolver block returns a guarded direct row or null", resolverBlock, "return directRows[0] || null");
+notContains("resolver block no longer falls back to rows[0]", resolverBlock, "|| rows[0]");
 notContains("resolver block does not include masterLawsuitId", resolverBlock, "masterLawsuitId");
 notContains("resolver block does not call finalize", resolverBlock, "/api/documents/finalize");
 

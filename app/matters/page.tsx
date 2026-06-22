@@ -4912,7 +4912,7 @@ function masterSettlementDateFiledValue(): string {
 
   function directMatterSingleMasterDryRunSurfaceRow(): MatterRow | null {
     const directRows = rows.filter((row: any) => row && !row.isMaster && !row.is_master);
-    return directRows[0] || rows[0] || null;
+    return directRows[0] || null;
   }
 
   function renderDirectMatterSingleMasterDryRunControlForRow(row: MatterRow) {

@@ -318,7 +318,6 @@ export async function POST(req: NextRequest) {
 
 
   const isDirectMatterLiveFinalizeRequest =
-    useDirectFinalizePreview &&
     uploadTargetMode === "direct-matter" &&
     confirmUpload === true &&
     singleMasterDryRun !== true;

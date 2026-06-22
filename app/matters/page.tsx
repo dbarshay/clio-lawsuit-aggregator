@@ -6527,7 +6527,10 @@ function masterDocumentPreviewText(value: unknown): string {
         body: JSON.stringify({
           masterLawsuitId,
           uploadTargetMode: "master-lawsuit",
+          useSingleMasterClioStorage: true,
           confirmUpload: true,
+          singleMasterDryRun: false,
+          singleMasterResolveFolders: true,
           documentKeys: [selectedTemplate.key],
           workingDocumentDriveItemId: workingDocumentForFinalization?.driveItemId || "",
           workingDocumentKey: masterDocumentFinalizationResult?.selectedDocument?.key || selectedTemplate.key,

@@ -42,6 +42,66 @@ function pdfFilenameFromDocxFilename(value: unknown): string {
   return `${raw.replace(/\.[^.]+$/, "") || "Document"}.pdf`;
 }
 
+function sanitizeFinalizedFilenamePart(value: unknown): string {
+  return clean(value)
+    .replace(/[\/\\:*?"<>|]+/g, "-")
+    .replace(/\s+/g, " ")
+    .replace(/\s+-\s+/g, " - ")
+    .trim();
+}
+
+function stripLegacyLeadingStorageToken(value: unknown): string {
+  const name = sanitizeFinalizedFilenamePart(value);
+  const parts = name.split(/\s+-\s+/);
+  if (parts.length <= 1) return name;
+
+  const first = clean(parts[0]);
+  if (/^BRL\d+$/i.test(first) || /^BRL_\d{9}$/i.test(first) || /^\d{4}\.\d{2}\.\d{5}$/.test(first)) {
+    return parts.slice(1).join(" - ").trim();
+  }
+
+  return name;
+}
+
+function normalizeFinalizedGenerationLabel(value: unknown): string {
+  const label = sanitizeFinalizedFilenamePart(value);
+  if (!label) return "";
+  if (/^original$/i.test(label)) return "";
+  return label;
+}
+
+function finalizedGenerationSuffix(label: string, timestamp: string): string {
+  const cleanLabel = normalizeFinalizedGenerationLabel(label);
+  if (!cleanLabel) return "";
+
+  const stamp =
+    sanitizeFinalizedFilenamePart(timestamp)
+      .replace(/\.\d{3}Z$/i, "Z")
+      .replace(/:/g, "-") || "Generated";
+
+  return ` - ${cleanLabel} - Generated ${stamp}`;
+}
+
+function buildStorageIdentityFinalizedPdfFilename(params: {
+  sourceFilename: unknown;
+  storageIdentity: unknown;
+  generationLabel?: unknown;
+  generationTimestamp?: unknown;
+}): string {
+  const storageIdentity = sanitizeFinalizedFilenamePart(params.storageIdentity);
+  const sourcePdfFilename = pdfFilenameFromDocxFilename(params.sourceFilename);
+  const body = stripLegacyLeadingStorageToken(sourcePdfFilename).replace(/\.pdf$/i, "").trim();
+  const fallbackBody = body || "Finalized Document";
+  const generationSuffix = finalizedGenerationSuffix(
+    normalizeFinalizedGenerationLabel(params.generationLabel),
+    sanitizeFinalizedFilenamePart(params.generationTimestamp)
+  );
+
+  const prefix = storageIdentity || "UNKNOWN-STORAGE-IDENTITY";
+  return `${prefix} - ${fallbackBody}${generationSuffix}.pdf`;
+}
+
+
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.map((item) => clean(item)).filter(Boolean);
@@ -476,6 +536,32 @@ export async function POST(req: NextRequest) {
       ? preview.plannedDocuments
       : [];
 
+    const finalizedDocumentStorageIdentity =
+      uploadTargetMode === "direct-matter"
+        ? clean(
+            directMatterDisplayNumber ||
+              preview?.directMatterDisplayNumber ||
+              preview?.clioUploadTarget?.directMatterFileNumber ||
+              preview?.clioUploadTarget?.matterDisplayNumber ||
+              preview?.clioUploadTarget?.displayNumber
+          )
+        : clean(
+            masterLawsuitId ||
+              preview?.masterLawsuitId ||
+              preview?.clioUploadTarget?.lawsuitId ||
+              preview?.clioUploadTarget?.masterLawsuitId ||
+              preview?.clioUploadTarget?.displayNumber
+          );
+
+    const requestedDocumentGenerationLabel = clean(
+      body?.documentGenerationLabel ||
+        body?.generationLabel ||
+        body?.generationType
+    );
+    const requestedDocumentGenerationTimestamp =
+      clean(body?.documentGenerationTimestamp || body?.generationTimestamp) ||
+      new Date().toISOString();
+
     const selectedDocuments = plannedDocuments.filter((document) => {
       if (!document?.wouldGenerate || !document?.wouldUploadToClio) return false;
       if (!requestedKeys.length) return true;
@@ -488,7 +574,12 @@ export async function POST(req: NextRequest) {
     const documentsToUpload: PlannedDocument[] = [];
 
     for (const document of selectedDocuments) {
-      const finalPdfFilename = pdfFilenameFromDocxFilename(document.filename);
+      const finalPdfFilename = buildStorageIdentityFinalizedPdfFilename({
+        sourceFilename: document.filename,
+        storageIdentity: finalizedDocumentStorageIdentity,
+        generationLabel: requestedDocumentGenerationLabel,
+        generationTimestamp: requestedDocumentGenerationTimestamp,
+      });
       const existingMatches = findExistingClioDocumentsByFilename(
         existingDocuments,
         finalPdfFilename
@@ -600,7 +691,12 @@ export async function POST(req: NextRequest) {
     }
 
     for (const document of documentsToUpload) {
-      const finalPdfFilename = pdfFilenameFromDocxFilename(document.filename);
+      const finalPdfFilename = buildStorageIdentityFinalizedPdfFilename({
+        sourceFilename: document.filename,
+        storageIdentity: finalizedDocumentStorageIdentity,
+        generationLabel: requestedDocumentGenerationLabel,
+        generationTimestamp: requestedDocumentGenerationTimestamp,
+      });
       const shouldUseWorkingDocument =
         Boolean(workingDocumentDriveItemId) &&
         (!workingDocumentKey || clean(workingDocumentKey) === clean(document.key));

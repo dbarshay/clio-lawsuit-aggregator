@@ -620,7 +620,8 @@
     "verify:phase44l-direct-live-server-kill-switch-response-marker-safety": "node scripts/verify-phase44l-direct-live-server-kill-switch-response-marker-safety.cjs",
     "verify:phase44o-direct-live-kill-switch-condition-safety": "node scripts/verify-phase44o-direct-live-kill-switch-condition-safety.cjs",
     "smoke:phase44r-controlled-authenticated-live-direct-finalized-pdf-upload": "node scripts/smoke-phase44r-controlled-authenticated-live-direct-finalized-pdf-upload.cjs",
-    "verify:phase44r-controlled-authenticated-live-direct-finalized-pdf-upload-safety": "node scripts/verify-phase44r-controlled-authenticated-live-direct-finalized-pdf-upload-safety.cjs"
+    "verify:phase44r-controlled-authenticated-live-direct-finalized-pdf-upload-safety": "node scripts/verify-phase44r-controlled-authenticated-live-direct-finalized-pdf-upload-safety.cjs",
+    "verify:phase45b-finalized-storage-identity-filenames": "node scripts/verify-phase45b-finalized-storage-identity-filenames.cjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

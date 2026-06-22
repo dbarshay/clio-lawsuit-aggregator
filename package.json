@@ -576,7 +576,8 @@
     "smoke:phase41d-direct-individual-finalize-disabled-guard-no-upload": "node scripts/smoke-phase41d-direct-individual-finalize-disabled-guard-no-upload.cjs",
     "verify:phase41d-direct-individual-finalize-disabled-guard-safety": "node scripts/verify-phase41d-direct-individual-finalize-disabled-guard-safety.cjs",
     "smoke:phase41e-direct-individual-armed-no-working-docx-no-upload": "node scripts/smoke-phase41e-direct-individual-armed-no-working-docx-no-upload.cjs",
-    "verify:phase41e-direct-individual-armed-no-working-docx-safety": "node scripts/verify-phase41e-direct-individual-armed-no-working-docx-safety.cjs"
+    "verify:phase41e-direct-individual-armed-no-working-docx-safety": "node scripts/verify-phase41e-direct-individual-armed-no-working-docx-safety.cjs",
+    "verify:phase41f-finalize-route-direct-target-input-inspection": "node scripts/verify-phase41f-finalize-route-direct-target-input-inspection.cjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",
@@ -604,4 +605,4 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   }
-}
+}\n

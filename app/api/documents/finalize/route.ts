@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   findExistingClioDocumentsByFilename,
+  listClioFolderDocuments,
   listClioMatterDocuments,
   uploadBufferToClioMatterDocuments,
 } from "@/lib/clioDocumentUpload";
 import { convertWorkingDocxDriveItemToPdf } from "@/lib/documents/graphWorkingDocuments";
 import { buildClioStorageFolderResolutionPreview } from "@/lib/clioStorageFolderResolution";
 import { resolveClioMatterFolderWithGuard } from "@/lib/clioFolderResolverExecutor";
+import { getClioStorageWriteGuard } from "@/lib/clioStorageWriteGuard";
 import type { ClioStorageTargetInput } from "@/lib/clioStoragePlan";
 
 export const runtime = "nodejs";
@@ -309,59 +311,90 @@ export async function POST(req: NextRequest) {
           });
     const validation = preview?.validation || {};
 
+    let singleMasterTargetInput: ClioStorageTargetInput | null = null;
+    let singleMasterFolderResolution: any = null;
+    let uploadRewiredToSingleMasterFolder = false;
+    let singleMasterUploadFolderId: number | null = null;
+
     if (useSingleMasterClioStorage) {
-      const singleMasterTargetInput = buildSingleMasterFinalizeTargetInput(preview, {
+      singleMasterTargetInput = buildSingleMasterFinalizeTargetInput(preview, {
         masterLawsuitId,
         uploadTargetMode,
         directMatterId,
         directMatterDisplayNumber,
       });
 
-      if (!singleMasterDryRun) {
+      if (singleMasterDryRun) {
+        const folderResolution = singleMasterResolveFolders
+          ? await resolveClioMatterFolderWithGuard(singleMasterTargetInput)
+          : buildClioStorageFolderResolutionPreview(singleMasterTargetInput);
+
+        return NextResponse.json({
+          ok: true,
+          action: "finalize-upload",
+          finalizeRewired: true,
+          uploadRewired: false,
+          databaseMutation: false,
+          clioWrite: singleMasterResolveFolders,
+          noUploadPerformed: true,
+          confirmUploadRequired: false,
+          generationSkipped: true,
+          singleMasterDryRun,
+          singleMasterResolveFolders,
+          folderResolutionMode: singleMasterResolveFolders
+            ? "guarded-live-folder-resolution-no-upload"
+            : "preview-only-no-clio-call",
+          singleMasterTargetInput,
+          folderResolution,
+          safety: {
+            clioIsStorageOnly: true,
+            barshMattersOwnsFileAndLawsuitNumbers: true,
+            noPatientProviderInsurerClaimFolderNames: true,
+            noDocumentUploadPerformed: true,
+            noDatabaseRecordsChanged: true,
+          },
+        });
+      }
+
+      const uploadGuard = getClioStorageWriteGuard();
+      if (!uploadGuard.uploadRewireEnabled || !uploadGuard.liveClioWriteEnabled || !uploadGuard.createFoldersEnabled) {
         return NextResponse.json(
           {
             ok: false,
             action: "finalize-upload",
-            error: "Single-master finalize upload remains disabled in Phase 34A. Use singleMasterDryRun: true.",
+            error:
+              "Single-master finalize upload is disabled unless CLIO_SINGLE_MASTER_UPLOAD_REWIRE_ENABLED=1, CLIO_SINGLE_MASTER_CREATE_FOLDERS_ENABLED=1, and CLIO_SINGLE_MASTER_LIVE_WRITE_ENABLED=1.",
             finalizeRewired: true,
             uploadRewired: false,
             databaseMutation: false,
             noUploadPerformed: true,
+            confirmUploadRequired: true,
             singleMasterTargetInput,
+            uploadGuard: {
+              uploadRewireEnabled: uploadGuard.uploadRewireEnabled,
+              createFoldersEnabled: uploadGuard.createFoldersEnabled,
+              liveClioWriteEnabled: uploadGuard.liveClioWriteEnabled,
+            },
+            safety: {
+              clioIsStorageOnly: true,
+              barshMattersOwnsFileAndLawsuitNumbers: true,
+              noPatientProviderInsurerClaimFolderNames: true,
+              noDocumentUploadPerformed: true,
+              noDatabaseRecordsChanged: true,
+            },
           },
-          { status: 400 }
+          { status: 403 }
         );
       }
 
-      const folderResolution = singleMasterResolveFolders
-        ? await resolveClioMatterFolderWithGuard(singleMasterTargetInput)
-        : buildClioStorageFolderResolutionPreview(singleMasterTargetInput);
+      singleMasterFolderResolution = await resolveClioMatterFolderWithGuard(singleMasterTargetInput);
+      singleMasterUploadFolderId = Number(singleMasterFolderResolution?.folderId);
 
-      return NextResponse.json({
-        ok: true,
-        action: "finalize-upload",
-        finalizeRewired: true,
-        uploadRewired: false,
-        databaseMutation: false,
-        clioWrite: singleMasterResolveFolders,
-        noUploadPerformed: true,
-        confirmUploadRequired: false,
-        generationSkipped: true,
-        singleMasterDryRun,
-        singleMasterResolveFolders,
-        folderResolutionMode: singleMasterResolveFolders
-          ? "guarded-live-folder-resolution-no-upload"
-          : "preview-only-no-clio-call",
-        singleMasterTargetInput,
-        folderResolution,
-        safety: {
-          clioIsStorageOnly: true,
-          barshMattersOwnsFileAndLawsuitNumbers: true,
-          noPatientProviderInsurerClaimFolderNames: true,
-          noDocumentUploadPerformed: true,
-          noDatabaseRecordsChanged: true,
-        },
-      });
+      if (!Number.isFinite(singleMasterUploadFolderId) || singleMasterUploadFolderId <= 0) {
+        throw new Error("Single-master finalize upload could not resolve a valid Clio folder upload target.");
+      }
+
+      uploadRewiredToSingleMasterFolder = true;
     }
 
     if (!validation.canGenerate) {
@@ -382,7 +415,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const matterId = getMasterMatterId(preview);
+    const matterId = uploadRewiredToSingleMasterFolder
+      ? Number(singleMasterFolderResolution?.targetPlan?.masterMatterId)
+      : getMasterMatterId(preview);
     const plannedDocuments: PlannedDocument[] = Array.isArray(preview?.plannedDocuments)
       ? preview.plannedDocuments
       : [];
@@ -393,7 +428,9 @@ export async function POST(req: NextRequest) {
       return requestedKeys.includes(document.key);
     });
 
-    const existingDocuments = await listClioMatterDocuments(matterId);
+    const existingDocuments = uploadRewiredToSingleMasterFolder
+      ? await listClioFolderDocuments(Number(singleMasterUploadFolderId))
+      : await listClioMatterDocuments(matterId);
     const documentsToUpload: PlannedDocument[] = [];
 
     for (const document of selectedDocuments) {
@@ -474,6 +511,8 @@ export async function POST(req: NextRequest) {
           uploaded: [],
           skipped,
           finalizationRecord,
+          uploadRewired: uploadRewiredToSingleMasterFolder,
+          folderResolution: uploadRewiredToSingleMasterFolder ? singleMasterFolderResolution : null,
           safety: {
             noUploadPerformed: true,
             duplicatePreventionDefault: !allowDuplicateUploads,
@@ -532,6 +571,8 @@ export async function POST(req: NextRequest) {
         filename: finalPdfFilename,
         buffer: pdfBuffer,
         contentType: PDF_CONTENT_TYPE,
+        parentType: uploadRewiredToSingleMasterFolder ? "Folder" : "Matter",
+        parentId: uploadRewiredToSingleMasterFolder ? Number(singleMasterUploadFolderId) : undefined,
       });
 
       uploaded.push({
@@ -563,6 +604,10 @@ export async function POST(req: NextRequest) {
           pdfContentType: pdfConversion?.pdfContentType || PDF_CONTENT_TYPE,
           pdfByteLength: pdfConversion?.pdfByteLength || pdfBuffer.byteLength,
         },
+        clioUploadParent: {
+          type: uploadRewiredToSingleMasterFolder ? "Folder" : "Matter",
+          id: uploadRewiredToSingleMasterFolder ? Number(singleMasterUploadFolderId) : matterId,
+        },
         clioDocumentId: result.documentId,
         clioDocumentName: result.documentName,
         clioDocumentVersionUuid: result.documentVersionUuid,
@@ -588,7 +633,16 @@ export async function POST(req: NextRequest) {
       action: "finalize-upload",
       masterLawsuitId: effectiveMasterLawsuitId,
       finalizedAt,
-      clioUploadTarget: preview.clioUploadTarget,
+      clioUploadTarget: uploadRewiredToSingleMasterFolder
+        ? {
+            ...(preview.clioUploadTarget || {}),
+            parentType: "Folder",
+            parentId: Number(singleMasterUploadFolderId),
+            folderResolution: singleMasterFolderResolution,
+          }
+        : preview.clioUploadTarget,
+      uploadRewired: uploadRewiredToSingleMasterFolder,
+      folderResolution: uploadRewiredToSingleMasterFolder ? singleMasterFolderResolution : null,
       uploaded,
       skipped,
       finalizationRecord,
@@ -602,7 +656,8 @@ export async function POST(req: NextRequest) {
         databaseAuditLayerOnly: true,
         clioDocumentsTabRemainsSourceOfTruth: true,
         noOneDriveOrSharePointFoldersCreated: true,
-        uploadedOnlyToRequestedClioMatterDocumentsTab: true,
+        uploadedOnlyToRequestedClioMatterDocumentsTab: !uploadRewiredToSingleMasterFolder,
+        uploadedToResolvedSingleMasterFolder: uploadRewiredToSingleMasterFolder,
         finalDeliveryFormat: "pdf",
         sourceWorkingFormat: "docx",
       },

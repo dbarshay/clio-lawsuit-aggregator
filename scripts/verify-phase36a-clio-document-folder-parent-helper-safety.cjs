@@ -10,7 +10,6 @@ const finalize = read("app/api/documents/finalize/route.ts");
 const settlements = read("app/api/settlements/documents-finalize-local/route.ts");
 const pkg = JSON.parse(read("package.json"));
 function contains(label, text, token) { text.includes(token) ? pass(label) : fail(label + " missing token: " + token); }
-function notContains(label, text, token) { !text.includes(token) ? pass(label) : fail(label + " contains forbidden token: " + token); }
 contains("helper defines ClioDocumentParentType", helper, "export type ClioDocumentParentType = \"Matter\" | \"Folder\"");
 contains("upload helper accepts optional parentType", helper, "parentType?: ClioDocumentParentType");
 contains("upload helper accepts optional parentId", helper, "parentId?: number");
@@ -22,8 +21,9 @@ contains("helper exports folder document lister", helper, "export async function
 contains("folder lister queries parent_id", helper, "parent_id=${encodeURIComponent(String(folderId))}");
 contains("matter lister remains matter_id based", helper, "matter_id=${encodeURIComponent(String(matterId))}");
 contains("duplicate finder remains exact filename matcher", helper, "findExistingClioDocumentsByFilename");
-contains("finalize route still uses existing matter upload call before Phase 36B", finalize, "uploadBufferToClioMatterDocuments({");
-notContains("finalize route not yet wired to folder parent", finalize, "parentType: \"Folder\"");
+contains("finalize route still uses shared upload helper", finalize, "uploadBufferToClioMatterDocuments({");
+contains("finalize route now can use folder parent after Phase 36B", finalize, "parentType: uploadRewiredToSingleMasterFolder ? \"Folder\" : \"Matter\"");
+contains("finalize route now can pass folder parent id after Phase 36B", finalize, "parentId: uploadRewiredToSingleMasterFolder ? Number(singleMasterUploadFolderId) : undefined");
 contains("settlement finalize old caller remains compatible", settlements, "uploadBufferToClioMatterDocuments({");
 if (pkg.scripts && pkg.scripts["verify:phase36a-clio-document-folder-parent-helper-safety"] === "node scripts/verify-phase36a-clio-document-folder-parent-helper-safety.cjs") pass("package verifier script registered"); else fail("package verifier script missing");
 console.log("RESULT: Phase 36A Clio document folder-parent helper safety verifier");

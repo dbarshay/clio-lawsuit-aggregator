@@ -4842,6 +4842,36 @@ function masterSettlementDateFiledValue(): string {
     void load();
   }, []);
 
+
+  async function runDirectMatterSingleMasterFinalizeDryRunFromUi(params: DirectMatterSingleMasterDocumentPayloadParams) {
+    const payload = buildDirectMatterSingleMasterFinalizeDryRunPayload(params);
+
+    const response = await fetch("/api/documents/finalize", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const json = await response.json().catch(() => null);
+
+    return {
+      ok: Boolean(response.ok && json?.ok),
+      responseStatus: response.status,
+      payload,
+      result: json,
+      safety: {
+        uiOriginatedDirectMatterDryRun: true,
+        confirmUpload: false,
+        singleMasterDryRun: true,
+        noUploadPerformed: json?.noUploadPerformed === true || json?.safety?.noDocumentUploadPerformed === true,
+        databaseMutation: json?.databaseMutation === false ? false : null,
+        uploadRewired: json?.uploadRewired === false ? false : null,
+      },
+    };
+  }
+
   function masterDocumentPreviewText(value: unknown): string {
     return String(value ?? "").trim();
   }

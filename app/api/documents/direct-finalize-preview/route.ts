@@ -243,8 +243,13 @@ export async function GET(req: NextRequest) {
     const packet = await loadMatterPacket(req, matterIdInput);
     const packetDocumentData = packet?.metadata?.documentData || {};
     const templateFields = packetDocumentData?.templateFields || packet?.templateFields || {};
-    const resolvedDisplay = normalizeBrl(templateFields.displayNumber || directMatterDisplayNumber || (directMatterId ? `BRL${directMatterId}` : ""));
     const singleMasterDirectStorage = req.nextUrl.searchParams.get("singleMasterDirectStorage") === "1";
+    const resolvedDisplay = normalizeBrl(
+      (singleMasterDirectStorage && directMatterDisplayNumber) ||
+        templateFields.displayNumber ||
+        directMatterDisplayNumber ||
+        (directMatterId ? `BRL${directMatterId}` : "")
+    );
     const clioResolution = singleMasterDirectStorage
       ? {
           ok: true,

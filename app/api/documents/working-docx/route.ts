@@ -110,6 +110,7 @@ export async function POST(req: NextRequest) {
     const directMatterDisplayNumber = clean(body?.directMatterDisplayNumber);
     const documentLaunchMode = clean(body?.documentLaunchMode);
     const settlementRecordId = clean(body?.settlementRecordId);
+    const singleMasterDirectStorage = body?.singleMasterDirectStorage === true || body?.useSingleMasterClioStorage === true;
     const requestedKeys = asStringArray(body?.documentKeys);
     const confirmCreate = body?.confirmCreate === true;
 
@@ -149,6 +150,7 @@ export async function POST(req: NextRequest) {
             const previewUrl = new URL("/api/documents/direct-finalize-preview", req.nextUrl.origin);
             if (directMatterId) previewUrl.searchParams.set("directMatterId", directMatterId);
             if (directMatterDisplayNumber) previewUrl.searchParams.set("directMatterDisplayNumber", directMatterDisplayNumber);
+            if (singleMasterDirectStorage) previewUrl.searchParams.set("singleMasterDirectStorage", "1");
             const previewRes = await fetch(previewUrl, { method: "GET", cache: "no-store" });
             const previewJson = await previewRes.json().catch(() => null);
             if (!previewRes.ok || !previewJson) {
@@ -252,6 +254,9 @@ export async function POST(req: NextRequest) {
       action: "working-docx-create",
       masterLawsuitId,
       uploadTargetMode,
+      singleMasterDirectStorage,
+      directMatterId,
+      directMatterDisplayNumber,
       selectedDocument: {
         key: clean(selectedDocument.key),
         label: clean(selectedDocument.label),

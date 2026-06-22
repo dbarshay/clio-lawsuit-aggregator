@@ -4915,13 +4915,25 @@ function masterSettlementDateFiledValue(): string {
     return directRows[0] || null;
   }
 
-  function renderDirectMatterSingleMasterDryRunControlForRow(row: MatterRow) {
+  type DirectMatterSingleMasterDryRunSelection = {
+    selectedDocumentKey: string;
+    workingDocumentDriveItemId: string;
+    workingDocumentKey: string;
+  };
+
+  function renderDirectMatterSingleMasterDryRunControlForRow(row: MatterRow, selection: DirectMatterSingleMasterDryRunSelection) {
+    const selectedDocumentKey = String(selection.selectedDocumentKey || "").trim();
+    const workingDocumentDriveItemId = String(selection.workingDocumentDriveItemId || "").trim();
+    const workingDocumentKey = String(selection.workingDocumentKey || "").trim();
+
+    if (!selectedDocumentKey || !workingDocumentDriveItemId || !workingDocumentKey) return null;
+
     return renderDirectMatterSingleMasterDryRunControl({
       directMatterId: row.id,
       directMatterDisplayNumber: row.displayNumber,
-      documentKeys: [],
-      workingDocumentDriveItemId: "",
-      workingDocumentKey: "",
+      documentKeys: [selectedDocumentKey],
+      workingDocumentDriveItemId,
+      workingDocumentKey,
       confirmUpload: false,
       singleMasterDryRun: true,
       singleMasterResolveFolders: true,
@@ -10710,7 +10722,11 @@ function masterSettlementDateFiledValue(): string {
                           <button type="button" title="Open the Master Lawsuit Clio document picker." onClick={() => void openMasterViewDocumentsPopup()} style={{ minHeight: 36, border: "1px solid #8b5e3c", borderRadius: 999, background: "#f8efe7", color: "#7c4a22", fontSize: 12, fontWeight: 950, cursor: "pointer", padding: "0 14px" }} data-barsh-master-view-documents-button="true">View Documents</button>
                           <button type="button" title="Open master lawsuit email/thread records and preview-first Microsoft Graph sync." onClick={() => { setActiveMasterWorkspaceTab("email_threads"); void loadMasterEmailThreadPreview(); }} style={{ minHeight: 36, border: "1px solid #8b5e3c", borderRadius: 999, background: "#f8efe7", color: "#7c4a22", fontSize: 12, fontWeight: 950, cursor: "pointer", padding: "0 14px" }} data-barsh-master-view-emails-button="true">View Emails</button>
                           <button type="button" title="Open the Master Lawsuit document generation preview popup." onClick={() => void launchMasterDocumentGenerationDialog()} style={{ minHeight: 36, border: "1px solid #8b5e3c", borderRadius: 999, background: "#f8efe7", color: "#7c4a22", fontSize: 12, fontWeight: 950, cursor: "pointer", padding: "0 14px" }} data-barsh-master-generate-documents-button="true">Generate Documents</button>
-                      <span data-phase43f-direct-matter-ui-surface-attachment="true">{(() => { const phase43fDirectMatterDryRunRow = directMatterSingleMasterDryRunSurfaceRow(); return phase43fDirectMatterDryRunRow ? renderDirectMatterSingleMasterDryRunControlForRow(phase43fDirectMatterDryRunRow) : null; })()}</span>
+                      <span data-phase43f-direct-matter-ui-surface-attachment="true">{(() => { const phase43fDirectMatterDryRunRow = directMatterSingleMasterDryRunSurfaceRow(); return phase43fDirectMatterDryRunRow ? renderDirectMatterSingleMasterDryRunControlForRow(phase43fDirectMatterDryRunRow, {
+                        selectedDocumentKey: masterSelectedDocumentTemplateKey,
+                        workingDocumentDriveItemId: masterDocumentFinalizationResult?.workingDocument?.driveItemId || "",
+                        workingDocumentKey: masterDocumentFinalizationResult?.selectedDocument?.key || masterSelectedDocumentTemplateKey,
+                      }) : null; })()}</span>
                         </div>
                       )}
 

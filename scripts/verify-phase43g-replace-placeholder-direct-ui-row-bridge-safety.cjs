@@ -36,7 +36,7 @@ for (const token of [
   "!row.is_master",
   "return directRows[0] || null",
   "const phase43fDirectMatterDryRunRow = directMatterSingleMasterDryRunSurfaceRow()",
-  "phase43fDirectMatterDryRunRow ? renderDirectMatterSingleMasterDryRunControlForRow(phase43fDirectMatterDryRunRow) : null",
+  "phase43fDirectMatterDryRunRow ? renderDirectMatterSingleMasterDryRunControlForRow(phase43fDirectMatterDryRunRow,",
   "phase43f-direct-matter-ui-surface-attachment",
   "directMatterSingleMasterDryRunControlEnabled = false"
 ]) contains("matters page contains Phase 43G row bridge token " + token, page, token);

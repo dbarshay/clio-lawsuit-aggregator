@@ -101,11 +101,24 @@ const adminGuardBlock = route.slice(adminGuardStart, adminGuardEnd + 1);
 ].forEach((token) => contains("matters page Phase 44D UI gate", matters, token));
 
 const liveControlIdx = matters.indexOf("renderDirectMatterSingleMasterLiveFinalizeControl");
-const liveNeighborhood = liveControlIdx >= 0 ? matters.slice(liveControlIdx, liveControlIdx + 2600) : "";
-if (!liveNeighborhood) fail("live direct control block not located");
-if (!liveNeighborhood.includes('uploadTargetMode: "direct-matter"')) fail("live direct control neighborhood missing direct-matter target");
-if (liveNeighborhood.includes("masterLawsuitId")) fail("direct live control neighborhood unexpectedly includes masterLawsuitId");
-pass("direct live control neighborhood remains separate from masterLawsuitId");
+const liveHandlerIdx = matters.indexOf("handleDirectMatterSingleMasterLiveFinalizeControl");
+const livePayloadIdx = matters.indexOf("uiOriginatedDirectMatterLiveFinalize: true");
+if (liveControlIdx < 0) fail("live direct control renderer not located");
+if (liveHandlerIdx < 0) fail("live direct control handler not located");
+if (livePayloadIdx < 0) fail("live direct payload marker not located");
+
+const livePayloadNeighborhood = matters.slice(Math.max(0, livePayloadIdx - 1600), livePayloadIdx + 2200);
+[
+  'uploadTargetMode: "direct-matter"',
+  "confirmUpload: true",
+  "singleMasterDryRun: false",
+  "singleMasterResolveFolders: true",
+  "allowDuplicateUploads: false",
+  "uiOriginatedDirectMatterLiveFinalize: true",
+].forEach((token) => contains("direct live payload neighborhood", livePayloadNeighborhood, token));
+
+if (livePayloadNeighborhood.includes("masterLawsuitId")) fail("direct live payload neighborhood unexpectedly includes masterLawsuitId");
+pass("direct live payload neighborhood remains separate from masterLawsuitId");
 
 const pkg = JSON.parse(pkgText);
 if (!pkg.scripts || !pkg.scripts["verify:phase44i-server-side-direct-live-env-kill-switch-safety"]) {

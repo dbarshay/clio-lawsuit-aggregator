@@ -565,7 +565,9 @@
     "verify:phase36f-auto-working-doc-live-upload-smoke-safety": "node scripts/verify-phase36f-auto-working-doc-live-upload-smoke-safety.cjs",
     "smoke:phase36f-auto-working-doc-live-single-master-upload": "node scripts/smoke-phase36f-auto-working-doc-live-single-master-upload.cjs",
     "verify:phase38-readonly-live-upload-audit-safety": "node scripts/verify-phase38-readonly-live-upload-audit-safety.cjs",
-    "smoke:phase38-readonly-live-upload-audit": "node scripts/smoke-phase38-readonly-live-upload-audit.cjs"
+    "smoke:phase38-readonly-live-upload-audit": "node scripts/smoke-phase38-readonly-live-upload-audit.cjs",
+    "verify:phase40-production-ui-clio-visibility-audit-safety": "node scripts/verify-phase40-production-ui-clio-visibility-audit-safety.cjs",
+    "smoke:phase40-production-ui-clio-visibility-audit": "node scripts/smoke-phase40-production-ui-clio-visibility-audit.cjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

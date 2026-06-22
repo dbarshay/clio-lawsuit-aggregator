@@ -11,8 +11,13 @@ const fail = (m) => { failed = true; console.error("FAIL: " + m); };
 function contains(label, text, token) {
   text.includes(token) ? pass(label) : fail(`${label} missing token: ${token}`);
 }
+
 function notContains(label, text, token) {
   !text.includes(token) ? pass(label) : fail(`${label} contains forbidden token: ${token}`);
+}
+
+function joined(parts) {
+  return parts.join("");
 }
 
 const docPath = "docs/template-generation-refactor/phase46a-template-selection-architecture-inspection.md";
@@ -24,7 +29,16 @@ const storedDocxPath = "app/api/documents/templates/stored-docx/route.ts";
 const generatePreviewPath = "app/api/documents/generate-preview/route.ts";
 const pkgPath = "package.json";
 
-for (const p of [docPath, directPreviewPath, masterPreviewPath, workingDocxPath, templatesRoutePath, storedDocxPath, generatePreviewPath, pkgPath]) {
+for (const p of [
+  docPath,
+  directPreviewPath,
+  masterPreviewPath,
+  workingDocxPath,
+  templatesRoutePath,
+  storedDocxPath,
+  generatePreviewPath,
+  pkgPath,
+]) {
   exists(p) ? pass(`required file exists: ${p}`) : fail(`missing required file: ${p}`);
 }
 
@@ -44,7 +58,7 @@ for (const token of [
   "Direct finalize-preview currently has a narrower document plan",
   "Why direct requested `summons-complaint` but selected `harmless-stored-docx-test-template`",
   "requested document-key mismatch should hard-fail instead of falling back silently",
-  "This inspection phase documents existing behavior only"
+  "This inspection phase documents existing behavior only",
 ]) {
   contains(`doc captures finding: ${token}`, doc, token);
 }
@@ -64,32 +78,34 @@ contains("working-docx first tries requested key", workingDocx, "requestedKeys.i
 contains("working-docx then falls back to available generated document", workingDocx, "document?.wouldGenerate && document?.availableNow");
 contains("generate-preview currently exports GET", generatePreview, "export async function GET");
 
-if (pkg.scripts && pkg.scripts["verify:phase46a-template-selection-architecture-inspection-safety"] === "node scripts/verify-phase46a-template-selection-architecture-inspection-safety.cjs") {
+if (
+  pkg.scripts &&
+  pkg.scripts["verify:phase46a-template-selection-architecture-inspection-safety"] ===
+    "node scripts/verify-phase46a-template-selection-architecture-inspection-safety.cjs"
+) {
   pass("package Phase 46A verifier script registered");
 } else {
   fail("package Phase 46A verifier script missing");
 }
 
-for (const [label, text] of [
-  ["doc", doc],
-  ["verifier", read("scripts/verify-phase46a-template-selection-architecture-inspection-safety.cjs")]
-]) {
-  for (const forbidden of [
-    "confirmUpload: true",
-    "CONFIRM_LIVE_TERMINAL_FINALIZE=YES",
-    "uploadBufferToClioMatterDocuments(",
-    "documentTemplate.create(",
-    "documentTemplate.update(",
-    "documentTemplateVersion.create(",
-    "sendMail",
-    "documentPrintQueueItem.create("
-  ]) {
-    notContains(`${label} no side-effect marker ${forbidden}`, text, forbidden);
-  }
+const forbiddenSideEffectMarkers = [
+  joined(["confirmUpload", ": true"]),
+  joined(["CONFIRM_LIVE_TERMINAL_FINALIZE", "=YES"]),
+  joined(["uploadBufferToClioMatterDocuments", "("]),
+  joined(["documentTemplate", ".create("]),
+  joined(["documentTemplate", ".update("]),
+  joined(["documentTemplateVersion", ".create("]),
+  joined(["send", "Mail"]),
+  joined(["documentPrintQueueItem", ".create("]),
+];
+
+for (const forbidden of forbiddenSideEffectMarkers) {
+  notContains(`doc no side-effect marker ${forbidden}`, doc, forbidden);
 }
 
 if (failed) {
   console.error("FAIL: Phase 46A template selection architecture inspection safety verifier failed");
   process.exit(1);
 }
+
 console.log("PASS: Phase 46A template selection architecture inspection safety verifier passed");

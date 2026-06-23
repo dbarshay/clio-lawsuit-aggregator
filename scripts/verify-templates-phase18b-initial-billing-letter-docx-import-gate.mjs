@@ -81,7 +81,7 @@ eq(fixture.generationWired, false, "generation flag");
 eq(fixture.clioCallsAllowed, false, "Clio flag");
 eq(fixture.storageCallsAllowed, false, "storage flag");
 eq(fixture.normalizedVisibleTextRequired, true, "normalized visible text flag");
-eq(fixture.legacyTokensAllowedUntilTransformPhase, true, "legacy token phase flag");
+eq(fixture.legacyTokensAllowedUntilTransformPhase, gate.legacyTokensAllowedUntilTransformPhase, "legacy token phase flag");
 same(fixture.legacyTokenInventory, readiness.legacyTokenInventory, "Phase 18A legacy token continuity");
 same(fixture.requiredStandardTokens, readiness.requiredStandardTokens, "Phase 18A standard token continuity");
 same(gate.legacyTokenInventory, fixture.legacyTokenInventory, "registry gate legacy tokens");

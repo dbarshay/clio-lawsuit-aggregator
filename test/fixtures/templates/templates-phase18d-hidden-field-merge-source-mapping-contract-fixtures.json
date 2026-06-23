@@ -80,5 +80,6 @@
     "insurerName": "Allstate Indemnity Company",
     "source": "ReferenceEntity.details._hiddenImportFields",
     "resolvedAddress": "3100 Sanders Road, Suite 201\nNorthbrook, Illinois 60062"
-  }
+  },
+  "phase18fObservation": "Phase 18F canonical-token migration preserved hidden-field merge-source coverage and runtime newline address continuity."
 }

@@ -1,39 +1,29 @@
 {
-  "phase": "Templates Phase 18A",
-  "templateId": "initial-billing-letter",
-  "templateName": "Initial Billing Letter",
-  "documentKind": "letter",
-  "layoutDependency": "letterhead-simple",
-  "matterScope": "individual",
-  "testMatterFileNumber": "BRL_202600003",
-  "generationWired": false,
-  "storageCallsAllowed": false,
+  "canonicalTokenInventory": [
+    "{{letter.date}}",
+    "{{insurer.name}}",
+    "{{insurer.mailingAddress.line1}}",
+    "{{insurer.mailingAddress.city}}",
+    "{{insurer.mailingAddress.state}}",
+    "{{insurer.mailingAddress.zip}}",
+    "{{provider.name}}",
+    "{{patient.name}}",
+    "{{claim.number}}",
+    "{{claim.amount}}",
+    "{{claim.dosRange}}",
+    "{{matter.fileNumber}}"
+  ],
   "clioCallsAllowed": false,
+  "documentKind": "letter",
   "docxImportAllowedInThisPhase": false,
-  "legacyTokenInventory": [
-    "<<BALANCE_AMOUNT>>",
-    "<<CASE_ID>>",
-    "<<DOS_END>>",
-    "<<DOS_START>>",
-    "<<INJUREDPARTY_NAME>>",
-    "<<INSURANCECOMPANY_LOCAL_CITY>>",
-    "<<INSURANCECOMPANY_LOCAL_STATE>>",
-    "<<INSURANCECOMPANY_LOCAL_ZIP>>",
-    "<<INS_CLAIM_NUMBER>>",
-    "<<NOWDT>>",
-    "<<PROVIDER_SUITNAME>>"
-  ],
-  "requiredStandardTokens": [
-    "letter.date",
-    "insurer.name",
-    "insurer.mailingAddress",
-    "provider.name",
-    "patient.name",
-    "claim.number",
-    "claim.amount",
-    "claim.dosRange",
-    "matter.fileNumber"
-  ],
+  "generationWired": false,
+  "layoutDependency": "letterhead-simple",
+  "legacyTokenInventory": [],
+  "legacyTokensAllowed": false,
+  "legacyTokensAllowedUntilTransformPhase": false,
+  "matterScope": "individual",
+  "phase": "Templates Phase 18A",
+  "phase18fObservation": "Phase 18F migrates the Initial Billing Letter DOCX to canonical {{...}} tokens and forbids legacy chevron tokens for this committed template.",
   "replacementMappings": [
     {
       "legacy": [
@@ -103,5 +93,20 @@
         "matter.fileNumber"
       ]
     }
-  ]
+  ],
+  "requiredStandardTokens": [
+    "letter.date",
+    "insurer.name",
+    "insurer.mailingAddress",
+    "provider.name",
+    "patient.name",
+    "claim.number",
+    "claim.amount",
+    "claim.dosRange",
+    "matter.fileNumber"
+  ],
+  "storageCallsAllowed": false,
+  "templateId": "initial-billing-letter",
+  "templateName": "Initial Billing Letter",
+  "testMatterFileNumber": "BRL_202600003"
 }

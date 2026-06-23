@@ -1,10 +1,10 @@
 import { buildTemplateLayoutCompositionAdminReadinessPayload } from "../../../../src/lib/templates/layout-composition-admin-readiness.mjs";
-import fixtureInput from "../../../../test/fixtures/templates/layout-composition-batch-validator-fixtures.json";
+import { templateLayoutCompositionRegistrySource } from "../../../../src/lib/templates/template-layout-composition-registry-source.mjs";
 
 export const dynamic = "force-dynamic";
 
 export default function TemplateLayoutCompositionValidationPage() {
-  const payload = buildTemplateLayoutCompositionAdminReadinessPayload(fixtureInput);
+  const payload = buildTemplateLayoutCompositionAdminReadinessPayload(templateLayoutCompositionRegistrySource);
   const errorSection = payload.sections.find((section) => section.id === "errors");
   const warningSection = payload.sections.find((section) => section.id === "warnings");
   const invalidSection = payload.sections.find((section) => section.id === "invalidTemplates");
@@ -13,7 +13,7 @@ export default function TemplateLayoutCompositionValidationPage() {
     <main style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto" }}>
       <p style={{ margin: 0, color: "#475569", fontSize: "12px", letterSpacing: "0.08em", textTransform: "uppercase" }}>Admin / Templates</p>
       <h1 style={{ marginTop: "8px" }}>Layout Composition Validation</h1>
-      <p>This read-only page validates template layout-composition metadata against the locked fixture source. It does not generate documents, upload files, mutate templates, or call external document-storage services.</p>
+      <p>This read-only page validates template layout-composition metadata against the locked template registry source. It does not generate documents, upload files, mutate templates, or call external document-storage services.</p>
       <section aria-label="Validation summary" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px", margin: "24px 0" }}>
         {payload.cards.map((card) => (
           <article key={card.id} style={{ border: "1px solid #cbd5e1", borderRadius: "10px", padding: "14px", background: "#fff" }}>

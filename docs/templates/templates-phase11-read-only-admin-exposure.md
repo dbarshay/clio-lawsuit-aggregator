@@ -4,7 +4,7 @@
 
 Implementation lock for fixture-backed read-only admin exposure of the template layout-composition validation payload.
 
-This phase creates a read-only admin page and read-only API endpoint. The source is the locked Phase 5 fixture. This phase does not connect to a live template registry.
+This phase creates a read-only admin page and read-only API endpoint. The source is the locked real template registry source. This phase does not connect to live database template data.
 
 ## Added routes
 
@@ -13,7 +13,7 @@ This phase creates a read-only admin page and read-only API endpoint. The source
 
 ## Source
 
-The page and API use the locked fixture at test/fixtures/templates/layout-composition-batch-validator-fixtures.json.
+The page and API use the locked registry source at src/lib/templates/template-layout-composition-registry-source.mjs.
 
 ## Guardrails
 

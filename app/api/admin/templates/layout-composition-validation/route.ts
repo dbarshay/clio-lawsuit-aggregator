@@ -1,26 +1,18 @@
 import { NextResponse } from "next/server";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { buildTemplateLayoutCompositionAdminReadinessPayload } from "../../../../../src/lib/templates/layout-composition-admin-readiness.mjs";
+import { templateLayoutCompositionRegistrySource } from "../../../../../src/lib/templates/template-layout-composition-registry-source.mjs";
 
 export const dynamic = "force-dynamic";
 
-async function readFixtureInput() {
-  const fixturePath = join(process.cwd(), "test/fixtures/templates/layout-composition-batch-validator-fixtures.json");
-  const raw = await readFile(fixturePath, "utf8");
-  return JSON.parse(raw);
-}
-
 export async function GET() {
-  const input = await readFixtureInput();
-  const payload = buildTemplateLayoutCompositionAdminReadinessPayload(input);
+  const payload = buildTemplateLayoutCompositionAdminReadinessPayload(templateLayoutCompositionRegistrySource);
   return NextResponse.json({
     ok: payload.ok,
     status: payload.status,
     generatedAt: new Date(0).toISOString(),
     source: {
       kind: "fixture",
-      label: "locked Phase 5 batch fixture",
+      label: "locked template registry source",
     },
     cards: payload.cards,
     sections: payload.sections,

@@ -22,9 +22,9 @@ includes(doc, "Templates Phase 11 - Read-Only Admin Exposure", "Phase 11 title")
 includes(doc, fixture.route, "admin route doc");
 includes(doc, fixture.apiRoute, "api route doc");
 includes(page, "buildTemplateLayoutCompositionAdminReadinessPayload", "page payload builder use");
-includes(page, "layout-composition-batch-validator-fixtures.json", "page fixture source");
+includes(page, "template-layout-composition-registry-source.mjs", "page registry source");
 includes(api, "buildTemplateLayoutCompositionAdminReadinessPayload", "api payload builder use");
-includes(api, "layout-composition-batch-validator-fixtures.json", "api fixture source");
+includes(api, "template-layout-composition-registry-source.mjs", "api registry source");
 includes(api, "NextResponse.json", "api json response");
 
 for (const method of fixture.requiredApiMethods) {

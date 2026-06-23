@@ -638,7 +638,11 @@
     "import:phase47b-lawsuit-stipulation-template": "node scripts/import-phase47b-lawsuit-stipulation-template.cjs",
     "verify:phase47b-lawsuit-stipulation-template-safety": "node scripts/verify-phase47b-lawsuit-stipulation-template-safety.cjs",
     "import:phase47c-letterhead-layout-asset": "node scripts/import-phase47c-letterhead-layout-asset.cjs",
-    "verify:phase47c-letterhead-layout-asset-safety": "node scripts/verify-phase47c-letterhead-layout-asset-safety.cjs"
+    "verify:phase47c-letterhead-layout-asset-safety": "node scripts/verify-phase47c-letterhead-layout-asset-safety.cjs",
+    "phase47d:lock-template-repository-metadata": "node scripts/phase47d-lock-template-repository-metadata.cjs",
+    "verify:phase47d-template-repository-resolution-safety": "node scripts/verify-phase47d-template-repository-resolution-safety.cjs",
+    "inspect:phase48a-invoice-remittance-template-source": "node scripts/inspect-phase48a-invoice-remittance-template-source.cjs",
+    "verify:phase48a-invoice-remittance-template-source-inspection": "node scripts/verify-phase48a-invoice-remittance-template-source-inspection.cjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

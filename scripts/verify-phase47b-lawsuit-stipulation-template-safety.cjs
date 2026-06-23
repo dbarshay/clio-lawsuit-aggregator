@@ -82,7 +82,7 @@ if (pkg.scripts?.["verify:phase47b-lawsuit-stipulation-template-safety"] === "no
       template.outputFormat === "docx" ? pass("DB template outputFormat docx") : fail(`DB outputFormat incorrect: ${template.outputFormat}`);
       template.currentVersionId ? pass("DB template currentVersionId set") : fail("DB template currentVersionId missing");
       const metadata = template.metadata && typeof template.metadata === "object" && !Array.isArray(template.metadata) ? template.metadata : {};
-      metadata.repositorySource === "barsh-matters-template-upload-db" ? pass("DB metadata repositorySource stored") : fail("DB metadata repositorySource missing");
+      ["barsh-matters-template-upload-db", "barsh-matters-template-repository"].includes(metadata.repositorySource) ? pass("DB metadata repositorySource stored") : fail("DB metadata repositorySource missing");
       metadata.repositoryStatus === "production-template-imported" ? pass("DB metadata repositoryStatus stored") : fail("DB metadata repositoryStatus missing");
       metadata.docxOnlyTemplate === true ? pass("DB metadata docxOnlyTemplate true") : fail("DB metadata docxOnlyTemplate missing");
       metadata.macAndWindowsCompatible === true ? pass("DB metadata Mac/Windows compatibility true") : fail("DB metadata Mac/Windows compatibility missing");

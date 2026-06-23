@@ -1,0 +1,638 @@
+{
+  "ok": true,
+  "action": "phase48a-invoice-remittance-template-source-inspection",
+  "repositoryTemplateKeys": [
+    "letterhead-simple",
+    "lawsuit-stipulation-of-settlement"
+  ],
+  "invoiceLikeRepositoryTemplateKeys": [],
+  "invoiceRemittanceDocxTemplatesCurrentlyImported": 0,
+  "conclusion": "Invoice/remittance outputs are currently app-generated/code-rendered workflow outputs, not DOCX templates in the Barsh Matters template repository.",
+  "likelyCurrentSourceFiles": [
+    {
+      "file": "app/admin/audit-history/page.tsx",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "<p style={{ margin: \"8px 0 0\", color: \"#475569\", lineHeight: 1.45, maxWidth: 900 }}> Read-only administrator view for recent local Barsh Matters audit/history entries. This page does not edit records, delete entries, write Clio, send email, print, or queue documents. </p> </div> <button type=\"button\" onClick={loadAuditHistory} disabled={loading} style={{ alignSelf: \"flex-start\", border: \"1px solid #0f172a\","
+    },
+    {
+      "file": "app/admin/backup-restore/page.tsx",
+      "matched": [
+        "/csv/i",
+        "/print/i"
+      ],
+      "excerpt": "duplicateSuppressionActive: boolean; safety: { readOnly: boolean; sendEmail: boolean; restoreExecution: boolean; backupDeletion: boolean; retentionCleanup: boolean; clioWrite: boolean; documentGeneration: boolean; printQueueMutation: boolean; }; }; backupLogArchivePreview?: { mode: string; previewOnly: boolean; archiveExecutionEnabled: boolean; stdout: { displayPath: string; exists: boolean; sizeBytes: number; lineCount: number;"
+    },
+    {
+      "file": "app/admin/claim-index/audit/page.tsx",
+      "matched": [
+        "/csv/i",
+        "/print/i"
+      ],
+      "excerpt": "import React, { useEffect, useMemo, useState } from \"react\"; type Severity = \"critical\" | \"warning\" | \"info\"; type AuditStatus = \"pass\" | \"review\"; type SampleRow = { matter_id: number; display_number?: string | null; patient_name?: string | null; provider_name?: string | null; client_name?: string | null; insurer_name?: string | null; claim_number_raw?: string | null; claim_number_normalized?: string | null; claim_amount?: number | null; payment_amount?: number | null; balance_amount?: number | null;"
+    },
+    {
+      "file": "app/admin/claim-index/page.tsx",
+      "matched": [
+        "/csv/i",
+        "/print/i"
+      ],
+      "excerpt": "matter_id: number; display_number?: string | null; description?: string | null; claim_number_raw?: string | null; claim_number_normalized?: string | null; patient_name?: string | null; client_name?: string | null; insurer_name?: string | null; provider_name?: string | null; treating_provider?: string | null; claim_amount?: number | null; payment_amount?: number | null; balance_amount?: number | null; bill_number?: string | null; dos_start?: string | null; dos_end?: string | null; denial_reason?: string | null;"
+    },
+    {
+      "file": "app/admin/clients/[id]/invoice/client-costs-ledger/page.tsx",
+      "matched": [
+        "/invoice/i",
+        "/remit/i",
+        "/remittance/i",
+        "/csv/i"
+      ],
+      "excerpt": "function text(value: unknown) { return String(value ?? \"\").trim(); } function dateOnly(value: unknown) { const raw = text(value); if (!raw) return \"—\"; const d = new Date(raw); if (Number.isNaN(d.getTime())) return raw; return d.toLocaleDateString(); } function csvEscape(value: unknown) { const raw = String(value ?? \"\"); if (/[\",\\n]/.test(raw)) return `\"${raw.replace(/\"/g, '\"\"')}\"`; return raw; } function downloadCsv(filename: string, rows: unknown[][]) { const csv = rows.map((row) => row.map(csvEscape).join(\",\")).join(\"\\n\");"
+    },
+    {
+      "file": "app/admin/clients/[id]/invoice/history/page.tsx",
+      "matched": [
+        "/invoice/i",
+        "/remit/i",
+        "/remittance/i",
+        "/csv/i",
+        "/print/i"
+      ],
+      "excerpt": "style.background = \"#fffbeb\"; style.color = \"#92400e\"; } if (lower === \"voided\") { style.border = \"1px solid #fecaca\"; style.background = \"#fef2f2\"; style.color = \"#991b1b\"; } return <span style={style}>{value}</span>; } function csvEscape(value: unknown) { const raw = String(value ?? \"\"); if (/[\",\\n]/.test(raw)) return `\"${raw.replace(/\"/g, '\"\"')}\"`; return raw; } function downloadCsv(filename: string, rows: unknown[][]) { const csv = rows.map((row) => row.map(csvEscape).join(\",\")).join(\"\\n\");"
+    },
+    {
+      "file": "app/admin/clients/[id]/invoice/page.tsx",
+      "matched": [
+        "/invoice/i",
+        "/remit/i",
+        "/remittance/i",
+        "/frozen/i",
+        "/csv/i",
+        "/print/i"
+      ],
+      "excerpt": "const activeStatusPillStyle: React.CSSProperties = { display: \"inline-flex\", alignItems: \"center\", width: \"fit-content\", borderRadius: 999, padding: \"3px 9px\", border: \"1px solid #bbf7d0\", background: \"#f0fdf4\", color: \"#166534\", fontSize: 12, fontWeight: 950, }; function ProviderInfoItem({ label, value, multiline }: { label: string; value: unknown; multiline?: boolean }) { return ( <div> <dt style={compactInfoLabelStyle}>{label}</dt> <dd style={{ ...compactInfoValueStyle, whiteSpace: multiline ? \"pre-wrap\" : \"normal\" }}>{clean(value) || \"—\"}</dd>"
+    },
+    {
+      "file": "app/admin/clients/[id]/page.tsx",
+      "matched": [
+        "/invoice/i",
+        "/remit/i",
+        "/remittance/i",
+        "/provider\\s+invoice/i",
+        "/csv/i"
+      ],
+      "excerpt": "\"use client\"; import { formatDateOnlyForDisplay } from \"@/lib/dateOnlyDisplay\"; import Link from \"next/link\"; import { useEffect, useMemo, useState } from \"react\"; type DetailResponse = { client?: any; matters?: { count: number; rows: any[] }; remittance?: { receiptError?: string; count: number; activeTotal: number; voidedTotal: number; totalsByType: { transactionType: string; amount: number }[]; rows: any[]; }; error?: string; }; const pageStyle: React.CSSProperties = {"
+    },
+    {
+      "file": "app/admin/document-readiness/audit/page.tsx",
+      "matched": [
+        "/csv/i",
+        "/print/i"
+      ],
+      "excerpt": "childDisplayNumbers?: string[]; childMatterIds?: number[]; finalStatus?: string | null; closeReason?: string | null; issue_detail?: string | null; }; type ChildPreview = { matter_id: number; display_number?: string | null; patient_name?: string | null; provider_name?: string | null; client_name?: string | null; treating_provider?: string | null; insurer_name?: string | null; claim_number_raw?: string | null; claim_number_normalized?: string | null; claim_amount?: number | null; payment_amount?: number | null;"
+    },
+    {
+      "file": "app/admin/document-templates/page.tsx",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "finalProductionDocument: false, uploadedTemplateFile: fileInfo, note: \"DOCX file content is captured as base64 and stored in the local DocumentTemplateVersion.contentText field when confirmed. This does not generate documents, upload to Clio, create drafts, send email, print, or queue documents.\", }, mergeFields: Array.isArray(firstRow.mergeFields) ? firstRow.mergeFields : [], }; setCustomTemplateRowsText(JSON.stringify([nextRow], null, 2)); setCustomTemplatePreview(null); setCustomTemplateConfirmResult(null);"
+    },
+    {
+      "file": "app/admin/invoices/page.tsx",
+      "matched": [
+        "/invoice/i"
+      ],
+      "excerpt": "function money(value: unknown) { const numeric = Number(value || 0); return numeric.toLocaleString(undefined, { style: \"currency\", currency: \"USD\" }); } function dateOnly(value: unknown) { return formatDateOnlyForDisplay(value); } export default function AdminInvoiceSearchPage() { const [q, setQ] = useState(\"\"); const [status, setStatus] = useState(\"\"); const [dateFrom, setDateFrom] = useState(\"\"); const [dateTo, setDateTo] = useState(\"\"); const [rows, setRows] = useState<any[]>([]); const [error, setError] = useState(\"\");"
+    },
+    {
+      "file": "app/admin/lawsuit-cleanup/page.tsx",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "\"use client\"; import { useEffect, useMemo, useState } from \"react\"; type CleanupChild = { displayNumber: string; matterId: string; masterLawsuitId: string; patient: string; provider: string; insurer: string; claimNumber: string; claimAmount: number; balancePresuit: number; }; type CleanupLawsuit = { masterLawsuitId: string; amountSought: number; venue: string; indexAaaNumber: string; clioMasterMatterId: string;"
+    },
+    {
+      "file": "app/admin/lawsuits/audit/page.tsx",
+      "matched": [
+        "/csv/i",
+        "/print/i"
+      ],
+      "excerpt": "parsedChildMatterIds?: number[]; parsedChildDisplayNumbers?: string[]; linkedClaimIndexChildCount?: number; issue_detail?: string | null; }; type ClaimIndexChildRow = { matter_id: number; display_number?: string | null; patient_name?: string | null; provider_name?: string | null; client_name?: string | null; insurer_name?: string | null; claim_number_raw?: string | null; claim_amount?: number | null; balance_amount?: number | null; final_status?: string | null; close_reason?: string | null; master_lawsuit_id?: string | null;"
+    },
+    {
+      "file": "app/admin/page.tsx",
+      "matched": [
+        "/remit/i",
+        "/remittance/i",
+        "/print/i"
+      ],
+      "excerpt": "href: \"/admin/ticklers\", description: \"Search local Barsh Matters ticklers by type, status, due date, matter, lawsuit, and workflow context.\", }, { label: \"Clients\", href: \"/admin/clients\", description: \"Review local client/provider records, imported client fields, child matters, and child-matter-based invoicing/remittance previews.\", }, { label: \"Permissions\", href: \"/admin/permissions\", description: \"Read-only view of admin permission keys and route/function mappings before enforcement is enabled.\","
+    },
+    {
+      "file": "app/admin/permissions/page.tsx",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "proposedFirstScope: \"admin-functions-only\", explicitNonGoals: [ \"Do not enable runtime enforcement in Phase 19A.\", \"Do not add an activation button in Phase 19A.\", \"Do not change users, roles, permission overrides, passwords, sessions, Clio records, documents, email, or print queue items.\", ], requiredBeforeActivation: [ \"Confirm admin-functions-only remains the first activation target.\", \"Confirm owner_admin must retain all admin functions.\", \"Confirm read_only_admin/Jane Doe remains blocked from administrator functions while retaining non-admin operational access.\","
+    },
+    {
+      "file": "app/admin/readiness-dashboard/page.tsx",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "Read-only consolidated dashboard for ClaimIndex data quality, Lawsuit/master integrity, and document-generation readiness. This page fetches existing read-only audit APIs and summarizes their status. It does not edit, save, restore, call Clio, call Graph, generate documents, finalize documents, upload documents, send email, print, queue, delete records, or write to the database. </p> <div style={{ display: \"flex\", gap: 10, flexWrap: \"wrap\" }}> <button type=\"button\" onClick={() => void loadDashboard()} disabled={loading} style={buttonStyle}> {loading ? \"Refreshing...\" : \"Refresh Dashboard\"}"
+    },
+    {
+      "file": "app/admin/reference-data/page.tsx",
+      "matched": [
+        "/xlsx/i",
+        "/csv/i",
+        "/print/i"
+      ],
+      "excerpt": "\"use client\"; import React, { useEffect, useMemo, useState } from \"react\"; import * as XLSX from \"xlsx\"; type EmailAutomationStatusLog = { id: string; source: string | null; action: string | null; status: string | null; targetId: string | null; matterId?: string | null; masterLawsuitId?: string | null; graphConversationId?: string | null;"
+    },
+    {
+      "file": "app/admin/ticklers/page.tsx",
+      "matched": [
+        "/xlsx/i",
+        "/print/i"
+      ],
+      "excerpt": "\"use client\"; import { formatDateOnlyForDisplay } from \"@/lib/dateOnlyDisplay\"; import Link from \"next/link\"; import { useEffect, useMemo, useState } from \"react\"; import * as XLSX from \"xlsx\"; type TicklerRow = { id: string; kind: string; status: string; priority: string; title: string; description?: string | null; masterLawsuitId?: string | null; matterId?: number | null; displayNumber?: string | null; settlementRecordId?: string | null;"
+    },
+    {
+      "file": "app/admin/ticklers/runner/page.tsx",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "Administrator action screen for bulk processing open ticklers. Preview is read-only. Complete updates only local LocalWorkflowTickler status/completion fields; it does not post payments, close matters, change settlement records, update Clio, generate documents, email, print, or queue anything. </p> </div> <Link href=\"/admin/ticklers\" style={{ border: \"1px solid #1f4f73\", color: \"#1f4f73\", borderRadius: 10, padding: \"9px 14px\", textDecoration: \"none\","
+    },
+    {
+      "file": "app/admin/users/page.tsx",
+      "matched": [
+        "/invoice/i",
+        "/print/i"
+      ],
+      "excerpt": "\"admin.claimIndex.audit\", \"admin.lawsuits.audit\", \"admin.documentReadiness.audit\", \"admin.lawsuitCleanup.view\", \"admin.lawsuitCleanup.confirm\", \"admin.ticklers.view\", \"admin.ticklers.run\", \"admin.clients.view\", \"admin.clients.edit\", \"admin.invoices.view\", \"admin.invoices.create\", \"admin.invoices.finalize\", \"admin.invoices.void\", \"admin.referenceData.view\", \"admin.referenceData.import\", \"admin.auditHistory.view\", \"admin.documentTemplates.view\", \"admin.documentTemplates.manage\", \"admin.backups.view\","
+    },
+    {
+      "file": "app/api/admin/backups/archive-error-log/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "touchedManifests: false, touchedDatabaseDumps: false, restoreExecution: false, backupDeletion: false, retentionCleanup: false, alertStateMutation: false, clioWrite: false, email: false, documentGeneration: false, printQueueMutation: false, }, }); }"
+    },
+    {
+      "file": "app/api/admin/backups/restore-preview/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "status: result.status, signal: result.signal, stdoutTail: tail(stdout), stderrTail: tail(stderr), restoreExecutionEnabled: false, safety: { clioWrite: false, email: false, documentGeneration: false, printQueueMutation: false, restoreExecution: false, }, }, { status: 500 } ); } return NextResponse.json({ ok: true, mode: \"restore-preview-only\", backupDir, output: stdout, stderrTail: tail(stderr), restoreExecutionEnabled: false,"
+    },
+    {
+      "file": "app/api/admin/backups/run/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "status: result.status, signal: result.signal, latestBackupPath, stdoutTail: tail(stdout), stderrTail: tail(stderr), safety: { clioWrite: false, email: false, documentGeneration: false, printQueueMutation: false, restoreExecution: false, }, }, { status: 500 } ); } return NextResponse.json({ ok: true, mode: \"manual-index-backup\", startedAt, completedAt, latestBackupPath, stdoutTail: tail(stdout),"
+    },
+    {
+      "file": "app/api/admin/backups/status/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "duplicateSuppressionActive: Boolean(alertState?.lastAlert?.kind && alertState?.lastAlert?.key), safety: { readOnly: true, sendEmail: false, restoreExecution: false, backupDeletion: false, retentionCleanup: false, clioWrite: false, documentGeneration: false, printQueueMutation: false, }, }; const backupLogArchivePreview = { mode: \"read-only-backup-log-archive-preview\", previewOnly: true, archiveExecutionEnabled: false, stdout: { path: launchdOutLogPath, displayPath: safeDisplayPath(launchdOutLogPath),"
+    },
+    {
+      "file": "app/api/admin/claim-index/audit/route.ts",
+      "matched": [
+        "/csv/i",
+        "/print/i"
+      ],
+      "excerpt": "export const dynamic = \"force-dynamic\"; export const runtime = \"nodejs\"; type Severity = \"critical\" | \"warning\" | \"info\"; type AuditStatus = \"pass\" | \"review\"; type SampleRow = { matter_id: number; display_number: string | null; patient_name: string | null; provider_name: string | null; client_name: string | null; insurer_name: string | null; claim_number_raw: string | null; claim_number_normalized: string | null; claim_amount: number | null; payment_amount: number | null; balance_amount: number | null;"
+    },
+    {
+      "file": "app/api/admin/claim-index/search/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "import { NextResponse } from \"next/server\"; import { Prisma } from \"@prisma/client\"; import { prisma } from \"@/lib/prisma\"; type SortField = | \"matter_id\" | \"display_number\" | \"patient_name\" | \"provider_name\" | \"insurer_name\" | \"claim_number_raw\" | \"status\" | \"final_status\" | \"close_reason\" | \"master_lawsuit_id\" | \"indexed_at\"; const SORT_FIELDS = new Set<SortField>([ \"matter_id\", \"display_number\", \"patient_name\", \"provider_name\","
+    },
+    {
+      "file": "app/api/admin/clients/[id]/invoice/[invoiceId]/finalize/route.ts",
+      "matched": [
+        "/invoice/i",
+        "/remit/i",
+        "/remittance/i",
+        "/print/i"
+      ],
+      "excerpt": "function resultMode(isReceiptMarkRepair: boolean): string { return isReceiptMarkRepair ? \"local-finalized-receipt-mark-repair\" : \"local-finalized\"; } function resultEventType(mode: string): string { return mode === \"local-finalized-receipt-mark-repair\" ? \"invoice.finalize_repair\" : \"invoice.finalized\"; } export async function POST( request: Request, context: { params: Promise<{ id: string; invoiceId: string }> | { id: string; invoiceId: string } } ) { try { const resolvedParams = await Promise.resolve(context.params);"
+    },
+    {
+      "file": "app/api/admin/clients/[id]/invoice/[invoiceId]/route.ts",
+      "matched": [
+        "/invoice/i",
+        "/remit/i",
+        "/print/i"
+      ],
+      "excerpt": "import { NextResponse } from \"next/server\"; import { prisma } from \"@/lib/prisma\"; export const dynamic = \"force-dynamic\"; function clean(value: unknown): string { return String(value ?? \"\").trim(); } export async function GET( request: Request, context: { params: Promise<{ id: string; invoiceId: string }> | { id: string; invoiceId: string } } ) { try { const resolvedParams = await Promise.resolve(context.params); const clientId = clean(resolvedParams.id); const invoiceId = clean(resolvedParams.invoiceId); if (!clientId) {"
+    },
+    {
+      "file": "app/api/admin/clients/[id]/invoice/[invoiceId]/void/route.ts",
+      "matched": [
+        "/invoice/i",
+        "/remit/i",
+        "/remittance/i",
+        "/print/i"
+      ],
+      "excerpt": "function intId(value: unknown): number | null { const text = clean(value); if (!/^\\d+$/.test(text)) return null; const numeric = Number(text); return Number.isSafeInteger(numeric) ? numeric : null; } export async function POST( request: Request, context: { params: Promise<{ id: string; invoiceId: string }> | { id: string; invoiceId: string } } ) { try { const resolvedParams = await Promise.resolve(context.params); const clientId = clean(resolvedParams.id); const invoiceId = clean(resolvedParams.invoiceId); if (!clientId) {"
+    },
+    {
+      "file": "app/api/admin/clients/[id]/invoice/cost-ledger/route.ts",
+      "matched": [
+        "/invoice/i",
+        "/remit/i",
+        "/remittance/i",
+        "/print/i"
+      ],
+      "excerpt": "export async function GET(request: Request, context: { params: Promise<{ id: string }> | { id: string } }) { try { const resolvedParams = await Promise.resolve(context.params); const id = clean(resolvedParams.id); if (!id) { return NextResponse.json({ ok: false, error: \"Provider/client id is required.\" }, { status: 400 }); } const requestUrl = new URL(request.url); const detailUrl = new URL(`/api/admin/clients/${encodeURIComponent(id)}`, requestUrl.origin); for (const key of [\"status\", \"transactionType\", \"dateFrom\", \"dateTo\", \"checkNumber\", \"postingContext\"]) {"
+    },
+    {
+      "file": "app/api/admin/clients/[id]/invoice/create/route.ts",
+      "matched": [
+        "/invoice/i",
+        "/remit/i",
+        "/remittance/i",
+        "/frozen/i",
+        "/print/i"
+      ],
+      "excerpt": "if (line && Object.prototype.hasOwnProperty.call(line, key)) return line[key]; const snapshot = line?.rowSnapshot; if (snapshot && typeof snapshot === \"object\" && Object.prototype.hasOwnProperty.call(snapshot, key)) { return snapshot[key]; } } return null; } function providerInitials(value: unknown): string { const text = clean(value) .replace(/&/g, \" and \") .replace(/\\bP\\.?\\s*C\\.?\\b/gi, \" P C \") .replace(/[^a-zA-Z0-9\\s]/g, \" \") .replace(/\\s+/g, \" \") .trim(); const stopWords = new Set([\"and\", \"the\", \"of\"]);"
+    },
+    {
+      "file": "app/api/admin/clients/[id]/invoice/create-preview/route.ts",
+      "matched": [
+        "/invoice/i",
+        "/remit/i",
+        "/remittance/i",
+        "/frozen/i",
+        "/print/i"
+      ],
+      "excerpt": "function numberFromPercent(value: unknown): number { const text = clean(value); if (!text) return 0; const numeric = Number(text.replace(/%/g, \"\")); if (!Number.isFinite(numeric)) return 0; return numeric > 1 ? numeric / 100 : numeric; } function showOnRemittance(value: unknown) { const status = lower(value); return !status.includes(\"do not show\"); } function isFeeRecoveryTransactionType(value: unknown) { const type = String(value ?? \"\").toLowerCase(); return ( type.includes(\"filing fee\") || type.includes(\"index fee\") ||"
+    },
+    {
+      "file": "app/api/admin/clients/[id]/invoice/route.ts",
+      "matched": [
+        "/invoice/i",
+        "/remit/i",
+        "/remittance/i",
+        "/print/i"
+      ],
+      "excerpt": "context: { params: Promise<{ id: string }> | { id: string } } ) { try { const resolvedParams = await Promise.resolve(context.params); const clientId = clean(resolvedParams.id); if (!clientId) { return NextResponse.json({ ok: false, error: \"Provider/client id is required.\" }, { status: 400 }); } const invoices = await prisma.providerClientInvoice.findMany({ where: { OR: [ { referenceEntityId: clientId }, { providerClientInfoId: clientId }, ], },"
+    },
+    {
+      "file": "app/api/admin/clients/[id]/route.ts",
+      "matched": [
+        "/remit/i",
+        "/remittance/i",
+        "/print/i"
+      ],
+      "excerpt": "function asPlainObject(value: unknown): Record<string, any> { if (!value || typeof value !== \"object\" || Array.isArray(value)) return {}; return value as Record<string, any>; } function lower(value: unknown): string { return clean(value).toLowerCase(); } function compactProviderName(value: unknown): string { const stopWords = new Set([\"and\", \"the\", \"pc\", \"p\", \"c\", \"pllc\", \"llc\", \"md\", \"m\", \"d\", \"dc\", \"do\"]); return clean(value) .replace(/&/g, \" and \") .toLowerCase() .replace(/[^a-z0-9]+/g, \" \") .split(/\\s+/)"
+    },
+    {
+      "file": "app/api/admin/clients/route.ts",
+      "matched": [
+        "/remit/i",
+        "/remittance/i",
+        "/print/i"
+      ],
+      "excerpt": "if (details && typeof details === \"object\" && !Array.isArray(details)) { return details as Record<string, unknown>; } return {}; } function infoDetailsObject(entity: any): Record<string, unknown> { const fallback = detailObject(entity); const info = entity?.providerClientInfo; if (!info) return fallback; const hidden: Record<string, unknown> = { ...(fallback._hiddenImportFields && typeof fallback._hiddenImportFields === \"object\" && !Array.isArray(fallback._hiddenImportFields) ? (fallback._hiddenImportFields as Record<string, unknown>)"
+    },
+    {
+      "file": "app/api/admin/document-readiness/audit/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "export const dynamic = \"force-dynamic\"; export const runtime = \"nodejs\"; type Severity = \"critical\" | \"warning\" | \"info\"; type AuditStatus = \"pass\" | \"review\"; type ChildPreview = { matter_id: number; display_number: string | null; patient_name: string | null; provider_name: string | null; client_name: string | null; treating_provider: string | null; insurer_name: string | null; claim_number_raw: string | null; claim_number_normalized: string | null; claim_amount: number | null; payment_amount: number | null;"
+    },
+    {
+      "file": "app/api/admin/invoices/route.ts",
+      "matched": [
+        "/invoice/i",
+        "/remit/i",
+        "/print/i"
+      ],
+      "excerpt": "const createdAt: any = {}; if (dateFrom) createdAt.gte = new Date(dateFrom + \"T00:00:00\"); if (dateTo) createdAt.lte = new Date(dateTo + \"T23:59:59\"); if (dateFrom || dateTo) and.push({ createdAt }); if (q) { and.push({ OR: [ { invoiceNumber: { contains: q } }, { providerDisplayName: { contains: q } }, { referenceEntityId: { contains: q } }, { providerClientInfoId: { contains: q } }, { lines: { some: { OR: ["
+    },
+    {
+      "file": "app/api/admin/lawsuits/audit/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "closeReason?: string; parsedChildMatterIds?: number[]; parsedChildDisplayNumbers?: string[]; linkedClaimIndexChildCount?: number; issue_detail?: string; }; type ClaimIndexChildRow = { matter_id: number; display_number: string | null; patient_name: string | null; provider_name: string | null; client_name: string | null; insurer_name: string | null; claim_number_raw: string | null; claim_amount: number | null; balance_amount: number | null; final_status: string | null; close_reason: string | null; master_lawsuit_id: string | null;"
+    },
+    {
+      "file": "app/api/admin/lawsuits/cleanup-confirm/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "const n = Number(value || 0); return Number.isFinite(n) ? n : 0; } function claimIndexRow(row: any) { return { displayNumber: text(row.display_number), matterId: text(row.matter_id), masterLawsuitId: text(row.master_lawsuit_id), patient: text(row.patient_name), provider: text(row.client_name || row.provider_name), insurer: text(row.insurer_name), claimNumber: text(row.claim_number_raw || row.claim_number_normalized), claimAmount: money(row.claim_amount), balancePresuit: money(row.balance_presuit || row.balance_amount),"
+    },
+    {
+      "file": "app/api/admin/lawsuits/cleanup-preview/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "const n = Number(value || 0); return Number.isFinite(n) ? n : 0; } function claimIndexRow(row: any) { return { displayNumber: text(row.display_number), matterId: text(row.matter_id), masterLawsuitId: text(row.master_lawsuit_id), patient: text(row.patient_name), provider: text(row.client_name || row.provider_name), insurer: text(row.insurer_name), claimNumber: text(row.claim_number_raw || row.claim_number_normalized), claimAmount: money(row.claim_amount), balancePresuit: money(row.balance_presuit || row.balance_amount),"
+    },
+    {
+      "file": "app/api/admin/permissions/activation-status/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "action: \"admin-permissions-phase20-activation-status\", ...phase20ActivationStatus(), note: \"Read-only Phase 20 activation status. This endpoint does not enable enforcement, write configuration, edit users, expose passwords, impersonate users, call Clio, send email, generate documents, or change the print queue.\", }); }"
+    },
+    {
+      "file": "app/api/admin/permissions/deployment-package/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "...phase21ActivationDeploymentPackage(), note: \"Read-only Phase 21 deployment package. This endpoint does not enable enforcement, write environment variables, edit users, expose passwords, impersonate users, call Clio, send email, generate documents, or change the print queue.\", }); }"
+    },
+    {
+      "file": "app/api/admin/ticklers/duplicates/cleanup-preview/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "wouldRemoveTotal: cleanupPreviewGroups.reduce((sum, group) => sum + group.wouldRemoveCount, 0), cleanupPreviewGroups, note: \"Preview-only duplicate settlement payment follow-up tickler cleanup plan. This route does not delete, complete, merge, reopen, rerun, process, pay, close, update Clio, email, print, queue, or modify records.\", }); } catch (error: any) { return NextResponse.json( { ok: false, error: error?.message || \"Unable to preview duplicate settlement tickler cleanup plan.\" }, { status: 500 }, ); } }"
+    },
+    {
+      "file": "app/api/admin/ticklers/duplicates/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "duplicateTicklerCount: duplicateGroups.reduce((sum, group) => sum + group.count, 0), duplicateGroups, note: \"Read-only duplicate settlement payment follow-up tickler diagnostic. This route does not delete, complete, merge, reopen, rerun, process, pay, close, update Clio, email, print, queue, or modify records.\", }); } catch (error: any) { return NextResponse.json( { ok: false, error: error?.message || \"Unable to preview duplicate settlement ticklers.\" }, { status: 500 }, ); } }"
+    },
+    {
+      "file": "app/api/admin/ticklers/search/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "const dueDate = clean(url.searchParams.get(\"dueDate\")); const dueBefore = clean(url.searchParams.get(\"dueBefore\")); const dueAfter = clean(url.searchParams.get(\"dueAfter\")); const query = clean(url.searchParams.get(\"q\")); const patient = clean(url.searchParams.get(\"patient\")); const provider = clean(url.searchParams.get(\"provider\")); const insuranceCompany = clean(url.searchParams.get(\"insuranceCompany\")); const claim = clean(url.searchParams.get(\"claim\")); const indexAaaNumber = clean(url.searchParams.get(\"indexAaaNumber\")); const dateOpenedFrom = clean(url.searchParams.get(\"dateOpenedFrom\"));"
+    },
+    {
+      "file": "app/api/admin/users/assign-role/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "actorRoleRequired: \"owner_admin\", actorEffectivePermissionCount: actorEffectivePermissionKeys.length, enforcementChanged: false, note: \"Preview only. No AdminUserRole row, permission override, enforcement setting, Clio record, document, email, or print queue item was changed.\", }); } const assignment = await prisma.$transaction(async (tx) => { const created = await tx.adminUserRole.create({ data: { userId: targetUser.id, roleId: role.id, }, });"
+    },
+    {
+      "file": "app/api/admin/users/create/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "actorRoleRequired: \"owner_admin\", actorEffectivePermissionCount: actorEffectivePermissionKeys.length, enforcementChanged: false, note: \"Preview only. No AdminUser row, role assignment, permission override, enforcement setting, Clio record, document, email, or print queue item was changed.\", }); } const created = await prisma.$transaction(async (tx) => { const user = await tx.adminUser.create({ data: { email, displayName, status, bootstrapSafe: false,"
+    },
+    {
+      "file": "app/api/admin/users/lockout/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "actorEffectivePermissionCount: actorEffectivePermissionKeys.length, lockoutProtection: true, enforcementChanged: false, note: \"Preview only. No AdminUser row, credential, password, impersonation session, permission enforcement setting, Clio record, document, email, or print queue item was changed.\", }); } const updated = await prisma.$transaction(async (tx) => { const user = await tx.adminUser.update({ where: { id: targetUser.id }, data: { status: nextStatus, notes: targetUser.notes"
+    },
+    {
+      "file": "app/api/admin/users/password-reset/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "enforcementChanged: false, passwordExposed: false, passwordReturned: false, impersonationEnabled: false, note: \"Preview only. No password hash, credential, username, user status, permission enforcement setting, Clio record, document, email, or print queue item was changed.\", }); } const passwordHash = await bcrypt.hash(temporaryPassword, 12); const updated = await prisma.$transaction(async (tx) => { const user = await tx.adminUser.update({ where: { id: targetUser.id },"
+    },
+    {
+      "file": "app/api/admin/users/permission-override/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "actorRoleRequired: \"owner_admin\", actorEffectivePermissionCount: actorEffectivePermissionKeys.length, enforcementChanged: false, note: \"Preview only. No AdminUserPermissionOverride row, role row, enforcement setting, Clio record, document, email, or print queue item was changed.\", }); } const override = await prisma.$transaction(async (tx) => { const saved = existingOverride ? await tx.adminUserPermissionOverride.update({ where: { id: existingOverride.id }, data: {"
+    },
+    {
+      "file": "app/api/admin/users/remove-role/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "actorRoleRequired: \"owner_admin\", actorEffectivePermissionCount: actorEffectivePermissionKeys.length, enforcementChanged: false, note: \"Preview only. No AdminUserRole row, permission override, enforcement setting, Clio record, document, email, or print queue item was changed.\", }); } const removed = await prisma.$transaction(async (tx) => { const deleted = await tx.adminUserRole.delete({ where: { id: existingAssignment.id, }, }); await createMatterAuditLogEntry({"
+    },
+    {
+      "file": "app/api/claim-index/by-master/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "const rowsWithMetadata = await attachLocalLawsuitMetadataToClaimRows(rows); return NextResponse.json({ ok: true, action: \"claim-index-by-master\", readOnly: true, noClioRecordsChanged: true, noDatabaseRecordsChanged: true, noDocumentsGenerated: true, noPrintQueueRecordsChanged: true, count: rowsWithMetadata.length, masterLawsuitId, rows: rowsWithMetadata, }); }"
+    },
+    {
+      "file": "app/api/court-calendar/events/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "localFirst: true, sourceOfTruth: \"barsh-matters-local\", error: message, ...details, safety: { clioRecordsChanged: false, externalCalendarEventsCreated: false, emailsSent: false, documentsGenerated: false, printQueueChanged: false, ...(details.safety && typeof details.safety === \"object\" ? details.safety : {}), }, }, { status } ); } async function lawsuitDefaults(masterLawsuitId: string) { const lawsuit = await prisma.lawsuit.findUnique({"
+    },
+    {
+      "file": "app/api/court-calendar/filter-options/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "const defaultOptions = defaultLawsuit?.lawsuitOptions && typeof defaultLawsuit.lawsuitOptions === \"object\" && !Array.isArray(defaultLawsuit.lawsuitOptions) ? defaultLawsuit.lawsuitOptions as Record<string, any> : {}; const defaultCourt = clean(defaultLawsuit?.venueSelection || defaultLawsuit?.venue || defaultOptions.venueSelection || defaultOptions.venue || defaultLawsuit?.venueOther); const [referenceVenues, lawsuitVenues, eventVenues, providerClientRows] = await Promise.all([ prisma.referenceEntity.findMany({ where: { type: \"court_venue\", active: true }, orderBy: { displayName: \"asc\" }, select: { displayName: true }, take: 500 }), prisma.lawsuit.findMany({ select: { venue: true, venueSelection: true, venueOther: true }, take: 1000 }),"
+    },
+    {
+      "file": "app/api/court-calendar/import-webcivil-local/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "sourceOfTruth: \"barsh-matters-local\", error: message, ...details, safety: { externalWebCivilCalled: false, clioRecordsChanged: false, externalCalendarEventsCreated: false, emailsSent: false, documentsGenerated: false, printQueueChanged: false, ...(details.safety && typeof details.safety === \"object\" ? details.safety : {}), }, }, { status } ); } function splitLine(line: string): string[] { if (line.includes(\"\\t\")) return line.split(\"\\t\").map(clean);"
+    },
+    {
+      "file": "app/api/documents/clio-document-open/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "function pdfText(value: unknown): string { return String(value ?? \"\").replace(/\\\\/g, \"\\\\\\\\\").replace(/\\(/g, \"\\\\(\").replace(/\\)/g, \"\\\\)\"); } function decodeDocumentBytes(bytes: ArrayBuffer): string { return new TextDecoder(\"utf-8\", { fatal: false }).decode(bytes).replace(/\\r\\n/g, \"\\n\").replace(/\\r/g, \"\\n\"); } function decodeQuotedPrintable(value: string): string { return value .replace(/=\\r?\\n/g, \"\") .replace(/=([A-Fa-f0-9]{2})/g, (_match, hex) => String.fromCharCode(parseInt(hex, 16))); } function decodeMimePayload(payload: string, transferEncoding: string): string { const encoding = transferEncoding.toLowerCase();"
+    },
+    {
+      "file": "app/api/documents/clio-matter-documents/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "action: \"clio-matter-documents-list\", readOnly: true, clioRecordsChanged: false, databaseRecordsChanged: false, documentsUploaded: false, documentsDownloaded: false, documentsGenerated: false, emailSent: false, printQueued: false, error: \"Use either matterId or masterLawsuitId, not both.\", }, { status: 400 } ); } if (!matterId && !masterLawsuitId) { return NextResponse.json( { ok: false, action: \"clio-matter-documents-list\","
+    },
+    {
+      "file": "app/api/documents/delivery-draft-preview/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "documentKey: clean(raw.documentKey) || \"document\", documentLabel: clean(raw.documentLabel) || \"Document\", documentUrl: clean(raw.documentUrl) || undefined, pdfUrl: clean(raw.pdfUrl) || undefined, docxUrl: clean(raw.docxUrl) || undefined, subject: clean(raw.subject) || undefined, providerName: clean(raw.providerName) || undefined, patientName: clean(raw.patientName) || undefined, insurerName: clean(raw.insurerName) || undefined, indexNumber: clean(raw.indexNumber) || undefined, ourCaseNumber: clean(raw.ourCaseNumber) || undefined,"
+    },
+    {
+      "file": "app/api/documents/direct-finalize-preview/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "throw new Error(packetJson?.error || \"Could not load direct matter document packet.\"); } return packetJson.packet; } function directBaseName(packet: any, displayNumber: string) { const documentData = packet?.metadata?.documentData || {}; const templateFields = documentData?.templateFields || packet?.templateFields || {}; const provider = safeFilePart(templateFields.providerName || packet?.provider?.displayName || \"Provider\"); const patient = safeFilePart(templateFields.patientName || packet?.patient?.displayName || \"Patient\"); const insurer = safeFilePart(templateFields.insurerName || packet?.insurer?.displayName || \"Insurer\");"
+    },
+    {
+      "file": "app/api/documents/finalization-history/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "\"Missing lookup. Provide masterLawsuitId, matterId, matterDisplayNumber, clioMatterId, or clioDisplayNumber.\", safety: { readOnly: true, noClioRecordsChanged: true, noDatabaseRecordsChanged: true, }, }, { status: 400 } ); } const finalizationOr: any[] = []; const printQueueOr: any[] = []; const emailThreadOr: any[] = []; const emailMatterLinkOr: any[] = []; if (masterLawsuitId) { finalizationOr.push({ masterLawsuitId }); printQueueOr.push({ masterLawsuitId }); emailThreadOr.push({ masterLawsuitId });"
+    },
+    {
+      "file": "app/api/documents/preview-pdf/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "error: \"Preview PDF requires a workingDocumentDriveItemId.\", safety: { previewOnly: true, clioRecordsChanged: false, databaseRecordsChanged: false, finalizationRecordCreated: false, printQueueChanged: false, }, }, { status: 400 } ); } const conversion = await convertWorkingDocxDriveItemToPdf({ driveItemId: workingDocumentDriveItemId, }); const filename = pdfFilename(body?.filename || body?.workingDocumentName || \"Barsh-Matters-Preview.pdf\");"
+    },
+    {
+      "file": "app/api/documents/print-queue/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "function numberOrNull(value: unknown): number | null { const n = Number(value); return Number.isFinite(n) && n > 0 ? n : null; } function toJsonSafe(value: unknown): any { if (value == null) return null; try { return JSON.parse(JSON.stringify(value)); } catch { return null; } } const PRINT_QUEUE_STATUS_TRANSITIONS: Record<string, { status: string; printDecision: string | null; setPrintedAt: boolean; }> = { queued: { status: \"queued\", printDecision: null, setPrintedAt: false, }, printed: { status: \"printed\", printDecision: \"printed\","
+    },
+    {
+      "file": "app/api/documents/print-queue-preview/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "? Number(doc.byteLength) : null, clioDocumentId: clean(doc.clioDocumentId), clioDocumentName: clean(doc.clioDocumentName), clioDocumentVersionUuid: clean(doc.clioDocumentVersionUuid), fullyUploaded: doc.fullyUploaded === true, printCandidateReason: \"Document appears in local DocumentFinalization uploaded[] audit data and was verified against the current Clio repository storage Documents tab.\", localAuditOnly: false, currentClioExistenceVerified: false, currentClioExistenceMatch: null,"
+    },
+    {
+      "file": "app/api/documents/templates/detail/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "action: \"document-template-detail-preview\", previewOnly: true, databaseRecordsChanged: false, templateRepositoryWrites: false, clioWrites: false, graphWrites: false, draftsCreated: false, emailsSent: false, documentsGenerated: false, printQueued: false, }; } export async function GET(req: NextRequest) { try { const key = clean(req.nextUrl.searchParams.get(\"key\")); const category = normalizeCategory(req.nextUrl.searchParams.get(\"category\") || \"all\"); if (!key) { return NextResponse.json("
+    },
+    {
+      "file": "app/api/documents/templates/import-confirm/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "safety: safetyTemplateImportConfirm(true), note: \"Confirmed document template import wrote only local Barsh Matters DocumentTemplate, DocumentTemplateVersion, and DocumentTemplateMergeField rows. It did not upload files, generate documents, write Clio, create drafts, send email, print, or queue documents.\", }); } catch (error: any) { return NextResponse.json( { ok: false, action: \"document-template-import-confirm\", error: error?.message || \"Document template import confirm failed.\", safety: safetyTemplateImportConfirm(false),"
+    },
+    {
+      "file": "app/api/documents/templates/import-preview/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "...preview, safety: safetyTemplateImportPreview(), note: \"Preview-only document template import. It validates template rows and existing keys but does not write DocumentTemplate, DocumentTemplateVersion, DocumentTemplateMergeField, Clio, documents, print queue, drafts, or email.\", }); } catch (error: any) { return NextResponse.json( { ok: false, action: \"document-template-import-preview\", error: error?.message || \"Document template import preview failed.\", safety: safetyTemplateImportPreview(),"
+    },
+    {
+      "file": "app/api/documents/templates/replace-version/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "createsNewVersionOnly: databaseRecordsChanged, preservesPriorVersions: true, updatesCurrentVersionId: databaseRecordsChanged, clioWrites: false, graphWrites: false, draftsCreated: false, emailsSent: false, documentsGenerated: false, printQueued: false, }; } async function readBody(req: NextRequest) { const contentType = clean(req.headers.get(\"content-type\")).toLowerCase(); if (contentType.includes(\"multipart/form-data\")) { const form = await req.formData(); const templateKey = clean(form.get(\"templateKey\"));"
+    },
+    {
+      "file": "app/api/documents/templates/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "sourceOfTruth: \"barsh-matters-local-template-repository\", dryRun: true, previewOnly: true, readOnly: true, clioRecordsChanged: false, databaseRecordsChanged: false, documentsGenerated: false, persistentFilesCreated: false, printQueueChanged: false, emailsSent: false, templatesEdited: false, templateRepositoryWrites: false, }; } function readOnlyDbTemplateToRepositoryRecord(row: any) { const currentVersion = Array.isArray(row?.versions) && row.versions.length > 0"
+    },
+    {
+      "file": "app/api/lawsuits/local-generation-create/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "createsLawsuit: true, updatesClaimIndex: true, writesClio: false, createsClioMasterMatter: false, consumesMasterSequence: true, uploadsDocuments: false, downloadsDocuments: false, sendsEmail: false, printsDocuments: false, queuesPrintJobs: false, }, }); } catch (error: any) { return NextResponse.json( { ok: false, created: false, error: error?.message || \"Local lawsuit generation failed.\", writes: {"
+    },
+    {
+      "file": "app/api/matters/apply-payment/route.ts",
+      "matched": [
+        "/invoice/i"
+      ],
+      "excerpt": "const transactionStatus = cleanText(row?.transactionStatus || posting.transactionStatus); const transactionDate = cleanText(row?.transactionDate || posting.transactionDate || row?.paymentDate); const checkNumber = cleanText(row?.checkNumber || posting.checkNumber); const checkDate = cleanText(row?.checkDate || posting.checkDate); const invoiceId = cleanText(row?.invoiceId || posting.invoiceId); const description = cleanText(row?.description || posting.description || transactionType); const transactionFee = row?.transactionFee ?? posting.transactionFee ?? null; const postedBy = cleanText(row?.postedBy || posting.postedBy || safetySnapshot.sourceOfPaymentIntent || \"Barsh Matters UI\");"
+    },
+    {
+      "file": "app/api/reference-data/aliases/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "normalizeReferenceText, } from \"@/lib/referenceData\"; export const runtime = \"nodejs\"; function safetyLocalReferenceData() { return { localBarshMattersReferenceData: true, clioData: false, noClioRecordsChanged: true, noDocumentsGenerated: true, noPrintQueueRecordsChanged: true, hardDeleteSupported: false, }; } function actorFromBody(body: any) { return { actorName: cleanReferenceText(body?.actorName) || \"Barsh Matters User\", actorEmail: cleanReferenceText(body?.actorEmail) || null, };"
+    },
+    {
+      "file": "app/api/reference-data/entities/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "safeLimit, } from \"@/lib/referenceData\"; export const runtime = \"nodejs\"; function safetyLocalReferenceData() { return { localBarshMattersReferenceData: true, clioData: false, noClioRecordsChanged: true, noDocumentsGenerated: true, noPrintQueueRecordsChanged: true, hardDeleteSupported: false, }; } function actorFromBody(body: any) { return { actorName: cleanReferenceText(body?.actorName) || \"Barsh Matters User\", actorEmail: cleanReferenceText(body?.actorEmail) || null, };"
+    },
+    {
+      "file": "app/api/reference-data/import-cleanup-confirm/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "function safetyCleanupConfirm(databaseRecordsChanged = true) { return { localBarshMattersReferenceData: true, previewOnly: false, databaseRecordsChanged, noDatabaseRecordsChanged: !databaseRecordsChanged, clioData: false, noClioRecordsChanged: true, noDocumentsGenerated: true, noPrintQueueRecordsChanged: true, hardDeleteSupported: false, hardDeletePerformed: false, deactivateOnly: true, aliasesDeleted: false, }; } function actorFromBody(body: any) { return { actorName: cleanReferenceText(body?.actorName) || \"Barsh Matters User\","
+    },
+    {
+      "file": "app/api/reference-data/import-cleanup-preview/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "function safetyCleanupPreview() { return { localBarshMattersReferenceData: true, previewOnly: true, databaseRecordsChanged: false, noDatabaseRecordsChanged: true, clioData: false, noClioRecordsChanged: true, noDocumentsGenerated: true, noPrintQueueRecordsChanged: true, hardDeleteSupported: false, hardDeletePerformed: false, deactivateOnly: true, confirmedCleanupSupported: false, }; } function safeLimit(value: unknown) { const n = Number(value); if (!Number.isFinite(n)) return 50;"
+    },
+    {
+      "file": "app/api/reference-data/import-confirm/route.ts",
+      "matched": [
+        "/csv/i"
+      ],
+      "excerpt": "...safetyConfirmedImport(), databaseRecordsChanged: false, noDatabaseRecordsChanged: true, }, }, { status: 400 } ); } const preview = await buildReferenceImportPreview({ type: body?.type, csvText: String(body?.csvText ?? \"\"), columnMappings: body?.columnMappings || {}, }); if (preview.summary.invalidRows > 0 || preview.summary.duplicateOrConflictRows > 0) { return NextResponse.json( { ok: false, action: \"reference-import-confirm\","
+    },
+    {
+      "file": "app/api/reference-data/import-history/route.ts",
+      "matched": [
+        "/csv/i",
+        "/print/i"
+      ],
+      "excerpt": "function safetyImportHistory() { return { localBarshMattersReferenceData: true, readOnly: true, databaseRecordsChanged: false, noDatabaseRecordsChanged: true, clioData: false, noClioRecordsChanged: true, noDocumentsGenerated: true, noPrintQueueRecordsChanged: true, hardDeleteSupported: false, }; } function safeLimit(value: unknown) { const n = Number(value); if (!Number.isFinite(n)) return 25; return Math.max(1, Math.min(100, Math.floor(n))); } function asObject(value: unknown): Record<string, any> {"
+    },
+    {
+      "file": "app/api/reference-data/import-preview/route.ts",
+      "matched": [
+        "/csv/i"
+      ],
+      "excerpt": "import { buildReferenceImportPreview, safetyImportPreview } from \"@/lib/referenceImport\"; export const runtime = \"nodejs\"; export async function POST(req: NextRequest) { try { const body = await req.json(); const preview = await buildReferenceImportPreview({ type: body?.type, csvText: String(body?.csvText ?? \"\"), columnMappings: body?.columnMappings || {}, }); return NextResponse.json({ ok: true, action: \"reference-import-preview\", ...preview, safety: safetyImportPreview(), }); } catch (err: any) {"
+    },
+    {
+      "file": "app/api/settlements/attorney-fee-breakdown/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "function attorneyFeeGenerationSafety() { return { action: \"attorney-fee-breakdown-docx\", generatedDocxResponseOnly: true, routeOnly: true, noClioRecordsChanged: true, noDatabaseRecordsChanged: true, noDocumentUploadPerformed: true, noPrintQueueRecordsChanged: true, noPersistentFilesCreated: true, }; } function titleParagraph(text: string) { return new Paragraph({ heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER, children: [new TextRun({ text, bold: true, size: 32 })],"
+    },
+    {
+      "file": "app/api/settlements/contacts/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "notes: contact.notes, isActive: contact.isActive, display: contactDisplay(contact), })), safety: { readOnly: true, clioRecordsChanged: false, databaseRecordsChanged: false, documentsGenerated: false, printQueueChanged: false, mattersClosed: false, }, }); } catch (error: any) { return NextResponse.json( { ok: false, action: \"settlement-contacts-list\", localFirst: true, sourceOfTruth: \"barsh-matters-local\","
+    },
+    {
+      "file": "app/api/settlements/current-values/route.ts",
+      "matched": [
+        "/print/i"
+      ],
+      "excerpt": "replacementRoutes: [ \"/api/settlements/local-preview\", \"/api/settlements/local-record-preview\", \"/api/settlements/local-record\", ], safety: { clioRecordsChanged: false, databaseRecordsChanged: false, documentsGenerated: false, printQueueChanged: false, mattersClosed: false, settlementWritebackPerformed: false, }, }; export async function GET() { return NextResponse.json(disabledPayload, { status: 410 }); } export async function POST() { return NextResponse.json(disabledPayload, { status: 410 });"
+    }
+  ],
+  "safety": {
+    "readOnlyInspection": true,
+    "noDatabaseMutation": true,
+    "noClioTouched": true,
+    "noGraphTouched": true,
+    "noFinalization": true,
+    "noFieldMapping": true
+  }
+}

@@ -7,6 +7,7 @@ const verifierScripts = [
   "scripts/verify-templates-phase6-layout-composition-validation-report-builder.mjs",
   "scripts/verify-templates-phase7-layout-composition-validation-report-runner.mjs",
   "scripts/verify-templates-phase9-layout-composition-admin-readiness-payload.mjs",
+  "scripts/verify-templates-phase10-admin-exposure-readiness-plan.mjs",
 ];
 
 const isolatedRuntimeFiles = [
@@ -85,4 +86,4 @@ if (productionHits.length > 0) {
   fail("layout composition validation stack is wired into production paths");
 }
 
-pass("Templates layout composition validation suite passed Phases 4 through 7 plus Phase 9 and isolation guardrails");
+pass("Templates layout composition validation suite passed Phases 4 through 7 plus Phases 9 and 10 and isolation guardrails");

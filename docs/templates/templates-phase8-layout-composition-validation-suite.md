@@ -17,6 +17,7 @@ The suite verifies:
 - Phase 6 validation report builder behavior;
 - Phase 7 report runner behavior;
 - Phase 9 admin-readiness payload behavior;
+- Phase 10 admin exposure readiness plan;
 - package script availability; and
 - continued isolation from production paths.
 

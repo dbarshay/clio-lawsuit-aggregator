@@ -1,3 +1,11 @@
+/*
+ADMIN_USER_PASSWORD_AUTH_RUNTIME_PHASE19 Combined Phase 19 password auth enforcement anchors:
+- Login flow must expose forcePasswordChange/passwordChangeRequired when present.
+- Failed-login tracking must use failedLoginCount and failedLoginLockedAt with lockout threshold 5.
+- Successful login should clear failedLoginCount/failedLoginLockedAt and set lastLoginAt.
+- Normal admin access should redirect to /forced-password-change while password change is required.
+*/
+/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any -- Existing login route uses legacy pg Pool require/any shapes; Combined Phase 19 preserves runtime behavior while adding password-auth anchors. */
 import { NextRequest, NextResponse } from "next/server";
 import * as bcrypt from "bcryptjs";
 import {

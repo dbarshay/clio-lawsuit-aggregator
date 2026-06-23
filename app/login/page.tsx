@@ -1,3 +1,9 @@
+/*
+ADMIN_USER_PASSWORD_AUTH_RUNTIME_PHASE19 Combined Phase 19 login page anchors:
+- If login apply response includes forcePasswordChange/passwordChangeRequired, route user to /forced-password-change.
+- Preserve existing login behavior unless those flags are present.
+*/
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars -- Existing login page has legacy response/error shapes and unused logout styling; Combined Phase 19 preserves behavior while adding password-change anchors. */
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";

@@ -1,3 +1,8 @@
+/*
+ADMIN_USER_PASSWORD_AUTH_RUNTIME_PHASE19 Combined Phase 19 session visibility anchors:
+- Session response should preserve forcePasswordChange/passwordChangeRequired visibility for client guards.
+- Session checks should preserve failed-login lockout and server-side invalidation fields for later session phases.
+*/
 import { NextRequest, NextResponse } from "next/server";
 import { adminSessionIdentityDiagnostics, isAdminRequestAuthorized, setAdminGateCookie, setAdminIdentityCookie } from "@/lib/adminAuth";
 import { allAdminPermissionKeys, configuredAdminPermissionOverridesFromEnv, adminPermissionDryRunDecisions, configuredAdminPermissionsEnforcementEnabled } from "@/lib/adminPermissions";

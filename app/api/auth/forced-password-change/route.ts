@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
-import { isAdminRequestAuthorized } from "@/lib/adminAuth";
 import { createMatterAuditLogEntry } from "@/lib/auditLog";
 import { prisma } from "@/lib/prisma";
 import {
@@ -13,7 +12,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type ChangePasswordBody = {
+type ForcedPasswordChangeBody = {
   email?: unknown;
   currentPassword?: unknown;
   newPassword?: unknown;
@@ -29,22 +28,18 @@ function cleanEmail(value: unknown): string {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAdminRequestAuthorized(req)) {
-    return NextResponse.json({ ok: false, action: "admin-user-change-password", error: "Unauthorized." }, { status: 401 });
-  }
-
   try {
-    const body = (await req.json().catch(() => ({}))) as ChangePasswordBody;
+    const body = (await req.json().catch(() => ({}))) as ForcedPasswordChangeBody;
     const email = cleanEmail(body.email);
     const currentPassword = cleanString(body.currentPassword);
     const newPassword = cleanString(body.newPassword);
     const confirmPassword = cleanString(body.confirmPassword);
 
     if (!email || !currentPassword || !newPassword || !confirmPassword) {
-      return NextResponse.json({ ok: false, action: "admin-user-change-password", error: "Email, current password, new password, and confirm password are required." }, { status: 400 });
+      return NextResponse.json({ ok: false, action: "admin-user-forced-password-change", error: "Email, current temporary password, new password, and confirm password are required." }, { status: 400 });
     }
     if (newPassword !== confirmPassword) {
-      return NextResponse.json({ ok: false, action: "admin-user-change-password", error: "New password and confirm password do not match." }, { status: 400 });
+      return NextResponse.json({ ok: false, action: "admin-user-forced-password-change", error: "New password and confirm password do not match." }, { status: 400 });
     }
 
     const user = await prisma.adminUser.findUnique({
@@ -58,19 +53,24 @@ export async function POST(req: NextRequest) {
         inactive: true,
         passwordHash: true,
         passwordHistoryJson: true,
+        forcePasswordChange: true,
+        passwordChangeRequired: true,
       },
     });
 
     if (!user || user.status !== "active" || user.locked || user.inactive) {
-      return NextResponse.json({ ok: false, action: "admin-user-change-password", error: "Active admin user required." }, { status: 403 });
+      return NextResponse.json({ ok: false, action: "admin-user-forced-password-change", error: "Active admin user required." }, { status: 403 });
+    }
+    if (!user.forcePasswordChange && !user.passwordChangeRequired) {
+      return NextResponse.json({ ok: false, action: "admin-user-forced-password-change", error: "Forced password change is not required for this user." }, { status: 400 });
     }
     if (!adminUserPasswordMatchesPhase19(currentPassword, user.passwordHash)) {
-      return NextResponse.json({ ok: false, action: "admin-user-change-password", error: "Current password is incorrect." }, { status: 403 });
+      return NextResponse.json({ ok: false, action: "admin-user-forced-password-change", error: "Current temporary password is incorrect." }, { status: 403 });
     }
 
     const policyErrors = adminUserPasswordPolicyErrorsPhase19(newPassword, user.passwordHistoryJson);
     if (policyErrors.length > 0) {
-      return NextResponse.json({ ok: false, action: "admin-user-change-password", error: "New password does not meet password policy.", passwordPolicyErrors: policyErrors }, { status: 400 });
+      return NextResponse.json({ ok: false, action: "admin-user-forced-password-change", error: "New password does not meet password policy.", passwordPolicyErrors: policyErrors }, { status: 400 });
     }
 
     const updateData = buildAdminUserPasswordChangeDataPhase19(user.passwordHistoryJson, newPassword);
@@ -89,13 +89,15 @@ export async function POST(req: NextRequest) {
       });
 
       await createMatterAuditLogEntry({
-        action: "admin-user-change-password",
-        summary: `Password changed by admin user ${user.email}.`,
+        action: "admin-user-forced-password-change",
+        summary: `Forced password change completed for admin user ${user.email}.`,
         entityType: "admin_user",
         fieldName: "AdminUser.passwordHash",
         priorValue: user.passwordHash ? "[existing non-recoverable hash]" : null,
         newValue: {
           passwordHashChanged: true,
+          forcePasswordChangeCleared: true,
+          passwordChangeRequiredCleared: true,
           passwordHistoryUpdated: true,
           plaintextPasswordLogged: false,
           source: ADMIN_USER_PASSWORD_AUTH_RUNTIME_PHASE19,
@@ -106,8 +108,14 @@ export async function POST(req: NextRequest) {
       return saved;
     });
 
-    return NextResponse.json({ ok: true, action: "admin-user-change-password", user: updated, plaintextPasswordLogged: false });
+    return NextResponse.json({
+      ok: true,
+      action: "admin-user-forced-password-change",
+      user: updated,
+      plaintextPasswordLogged: false,
+      redirectTo: "/admin",
+    });
   } catch (error) {
-    return NextResponse.json({ ok: false, action: "admin-user-change-password", error: error instanceof Error ? error.message : "Change password route failed." }, { status: 500 });
+    return NextResponse.json({ ok: false, action: "admin-user-forced-password-change", error: error instanceof Error ? error.message : "Forced password-change route failed." }, { status: 500 });
   }
 }

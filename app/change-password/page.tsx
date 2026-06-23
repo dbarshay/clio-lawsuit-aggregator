@@ -1,90 +1,55 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
-const inputStyle = {
-  width: "100%",
-  boxSizing: "border-box",
-  border: "1px solid #cbd5e1",
-  borderRadius: 12,
-  padding: "10px 12px",
-  fontSize: 14,
-  background: "#ffffff",
-  color: "#0f172a",
-} as const;
-
-const primaryButtonStyle = {
-  border: "1px solid #1e3a8a",
-  background: "#1e3a8a",
-  color: "#ffffff",
-  borderRadius: 999,
-  padding: "10px 14px",
-  fontSize: 13,
-  fontWeight: 950,
-  cursor: "pointer",
-} as const;
+const inputStyle = { width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: 8 } as const;
+const primaryButtonStyle = { background: "#1e3a8a", color: "#ffffff", border: "1px solid #1e3a8a", borderRadius: 8, padding: "10px 14px", fontWeight: 900, cursor: "pointer" } as const;
 
 export default function ChangePasswordPage() {
-  const router = useRouter();
+  const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function submitChangePassword(event: React.FormEvent) {
-    event.preventDefault();
+  async function submit() {
+    setBusy(true);
+    setStatus("");
     try {
-      setBusy(true);
-      setMessage("Changing password...");
       const response = await fetch("/api/auth/change-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-        body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+        body: JSON.stringify({ email, currentPassword, newPassword, confirmPassword }),
       });
-      const json = await response.json().catch(() => ({ ok: false, error: "Password change route did not return JSON." }));
+      const json = await response.json().catch(() => ({}));
       if (!response.ok || !json?.ok) {
-        setMessage(json?.error || `Password change failed with HTTP ${response.status}.`);
+        setStatus(json?.passwordPolicyErrors?.join(" ") || json?.error || "Password change failed.");
         return;
       }
-      setMessage("Password changed. Redirecting to Admin...");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      router.replace("/admin");
-    } catch (err: any) {
-      setMessage(err?.message || "Password change failed.");
+      setStatus("Password changed.");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <main data-barsh-change-password-page="true" style={{ minHeight: "100vh", background: "#f8fafc", padding: 32 }}>
-      <section style={{ maxWidth: 560, margin: "40px auto", background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 22, padding: 22 }}>
-        <h1 style={{ marginTop: 0 }}>Change Password</h1>
-        <p style={{ color: "#475569", lineHeight: 1.5 }}>Your account requires a password change before continuing. Passwords are hashed immediately and are not viewable or recoverable.</p>
-        <form onSubmit={submitChangePassword} style={{ display: "grid", gap: 14 }}>
-          <label style={{ fontSize: 13, fontWeight: 900 }}>
-            Current / Temporary Password
-            <input data-barsh-change-password-current="true" type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} style={inputStyle} />
-          </label>
-          <label style={{ fontSize: 13, fontWeight: 900 }}>
-            New Password
-            <input data-barsh-change-password-new="true" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} style={inputStyle} placeholder="Min 10 + upper/lower/number/symbol" />
-          </label>
-          <label style={{ fontSize: 13, fontWeight: 900 }}>
-            Confirm New Password
-            <input data-barsh-change-password-confirm="true" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} style={inputStyle} />
-          </label>
-          <button data-barsh-change-password-submit="true" type="submit" disabled={busy} style={{ ...primaryButtonStyle, opacity: busy ? 0.7 : 1 }}>
-            Change Password
-          </button>
-        </form>
-        {message ? <p data-barsh-change-password-message="true" style={{ marginTop: 14, fontWeight: 900, color: message.includes("failed") || message.includes("incorrect") ? "#991b1b" : "#166534" }}>{message}</p> : null}
-        <p style={{ marginTop: 18, color: "#991b1b", fontWeight: 900 }}>Safety: no password viewing, no password recovery, and no login impersonation are available.</p>
+    <main style={{ minHeight: "100vh", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <section data-barsh-change-password-page="true" style={{ width: "min(520px, 100%)", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 14, overflow: "hidden", boxShadow: "0 18px 44px rgba(15, 23, 42, 0.14)" }}>
+        <div style={{ background: "#1e3a8a", color: "#ffffff", padding: "16px 20px", textAlign: "center" }}>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 950 }}>Change Password</h1>
+        </div>
+        <div style={{ padding: 22, display: "grid", gap: 12 }}>
+          <input data-barsh-change-password-email="true" style={inputStyle} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email" autoComplete="username" />
+          <input data-barsh-change-password-current-password="true" style={inputStyle} value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} placeholder="Current password" type="password" autoComplete="current-password" />
+          <input data-barsh-change-password-new-password="true" style={inputStyle} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="New password" type="password" autoComplete="new-password" />
+          <input data-barsh-change-password-confirm-password="true" style={inputStyle} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Confirm new password" type="password" autoComplete="new-password" />
+          <button data-barsh-change-password-submit="true" type="button" disabled={busy} onClick={() => void submit()} style={primaryButtonStyle}>{busy ? "Saving..." : "Change Password"}</button>
+          {status ? <p data-barsh-change-password-status="true" style={{ margin: 0, color: "#334155", fontWeight: 800 }}>{status}</p> : null}
+        </div>
       </section>
     </main>
   );

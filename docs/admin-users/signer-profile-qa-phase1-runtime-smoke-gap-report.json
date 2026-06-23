@@ -1,0 +1,157 @@
+{
+  "phase": "Admin Users / Signer Profile QA Phase 1",
+  "baseline": "admin-users-combined-phase21-2fa-final-readiness-20260623",
+  "runtimeMutation": false,
+  "fileStatus": {
+    "passwordResetRoute": {
+      "path": "app/api/admin/users/password-reset/route.ts",
+      "exists": true
+    },
+    "forcedPasswordChangeRoute": {
+      "path": "app/api/auth/forced-password-change/route.ts",
+      "exists": true
+    },
+    "forcedPasswordChangePage": {
+      "path": "app/forced-password-change/page.tsx",
+      "exists": true
+    },
+    "changePasswordRoute": {
+      "path": "app/api/auth/change-password/route.ts",
+      "exists": true
+    },
+    "changePasswordPage": {
+      "path": "app/change-password/page.tsx",
+      "exists": true
+    },
+    "loginRoute": {
+      "path": "app/api/auth/login/route.ts",
+      "exists": true
+    },
+    "loginPage": {
+      "path": "app/login/page.tsx",
+      "exists": true
+    },
+    "sessionRoute": {
+      "path": "app/api/auth/session/route.ts",
+      "exists": true
+    },
+    "adminPage": {
+      "path": "app/admin/page.tsx",
+      "exists": true
+    },
+    "signoutRoute": {
+      "path": "app/api/auth/signout/route.ts",
+      "exists": true
+    },
+    "staySignedInRoute": {
+      "path": "app/api/auth/stay-signed-in/route.ts",
+      "exists": true
+    },
+    "twoFactorChallengeRoute": {
+      "path": "app/api/auth/2fa/challenge/route.ts",
+      "exists": true
+    },
+    "twoFactorVerifyRoute": {
+      "path": "app/api/auth/2fa/verify/route.ts",
+      "exists": true
+    },
+    "passwordHelper": {
+      "path": "src/lib/auth/admin-user-password-auth-runtime-phase19.ts",
+      "exists": true
+    },
+    "sessionHelper": {
+      "path": "src/lib/auth/admin-user-session-runtime-phase20.ts",
+      "exists": true
+    },
+    "twoFactorHelper": {
+      "path": "src/lib/auth/admin-user-two-factor-runtime-phase21.ts",
+      "exists": true
+    },
+    "signerProfileRoute": {
+      "path": "app/api/admin/users/signer-profile/route.ts",
+      "exists": true
+    }
+  },
+  "checks": {
+    "passwordResetGeneratedTemporaryPassword": true,
+    "forcedPasswordChangeRouteImplemented": true,
+    "forcedPasswordChangePageImplemented": false,
+    "changePasswordRouteImplemented": true,
+    "changePasswordPageImplemented": false,
+    "signoutRouteImplemented": true,
+    "staySignedInRouteImplemented": true,
+    "twoFactorChallengeRouteImplemented": true,
+    "twoFactorVerifyRouteImplemented": true,
+    "loginRouteHasForcedPasswordRuntimeEnforcement": false,
+    "loginPageHasForcedPasswordRuntimeRedirect": false,
+    "loginRouteHasTwoFactorRuntimeEnforcement": true,
+    "loginPageHasTwoFactorRuntimeUx": false,
+    "sessionRouteExposesForcedPasswordFlagsRuntime": true,
+    "sessionRouteExposesTwoFactorRuntime": false,
+    "adminPageUsesNewSignoutRouteRuntime": false,
+    "adminPageHasIdleModalRuntime": true,
+    "externalSmsDeliveryImplemented": false
+  },
+  "ready": [
+    "passwordResetGeneratedTemporaryPassword",
+    "forcedPasswordChangeRouteImplemented",
+    "changePasswordRouteImplemented",
+    "signoutRouteImplemented",
+    "staySignedInRouteImplemented",
+    "twoFactorChallengeRouteImplemented",
+    "twoFactorVerifyRouteImplemented",
+    "loginRouteHasTwoFactorRuntimeEnforcement",
+    "sessionRouteExposesForcedPasswordFlagsRuntime",
+    "adminPageHasIdleModalRuntime"
+  ],
+  "notReady": [
+    "forcedPasswordChangePageImplemented",
+    "changePasswordPageImplemented",
+    "loginRouteHasForcedPasswordRuntimeEnforcement",
+    "loginPageHasForcedPasswordRuntimeRedirect",
+    "loginPageHasTwoFactorRuntimeUx",
+    "sessionRouteExposesTwoFactorRuntime",
+    "adminPageUsesNewSignoutRouteRuntime",
+    "externalSmsDeliveryImplemented"
+  ],
+  "gaps": [
+    {
+      "key": "loginRouteHasForcedPasswordRuntimeEnforcement",
+      "severity": "high",
+      "recommendation": "Patch login route to include forcePasswordChange/passwordChangeRequired in the login response and block or redirect normal login completion when required."
+    },
+    {
+      "key": "loginPageHasForcedPasswordRuntimeRedirect",
+      "severity": "high",
+      "recommendation": "Patch login page to route to /forced-password-change when the login response indicates forced password change is required."
+    },
+    {
+      "key": "loginPageHasTwoFactorRuntimeUx",
+      "severity": "medium",
+      "recommendation": "Patch login page to collect and verify 2FA code through /api/auth/2fa/verify when required."
+    },
+    {
+      "key": "sessionRouteExposesTwoFactorRuntime",
+      "severity": "medium",
+      "recommendation": "Patch session route to expose 2FA pending/verified state once login enforcement is wired."
+    },
+    {
+      "key": "adminPageUsesNewSignoutRouteRuntime",
+      "severity": "medium",
+      "recommendation": "Patch admin page logout control to use /api/auth/signout instead of legacy logout route."
+    },
+    {
+      "key": "externalSmsDeliveryImplemented",
+      "severity": "known-deferred",
+      "recommendation": "Integrate an external SMS provider later. Current 2FA challenge stores a hash and records deliveryPendingExternalSms without falsely claiming delivery."
+    }
+  ],
+  "recommendedNextPatch": "Admin Users / Signer Profile QA Phase 2 \u2014 Runtime Enforcement Gap Patch",
+  "recommendedScope": [
+    "Patch forced-password-change login route response and login-page redirect.",
+    "Patch admin page to use /api/auth/signout.",
+    "Implement actual idle timeout warning modal.",
+    "Optionally add 2FA login-page UX, while leaving external SMS delivery marked pending if provider is not configured.",
+    "Do not change DOCX templates or production document-generation signer validation."
+  ]
+}

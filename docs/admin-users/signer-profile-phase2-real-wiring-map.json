@@ -1,0 +1,1323 @@
+{
+  "phase": "Admin Users / Signer Profile Phase 2",
+  "purpose": "Map real Users admin/API/auth/permission surfaces before production wiring.",
+  "effectivePhase1Lock": "admin-users-signer-profile-phase1-security-repair-20260623",
+  "adminDefaultAllPermissionsRequirement": "The primary admin / Dave should default to access to all permissions. Owner-admin/bootstrap behavior should preserve full permission access unless explicitly changed.",
+  "usersPageExists": true,
+  "schemaHasPhase1Fields": true,
+  "candidateAdminPages": [
+    {
+      "path": "app/admin/page.tsx",
+      "hits": [
+        "admin/users",
+        "login",
+        "logout",
+        "session",
+        "audit",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/admin/claim-index/page.tsx",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/admin/claim-index/audit/page.tsx",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/admin/clients/[id]/invoice/page.tsx",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/admin/lawsuit-cleanup/page.tsx",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/admin/backup-restore/page.tsx",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/admin/permissions/page.tsx",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "assign role",
+        "create user",
+        "remove role",
+        "permission override",
+        "session"
+      ]
+    },
+    {
+      "path": "app/admin/ticklers/page.tsx",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/admin/ticklers/runner/page.tsx",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/admin/lawsuits/audit/page.tsx",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/admin/users/page.tsx",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "Reset Password",
+        "assign role",
+        "create user",
+        "remove role",
+        "permission override"
+      ]
+    },
+    {
+      "path": "app/admin/audit-history/page.tsx",
+      "hits": [
+        "admin user",
+        "audit"
+      ]
+    },
+    {
+      "path": "app/admin/readiness-dashboard/page.tsx",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/admin/reference-data/page.tsx",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/admin/document-readiness/audit/page.tsx",
+      "hits": [
+        "audit"
+      ]
+    }
+  ],
+  "candidateApiRoutes": [
+    {
+      "path": "app/api/court-calendar/import-webcivil-local/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/court-calendar/events/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/auth/logout/route.ts",
+      "hits": [
+        "logout",
+        "session"
+      ]
+    },
+    {
+      "path": "app/api/auth/change-password/route.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "login",
+        "session",
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/auth/login/route.ts",
+      "hits": [
+        "AdminUser",
+        "login",
+        "session",
+        "bootstrapSafe"
+      ]
+    },
+    {
+      "path": "app/api/auth/session/route.ts",
+      "hits": [
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/settlements/history/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/graph/token-health/route.ts",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/claim-index/audit/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/admin/clients/[id]/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/admin/clients/[id]/invoice/[invoiceId]/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/admin/clients/[id]/invoice/[invoiceId]/void/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/admin/clients/[id]/invoice/[invoiceId]/finalize/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/admin/clients/[id]/invoice/create/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/admin/permissions/route.ts",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/permissions/deployment-package/route.ts",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/permissions/catalog/route.ts",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/permissions/activation-status/route.ts",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/permissions/role-matrix/route.ts",
+      "hits": [
+        "owner_admin",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/permissions/check/route.ts",
+      "hits": [
+        "permission override",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/lawsuits/cleanup-preview/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/admin/lawsuits/cleanup-confirm/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/admin/lawsuits/audit/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/admin/authorize/route.ts",
+      "hits": [
+        "session"
+      ]
+    },
+    {
+      "path": "app/api/admin/users/remove-role/route.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "permission override",
+        "session",
+        "audit",
+        "owner_admin",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/users/assign-role/route.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "permission override",
+        "session",
+        "audit",
+        "owner_admin",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/users/planning/route.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "create user",
+        "permissions",
+        "bootstrapSafe"
+      ]
+    },
+    {
+      "path": "app/api/admin/users/password-reset/route.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "Reset Password",
+        "login",
+        "session",
+        "audit",
+        "owner_admin"
+      ]
+    },
+    {
+      "path": "app/api/admin/users/create/route.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "permission override",
+        "session",
+        "audit",
+        "owner_admin",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/users/permission-override/route.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "permission override",
+        "session",
+        "audit",
+        "owner_admin",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/users/lockout/route.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "login",
+        "session",
+        "audit",
+        "owner_admin",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/document-readiness/audit/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/audit-log/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/lawsuits/close/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/documents/finalize/route.ts",
+      "hits": [
+        "session",
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/documents/print-queue-preview/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/reference-data/import-history/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/reference-data/import-cleanup-confirm/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/reference-data/aliases/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/reference-data/import-confirm/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/reference-data/entities/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/matters/identity-field/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/matters/apply-payment/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/matters/close/route.ts",
+      "hits": [
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/matters/update-direct-field/route.ts",
+      "hits": [
+        "audit"
+      ]
+    }
+  ],
+  "candidateAuthSessionFiles": [
+    {
+      "path": "app/api/auth/logout/route.ts",
+      "hits": [
+        "logout",
+        "session"
+      ]
+    },
+    {
+      "path": "app/api/auth/change-password/route.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "login",
+        "session",
+        "audit"
+      ]
+    },
+    {
+      "path": "app/api/auth/login/route.ts",
+      "hits": [
+        "AdminUser",
+        "login",
+        "session",
+        "bootstrapSafe"
+      ]
+    },
+    {
+      "path": "app/api/auth/session/route.ts",
+      "hits": [
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/authorize/route.ts",
+      "hits": [
+        "session"
+      ]
+    },
+    {
+      "path": "app/login/page.tsx",
+      "hits": [
+        "login",
+        "logout",
+        "session"
+      ]
+    },
+    {
+      "path": "src/lib/auth/admin-user-session-timeout-phase1.ts",
+      "hits": [
+        "session"
+      ]
+    },
+    {
+      "path": "src/lib/auth/admin-user-password-security-phase1.ts",
+      "hits": [
+        "login"
+      ]
+    },
+    {
+      "path": "lib/adminAuth.ts",
+      "hits": [
+        "AdminUser",
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-prod-auth-admin-smoke.mjs",
+      "hits": [
+        "login",
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-password-auth-safety-phase1.mjs",
+      "hits": [
+        "login"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-session-aware-action-gates-safety.mjs",
+      "hits": [
+        "login",
+        "session",
+        "audit"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-proxy-clean-redirect-safety.mjs",
+      "hits": [
+        "login"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-session-control-safety.mjs",
+      "hits": [
+        "login",
+        "logout",
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-login-redirect-safety.mjs",
+      "hits": [
+        "login"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-login-foundation-safety.mjs",
+      "hits": [
+        "login",
+        "logout",
+        "session"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-auth-foundation-safety.mjs",
+      "hits": [
+        "login",
+        "session"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-home-login-redirect-cleanup-safety.mjs",
+      "hits": [
+        "login"
+      ]
+    }
+  ],
+  "candidatePermissionFiles": [
+    {
+      "path": "app/admin/page.tsx",
+      "hits": [
+        "admin/users",
+        "login",
+        "logout",
+        "session",
+        "audit",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/admin/permissions/page.tsx",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "assign role",
+        "create user",
+        "remove role",
+        "permission override",
+        "session"
+      ]
+    },
+    {
+      "path": "app/admin/users/page.tsx",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "Reset Password",
+        "assign role",
+        "create user",
+        "remove role",
+        "permission override"
+      ]
+    },
+    {
+      "path": "app/api/auth/session/route.ts",
+      "hits": [
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/graph/token-health/route.ts",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/permissions/route.ts",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/permissions/deployment-package/route.ts",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/permissions/catalog/route.ts",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/permissions/activation-status/route.ts",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/permissions/role-matrix/route.ts",
+      "hits": [
+        "owner_admin",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/permissions/check/route.ts",
+      "hits": [
+        "permission override",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/users/remove-role/route.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "permission override",
+        "session",
+        "audit",
+        "owner_admin",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/users/assign-role/route.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "permission override",
+        "session",
+        "audit",
+        "owner_admin",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/users/planning/route.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "create user",
+        "permissions",
+        "bootstrapSafe"
+      ]
+    },
+    {
+      "path": "app/api/admin/users/password-reset/route.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "Reset Password",
+        "login",
+        "session",
+        "audit",
+        "owner_admin"
+      ]
+    },
+    {
+      "path": "app/api/admin/users/create/route.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "permission override",
+        "session",
+        "audit",
+        "owner_admin",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/users/permission-override/route.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "permission override",
+        "session",
+        "audit",
+        "owner_admin",
+        "permissions"
+      ]
+    },
+    {
+      "path": "app/api/admin/users/lockout/route.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "login",
+        "session",
+        "audit",
+        "owner_admin",
+        "permissions"
+      ]
+    },
+    {
+      "path": "lib/adminPermissions.ts",
+      "hits": [
+        "admin user",
+        "admin/users",
+        "assign role",
+        "remove role",
+        "permission override",
+        "session",
+        "audit",
+        "permissions"
+      ]
+    },
+    {
+      "path": "lib/adminUsersWriteContracts.ts",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "session",
+        "audit",
+        "owner_admin",
+        "permissions",
+        "bootstrapSafe"
+      ]
+    },
+    {
+      "path": "lib/adminUsersPlanning.ts",
+      "hits": [
+        "AdminUser",
+        "audit",
+        "owner_admin",
+        "permissions"
+      ]
+    },
+    {
+      "path": "lib/adminAuth.ts",
+      "hits": [
+        "AdminUser",
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "lib/admin-permissions/roleMatrix.ts",
+      "hits": [
+        "owner_admin",
+        "permissions"
+      ]
+    },
+    {
+      "path": "lib/admin-permissions/catalog.ts",
+      "hits": [
+        "admin user",
+        "admin/users",
+        "assign role",
+        "permission override",
+        "permissions"
+      ]
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "login",
+        "session",
+        "audit",
+        "permissions",
+        "bootstrapSafe"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase4-route-map-readiness-safety.mjs",
+      "hits": [
+        "admin user",
+        "admin/users",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase3-create-user-ui-safety.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "assign role",
+        "create user",
+        "permission override",
+        "session",
+        "audit"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-permission-lockout-safety.mjs",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-prod-auth-admin-smoke.mjs",
+      "hits": [
+        "login",
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase7-completion-safety.mjs",
+      "hits": [
+        "admin user",
+        "session",
+        "audit",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-permissions-registry-safety.mjs",
+      "hits": [
+        "audit",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-user-role-seed-preview-safety.mjs",
+      "hits": [
+        "admin user",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-db-preview-readonly-safety.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "create user",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-page-permission-enforcement-safety.mjs",
+      "hits": [
+        "login",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-write-contract-preview-safety.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "owner_admin",
+        "permissions",
+        "bootstrapSafe"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase5-simulation-completion-safety.mjs",
+      "hits": [
+        "admin user",
+        "admin/users",
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase6-audit-visibility-readiness-safety.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "audit",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase7-activation-planning-readiness-safety.mjs",
+      "hits": [
+        "admin user",
+        "admin/users",
+        "permission override",
+        "owner_admin",
+        "permissions",
+        "bootstrapSafe"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase3-completion-safety.mjs",
+      "hits": [
+        "admin user",
+        "admin/users",
+        "assign role",
+        "create user",
+        "remove role",
+        "permission override",
+        "session",
+        "audit"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-user-role-migration-sql-safety.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-permissions-matrix-coverage-safety.mjs",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase3-permission-override-ui-safety.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "assign role",
+        "remove role",
+        "permission override",
+        "session",
+        "audit"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase5-enforcement-simulation-negative-path-safety.mjs",
+      "hits": [
+        "admin user",
+        "admin/users",
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase3-assign-role-route-safety.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "assign role",
+        "permission override",
+        "session",
+        "audit",
+        "owner_admin"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-planning-readonly-safety.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "create user",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/apply-admin-user-role-seed.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "audit",
+        "owner_admin",
+        "permissions",
+        "bootstrapSafe"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-permission-check-endpoint-enforcement-safety.mjs",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-api-permission-enforcement-safety.mjs",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase3-remove-role-ui-safety.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "assign role",
+        "remove role",
+        "permission override",
+        "session",
+        "audit"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase6-completion-safety.mjs",
+      "hits": [
+        "admin user",
+        "admin/users",
+        "permission override",
+        "session",
+        "audit",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-session-control-safety.mjs",
+      "hits": [
+        "login",
+        "logout",
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-write-controls-preview-safety.mjs",
+      "hits": [
+        "admin user",
+        "admin/users",
+        "assign role",
+        "remove role",
+        "permission override",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase7-no-lockout-smoke-plan-readiness-safety.mjs",
+      "hits": [
+        "admin user",
+        "permission override",
+        "session",
+        "audit",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase6-negative-path-diagnostics-readiness-safety.mjs",
+      "hits": [
+        "admin user",
+        "admin/users",
+        "permission override",
+        "session",
+        "audit",
+        "owner_admin",
+        "permissions",
+        "bootstrapSafe"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase3-permission-override-route-safety.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "assign role",
+        "remove role",
+        "permission override",
+        "session",
+        "audit"
+      ]
+    },
+    {
+      "path": "scripts/preview-admin-user-role-seed.mjs",
+      "hits": [
+        "AdminUser",
+        "audit",
+        "owner_admin",
+        "permissions",
+        "bootstrapSafe"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase3-create-user-route-safety.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "assign role",
+        "create user",
+        "permission override",
+        "session",
+        "audit"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase4-dry-run-decision-path-safety.mjs",
+      "hits": [
+        "admin user",
+        "admin/users",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-permissions-blocked-notice-safety.mjs",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase7-first-target-planning-readiness-safety.mjs",
+      "hits": [
+        "admin user",
+        "session",
+        "audit",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase4-completion-safety.mjs",
+      "hits": [
+        "admin user",
+        "admin/users",
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase5-permission-check-negative-path-safety.mjs",
+      "hits": [
+        "admin user",
+        "admin/users",
+        "permission override",
+        "session",
+        "audit",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-permissions-enforcement-engine-safety.mjs",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-permissions-readonly-page-safety.mjs",
+      "hits": [
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-user-role-schema-foundation-safety.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "session",
+        "permissions",
+        "bootstrapSafe"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase4-env-deployment-readiness-safety.mjs",
+      "hits": [
+        "admin user",
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase3-assign-role-ui-safety.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "assign role",
+        "create user",
+        "remove role",
+        "permission override",
+        "session"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-permissions-dry-run-safety.mjs",
+      "hits": [
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase2-completion-safety.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "permission override",
+        "owner_admin",
+        "permissions",
+        "bootstrapSafe"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-user-role-seed-apply-guard-safety.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-permission-check-endpoint-safety.mjs",
+      "hits": [
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-permissions-enforcement-flag-preview-safety.mjs",
+      "hits": [
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-effective-permissions-readonly-safety.mjs",
+      "hits": [
+        "admin user",
+        "admin/users",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-permissions-config-preview-safety.mjs",
+      "hits": [
+        "permission override",
+        "session",
+        "permissions"
+      ]
+    },
+    {
+      "path": "scripts/verify-admin-users-phase3-remove-role-route-safety.mjs",
+      "hits": [
+        "AdminUser",
+        "admin user",
+        "admin/users",
+        "remove role",
+        "permission override",
+        "session",
+        "audit",
+        "owner_admin"
+      ]
+    }
+  ],
+  "usersPageCreateHints": {
+    "hasCreate": true,
+    "hasEdit": true,
+    "hasResetPasswordText": true,
+    "hasUnlockLoginText": true,
+    "hasClearFailedLoginText": true,
+    "phase1ContractCommentPresent": true
+  },
+  "nextPhaseImplementationTargets": [
+    "Wire firstName/lastName/displayName/username/email signer/contact fields into real create-user form and apply route.",
+    "Wire existing-user edit flow for signer/contact/status/2FA fields.",
+    "Add case-insensitive username/email uniqueness guards using normalized fields.",
+    "Ensure Dave/the primary admin defaults to all permissions.",
+    "Add focused audit logging for signer/contact/status/2FA field changes.",
+    "Add Reset Password route/UI modal with one-time temporary password display and forced-change flag.",
+    "Add Unlock Login and Clear Failed-Login Lockout route/UI controls as separate audited actions.",
+    "Keep production document-generation signer validation unwired.",
+    "Keep Initial Billing Letter Phase 18K/18L static override bypass intact."
+  ]
+}

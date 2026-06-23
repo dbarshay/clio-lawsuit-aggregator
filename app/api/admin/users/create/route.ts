@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Existing admin-users create route uses broad Prisma include/audit payload shapes; Phase 10 preserves behavior while wiring signer-profile create fields. */
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { isAdminRequestAuthorized } from "@/lib/adminAuth";
 import { createMatterAuditLogEntry } from "@/lib/auditLog";
 import { prisma } from "@/lib/prisma";
+import { buildAdminUserSignerProfileWritePayloadPhase7 } from "@/src/lib/admin-users/admin-user-signer-profile-write-contract-phase7";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -99,6 +101,22 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
+  const signerProfilePayload = buildAdminUserSignerProfileWritePayloadPhase7({
+    firstName: body?.firstName,
+    lastName: body?.lastName,
+    displayName: body?.displayName,
+    username: body?.username,
+    email: body?.email,
+    phoneExtension: body?.phoneExtension,
+    faxNumber: body?.faxNumber,
+    signatureBlockName: body?.signatureBlockName,
+    locked: body?.locked,
+    inactive: body?.inactive,
+    twoFactorPhone: body?.twoFactorPhone,
+    twoFactorDisabled: body?.twoFactorDisabled,
+    twoFactorPendingSetup: body?.twoFactorPendingSetup,
+  });
+
     const apply = isApplyRequested(body?.apply);
     const email = cleanEmail(body?.email);
     const displayName = cleanOptionalString(body?.displayName);
@@ -217,8 +235,22 @@ export async function POST(req: NextRequest) {
     const created = await prisma.$transaction(async (tx) => {
       const user = await tx.adminUser.create({
         data: {
+          firstName: signerProfilePayload.firstName,
+          lastName: signerProfilePayload.lastName,
+          displayName: signerProfilePayload.displayName,
+          username: signerProfilePayload.username,
+          emailNormalized: signerProfilePayload.emailNormalized,
+          usernameNormalized: signerProfilePayload.usernameNormalized,
+          phoneExtension: signerProfilePayload.phoneExtension,
+          faxNumber: signerProfilePayload.faxNumber,
+          signatureBlockName: signerProfilePayload.signatureBlockName,
+          locked: signerProfilePayload.locked,
+          inactive: signerProfilePayload.inactive,
+          twoFactorPhone: signerProfilePayload.twoFactorPhone,
+          twoFactorDisabled: signerProfilePayload.twoFactorDisabled,
+          twoFactorPendingSetup: signerProfilePayload.twoFactorPendingSetup,
+
           email,
-          displayName,
           status,
           bootstrapSafe: false,
           notes,

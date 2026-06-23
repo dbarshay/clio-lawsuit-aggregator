@@ -18,8 +18,29 @@ export const templateLayoutCompositionRegistrySource = {
         "outputOrder": [
           "letterhead"
         ]
-      }
+      },
+    templateFile: {
+      kind: "docx",
+      path: "templates/docx/template-letterhead-demand-letter.docx",
+      required: true,
     },
+    expectedMergeFields: [
+          "firm.name",
+          "firm.address",
+          "firm.phone",
+          "firm.fax",
+          "signer.name",
+          "signer.email",
+          "addressee.name",
+          "addressee.address",
+          "matter.patientName",
+          "matter.providerName",
+          "matter.insurerName",
+          "matter.claimNumber",
+          "matter.dateOfLoss",
+          "letter.reLine"
+    ],
+},
     {
       "templateId": "template-pleading-summons-complaint",
       "templateName": "Summons and Complaint With Pleading Paper",
@@ -38,8 +59,26 @@ export const templateLayoutCompositionRegistrySource = {
         "outputOrder": [
           "pleadingPaper"
         ]
-      }
+      },
+    templateFile: {
+      kind: "docx",
+      path: "templates/docx/template-pleading-summons-complaint.docx",
+      required: true,
     },
+    expectedMergeFields: [
+          "court.name",
+          "court.county",
+          "caption.plaintiff",
+          "caption.defendant",
+          "caption.indexNumber",
+          "matter.patientName",
+          "matter.providerName",
+          "matter.insurerName",
+          "matter.claimNumber",
+          "matter.amountClaimed",
+          "signer.name"
+    ],
+},
     {
       "templateId": "template-fax-cover-and-letter",
       "templateName": "Simple Cover/Fax Page With Letter",
@@ -66,8 +105,27 @@ export const templateLayoutCompositionRegistrySource = {
           "simpleCoverFaxPage",
           "letterhead"
         ]
-      }
+      },
+    templateFile: {
+      kind: "docx",
+      path: "templates/docx/template-fax-cover-and-letter.docx",
+      required: true,
     },
+    expectedMergeFields: [
+          "firm.name",
+          "firm.phone",
+          "firm.fax",
+          "signer.name",
+          "signer.email",
+          "addressee.name",
+          "addressee.fax",
+          "matter.patientName",
+          "matter.providerName",
+          "matter.claimNumber",
+          "letter.reLine",
+          "fax.pageCount"
+    ],
+},
     {
       "templateId": "template-pleading-with-letterhead",
       "templateName": "Pleading Packet With Letterhead",
@@ -94,8 +152,31 @@ export const templateLayoutCompositionRegistrySource = {
           "letterhead",
           "pleadingPaper"
         ]
-      }
-    }
+      },
+    templateFile: {
+      kind: "docx",
+      path: "templates/docx/template-pleading-with-letterhead.docx",
+      required: true,
+    },
+    expectedMergeFields: [
+          "firm.name",
+          "firm.address",
+          "firm.phone",
+          "firm.fax",
+          "court.name",
+          "court.county",
+          "caption.plaintiff",
+          "caption.defendant",
+          "caption.indexNumber",
+          "matter.patientName",
+          "matter.providerName",
+          "matter.insurerName",
+          "matter.claimNumber",
+          "matter.amountClaimed",
+          "signer.name",
+          "signer.email"
+    ],
+}
   ],
   "registry": {
     "layoutAssets": [

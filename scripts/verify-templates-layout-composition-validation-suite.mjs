@@ -98,3 +98,8 @@ if (productionHits.length > 0) {
 }
 
 pass("Templates layout composition validation suite passed Phases 4 through 7 plus Phases 9 through 12 and isolation guardrails");
+
+await import('node:child_process').then(({ spawnSync }) => {
+  const result = spawnSync(process.execPath, ['scripts/verify-templates-phase13-template-file-inventory-merge-field-contract.mjs'], { stdio: 'inherit' });
+  if (result.status) process.exit(result.status);
+});

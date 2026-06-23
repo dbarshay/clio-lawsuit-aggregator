@@ -21,6 +21,7 @@ export const templateLayoutCompositionRegistrySource = {
     "matter.patientName": { label: "matter.patientName" },
     "matter.providerName": { label: "matter.providerName" },
     "signer.email": { label: "signer.email" },
+    "signer.extension": { label: "signer.extension" },
     "signer.name": { label: "signer.name" },
   },
 
@@ -56,6 +57,7 @@ export const templateLayoutCompositionRegistrySource = {
           "firm.fax",
           "signer.name",
           "signer.email",
+          "signer.extension",
           "addressee.name",
           "addressee.address",
           "matter.patientName",
@@ -142,6 +144,7 @@ export const templateLayoutCompositionRegistrySource = {
           "firm.fax",
           "signer.name",
           "signer.email",
+          "signer.extension",
           "addressee.name",
           "addressee.fax",
           "matter.patientName",
@@ -199,7 +202,8 @@ export const templateLayoutCompositionRegistrySource = {
           "matter.claimNumber",
           "matter.amountClaimed",
           "signer.name",
-          "signer.email"
+          "signer.email",
+          "signer.extension"
     ],
 }
   ],
@@ -213,6 +217,7 @@ export const templateLayoutCompositionRegistrySource = {
         "appliesTo": "firstPage",
         "requiredMergeFields": [
           "signer.email",
+          "signer.extension",
           "addressee.name",
           "re.line"
         ]
@@ -286,6 +291,9 @@ export const templateLayoutCompositionRegistrySource = {
     "mergeFieldDefinitions": [
       {
         "key": "signer.email"
+      },
+      {
+        "key": "signer.extension"
       },
       {
         "key": "addressee.name"

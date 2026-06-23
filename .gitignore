@@ -55,3 +55,5 @@ backups/indexes/*
 !backups/indexes/.gitkeep
 !backups/indexes/backup-cloud-target.example.txt
 backups/manual-claimindex-normalizations/
+
+templates/docx/incoming/

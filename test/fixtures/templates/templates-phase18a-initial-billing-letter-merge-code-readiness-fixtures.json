@@ -1,0 +1,107 @@
+{
+  "phase": "Templates Phase 18A",
+  "templateId": "initial-billing-letter",
+  "templateName": "Initial Billing Letter",
+  "documentKind": "letter",
+  "layoutDependency": "letterhead-simple",
+  "matterScope": "individual",
+  "testMatterFileNumber": "BRL_202600003",
+  "generationWired": false,
+  "storageCallsAllowed": false,
+  "clioCallsAllowed": false,
+  "docxImportAllowedInThisPhase": false,
+  "legacyTokenInventory": [
+    "<<BALANCE_AMOUNT>>",
+    "<<CASE_ID>>",
+    "<<DOS_END>>",
+    "<<DOS_START>>",
+    "<<INJUREDPARTY_NAME>>",
+    "<<INSURANCECOMPANY_LOCAL_CITY>>",
+    "<<INSURANCECOMPANY_LOCAL_STATE>>",
+    "<<INSURANCECOMPANY_LOCAL_ZIP>>",
+    "<<INS_CLAIM_NUMBER>>",
+    "<<NOWDT>>",
+    "<<PROVIDER_SUITNAME>>"
+  ],
+  "requiredStandardTokens": [
+    "letter.date",
+    "insurer.name",
+    "insurer.mailingAddress",
+    "provider.name",
+    "patient.name",
+    "claim.number",
+    "claim.amount",
+    "claim.dosRange",
+    "matter.fileNumber"
+  ],
+  "replacementMappings": [
+    {
+      "legacy": [
+        "<<NOWDT>>"
+      ],
+      "standard": [
+        "letter.date"
+      ]
+    },
+    {
+      "legacy": [
+        "<<INSURANCECOMPANY_LOCAL_CITY>>",
+        "<<INSURANCECOMPANY_LOCAL_STATE>>",
+        "<<INSURANCECOMPANY_LOCAL_ZIP>>"
+      ],
+      "standard": [
+        "insurer.name",
+        "insurer.mailingAddress"
+      ]
+    },
+    {
+      "legacy": [
+        "<<PROVIDER_SUITNAME>>"
+      ],
+      "standard": [
+        "provider.name"
+      ]
+    },
+    {
+      "legacy": [
+        "<<INJUREDPARTY_NAME>>"
+      ],
+      "standard": [
+        "patient.name"
+      ]
+    },
+    {
+      "legacy": [
+        "<<INS_CLAIM_NUMBER>>"
+      ],
+      "standard": [
+        "claim.number"
+      ]
+    },
+    {
+      "legacy": [
+        "<<BALANCE_AMOUNT>>"
+      ],
+      "standard": [
+        "claim.amount"
+      ]
+    },
+    {
+      "legacy": [
+        "<<DOS_START>>",
+        "<<DOS_END>>"
+      ],
+      "standard": [
+        "claim.dosRange"
+      ]
+    },
+    {
+      "legacy": [
+        "<<CASE_ID>>"
+      ],
+      "standard": [
+        "matter.fileNumber"
+      ]
+    }
+  ]
+}

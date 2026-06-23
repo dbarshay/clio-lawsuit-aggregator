@@ -115,3 +115,8 @@ await import('node:child_process').then(({ spawnSync }) => {
   const result = spawnSync(process.execPath, ['scripts/verify-templates-phase13-template-file-inventory-merge-field-contract.mjs'], { stdio: 'inherit' });
   if (result.status) process.exit(result.status);
 });
+
+{
+  const phase18AChildProcess = await import("node:child_process");
+  phase18AChildProcess.execFileSync(process.execPath, ["scripts/verify-templates-phase18a-initial-billing-letter-merge-code-readiness.mjs"], { stdio: "inherit" });
+}

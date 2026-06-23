@@ -1,0 +1,331 @@
+{
+  "phase": "Admin Users / Signer Profile Phase 9",
+  "baseline": "admin-users-phase8-exact-create-edit-api-targets-20260623",
+  "purpose": "Select exact API payload patch targets for Phase 10 runtime API wiring, excluding lockout/password/role/permission routes as signer-profile edit targets.",
+  "runtimeMutation": false,
+  "selectedCreateRoute": "app/api/admin/users/create/route.ts",
+  "selectedCreateScore": 40,
+  "selectedEditRoute": null,
+  "selectedEditScore": null,
+  "noSafeEditRoute": true,
+  "unsafeEditRoutesExcluded": [
+    "app/api/admin/users/remove-role/route.ts",
+    "app/api/admin/users/assign-role/route.ts",
+    "app/api/admin/users/password-reset/route.ts",
+    "app/api/admin/users/permission-override/route.ts",
+    "app/api/admin/users/lockout/route.ts"
+  ],
+  "createRouteHasPost": true,
+  "createRouteHasAdminUserCreate": true,
+  "editRouteHasPatchOrPut": false,
+  "editRouteHasAdminUserUpdate": false,
+  "phase7ContractPresent": true,
+  "phase5OwnerAdminMarkerPresent": true,
+  "createRouteHits": [
+    {
+      "line": 4,
+      "text": "import { createMatterAuditLogEntry } from \"@/lib/auditLog\";"
+    },
+    {
+      "line": 16,
+      "text": "function cleanEmail(value: unknown): string {"
+    },
+    {
+      "line": 29,
+      "text": "async function activeOwnerAdminActor(actorEmail: string) {"
+    },
+    {
+      "line": 30,
+      "text": "if (!actorEmail) return null;"
+    },
+    {
+      "line": 32,
+      "text": "return prisma.adminUser.findFirst({"
+    },
+    {
+      "line": 34,
+      "text": "email: actorEmail,"
+    },
+    {
+      "line": 36,
+      "text": "roles: {"
+    },
+    {
+      "line": 38,
+      "text": "role: {"
+    },
+    {
+      "line": 39,
+      "text": "key: \"owner_admin\","
+    },
+    {
+      "line": 46,
+      "text": "roles: {"
+    },
+    {
+      "line": 48,
+      "text": "role: {"
+    },
+    {
+      "line": 61,
+      "text": "const rolePermissionKeys = Array.from("
+    },
+    {
+      "line": 63,
+      "text": "(user?.roles || []).flatMap((entry: any) =>"
+    },
+    {
+      "line": 64,
+      "text": "entry?.role?.status === \"active\""
+    },
+    {
+      "line": 65,
+      "text": "? (entry.role.permissions || []).map((permission: any) => permission.permissionKey)"
+    },
+    {
+      "line": 82,
+      "text": "new Set([...rolePermissionKeys.filter((permissionKey: any) => !explicitBlocks.has(permissionKey)), ...explicitAllows])"
+    },
+    {
+      "line": 86,
+      "text": "export async function POST(req: NextRequest) {"
+    },
+    {
+      "line": 103,
+      "text": "const email = cleanEmail(body?.email);"
+    },
+    {
+      "line": 107,
+      "text": "const actorEmail = cleanEmail(body?.actorEmail);"
+    },
+    {
+      "line": 109,
+      "text": "if (!actorEmail) {"
+    },
+    {
+      "line": 115,
+      "text": "error: \"actorEmail is required so the route can verify an active owner_admin actor before any write.\","
+    },
+    {
+      "line": 122,
+      "text": "const actor = await activeOwnerAdminActor(actorEmail);"
+    },
+    {
+      "line": 129,
+      "text": "error: \"Active owner_admin actor required.\","
+    },
+    {
+      "line": 130,
+      "text": "actorEmail,"
+    },
+    {
+      "line": 138,
+      "text": "if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {"
+    },
+    {
+      "line": 144,
+      "text": "error: \"A valid admin user email is required.\","
+    },
+    {
+      "line": 145,
+      "text": "actorEmail,"
+    },
+    {
+      "line": 146,
+      "text": "actorRoleRequired: \"owner_admin\","
+    },
+    {
+      "line": 162,
+      "text": "actorEmail,"
+    },
+    {
+      "line": 169,
+      "text": "const existing = await prisma.adminUser.findUnique({ where: { email } });"
+    },
+    {
+      "line": 176,
+      "text": "error: \"An admin user with this email already exists.\","
+    },
+    {
+      "line": 177,
+      "text": "duplicateEmailPrevented: true,"
+    },
+    {
+      "line": 180,
+      "text": "email: existing.email,"
+    },
+    {
+      "line": 183,
+      "text": "bootstrapSafe: existing.bootstrapSafe,"
+    },
+    {
+      "line": 185,
+      "text": "actorEmail,"
+    },
+    {
+      "line": 193,
+      "text": "email,"
+    },
+    {
+      "line": 196,
+      "text": "bootstrapSafe: false,"
+    },
+    {
+      "line": 208,
+      "text": "duplicateEmailPrevented: false,"
+    },
+    {
+      "line": 209,
+      "text": "actorEmail,"
+    },
+    {
+      "line": 210,
+      "text": "actorRoleRequired: \"owner_admin\","
+    },
+    {
+      "line": 213,
+      "text": "note: \"Preview only. No AdminUser row, role assignment, permission override, enforcement setting, Clio record, document, email, or print queue item was changed.\","
+    },
+    {
+      "line": 218,
+      "text": "const user = await tx.adminUser.create({"
+    },
+    {
+      "line": 220,
+      "text": "email,"
+    },
+    {
+      "line": 223,
+      "text": "bootstrapSafe: false,"
+    },
+    {
+      "line": 228,
+      "text": "await createMatterAuditLogEntry({"
+    },
+    {
+      "line": 230,
+      "text": "summary: `Created admin user ${email}.`,"
+    },
+    {
+      "line": 232,
+      "text": "fieldName: \"AdminUser\","
+    },
+    {
+      "line": 236,
+      "text": "email: user.email,"
+    },
+    {
+      "line": 239,
+      "text": "bootstrapSafe: user.bootstrapSafe,"
+    },
+    {
+      "line": 244,
+      "text": "duplicateEmailPrevented: true,"
+    },
+    {
+      "line": 247,
+      "text": "rolesAssigned: [],"
+    },
+    {
+      "line": 253,
+      "text": "actorEmail,"
+    },
+    {
+      "line": 265,
+      "text": "email: created.email,"
+    },
+    {
+      "line": 268,
+      "text": "bootstrapSafe: created.bootstrapSafe,"
+    },
+    {
+      "line": 270,
+      "text": "rolesAssigned: [],"
+    },
+    {
+      "line": 272,
+      "text": "actorEmail,"
+    },
+    {
+      "line": 273,
+      "text": "actorRoleRequired: \"owner_admin\","
+    }
+  ],
+  "editRouteHits": [],
+  "allCreateCandidatesRanked": [
+    {
+      "path": "app/api/admin/users/create/route.ts",
+      "score": 40
+    },
+    {
+      "path": "app/api/admin/users/assign-role/route.ts",
+      "score": 5
+    },
+    {
+      "path": "app/api/admin/users/permission-override/route.ts",
+      "score": 5
+    },
+    {
+      "path": "app/api/admin/users/remove-role/route.ts",
+      "score": 0
+    },
+    {
+      "path": "app/api/admin/users/password-reset/route.ts",
+      "score": 0
+    },
+    {
+      "path": "app/api/admin/users/lockout/route.ts",
+      "score": 0
+    }
+  ],
+  "allEditCandidatesRanked": [
+    {
+      "path": "app/api/admin/users/planning/route.ts",
+      "score": -20,
+      "excludedAsSecurityOrRoleRoute": false
+    },
+    {
+      "path": "app/api/admin/users/create/route.ts",
+      "score": -20,
+      "excludedAsSecurityOrRoleRoute": false
+    },
+    {
+      "path": "app/api/admin/users/remove-role/route.ts",
+      "score": -999,
+      "excludedAsSecurityOrRoleRoute": true
+    },
+    {
+      "path": "app/api/admin/users/assign-role/route.ts",
+      "score": -999,
+      "excludedAsSecurityOrRoleRoute": true
+    },
+    {
+      "path": "app/api/admin/users/password-reset/route.ts",
+      "score": -999,
+      "excludedAsSecurityOrRoleRoute": true
+    },
+    {
+      "path": "app/api/admin/users/permission-override/route.ts",
+      "score": -999,
+      "excludedAsSecurityOrRoleRoute": true
+    },
+    {
+      "path": "app/api/admin/users/lockout/route.ts",
+      "score": -999,
+      "excludedAsSecurityOrRoleRoute": true
+    }
+  ],
+  "phase10PatchRules": [
+    "Patch selectedCreateRoute for API payload persistence.",
+    "Patch selectedEditRoute only if noSafeEditRoute is false.",
+    "If noSafeEditRoute is true, Phase 10 must either create a dedicated signer-profile update route or defer edit API wiring.",
+    "Never use lockout, password, failed-login, assign-role, remove-role, or permission-override routes as signer-profile edit targets.",
+    "Import buildAdminUserSignerProfileWritePayloadPhase7 from the Phase 7 contract.",
+    "Use payload.emailNormalized and payload.usernameNormalized for case-insensitive uniqueness checks.",
+    "Persist firstName, lastName, displayName, username, emailNormalized, usernameNormalized, phoneExtension, faxNumber, signatureBlockName, locked, inactive, twoFactorPhone, twoFactorDisabled, and twoFactorPendingSetup.",
+    "Preserve existing role/permission behavior and Phase 5 owner_admin all-permissions seed behavior.",
+    "Do not add password reset, unlock, failed-login clear, signout, idle timeout, or 2FA challenge behavior in Phase 10.",
+    "Do not change DOCX templates.",
+    "Do not wire production document-generation signer validation."
+  ]
+}

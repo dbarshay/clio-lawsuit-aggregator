@@ -217,9 +217,7 @@ export const templateLayoutCompositionRegistrySource = {
         "appliesTo": "firstPage",
         "requiredMergeFields": [
           "signer.email",
-          "signer.extension",
-          "addressee.name",
-          "re.line"
+          "signer.extension"
         ]
       },
       {

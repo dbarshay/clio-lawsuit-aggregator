@@ -978,6 +978,31 @@ model AdminUser {
   @@index([username])
   @@index([passwordChangeRequired])
   @@index([lastLoginAt])
+
+  // Admin Users / Signer Profile Phase 1 fields
+  firstName String?
+  lastName String?
+  emailNormalized String?
+  usernameNormalized String?
+  phoneExtension String?
+  faxNumber String?
+  signatureBlockName String?
+  locked Boolean @default(false)
+  inactive Boolean @default(false)
+  failedLoginLockedAt DateTime?
+  forcePasswordChange Boolean @default(false)
+  passwordHistoryJson String?
+  twoFactorPhone String?
+  twoFactorPhoneMasked String?
+  twoFactorDisabled Boolean @default(false)
+  twoFactorPendingSetup Boolean @default(false)
+  twoFactorChallengeHash String?
+  twoFactorChallengeExpiresAt DateTime?
+  twoFactorChallengeAttempts Int @default(0)
+  twoFactorChallengeLockedAt DateTime?
+  lastSignOutAt DateTime?
+  sessionInvalidatedAt DateTime?
+
 }
 
 model AdminRole {

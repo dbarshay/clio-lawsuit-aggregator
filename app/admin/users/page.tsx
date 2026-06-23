@@ -1,3 +1,13 @@
+
+/*
+Signer Profile Phase 1 UI contract:
+- create/edit fields: firstName, lastName, displayName, username, email, phoneExtension, faxNumber, signatureBlockName, locked, inactive, twoFactorPhone, twoFactorDisabled
+- table indicators: signer profile Complete/Missing Fields, Locked, Inactive, Failed-login locked, 2FA Enabled/Disabled/Missing Phone/Pending Setup
+- row actions: Reset Password, Unlock Login, Clear Failed-Login Lockout
+- reset temporary password must display once in the standard Barsh Matters modal with copy button and one-time warning
+- edit form should show specific missing signer fields
+*/
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";

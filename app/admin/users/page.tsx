@@ -1,3 +1,14 @@
+
+/*
+Password Reset Phase 16 one-time modal contract:
+- When /api/admin/users/password-reset apply returns temporaryPassword and temporaryPasswordOneTimeDisplay, show a standard Barsh Matters modal.
+- Modal title: Temporary Password.
+- Modal warns the password is shown once.
+- Modal includes Copy Temporary Password button using navigator.clipboard.writeText.
+- Modal includes Done button that clears client-side one-time password state.
+- Password reset route behavior is not changed in this phase.
+*/
+
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect, @typescript-eslint/no-unused-vars -- Existing Admin Users page predates strict lint cleanup; Phase 12 preserves behavior while adding signer-profile UI route contracts/helpers. */
 
 /*
@@ -203,6 +214,9 @@ export default function AdminUsersPlanningPage() {
   const [passwordResetBusy, setPasswordResetBusy] = useState(false);
   const [passwordResetMessage, setPasswordResetMessage] = useState("");
   const [passwordResetResult, setPasswordResetResult] = useState<any>(null);
+  const [passwordResetOneTimePassword, setPasswordResetOneTimePassword] = useState("");
+  const [passwordResetCopyMessage, setPasswordResetCopyMessage] = useState("");
+
 
   async function loadAdminUsersPlanning() {
     try {
@@ -261,6 +275,21 @@ export default function AdminUsersPlanningPage() {
       passwordResetResult?.mode === "preview" &&
       passwordResetResult?.wouldReset?.email === cleanEmail(passwordResetTargetEmail)
   );
+
+  async function copyPasswordResetOneTimePassword() {
+    if (!passwordResetOneTimePassword) return;
+    try {
+      await navigator.clipboard.writeText(passwordResetOneTimePassword);
+      setPasswordResetCopyMessage("Temporary password copied.");
+    } catch {
+      setPasswordResetCopyMessage("Copy failed. Select and copy the password manually.");
+    }
+  }
+
+  function closePasswordResetOneTimeModal() {
+    setPasswordResetOneTimePassword("");
+    setPasswordResetCopyMessage("");
+  }
 
   async function submitCreateAdminUser(apply: boolean) {
     try {
@@ -397,6 +426,10 @@ export default function AdminUsersPlanningPage() {
       });
       const json = await response.json().catch(() => ({ ok: false, error: "Password reset route did not return JSON." }));
       setPasswordResetResult({ ...json, httpStatus: response.status });
+      if (apply && json?.ok && json?.temporaryPassword && json?.temporaryPasswordOneTimeDisplay) {
+        setPasswordResetOneTimePassword(String(json.temporaryPassword));
+        setPasswordResetCopyMessage("");
+      }
       if (!response.ok || !json?.ok) {
         setPasswordResetMessage(json?.error || `Password reset request failed with HTTP ${response.status}.`);
         return;
@@ -894,6 +927,52 @@ export default function AdminUsersPlanningPage() {
           </table>
         </section>
       </div>
+
+      {passwordResetOneTimePassword ? (
+        <div
+          data-barsh-admin-users-password-reset-one-time-modal="true"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="password-reset-one-time-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.55)",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") closePasswordResetOneTimeModal();
+          }}
+        >
+          <div style={{ width: "min(560px, 100%)", background: "#ffffff", borderRadius: 14, boxShadow: "0 24px 60px rgba(15, 23, 42, 0.28)", overflow: "hidden", border: "1px solid #cbd5e1" }}>
+            <div style={{ background: "#1e3a8a", color: "#ffffff", padding: "16px 20px", textAlign: "center" }}>
+              <h2 id="password-reset-one-time-title" style={{ margin: 0, fontSize: 20, fontWeight: 950 }}>Temporary Password</h2>
+            </div>
+            <div style={{ padding: 20 }}>
+              <p style={{ margin: "0 0 12px", color: "#334155", lineHeight: 1.5, fontWeight: 800 }}>
+                This temporary password is shown once. Copy it now; it is not stored or recoverable.
+              </p>
+              <div data-barsh-admin-users-password-reset-one-time-password="true" style={{ padding: 14, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", fontFamily: "monospace", fontSize: 16, fontWeight: 900, overflowWrap: "anywhere" }}>
+                {passwordResetOneTimePassword}
+              </div>
+              {passwordResetCopyMessage ? <p style={{ margin: "10px 0 0", color: "#475569", fontWeight: 800 }}>{passwordResetCopyMessage}</p> : null}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+                <button data-barsh-admin-users-password-reset-copy-button="true" type="button" onClick={() => void copyPasswordResetOneTimePassword()} style={secondaryButtonStyle}>
+                  Copy Temporary Password
+                </button>
+                <button data-barsh-admin-users-password-reset-one-time-done-button="true" type="button" onClick={closePasswordResetOneTimeModal} style={primaryButtonStyle}>
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
     </main>
   );
 }

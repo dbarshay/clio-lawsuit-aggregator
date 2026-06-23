@@ -47,5 +47,5 @@ Required visible Word phrases:
 - Dear Sir or Madam
 
 DOCX XML part count: 1
-Normalized visible text characters: 2442
+Normalized visible text characters: 2451
 DOCX SHA-256: `ebab9d0c1dfa15526f620d18810b06f51b92d8ab0389c5885a86a43a2ded4580`

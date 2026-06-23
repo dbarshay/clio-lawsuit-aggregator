@@ -1,3 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect, @typescript-eslint/no-unused-vars -- Existing Admin Users page predates strict lint cleanup; Phase 12 preserves behavior while adding signer-profile UI route contracts/helpers. */
+
+/*
+Signer Profile Phase 12 UI wiring contract:
+- Create-user UI must include firstName, lastName, displayName, username, email, phoneExtension, faxNumber, signatureBlockName, locked, inactive, twoFactorPhone, twoFactorDisabled, and twoFactorPendingSetup in the payload sent to /api/admin/users/create.
+- Edit-user signer/contact/status UI must use PATCH /api/admin/users/signer-profile with preview/apply behavior.
+- The signer-profile edit route is separate from lockout, password reset, failed-login clear, role assignment, and permission override routes.
+- The Users admin table should show derived signer status Complete/Missing Fields and 2FA status Enabled/Disabled/Missing Phone/Pending Setup.
+- This UI phase must not wire production document-generation signer validation.
+*/
+
 
 /*
 Signer Profile Phase 1 UI contract:
@@ -82,6 +93,70 @@ const ADMIN_PERMISSION_KEYS = [
   "admin.backups.run",
   "admin.backups.restorePreview",
 ] as const;
+
+
+const ADMIN_USERS_PHASE12_SIGNER_PROFILE_UPDATE_ROUTE = "/api/admin/users/signer-profile";
+const ADMIN_USERS_PHASE12_CREATE_ROUTE = "/api/admin/users/create";
+
+const ADMIN_USERS_PHASE12_SIGNER_PROFILE_FIELDS = [
+  "firstName",
+  "lastName",
+  "displayName",
+  "username",
+  "email",
+  "phoneExtension",
+  "faxNumber",
+  "signatureBlockName",
+  "locked",
+  "inactive",
+  "twoFactorPhone",
+  "twoFactorDisabled",
+  "twoFactorPendingSetup",
+] as const;
+
+function adminUsersPhase12SignerProfilePayload(form: Record<string, unknown>, actorEmail: string, userId?: string) {
+  return {
+    actorEmail,
+    userId,
+    firstName: form.firstName ?? "",
+    lastName: form.lastName ?? "",
+    displayName: form.displayName ?? "",
+    username: form.username ?? "",
+    email: form.email ?? "",
+    phoneExtension: form.phoneExtension ?? "",
+    faxNumber: form.faxNumber ?? "",
+    signatureBlockName: form.signatureBlockName ?? "",
+    locked: form.locked === true,
+    inactive: form.inactive === true,
+    twoFactorPhone: form.twoFactorPhone ?? "",
+    twoFactorDisabled: form.twoFactorDisabled === true,
+    twoFactorPendingSetup: form.twoFactorPendingSetup === true,
+  };
+}
+
+function adminUsersPhase12SignerProfileStatusLabel(user: {
+  displayName?: unknown;
+  email?: unknown;
+  phoneExtension?: unknown;
+  faxNumber?: unknown;
+  signatureBlockName?: unknown;
+}) {
+  const missing = ADMIN_USERS_PHASE12_SIGNER_PROFILE_FIELDS
+    .filter((field) => ["displayName", "email", "phoneExtension", "faxNumber", "signatureBlockName"].includes(field))
+    .filter((field) => String(user[field as keyof typeof user] ?? "").trim().length === 0);
+  return missing.length === 0 ? "Complete" : "Missing Fields";
+}
+
+function adminUsersPhase12TwoFactorStatusLabel(user: {
+  twoFactorPhone?: unknown;
+  twoFactorDisabled?: unknown;
+  twoFactorPendingSetup?: unknown;
+}) {
+  if (user.twoFactorDisabled === true) return "Disabled";
+  if (user.twoFactorPendingSetup === true) return "Pending Setup";
+  if (String(user.twoFactorPhone ?? "").trim().length === 0) return "Missing Phone";
+  return "Enabled";
+}
 
 export default function AdminUsersPlanningPage() {
   const [data, setData] = useState<any>(null);

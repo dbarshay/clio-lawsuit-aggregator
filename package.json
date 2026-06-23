@@ -648,7 +648,9 @@
     "verify:phase48c-letterhead-signer-aware-standard-safety": "node scripts/verify-phase48c-letterhead-signer-aware-standard-safety.cjs",
     "inspect:phase48d-comprehensive-bm-merge-field-catalog": "node scripts/inspect-phase48d-comprehensive-bm-merge-field-catalog.cjs",
     "verify:phase48d-comprehensive-bm-merge-field-catalog-inspection": "node scripts/verify-phase48d-comprehensive-bm-merge-field-catalog-inspection.cjs",
-    "verify:phase48e-pleading-paper-baseline-standard-safety": "node scripts/verify-phase48e-pleading-paper-baseline-standard-safety.cjs"
+    "verify:phase48e-pleading-paper-baseline-standard-safety": "node scripts/verify-phase48e-pleading-paper-baseline-standard-safety.cjs",
+    "inspect:phase48f-signer-addressee-court-source-resolution": "node scripts/inspect-phase48f-signer-addressee-court-source-resolution.cjs",
+    "verify:phase48f-signer-addressee-court-source-resolution-inspection": "node scripts/verify-phase48f-signer-addressee-court-source-resolution-inspection.cjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

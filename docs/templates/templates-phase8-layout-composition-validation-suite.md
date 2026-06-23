@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation lock for a repo-level validation suite covering the isolated layout-composition validation stack.
+Implementation lock for a repo-level validation suite covering the isolated layout-composition validation stack, including admin-readiness payload checks.
 
 This phase is tooling-only. It is not wired into production generation, document assembly, UI flows, DOCX handling, PDF conversion, upload, or external document-storage interaction.
 
@@ -16,6 +16,7 @@ The suite verifies:
 - Phase 5 batch validator behavior;
 - Phase 6 validation report builder behavior;
 - Phase 7 report runner behavior;
+- Phase 9 admin-readiness payload behavior;
 - package script availability; and
 - continued isolation from production paths.
 

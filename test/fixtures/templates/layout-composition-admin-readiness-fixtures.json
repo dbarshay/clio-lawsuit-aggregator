@@ -1,0 +1,47 @@
+{
+  "expectedStatus": "needs-attention",
+  "expectedCards": [
+    {
+      "id": "templates",
+      "value": 3,
+      "severity": "info"
+    },
+    {
+      "id": "validTemplates",
+      "value": 1,
+      "severity": "info"
+    },
+    {
+      "id": "invalidTemplates",
+      "value": 2,
+      "severity": "error"
+    },
+    {
+      "id": "errors",
+      "value": 3,
+      "severity": "error"
+    },
+    {
+      "id": "warnings",
+      "value": 1,
+      "severity": "warning"
+    }
+  ],
+  "expectedSectionIds": [
+    "summary",
+    "errorCodes",
+    "warningCodes",
+    "invalidTemplates",
+    "errors",
+    "warnings"
+  ],
+  "expectedInvalidTemplateIds": [
+    "tpl-invalid-alias",
+    "tpl-invalid-missing-field"
+  ],
+  "expectedErrorCodes": [
+    "LAYOUT_ASSET_ROLE_MISMATCH",
+    "LAYOUT_DEPENDENCY_MISSING_PLEADING_FIELD",
+    "LAYOUT_ROLE_REJECTED_ALIAS"
+  ]
+}

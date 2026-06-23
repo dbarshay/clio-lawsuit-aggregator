@@ -6,6 +6,7 @@ const verifierScripts = [
   "scripts/verify-templates-phase5-layout-composition-batch-validator.mjs",
   "scripts/verify-templates-phase6-layout-composition-validation-report-builder.mjs",
   "scripts/verify-templates-phase7-layout-composition-validation-report-runner.mjs",
+  "scripts/verify-templates-phase9-layout-composition-admin-readiness-payload.mjs",
 ];
 
 const isolatedRuntimeFiles = [
@@ -13,6 +14,7 @@ const isolatedRuntimeFiles = [
   "src/lib/templates/layout-composition-batch-validator.mjs",
   "src/lib/templates/layout-composition-validation-report.mjs",
   "scripts/run-template-layout-composition-validation-report.mjs",
+  "src/lib/templates/layout-composition-admin-readiness.mjs",
 ];
 
 const requiredPackageScript = "verify:templates:layout-composition";
@@ -83,4 +85,4 @@ if (productionHits.length > 0) {
   fail("layout composition validation stack is wired into production paths");
 }
 
-pass("Templates layout composition validation suite passed Phases 4 through 7 and isolation guardrails");
+pass("Templates layout composition validation suite passed Phases 4 through 7 plus Phase 9 and isolation guardrails");

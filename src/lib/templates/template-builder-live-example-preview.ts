@@ -239,6 +239,12 @@ function hiddenValue(row: Row | undefined, key: string): string {
   return formatValue(hidden[key]);
 }
 
+function detailValue(row: Row | undefined, key: string): string {
+  if (!row) return DASH;
+  const details = parseJson(row.details);
+  return formatValue(details[key]);
+}
+
 function optionValue(options: Record<string, unknown>, keys: string[]): unknown {
   for (const key of keys) {
     if (Object.prototype.hasOwnProperty.call(options, key)) {
@@ -284,6 +290,10 @@ export async function resolveTemplateBuilderExamplePreview(matterKey: string): P
     ? clean(optionValue(options, ["adversaryAttorney", "adversaryAttorneyName"]))
     : "";
   const adversaryRow = bestReferenceRow(adversarySourceName, referenceRows);
+  const courtSourceName = isLawsuitContext
+    ? clean(optionValue(options, ["venueSelection", "venue", "court"]))
+    : "";
+  const courtRow = bestReferenceRow(courtSourceName, referenceRows);
 
   const filingFee = costNumber(options, ["filingFeeEntryAmount", "filingFee", "indexFee", "indexFeeEntryAmount"]);
   const serviceFee = costNumber(options, ["serviceFeeEntryAmount", "serviceFee"]);
@@ -324,6 +334,13 @@ export async function resolveTemplateBuilderExamplePreview(matterKey: string): P
 
     "{{lawsuit.indexNumber}}": isLawsuitContext ? formatValue(rowValue(lawsuitRow, ["indexAaaNumber"]) || optionValue(options, ["indexAaaNumber"])) : DASH,
     "{{lawsuit.court}}": isLawsuitContext ? formatValue(optionValue(options, ["venueSelection", "venue"])) : DASH,
+    "{{court.name}}": isLawsuitContext ? formatValue(rowValue(courtRow, ["displayName"]) || courtSourceName) : DASH,
+    "{{court.longName1}}": isLawsuitContext ? detailValue(courtRow, "longName1") : DASH,
+    "{{court.longName2}}": isLawsuitContext ? detailValue(courtRow, "longName2") : DASH,
+    "{{court.street}}": isLawsuitContext ? detailValue(courtRow, "addressStreet") : DASH,
+    "{{court.city}}": isLawsuitContext ? detailValue(courtRow, "city") : DASH,
+    "{{court.state}}": isLawsuitContext ? detailValue(courtRow, "state") : DASH,
+    "{{court.zipcode}}": isLawsuitContext ? formatValue(firstPresent(detailValue(courtRow, "zipcode"), detailValue(courtRow, "zip"))) : DASH,
     "{{lawsuit.adversaryAttorney}}": isLawsuitContext ? formatValue(optionValue(options, ["adversaryAttorney"])) : DASH,
     "{{adversaryAttorney.street}}": isLawsuitContext ? hiddenValue(adversaryRow, "hidden_street") : DASH,
     "{{adversaryAttorney.city}}": isLawsuitContext ? hiddenValue(adversaryRow, "hidden_city") : DASH,

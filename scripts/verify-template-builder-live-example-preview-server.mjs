@@ -51,6 +51,13 @@ const keptTokens = [
   "{{claim.payments}}",
   "{{lawsuit.indexNumber}}",
   "{{lawsuit.court}}",
+  "{{court.name}}",
+  "{{court.longName1}}",
+  "{{court.longName2}}",
+  "{{court.street}}",
+  "{{court.city}}",
+  "{{court.state}}",
+  "{{court.zipcode}}",
   "{{lawsuit.adversaryAttorney}}",
   "{{adversaryAttorney.street}}",
   "{{adversaryAttorney.city}}",
@@ -95,6 +102,11 @@ has(resolver, "insurerAddressResolved", "Live resolver reports insurer address r
 has(resolver, "lawsuitResolved", "Live resolver reports lawsuit diagnostics");
 has(resolver, "costResolved", "Live resolver reports cost diagnostics");
 has(resolver, "usedPreviewFallback: false", "Live resolver has no preview-only fallback business path");
+has(resolver, 'detailValue(courtRow, "addressStreet")', "Live resolver reads court street from court venue details");
+has(resolver, 'detailValue(courtRow, "city")', "Live resolver reads court city from court venue details");
+has(resolver, 'detailValue(courtRow, "state")', "Live resolver reads court state from court venue details");
+has(resolver, 'detailValue(courtRow, "longName1")', "Live resolver reads court long name 1 from court venue details");
+has(resolver, 'detailValue(courtRow, "longName2")', "Live resolver reads court long name 2 from court venue details");
 has(resolver, 'hiddenValue(adversaryRow, "hidden_street")', "Live resolver reads adversary street from source hidden field");
 has(resolver, 'hiddenValue(adversaryRow, "hidden_city")', "Live resolver reads adversary city from source hidden field");
 has(resolver, 'hiddenValue(adversaryRow, "hidden_state")', "Live resolver reads adversary state from source hidden field");

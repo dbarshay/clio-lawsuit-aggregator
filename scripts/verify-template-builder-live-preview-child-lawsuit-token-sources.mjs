@@ -60,6 +60,13 @@ has(resolver, "hiddenValue(insurerRow, \"hidden_zipcode\")", "Resolver reads ins
 for (const token of [
   "{{lawsuit.indexNumber}}",
   "{{lawsuit.court}}",
+  "{{court.name}}",
+  "{{court.longName1}}",
+  "{{court.longName2}}",
+  "{{court.street}}",
+  "{{court.city}}",
+  "{{court.state}}",
+  "{{court.zipcode}}",
   "{{lawsuit.adversaryAttorney}}",
   "{{adversaryAttorney.street}}",
   "{{adversaryAttorney.city}}",
@@ -79,6 +86,9 @@ for (const token of [
 has(resolver, "taxIdFromRow", "Resolver has provider tax ID resolver");
 has(resolver, "providerTaxIdResolved", "Resolver reports provider tax ID resolution status");
 has(resolver, "insurerAddressResolved", "Resolver reports insurer address resolution status");
+has(resolver, 'detailValue(courtRow, "addressStreet")', "Resolver reads court street from court venue details");
+has(resolver, 'detailValue(courtRow, "city")', "Resolver reads court city from court venue details");
+has(resolver, 'detailValue(courtRow, "state")', "Resolver reads court state from court venue details");
 has(resolver, 'hiddenValue(adversaryRow, "hidden_street")', "Resolver reads adversary street from hidden source field internally");
 has(resolver, 'hiddenValue(adversaryRow, "hidden_city")', "Resolver reads adversary city from hidden source field internally");
 has(resolver, 'hiddenValue(adversaryRow, "hidden_state")', "Resolver reads adversary state from hidden source field internally");

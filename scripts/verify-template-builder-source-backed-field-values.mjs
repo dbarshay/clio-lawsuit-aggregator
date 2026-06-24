@@ -23,6 +23,13 @@ const approvedTokens = [
   "{{provider.taxId}}",
   "{{claim.number}}",
   "{{lawsuit.adversaryAttorney}}",
+  "{{court.name}}",
+  "{{court.longName1}}",
+  "{{court.longName2}}",
+  "{{court.street}}",
+  "{{court.city}}",
+  "{{court.state}}",
+  "{{court.zipcode}}",
   "{{adversaryAttorney.street}}",
   "{{adversaryAttorney.city}}",
   "{{adversaryAttorney.state}}",
@@ -78,6 +85,11 @@ for (const forbidden of [
   "Suite 1",
   "Bronx",
   "10000",
+  "Ronkonkoma",
+  "3105 Veterans Memorial Highway",
+  "First District: Ronkonkoma",
+  "District Court of the County of Suffolk",
+  "Suffolk District- Ronkonkoma/County-Wide (1st)",
 ]) {
   lacks(resolver, forbidden, `Resolver has no hard-coded runtime business value ${forbidden}`);
 }
@@ -87,6 +99,11 @@ has(resolver, 'from "Lawsuit"', "Resolver reads Lawsuit source rows");
 has(resolver, 'from "ProviderClientInfo"', "Resolver reads ProviderClientInfo source rows");
 has(resolver, 'from "ReferenceEntity"', "Resolver reads ReferenceEntity source rows");
 has(resolver, "usedPreviewFallback: false", "Resolver has no preview-only business fallback path");
+has(resolver, 'detailValue(courtRow, "addressStreet")', "Resolver reads court street from court venue details");
+has(resolver, 'detailValue(courtRow, "city")', "Resolver reads court city from court venue details");
+has(resolver, 'detailValue(courtRow, "state")', "Resolver reads court state from court venue details");
+has(resolver, 'detailValue(courtRow, "longName1")', "Resolver reads court long name 1 from court venue details");
+has(resolver, 'detailValue(courtRow, "longName2")', "Resolver reads court long name 2 from court venue details");
 has(resolver, 'hiddenValue(adversaryRow, "hidden_street")', "Resolver reads adversary street from source hidden field");
 has(resolver, 'hiddenValue(adversaryRow, "hidden_city")', "Resolver reads adversary city from source hidden field");
 has(resolver, 'hiddenValue(adversaryRow, "hidden_state")', "Resolver reads adversary state from source hidden field");

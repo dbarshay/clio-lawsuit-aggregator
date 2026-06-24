@@ -1,29 +1,32 @@
-import fs from "node:fs";
+import fs from 'node:fs';
 
-const checks = [];
-const add = (name, ok) => checks.push({ name, ok });
+const resolver = fs.readFileSync('src/lib/templates/template-builder-live-example-preview.ts', 'utf8');
+const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+const failures = [];
 
-const read = (path) => fs.existsSync(path) ? fs.readFileSync(path, "utf8") : "";
-const resolver = read("src/lib/templates/template-builder-live-example-preview.ts");
-const pkg = JSON.parse(read("package.json"));
+const pass = (message) => console.log('\x1b[32mPASS\x1b[0m:', message);
+const fail = (message) => { console.error('\x1b[31mFAIL\x1b[0m:', message); failures.push(message); };
+const has = (needle, message) => resolver.includes(needle) ? pass(message) : fail(message);
+const hasRegex = (pattern, message) => pattern.test(resolver) ? pass(message) : fail(message);
+const lacksRegex = (pattern, message) => !pattern.test(resolver) ? pass(message) : fail(message);
 
-add("Resolver has PostgreSQL information_schema column discovery", resolver.includes("information_schema.columns"));
-add("Resolver still has SQLite PRAGMA fallback only after PostgreSQL attempt", resolver.includes("PRAGMA table_info"));
-add("Resolver has identifier escaping helper", resolver.includes("function identifier(value: string): string"));
-add("Resolver has literal escaping helper", resolver.includes("function literal(value: string): string"));
-add("Resolver no longer uses SQLite question-mark placeholders", !resolver.includes(" AS TEXT) = ?"));
-add("Resolver findRows executes built SQL without placeholder list", resolver.includes("return await prisma.$queryRawUnsafe(sql)"));
-add("Resolver still queries ClaimIndex", resolver.includes("findRows(\"ClaimIndex\""));
-add("Resolver still queries ProviderClientInfo", resolver.includes("findRows(\"ProviderClientInfo\""));
-add("Package has PostgreSQL resolver verifier", pkg.scripts && pkg.scripts["verify:template-builder-live-preview-postgres-resolver"] === "node scripts/verify-template-builder-live-preview-postgres-resolver.mjs");
+has('information_schema.columns', 'Resolver has PostgreSQL information_schema column discovery');
+has('pragma table_info', 'Resolver still has SQLite PRAGMA fallback after PostgreSQL attempt');
+has('quoteIdent', 'Resolver has identifier escaping helper');
+has('quoteLiteral', 'Resolver has literal escaping helper');
+lacksRegex(/\$queryRawUnsafe\s*<[^>]+>\s*\([^)]*\?/, 'Resolver does not use SQLite question-mark SQL placeholders in query calls');
+lacksRegex(/where[^\n]+\?/, 'Resolver does not build SQL where clauses with question-mark placeholders');
+hasRegex(/rawRows\("select \* from " \+ quoteIdent\(tableName\) \+ " where " \+ where \+ " limit "/, 'Resolver findRows executes built SQL without placeholder list');
+hasRegex(/claimTables\s*=\s*tables\.filter\(\(table\)\s*=>\s*\/claimindex\|claim\|matter\/i\.test\(table\)\)/, 'Resolver still searches ClaimIndex/claim/matter tables');
+hasRegex(/providerTables\s*=\s*tables\.filter\(\(table\)\s*=>\s*\/providerclientinfo\|provider\|client\/i\.test\(table\)\)/, 'Resolver still searches ProviderClientInfo/provider/client tables');
+has('tableColumns(tableName)', 'Resolver uses schema-aware tableColumns helper');
+has('findRows(tableName: string, value: string, candidateColumns: string[]', 'Resolver uses dynamic findRows helper');
+if (!pkg.scripts?.['verify:template-builder-live-preview-postgres-resolver']) fail('Package has PostgreSQL resolver verifier');
+else pass('Package has PostgreSQL resolver verifier');
 
-const failed = checks.filter((check) => check.ok === false);
-for (const check of checks) {
-  const color = check.ok ? "\\x1b[32mPASS\\x1b[0m" : "\\x1b[31mFAIL\\x1b[0m";
-  console.log(color + ": " + check.name);
-}
-if (failed.length > 0) {
-  console.error(String.fromCharCode(10) + failed.length + " PostgreSQL resolver checks failed.");
+if (failures.length > 0) {
+  console.error('\n' + failures.length + ' PostgreSQL resolver checks failed.');
   process.exit(1);
 }
-console.log(String.fromCharCode(10) + "PASS: Template Builder live preview PostgreSQL resolver repair verified.");
+
+console.log('\nPASS: Template Builder live preview PostgreSQL resolver verified for current schema-aware implementation.');

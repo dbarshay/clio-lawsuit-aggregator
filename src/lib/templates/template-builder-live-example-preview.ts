@@ -1,261 +1,233 @@
 import { prisma } from "@/lib/prisma";
 
+type Row = Record<string, unknown>;
+
 export type TemplateBuilderExamplePreviewResult = {
-  matterKey: string;
+  matter: string;
   resolved: Record<string, string>;
-  diagnostics: string[];
+  exampleOutputMap: Record<string, string>;
+  diagnostics: {
+    matterKey: string;
+    context: "child" | "lawsuit";
+    providerTaxIdCandidateColumns: string[];
+    providerTaxIdResolved: boolean;
+    insurerHiddenResolved: Record<string, boolean>;
+    lawsuitResolved: Record<string, boolean>;
+    costResolved: Record<string, boolean>;
+  };
 };
 
-const ALLOWED_TOKENS = [
-  "{{matter.fileNumber}}",
-  "{{matter.providerName}}",
-  "{{matter.patientName}}",
-  "{{matter.claimNumber}}",
-  "{{matter.billedAmount}}",
-  "{{provider.taxId}}",
-  "{{treatingProvider.name}}",
-  "{{insurer.name}}",
-  "{{insurer.hidden_street}}",
-  "{{insurer.hidden_city}}",
-  "{{insurer.hidden_state}}",
-  "{{insurer.hidden_zipcode}}",
-  "{{claim.number}}",
-  "{{claim.policyNumber}}",
-  "{{claim.dateOfLoss}}",
-  "{{claim.dateOfService}}",
-  "{{claim.amount}}",
-  "{{claim.balance}}",
-  "{{claim.payments}}",
-  "{{claim.denialReason}}",
-  "{{lawsuit.indexNumber}}",
-  "{{lawsuit.court}}",
-  "{{lawsuit.adversaryAttorney}}",
-  "{{lawsuit.dateFiled}}",
-  "{{lawsuit.amount}}",
-  "{{lawsuit.costs}}",
-  "{{lawsuit.paymentsPosted}}",
-  "{{lawsuit.balance}}",
-  "{{cost.indexFee}}",
-  "{{cost.serviceFee}}",
-  "{{cost.otherCourtCosts}}",
-  "{{cost.total}}"
-] as const;
+const DASH = "—";
+const clean = (value: unknown): string => value === null || value === undefined ? "" : String(value).trim();
+const present = (value: unknown): boolean => clean(value).length > 0;
+const norm = (value: string): string => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+const quoteIdent = (value: string): string => "\"" + value.replace(/"/g, "\"\"") + "\"";
+const quoteLiteral = (value: string): string => "'" + value.replace(/'/g, "''") + "'";
 
-const FALLBACKS: Record<string, Record<string, string>> = {
-  "BRL_202600003": {
-    "{{claim.number}}": "1111",
-    "{{claim.amount}}": "$562.25",
-    "{{claim.balance}}": "$562.25",
-    "{{claim.payments}}": "$0.00",
-    "{{claim.denialReason}}": "Medical Necessity",
-    "{{lawsuit.indexNumber}}": "123444/2026",
-    "{{lawsuit.amount}}": "$1,261.75",
-    "{{lawsuit.balance}}": "$1,261.75",
-    "{{cost.total}}": "$0.00"
-  },
-  "BRL30236": {
-    "{{claim.number}}": "123456",
-    "{{claim.amount}}": "$500.00",
-    "{{claim.balance}}": "$500.00",
-    "{{claim.payments}}": "$0.00",
-    "{{claim.denialReason}}": "Medical Necessity",
-    "{{lawsuit.indexNumber}}": "Not filed",
-    "{{lawsuit.balance}}": "$500.00",
-    "{{cost.total}}": "$0.00"
-  },
-  "2026.06.00002": {
-    "{{claim.number}}": "123456",
-    "{{claim.amount}}": "$1,250.00",
-    "{{claim.balance}}": "$1,250.00",
-    "{{claim.payments}}": "$0.00",
-    "{{claim.denialReason}}": "Medical Necessity",
-    "{{lawsuit.indexNumber}}": "2026.06.00002",
-    "{{lawsuit.amount}}": "$1,250.00",
-    "{{lawsuit.balance}}": "$1,250.00",
-    "{{cost.total}}": "$0.00"
-  },
-  "2026.06.00011": {
-    "{{claim.number}}": "EX-00011",
-    "{{claim.amount}}": "$888.88",
-    "{{claim.balance}}": "$777.77",
-    "{{claim.payments}}": "$111.11",
-    "{{claim.denialReason}}": "Verification Requested",
-    "{{lawsuit.indexNumber}}": "2026.06.00011",
-    "{{lawsuit.amount}}": "$888.88",
-    "{{lawsuit.balance}}": "$777.77",
-    "{{cost.total}}": "$65.00"
+const firstPresent = (...values: unknown[]): string => {
+  for (const value of values) {
+    const text = clean(value);
+    if (text) return text;
   }
+  return "";
 };
 
-function text(value: unknown): string | undefined {
-  if (value === null || value === undefined || value === "") return undefined;
-  return String(value);
-}
-
-function money(value: unknown): string | undefined {
-  if (value === null || value === undefined || value === "") return undefined;
-  const numeric = typeof value === "number" ? value : Number(String(value).replace(/[^0-9.-]/g, ""));
-  if (!Number.isFinite(numeric)) return String(value);
-  return numeric.toLocaleString("en-US", { style: "currency", currency: "USD" });
-}
-
-function date(value: unknown): string | undefined {
-  if (value === null || value === undefined || value === "") return undefined;
-  const parsed = value instanceof Date ? value : new Date(String(value));
-  if (Number.isNaN(parsed.getTime())) return String(value);
-  const mm = String(parsed.getMonth() + 1).padStart(2, "0");
-  const dd = String(parsed.getDate()).padStart(2, "0");
-  return mm + "/" + dd + "/" + parsed.getFullYear();
-}
-
-function from(row: Record<string, unknown> | null | undefined, keys: string[]): unknown {
+const columnValue = (row: Row | undefined, candidates: string[]): unknown => {
   if (!row) return undefined;
-  for (const key of keys) {
-    if (Object.prototype.hasOwnProperty.call(row, key) && row[key] !== null && row[key] !== undefined && row[key] !== "") return row[key];
+  const normalized = new Map(Object.keys(row).map((key) => [norm(key), key]));
+  for (const candidate of candidates) {
+    const actual = normalized.get(norm(candidate));
+    if (actual && present(row[actual])) return row[actual];
   }
   return undefined;
+};
+
+const formatValue = (value: unknown): string => clean(value) || DASH;
+
+const formatMoney = (value: unknown): string => {
+  const text = clean(value);
+  if (!text) return DASH;
+  const numeric = Number(text.replace(/[$,]/g, ""));
+  if (!Number.isFinite(numeric)) return text;
+  return numeric.toLocaleString("en-US", { style: "currency", currency: "USD" });
+};
+
+const formatDate = (value: unknown): string => {
+  const text = clean(value);
+  if (!text) return DASH;
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return text;
+  return date.toLocaleDateString("en-US", { timeZone: "UTC" });
+};
+
+async function rawRows(sql: string): Promise<Row[]> {
+  return await prisma.$queryRawUnsafe<Row[]>(sql);
 }
 
-function identifier(value: string): string {
-  return String.fromCharCode(34) + value.replaceAll(String.fromCharCode(34), String.fromCharCode(34) + String.fromCharCode(34)) + String.fromCharCode(34);
-}
-
-function literal(value: string): string {
-  return String.fromCharCode(39) + value.replaceAll(String.fromCharCode(39), String.fromCharCode(39) + String.fromCharCode(39)) + String.fromCharCode(39);
-}
-
-async function tableColumns(tableName: string): Promise<Set<string>> {
+async function tableNames(): Promise<string[]> {
   try {
-    const rows = await prisma.$queryRawUnsafe(
-      "SELECT column_name FROM information_schema.columns WHERE table_schema = " + literal("public") + " AND table_name = " + literal(tableName) + " ORDER BY ordinal_position"
-    ) as Array<Record<string, unknown>>;
-    const names = rows.map((row) => String(row.column_name || "")).filter(Boolean);
-    if (names.length > 0) return new Set(names);
+    const rows = await rawRows("select table_name as name from information_schema.tables where table_schema = 'public' order by table_name");
+    return rows.map((row) => clean(row.name)).filter(Boolean);
   } catch {
-  }
-
-  try {
-    const rows = await prisma.$queryRawUnsafe("PRAGMA table_info(" + identifier(tableName) + ")") as Array<Record<string, unknown>>;
-    return new Set(rows.map((row) => String(row.name || "")).filter(Boolean));
-  } catch {
-    return new Set<string>();
+    const rows = await rawRows("select name from sqlite_master where type = 'table' order by name");
+    return rows.map((row) => clean(row.name)).filter(Boolean);
   }
 }
 
-async function findRows(tableName: string, candidateColumns: string[], value: string, limit: number): Promise<Array<Record<string, unknown>>> {
+async function tableColumns(tableName: string): Promise<string[]> {
+  try {
+    const rows = await rawRows("select column_name as name from information_schema.columns where table_schema = 'public' and table_name = " + quoteLiteral(tableName) + " order by ordinal_position");
+    return rows.map((row) => clean(row.name)).filter(Boolean);
+  } catch {
+    const rows = await rawRows("pragma table_info(" + quoteLiteral(tableName) + ")");
+    return rows.map((row) => clean(row.name)).filter(Boolean);
+  }
+}
+
+async function findRows(tableName: string, value: string, candidateColumns: string[], limit = 25): Promise<Row[]> {
+  if (!value) return [];
   const columns = await tableColumns(tableName);
-  const usable = candidateColumns.filter((column) => columns.has(column));
-  if (usable.length === 0) return [];
-
-  const where = usable.map((column) => "CAST(" + identifier(column) + " AS TEXT) = " + literal(value)).join(" OR ");
-  const sql = "SELECT * FROM " + identifier(tableName) + " WHERE " + where + " LIMIT " + String(limit);
-
-  try {
-    return await prisma.$queryRawUnsafe(sql) as Array<Record<string, unknown>>;
-  } catch {
-    return [];
-  }
+  const normalized = new Map(columns.map((column) => [norm(column), column]));
+  const actualColumns = candidateColumns.map((column) => normalized.get(norm(column))).filter((column): column is string => Boolean(column));
+  if (actualColumns.length === 0) return [];
+  const where = actualColumns.map((column) => quoteIdent(column) + " = " + quoteLiteral(value)).join(" or ");
+  return await rawRows("select * from " + quoteIdent(tableName) + " where " + where + " limit " + String(limit));
 }
 
-async function providerInfo(providerName: string | undefined): Promise<Record<string, unknown> | null> {
-  if (!providerName) return null;
-  const rows = await findRows("ProviderClientInfo", ["name", "client_name", "provider_name"], providerName, 1);
-  return rows[0] || null;
+function scoreRow(row: Row, preferredColumns: string[]): number {
+  return preferredColumns.reduce((score, column) => score + (present(columnValue(row, [column])) ? 1 : 0), 0);
 }
 
-function put(resolved: Record<string, string>, token: string, value: string | undefined) {
-  if (value !== undefined && value !== "") resolved[token] = value;
-}
+const lawsuitKeyColumns = ["lawsuitId", "lawsuit_id", "lawsuitNumber", "lawsuit_number", "masterLawsuitId", "master_lawsuit_id", "master_lawsuit_number", "displayNumber", "display_number", "matterNumber", "matter_number", "fileNumber", "file_number", "brlFileNumber", "brl_file_number", "id"];
+const childKeyColumns = ["matterKey", "matter_key", "matterNumber", "matter_number", "displayNumber", "display_number", "fileNumber", "file_number", "brlFileNumber", "brl_file_number", "clioMatterId", "clio_matter_id", "id"];
 
-function sum(rows: Array<Record<string, unknown>>, keys: string[]): number {
-  let total = 0;
-  for (const row of rows) {
-    for (const key of keys) {
-      const value = from(row, [key]);
-      if (value === undefined) continue;
-      const numeric = typeof value === "number" ? value : Number(String(value).replace(/[^0-9.-]/g, ""));
-      if (Number.isFinite(numeric)) {
-        total += numeric;
-        break;
-      }
+async function findBestRows(matterKey: string): Promise<{ claimRows: Row[]; lawsuitRows: Row[]; providerRows: Row[]; costRows: Row[]; providerTaxIdCandidateColumns: string[] }> {
+  const tables = await tableNames();
+  const claimTables = tables.filter((table) => /claimindex|claim|matter/i.test(table));
+  const lawsuitTables = tables.filter((table) => /lawsuit|claimindex|matter/i.test(table));
+  const providerTables = tables.filter((table) => /providerclientinfo|provider|client/i.test(table));
+  const costTables = tables.filter((table) => /cost|fee/i.test(table));
+
+  const claimRows: Row[] = [];
+  for (const table of claimTables) claimRows.push(...await findRows(table, matterKey, [...childKeyColumns, ...lawsuitKeyColumns]));
+
+  const lawsuitRows: Row[] = [];
+  for (const table of lawsuitTables) lawsuitRows.push(...await findRows(table, matterKey, lawsuitKeyColumns));
+
+  const providerName = firstPresent(columnValue(claimRows[0], ["providerName", "provider", "clientName", "provider_client_name", "Provider"]));
+  const insurerName = firstPresent(columnValue(claimRows[0], ["insurerName", "insurer", "insuranceCompany", "insurance_company", "insurance"])) ;
+
+  const providerRows: Row[] = [];
+  for (const table of providerTables) providerRows.push(...await findRows(table, providerName || matterKey, ["name", "providerName", "clientName", "displayName", "Provider", "provider"]));
+
+  const costRows: Row[] = [];
+  for (const table of costTables) costRows.push(...await findRows(table, matterKey, [...lawsuitKeyColumns, ...childKeyColumns], 250));
+
+  const providerTaxIdCandidateColumns: string[] = [];
+  for (const table of providerTables) {
+    const columns = await tableColumns(table);
+    for (const column of columns) {
+      const n = norm(column);
+      if (n.includes("tax") || n.includes("tin") || n.includes("ein")) providerTaxIdCandidateColumns.push(table + "." + column);
     }
   }
-  return total;
+
+  return { claimRows, lawsuitRows, providerRows, costRows, providerTaxIdCandidateColumns };
+}
+
+function numeric(value: unknown): number {
+  const parsed = Number(clean(value).replace(/[$,]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function costAmount(row: Row): number {
+  return numeric(columnValue(row, ["amount", "amountExpended", "amount_expended", "costAmount", "cost_amount", "feeAmount", "fee_amount", "value"]));
+}
+
+function costType(row: Row): string {
+  return norm(firstPresent(columnValue(row, ["type", "entryType", "entry_type", "costType", "cost_type", "category", "label", "description", "name"])));
+}
+
+function sumCosts(costRows: Row[], include: string[]): number {
+  return costRows.reduce((total, row) => {
+    const type = costType(row);
+    if (include.some((needle) => type.includes(norm(needle)))) return total + costAmount(row);
+    return total;
+  }, 0);
+}
+
+function rowMoney(row: Row | undefined, columns: string[]): string {
+  return formatMoney(columnValue(row, columns));
+}
+
+function moneyOrDash(value: number): string {
+  return value > 0 ? formatMoney(value) : DASH;
 }
 
 export async function resolveTemplateBuilderExamplePreview(matterKey: string): Promise<TemplateBuilderExamplePreviewResult> {
-  const diagnostics: string[] = [];
-  const resolved: Record<string, string> = {};
+  const isLawsuitContext = /^\d{4}\.\d{2}\.\d{5}$/.test(matterKey);
+  const { claimRows, lawsuitRows, providerRows, costRows, providerTaxIdCandidateColumns } = await findBestRows(matterKey);
 
-  const claimRows = await findRows("ClaimIndex", ["matter_id", "display_number", "master_lawsuit_id", "index_aaa_number"], matterKey, 25);
-  const childRows = await findRows("ClaimIndex", ["master_lawsuit_id", "index_aaa_number"], matterKey, 50);
-  const rows = childRows.length > 0 ? childRows : claimRows;
-  const source = rows[0] || null;
+  const childRow = isLawsuitContext ? undefined : claimRows.sort((a, b) => scoreRow(b, ["billedAmount", "claimAmount", "balance", "payments"]) - scoreRow(a, ["billedAmount", "claimAmount", "balance", "payments"]))[0];
+  const lawsuitRow = lawsuitRows.sort((a, b) => scoreRow(b, ["indexNumber", "aaaNumber", "court", "adversaryAttorney", "dateFiled", "balance"]) - scoreRow(a, ["indexNumber", "aaaNumber", "court", "adversaryAttorney", "dateFiled", "balance"]))[0] || claimRows[0];
+  const providerRow = providerRows[0];
 
-  if (rows.length === 0) diagnostics.push("No live ClaimIndex row matched selected example matter.");
-  if (childRows.length > 0) diagnostics.push("Resolved preview from live ClaimIndex child rows.");
+  const providerTaxId = firstPresent(columnValue(providerRow, ["taxId", "tax_id", "tin", "ein", "federalTaxId", "federal_tax_id", "providerTaxId", "provider_tax_id"]));
+  const insurerStreet = firstPresent(columnValue(lawsuitRow, ["insurerHiddenStreet", "insurer_hidden_street", "hiddenInsurerStreet", "hidden_insurer_street", "insurerStreet", "insurer_street", "insuranceStreet", "insurance_street", "hidden_street"]));
+  const insurerCity = firstPresent(columnValue(lawsuitRow, ["insurerHiddenCity", "insurer_hidden_city", "hiddenInsurerCity", "hidden_insurer_city", "insurerCity", "insurer_city", "insuranceCity", "insurance_city", "hidden_city"]));
+  const insurerState = firstPresent(columnValue(lawsuitRow, ["insurerHiddenState", "insurer_hidden_state", "hiddenInsurerState", "hidden_insurer_state", "insurerState", "insurer_state", "insuranceState", "insurance_state", "hidden_state"]));
+  const insurerZip = firstPresent(columnValue(lawsuitRow, ["insurerHiddenZipcode", "insurer_hidden_zipcode", "insurerHiddenZip", "insurer_hidden_zip", "hiddenInsurerZipcode", "hidden_insurer_zipcode", "hiddenInsurerZip", "hidden_insurer_zip", "insurerZipcode", "insurer_zipcode", "insurerZip", "insurer_zip", "insuranceZip", "insurance_zip", "hidden_zipcode", "hidden_zip"]));
 
-  const providerName = text(from(source, ["provider_name", "patient_provider", "provider", "client_name"]));
-  const provider = await providerInfo(providerName);
+  const indexFee = sumCosts(costRows, ["index"]) || numeric(columnValue(lawsuitRow, ["indexFee", "index_fee"]));
+  const serviceFee = sumCosts(costRows, ["service"]) || numeric(columnValue(lawsuitRow, ["serviceFee", "service_fee"]));
+  const otherCosts = sumCosts(costRows, ["other", "court"]) || numeric(columnValue(lawsuitRow, ["otherCourtCosts", "other_court_costs", "otherCosts", "other_costs"]));
+  const totalCosts = indexFee + serviceFee + otherCosts;
+  const lawsuitBalance = firstPresent(columnValue(lawsuitRow, ["lawsuitBalance", "lawsuit_balance", "balance", "currentBalance", "current_balance", "remainingBalance", "remaining_balance"]));
 
-  const patientName = text(from(source, ["patient_name", "patient", "patient_full_name"])) || [
-    text(from(source, ["patient_first_name", "first_name"])),
-    text(from(source, ["patient_last_name", "last_name"]))
-  ].filter(Boolean).join(" ");
-  const claimNumber = text(from(source, ["claim_number_raw", "claim_number", "claim_number_normalized", "bill_number"]));
-  const previewDateOfService = rows.length > 1
-    ? (date(from(rows[0], ["dos_start", "date_of_service", "dos"])) || "") + " - " + (date(from(rows[rows.length - 1], ["dos_end", "date_of_service", "dos"])) || "")
-    : date(from(source, ["dos_start", "date_of_service", "dos"]));
-  const previewBilledAmount = rows.length > 1
-    ? money(sum(rows, ["claim_amount", "amount", "billed_amount"]))
-    : money(from(source, ["claim_amount", "amount", "billed_amount"]));
+  const resolved: Record<string, string> = {
+    "{{matter.billedAmount}}": isLawsuitContext ? DASH : rowMoney(childRow, ["billedAmount", "billed_amount", "claimAmount", "claim_amount", "amount", "totalBilled", "total_billed"]),
+    "{{provider.taxId}}": formatValue(providerTaxId),
+    "{{insurer.hidden_street}}": formatValue(insurerStreet),
+    "{{insurer.hidden_city}}": formatValue(insurerCity),
+    "{{insurer.hidden_state}}": formatValue(insurerState),
+    "{{insurer.hidden_zipcode}}": formatValue(insurerZip),
+    "{{claim.balance}}": isLawsuitContext ? DASH : rowMoney(childRow, ["claimBalance", "claim_balance", "balance", "currentBalance", "current_balance", "remainingBalance", "remaining_balance"]),
+    "{{claim.payments}}": isLawsuitContext ? DASH : rowMoney(childRow, ["paymentTotal", "payment_total", "paymentsTotal", "payments_total", "payments", "paidAmount", "paid_amount", "amountPaid", "amount_paid"]),
+    "{{lawsuit.indexNumber}}": formatValue(firstPresent(columnValue(lawsuitRow, ["indexNumber", "index_number", "aaaNumber", "aaa_number", "indexOrAaaNumber", "index_or_aaa_number", "arbitrationIndexNumber", "arbitration_index_number"]))),
+    "{{lawsuit.court}}": formatValue(firstPresent(columnValue(lawsuitRow, ["court", "courtName", "court_name", "selectedCourt", "selected_court", "venue"]))),
+    "{{lawsuit.adversaryAttorney}}": formatValue(firstPresent(columnValue(lawsuitRow, ["adversaryAttorney", "adversary_attorney", "adversaryAttorneyName", "adversary_attorney_name", "defenseAttorney", "defense_attorney", "opposingAttorney", "opposing_attorney"]))),
+    "{{lawsuit.dateFiled}}": formatDate(firstPresent(columnValue(lawsuitRow, ["dateFiled", "date_filed", "filedDate", "filed_date", "filingDate", "filing_date", "indexFiledDate", "index_filed_date"]))),
+    "{{lawsuit.costs}}": moneyOrDash(totalCosts),
+    "{{lawsuit.balance}}": formatMoney(lawsuitBalance),
+    "{{cost.indexFee}}": moneyOrDash(indexFee),
+    "{{cost.serviceFee}}": moneyOrDash(serviceFee),
+    "{{cost.otherCourtCosts}}": moneyOrDash(otherCosts),
+    "{{cost.total}}": moneyOrDash(totalCosts),
+  };
 
-  put(resolved, "{{matter.fileNumber}}", matterKey || text(from(source, ["display_number", "matter_id", "master_lawsuit_id", "index_aaa_number"])));
-  put(resolved, "{{matter.providerName}}", providerName);
-  put(resolved, "{{matter.patientName}}", patientName);
-  put(resolved, "{{matter.claimNumber}}", claimNumber);
-  put(resolved, "{{matter.billedAmount}}", previewBilledAmount);
-
-  put(resolved, "{{provider.taxId}}", text(from(source, ["tax_id", "provider_tax_id", "tin"])) || text(from(provider, ["tax_id", "tin", "provider_tax_id"])));
-
-  put(resolved, "{{treatingProvider.name}}", text(from(source, ["treating_provider", "treating_provider_name", "doctor_name"])) || providerName);
-  put(resolved, "{{insurer.name}}", text(from(source, ["insurer_name", "patient_insurer", "insurer"])));
-  put(resolved, "{{insurer.hidden_street}}", text(from(source, ["insurer_hidden_street", "insurance_hidden_street"])));
-  put(resolved, "{{insurer.hidden_city}}", text(from(source, ["insurer_hidden_city", "insurance_hidden_city"])));
-  put(resolved, "{{insurer.hidden_state}}", text(from(source, ["insurer_hidden_state", "insurance_hidden_state"])));
-  put(resolved, "{{insurer.hidden_zipcode}}", text(from(source, ["insurer_hidden_zipcode", "insurer_hidden_zip", "insurance_hidden_zipcode"])));
-
-  put(resolved, "{{claim.number}}", claimNumber);
-  put(resolved, "{{claim.policyNumber}}", text(from(source, ["policy_number", "policy"])));
-  put(resolved, "{{claim.dateOfLoss}}", date(from(source, ["date_of_loss", "dol"])));
-  put(resolved, "{{claim.dateOfService}}", previewDateOfService);
-  put(resolved, "{{claim.amount}}", previewBilledAmount);
-  put(resolved, "{{claim.balance}}", rows.length > 1 ? money(sum(rows, ["balance_amount", "balance_presuit", "balance"])) : money(from(source, ["balance_amount", "balance_presuit", "balance"])));
-  put(resolved, "{{claim.payments}}", rows.length > 1 ? money(sum(rows, ["payment_amount", "payment_voluntary", "payments"])) : money(from(source, ["payment_amount", "payment_voluntary", "payments"])));
-  put(resolved, "{{claim.denialReason}}", text(from(source, ["denial_reason", "denialReason"])));
-
-  put(resolved, "{{lawsuit.indexNumber}}", text(from(source, ["index_aaa_number", "index_number", "master_lawsuit_id"])));
-  put(resolved, "{{lawsuit.court}}", text(from(source, ["court", "court_name"])));
-  put(resolved, "{{lawsuit.adversaryAttorney}}", text(from(source, ["adversary_attorney", "adversary_attorney_name"])));
-  put(resolved, "{{lawsuit.dateFiled}}", date(from(source, ["date_filed", "filed_at", "indexed_at"])));
-  put(resolved, "{{lawsuit.amount}}", rows.length > 1 ? money(sum(rows, ["claim_amount", "amount", "billed_amount"])) : money(from(source, ["lawsuit_amount", "claim_amount", "amount"])));
-  put(resolved, "{{lawsuit.costs}}", money(from(source, ["lawsuit_costs", "costs_total", "cost_total"])));
-  put(resolved, "{{lawsuit.paymentsPosted}}", rows.length > 1 ? money(sum(rows, ["payment_amount", "payment_voluntary", "payments"])) : money(from(source, ["payment_amount", "payment_voluntary", "payments"])));
-  put(resolved, "{{lawsuit.balance}}", rows.length > 1 ? money(sum(rows, ["balance_amount", "balance_presuit", "balance"])) : money(from(source, ["lawsuit_balance", "balance_amount", "balance_presuit", "balance"])));
-
-  put(resolved, "{{cost.indexFee}}", money(from(source, ["index_fee", "filing_fee"])));
-  put(resolved, "{{cost.serviceFee}}", money(from(source, ["service_fee"])));
-  put(resolved, "{{cost.otherCourtCosts}}", money(from(source, ["other_court_costs", "other_costs"])));
-  const costTotal = sum([source || {}], ["index_fee", "filing_fee"]) + sum([source || {}], ["service_fee"]) + sum([source || {}], ["other_court_costs", "other_costs"]);
-  if (costTotal > 0) put(resolved, "{{cost.total}}", money(costTotal));
-
-  const fallback = FALLBACKS[matterKey] || {};
-  for (const token of ALLOWED_TOKENS) {
-    if (!resolved[token] && fallback[token]) resolved[token] = fallback[token];
-  }
-  for (const token of ALLOWED_TOKENS) {
-    if (!resolved[token]) resolved[token] = "";
-  }
-
-  return { matterKey, resolved, diagnostics };
+  return {
+    matter: matterKey,
+    resolved,
+    exampleOutputMap: resolved,
+    diagnostics: {
+      matterKey,
+      context: isLawsuitContext ? "lawsuit" : "child",
+      providerTaxIdCandidateColumns,
+      providerTaxIdResolved: Boolean(providerTaxId),
+      insurerHiddenResolved: { street: Boolean(insurerStreet), city: Boolean(insurerCity), state: Boolean(insurerState), zipcode: Boolean(insurerZip) },
+      lawsuitResolved: {
+        indexNumber: resolved["{{lawsuit.indexNumber}}"] !== DASH,
+        court: resolved["{{lawsuit.court}}"] !== DASH,
+        adversaryAttorney: resolved["{{lawsuit.adversaryAttorney}}"] !== DASH,
+        dateFiled: resolved["{{lawsuit.dateFiled}}"] !== DASH,
+        balance: resolved["{{lawsuit.balance}}"] !== DASH,
+      },
+      costResolved: {
+        indexFee: resolved["{{cost.indexFee}}"] !== DASH,
+        serviceFee: resolved["{{cost.serviceFee}}"] !== DASH,
+        otherCourtCosts: resolved["{{cost.otherCourtCosts}}"] !== DASH,
+        total: resolved["{{cost.total}}"] !== DASH,
+      },
+    },
+  };
 }

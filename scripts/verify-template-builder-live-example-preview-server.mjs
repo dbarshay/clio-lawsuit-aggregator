@@ -28,17 +28,19 @@ const routeCandidates = walk('app/api')
   .filter(({ source }) => source.includes('resolveTemplateBuilderExamplePreview') || source.includes('example-preview'));
 const routeCandidate = routeCandidates.find(({ source }) => source.includes('resolveTemplateBuilderExamplePreview'));
 
+const has = (source, needle, message) => source.includes(needle) ? pass(message) : fail(message);
+const lacks = (source, needle, message) => !source.includes(needle) ? pass(message) : fail(message);
+const hasRegex = (source, pattern, message) => pattern.test(source) ? pass(message) : fail(message);
+
 if (!routeCandidate) fail('API route calling resolveTemplateBuilderExamplePreview exists');
 else pass('API route calling resolver exists at ' + routeCandidate.filePath);
 
-const has = (source, needle, message) => source.includes(needle) ? pass(message) : fail(message);
-const lacks = (source, needle, message) => !source.includes(needle) ? pass(message) : fail(message);
-
 has(resolver, 'resolveTemplateBuilderExamplePreview', 'Live resolver exports resolveTemplateBuilderExamplePreview');
 has(resolver, 'tableColumns', 'Live resolver uses schema-aware tableColumns helper');
-has(resolver, 'ClaimIndex', 'Live resolver queries live ClaimIndex');
-has(resolver, 'ProviderClientInfo', 'Live resolver queries live ProviderClientInfo');
-has(resolver, 'fallback', 'Live resolver keeps fallback data only as fallback');
+has(resolver, 'findRows(tableName: string, value: string, candidateColumns: string[]', 'Live resolver uses dynamic table row lookup');
+hasRegex(resolver, /claimTables\s*=\s*tables\.filter\(\(table\)\s*=>\s*\/claimindex\|claim\|matter\/i\.test\(table\)\)/, 'Live resolver searches ClaimIndex/claim/matter tables');
+hasRegex(resolver, /providerTables\s*=\s*tables\.filter\(\(table\)\s*=>\s*\/providerclientinfo\|provider\|client\/i\.test\(table\)\)/, 'Live resolver searches ProviderClientInfo/provider/client tables');
+has(resolver, 'isLawsuitContext ? DASH', 'Live resolver uses dash for child-only tokens in lawsuit context');
 
 for (const removed of [
   '{{patient.lastName}}',
@@ -49,12 +51,39 @@ for (const removed of [
   '{{matter.dateOfService}}',
   '{{claim.dosStart}}',
   '{{claim.dosEnd}}',
+  '{{treatingProvider.name}}',
+  '{{claim.amount}}',
 ]) {
-  lacks(resolver, removed, 'Live resolver excludes removed token ' + removed);
+  lacks(resolver, removed, 'Live resolver excludes removed/deleted token ' + removed);
 }
 
-has(resolver, '{{claim.amount}}', 'Live resolver resolves claim amount');
-has(resolver, '{{lawsuit.balance}}', 'Live resolver resolves lawsuit balance');
+for (const kept of [
+  '{{matter.billedAmount}}',
+  '{{provider.taxId}}',
+  '{{insurer.hidden_street}}',
+  '{{insurer.hidden_city}}',
+  '{{insurer.hidden_state}}',
+  '{{insurer.hidden_zipcode}}',
+  '{{claim.balance}}',
+  '{{claim.payments}}',
+  '{{lawsuit.indexNumber}}',
+  '{{lawsuit.court}}',
+  '{{lawsuit.adversaryAttorney}}',
+  '{{lawsuit.dateFiled}}',
+  '{{lawsuit.costs}}',
+  '{{lawsuit.balance}}',
+  '{{cost.indexFee}}',
+  '{{cost.serviceFee}}',
+  '{{cost.otherCourtCosts}}',
+  '{{cost.total}}',
+]) {
+  has(resolver, kept, 'Live resolver maps kept token ' + kept);
+}
+
+has(resolver, 'providerTaxIdCandidateColumns', 'Live resolver reports provider tax ID candidate columns');
+has(resolver, 'insurerHiddenResolved', 'Live resolver reports insurer hidden diagnostics');
+has(resolver, 'lawsuitResolved', 'Live resolver reports lawsuit diagnostics');
+has(resolver, 'costResolved', 'Live resolver reports cost diagnostics');
 
 if (routeCandidate) {
   has(routeCandidate.source, 'resolveTemplateBuilderExamplePreview', 'API route calls resolver');
@@ -69,4 +98,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log('\nPASS: Template Builder live example preview server wiring aligned with approved token removals.');
+console.log('\nPASS: Template Builder live example preview server wiring aligned with current child/lawsuit token semantics.');

@@ -30,43 +30,62 @@ for (const needle of [
   'templateBuilderMoveDeletedCategoryFieldsToGeneral',
 ]) has(library, needle, 'Merge-field library contains ' + needle);
 
-for (const needle of ['bold', 'italic', 'underline', 'upper', 'lower', 'title', 'date:MM/DD/YYYY', 'date:Month D, YYYY', 'currency']) {
-  has(library, needle, 'Merge-field library contains modifier/support ' + needle);
-}
+for (const needle of ['bold', 'italic', 'underline', 'upper', 'lower', 'title', 'date:MM/DD/YYYY', 'date:Month D, YYYY', 'currency']) has(library, needle, 'Merge-field library contains modifier/support ' + needle);
 
 for (const removed of [
-  '{{patient.lastName}}',
-  '{{provider.hidden_street}}',
-  '{{provider.hidden_city}}',
-  '{{provider.hidden_state}}',
-  '{{provider.hidden_zipcode}}',
-  '{{matter.dateOfService}}',
-  '{{claim.dosStart}}',
-  '{{claim.dosEnd}}',
-]) lacks(library, removed, 'Merge-field library excludes approved removed token ' + removed);
-
+  "{{patient.dateOfBirth}}",
+  "{{patient.hidden_street}}",
+  "{{patient.hidden_city}}",
+  "{{patient.hidden_state}}",
+  "{{patient.hidden_zipcode}}",
+  "{{treatingProvider.hidden_street}}",
+  "{{treatingProvider.hidden_city}}",
+  "{{treatingProvider.hidden_state}}",
+  "{{treatingProvider.hidden_zipcode}}",
+  "{{provider.name}}",
+  "{{matter.id}}",
+  "{{matter.displayNumber}}",
+  "{{matter.closedReason}}",
+  "{{patient.firstName}}",
+  "{{patient.lastName}}",
+  "{{patient.name}}",
+  "{{matter.type}}",
+  "{{matter.caseType}}",
+  "{{matter.finalStatus}}",
+  "{{provider.hidden_street}}",
+  "{{provider.hidden_city}}",
+  "{{provider.hidden_state}}",
+  "{{provider.hidden_zipcode}}",
+  "{{matter.dateOfService}}",
+  "{{claim.dosStart}}",
+  "{{claim.dosEnd}}",
+  "{{treatingProvider.name}}",
+  "{{claim.amount}}"
+]) lacks(library, removed, 'Merge-field library excludes approved removed/deleted token ' + removed);
 for (const retained of [
-  '{{provider.taxId}}',
-  '{{treatingProvider.name}}',
-  '{{insurer.name}}',
-  '{{insurer.hidden_street}}',
-  '{{insurer.hidden_city}}',
-  '{{insurer.hidden_state}}',
-  '{{insurer.hidden_zipcode}}',
-  '{{claim.number}}',
-  '{{claim.dateOfLoss}}',
-  '{{claim.dateOfService}}',
-  '{{claim.amount}}',
-  '{{claim.denialReason}}',
-  '{{lawsuit.indexNumber}}',
-  '{{lawsuit.court}}',
-  '{{lawsuit.adversaryAttorney}}',
-  '{{lawsuit.dateFiled}}',
-  '{{lawsuit.amount}}',
-  '{{lawsuit.balance}}',
-  '{{cost.indexFee}}',
-  '{{cost.serviceFee}}',
-  '{{cost.otherCourtCosts}}',
+  "{{provider.taxId}}",
+  "{{insurer.name}}",
+  "{{insurer.hidden_street}}",
+  "{{insurer.hidden_city}}",
+  "{{insurer.hidden_state}}",
+  "{{insurer.hidden_zipcode}}",
+  "{{claim.number}}",
+  "{{claim.dateOfLoss}}",
+  "{{claim.dateOfService}}",
+  "{{claim.denialReason}}",
+  "{{claim.balance}}",
+  "{{claim.payments}}",
+  "{{lawsuit.indexNumber}}",
+  "{{lawsuit.court}}",
+  "{{lawsuit.adversaryAttorney}}",
+  "{{lawsuit.dateFiled}}",
+  "{{lawsuit.amount}}",
+  "{{lawsuit.costs}}",
+  "{{lawsuit.balance}}",
+  "{{cost.indexFee}}",
+  "{{cost.serviceFee}}",
+  "{{cost.otherCourtCosts}}",
+  "{{cost.total}}"
 ]) has(library, retained, 'Merge-field library keeps approved token ' + retained);
 
 for (const needle of [
@@ -81,12 +100,7 @@ for (const needle of [
   'Delete Field',
 ]) has(buildPage, needle, 'Build page contains ' + needle);
 
-for (const removedText of [
-  'Phase 3 locks',
-  'Category readiness',
-  'Custom manual placeholder readiness',
-  'Production DOCX upload, token mutation, and matter-side Generate Documents remain intentionally unwired',
-]) lacks(buildPage, removedText, 'Build page no longer exposes removed readiness text ' + removedText);
+for (const removedText of ['Phase 3 locks', 'Category readiness', 'Custom manual placeholder readiness', 'Production DOCX upload, token mutation, and matter-side Generate Documents remain intentionally unwired']) lacks(buildPage, removedText, 'Build page no longer exposes removed readiness text ' + removedText);
 
 if (doc) {
   has(doc, 'Template Builder Phase 3', 'Phase 3 doc contains Template Builder Phase 3');

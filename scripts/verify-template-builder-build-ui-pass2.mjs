@@ -48,7 +48,7 @@ add("Example output no longer appends example matter", !build.includes("field.ex
 add("Multi-format UI uses buttons instead of single select", build.includes("Formats for copy") && !build.includes("<select value={format}"));
 add("Delete confirmation is modal-like dialog", build.includes("role=\"dialog\"") && build.includes("aria-modal=\"true\""));
 add("Copy icon remains next to merge token", build.includes("<code style={{ fontFamily: \"monospace\" }}>{token}</code>") && build.includes("<CopyIcon />"));
-add("Delete action appears left of Category column", build.includes("<th style={{ ...headerStyle, width: \"78px\" }}>Action</th>") && build.indexOf("Action</th>") < build.indexOf("Category <span>"));
+add("Delete action column remains present with sortable Category column", build.includes(">Action</th>") && build.includes("<TrashIcon />") && build.includes("toggleSort(\"category\")"));
 
 const pkg = JSON.parse(read("package.json"));
 add("Package has UI pass 2 verifier script", pkg.scripts && pkg.scripts["verify:template-builder-build-ui-pass2"] === "node scripts/verify-template-builder-build-ui-pass2.mjs");

@@ -160,7 +160,7 @@ export default function BuildTemplatePage() {
   }
 
   const headerStyle = {
-    padding: "12px",
+    padding: "10px 12px",
     textAlign: "left" as const,
     position: "sticky" as const,
     top: 0,
@@ -168,6 +168,7 @@ export default function BuildTemplatePage() {
     background: "#1e3a8a",
     color: "#ffffff",
     boxShadow: "0 1px 0 rgba(255,255,255,0.18)",
+    whiteSpace: "nowrap" as const,
   };
 
   const sortButtonStyle = {
@@ -180,14 +181,22 @@ export default function BuildTemplatePage() {
     display: "inline-flex",
     gap: "6px",
     alignItems: "center",
+    whiteSpace: "nowrap" as const,
+  };
+
+  const cellStyle = {
+    padding: "10px 12px",
+    verticalAlign: "middle" as const,
+    borderTop: "1px solid #e2e8f0",
+    whiteSpace: "nowrap" as const,
   };
 
   return (
-    <main style={{ padding: "32px", maxWidth: "1280px", margin: "0 auto" }}>
+    <main style={{ padding: "24px 28px", width: "100%", maxWidth: "none", margin: 0, boxSizing: "border-box" }}>
       <a href="/admin/document-templates" style={{ color: "#1e3a8a", fontWeight: 700 }}>Back to Document Templates</a>
       <h1 style={{ margin: "18px 0 18px", fontSize: "30px", color: "#0f172a" }}>Build Template</h1>
 
-      <section style={{ display: "grid", gridTemplateColumns: "minmax(260px, 1fr) 240px", gap: "14px", marginBottom: "16px" }}>
+      <section style={{ display: "grid", gridTemplateColumns: "minmax(520px, 1fr) 280px", gap: "14px", marginBottom: "16px" }}>
         <label style={{ display: "grid", gap: "6px", fontWeight: 700, color: "#0f172a" }}>
           Search merge fields
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search category, label, token, example output, aliases, type" style={{ padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "10px" }} />
@@ -221,6 +230,7 @@ export default function BuildTemplatePage() {
                   padding: "8px 12px",
                   fontWeight: 800,
                   cursor: "pointer",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {checked ? "✓ " : ""}{formatLabel(format)}
@@ -230,27 +240,27 @@ export default function BuildTemplatePage() {
         </div>
       </section>
 
-      <div style={{ maxHeight: "560px", overflow: "auto", border: "1px solid #cbd5e1", borderRadius: "12px" }}>
-        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, background: "#ffffff" }}>
+      <div style={{ maxHeight: "calc(100vh - 230px)", overflow: "auto", border: "1px solid #cbd5e1", borderRadius: "12px", width: "100%" }}>
+        <table style={{ width: "100%", minWidth: "1480px", borderCollapse: "separate", borderSpacing: 0, background: "#ffffff", tableLayout: "auto" }}>
           <thead>
             <tr>
-              <th style={{ ...headerStyle, width: "78px" }}>Action</th>
-              <th style={headerStyle}>
+              <th style={{ ...headerStyle, width: "72px" }}>Action</th>
+              <th style={{ ...headerStyle, minWidth: "220px" }}>
                 <button type="button" onClick={() => toggleSort("category")} style={sortButtonStyle}>
                   Category <span>{sortIndicator(sortKey === "category", sortDirection)}</span>
                 </button>
               </th>
-              <th style={headerStyle}>
+              <th style={{ ...headerStyle, minWidth: "280px" }}>
                 <button type="button" onClick={() => toggleSort("fieldLabel")} style={sortButtonStyle}>
                   Field Label <span>{sortIndicator(sortKey === "fieldLabel", sortDirection)}</span>
                 </button>
               </th>
-              <th style={headerStyle}>
+              <th style={{ ...headerStyle, minWidth: "360px" }}>
                 <button type="button" onClick={() => toggleSort("mergeField")} style={sortButtonStyle}>
                   Merge Field <span>{sortIndicator(sortKey === "mergeField", sortDirection)}</span>
                 </button>
               </th>
-              <th style={headerStyle}>
+              <th style={{ ...headerStyle, minWidth: "520px" }}>
                 <button type="button" onClick={() => toggleSort("exampleOutput")} style={sortButtonStyle}>
                   Example Output <span>{sortIndicator(sortKey === "exampleOutput", sortDirection)}</span>
                 </button>
@@ -263,8 +273,8 @@ export default function BuildTemplatePage() {
               const copied = copiedToken === token;
 
               return (
-                <tr key={field.mergeField} style={{ borderTop: "1px solid #e2e8f0" }}>
-                  <td style={{ padding: "12px", verticalAlign: "top", borderTop: "1px solid #e2e8f0" }}>
+                <tr key={field.mergeField}>
+                  <td style={cellStyle}>
                     <button
                       type="button"
                       aria-label={"Delete " + field.fieldLabel}
@@ -286,12 +296,12 @@ export default function BuildTemplatePage() {
                       <TrashIcon />
                     </button>
                   </td>
-                  <td style={{ padding: "12px", verticalAlign: "top", borderTop: "1px solid #e2e8f0" }}>{categoryLabel(field)}</td>
-                  <td style={{ padding: "12px", verticalAlign: "top", borderTop: "1px solid #e2e8f0" }}>
-                    <div style={{ fontWeight: 800 }}>{field.fieldLabel}</div>
-                    <div style={{ color: "#64748b", fontSize: "12px", marginTop: "4px" }}>{field.kind} · {field.fieldType}</div>
+                  <td style={cellStyle}>{categoryLabel(field)}</td>
+                  <td style={cellStyle}>
+                    <span style={{ fontWeight: 800 }}>{field.fieldLabel}</span>
+                    <span style={{ color: "#64748b", fontSize: "12px", marginLeft: "8px" }}>{field.kind} · {field.fieldType}</span>
                   </td>
-                  <td style={{ padding: "12px", verticalAlign: "top", borderTop: "1px solid #e2e8f0" }}>
+                  <td style={cellStyle}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", whiteSpace: "nowrap" }}>
                       <code style={{ fontFamily: "monospace" }}>{token}</code>
                       <button
@@ -316,8 +326,8 @@ export default function BuildTemplatePage() {
                       </button>
                     </span>
                   </td>
-                  <td style={{ padding: "12px", verticalAlign: "top", color: "#334155", borderTop: "1px solid #e2e8f0" }}>
-                    {field.exampleOutput}
+                  <td style={cellStyle}>
+                    <span>{field.exampleOutput}</span>
                   </td>
                 </tr>
               );

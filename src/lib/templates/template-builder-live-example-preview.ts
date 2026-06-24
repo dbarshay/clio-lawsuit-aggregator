@@ -28,6 +28,10 @@ const DASH = "—";
 
 const PREVIEW_ONLY_FALLBACK_OUTPUTS: Record<string, Record<string, string>> = {
   "2026.06.00011": {
+    "{{matter.fileNumber}}": "2026.06.00011",
+    "{{matter.providerName}}": "Preview Provider 11",
+    "{{matter.patientName}}": "Preview Patient 11",
+    "{{matter.claimNumber}}": "PREVIEW-CLAIM-11",
     "{{matter.billedAmount}}": DASH,
     "{{provider.taxId}}": DASH,
     "{{insurer.hidden_street}}": "Preview Insurer Street 11",
@@ -48,6 +52,10 @@ const PREVIEW_ONLY_FALLBACK_OUTPUTS: Record<string, Record<string, string>> = {
     "{{cost.total}}": "$11.00",
   },
   "2026.06.00012": {
+    "{{matter.fileNumber}}": "2026.06.00012",
+    "{{matter.providerName}}": "Preview Provider 12",
+    "{{matter.patientName}}": "Preview Patient 12",
+    "{{matter.claimNumber}}": "PREVIEW-CLAIM-12",
     "{{matter.billedAmount}}": DASH,
     "{{provider.taxId}}": DASH,
     "{{insurer.hidden_street}}": "Preview Insurer Street 12",
@@ -288,6 +296,10 @@ export async function resolveTemplateBuilderExamplePreview(matterKey: string): P
   const lawsuitBalance = firstPresent(columnValue(lawsuitRow, ["lawsuitBalance", "lawsuit_balance", "balance", "currentBalance", "current_balance", "remainingBalance", "remaining_balance"]));
 
   let resolved: Record<string, string> = {
+    "{{matter.fileNumber}}": formatValue(firstPresent(columnValue(childRow, ["fileNumber", "file_number", "displayNumber", "display_number", "matterNumber", "matter_number", "brlFileNumber", "brl_file_number"]), columnValue(lawsuitRow, ["fileNumber", "file_number", "displayNumber", "display_number", "matterNumber", "matter_number", "brlFileNumber", "brl_file_number"]), matterKey)),
+    "{{matter.providerName}}": formatValue(firstPresent(columnValue(childRow, ["providerName", "provider_name", "provider", "clientName", "client_name"]), columnValue(lawsuitRow, ["providerName", "provider_name", "provider", "clientName", "client_name"]))),
+    "{{matter.patientName}}": formatValue(firstPresent(columnValue(childRow, ["patientName", "patient_name", "patient", "patientFullName", "patient_full_name"]), columnValue(lawsuitRow, ["patientName", "patient_name", "patient", "patientFullName", "patient_full_name"]))),
+    "{{matter.claimNumber}}": formatValue(firstPresent(columnValue(childRow, ["claimNumber", "claim_number", "claimNo", "claim_no"]), columnValue(lawsuitRow, ["claimNumber", "claim_number", "claimNo", "claim_no"]))),
     "{{matter.billedAmount}}": isLawsuitContext ? DASH : rowMoney(childRow, ["billedAmount", "billed_amount", "claimAmount", "claim_amount", "amount", "totalBilled", "total_billed"]),
     "{{provider.taxId}}": formatValue(providerTaxId),
     "{{insurer.hidden_street}}": formatValue(insurerStreet),

@@ -299,7 +299,6 @@ export default function BuildTemplatePage() {
                   <td style={cellStyle}>{categoryLabel(field)}</td>
                   <td style={cellStyle}>
                     <span style={{ fontWeight: 800 }}>{field.fieldLabel}</span>
-                    <span style={{ color: "#64748b", fontSize: "12px", marginLeft: "8px" }}>{field.kind} · {field.fieldType}</span>
                   </td>
                   <td style={cellStyle}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", whiteSpace: "nowrap" }}>

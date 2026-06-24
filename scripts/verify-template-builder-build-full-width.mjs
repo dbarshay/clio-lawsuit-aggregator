@@ -21,7 +21,7 @@ for (const token of [
 }
 
 add("Build Template no longer uses 1280px page max width", !build.includes("maxWidth: \"1280px\""));
-add("Field label and type are same-line spans", build.includes("<span style={{ fontWeight: 800 }}>{field.fieldLabel}</span>") && build.includes("marginLeft: \"8px\""));
+add("Field label remains one-line without kind/type description", build.includes("<span style={{ fontWeight: 800 }}>{field.fieldLabel}</span>") && !build.includes("{field.kind} · {field.fieldType}"));
 add("Functional controls remain", build.includes("Formats for copy") && build.includes("CopyIcon") && build.includes("TrashIcon") && build.includes("toggleSort"));
 
 const pkg = JSON.parse(read("package.json"));

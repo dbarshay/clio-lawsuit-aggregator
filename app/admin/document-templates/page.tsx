@@ -28,7 +28,7 @@ export default function DocumentTemplatesPage() {
       <section style={{ marginTop: "28px", padding: "18px", border: "1px solid #bfdbfe", borderRadius: "12px", background: "#eff6ff" }}>
         <h2 style={{ margin: "0 0 8px", fontSize: "18px", color: "#1e3a8a" }}>Phase 1 readiness guardrails</h2>
         <p style={{ margin: 0, color: "#1e293b", lineHeight: 1.55 }}>
-          Required storage namespaces: templates/active/, templates/inactive/, templates/archived/, and templates/deleted/. Internal filenames and storage paths remain hidden from routine UI views.
+          Required storage namespaces: templates/active/, templates/inactive/, templates/archived/, and templates/deleted/. Internal filenames and storage paths remain hidden from routine UI views. Phase 2 centralizes this lifecycle contract under templates.manage for later route-level enforcement.
         </p>
       </section>
     </main>

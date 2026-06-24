@@ -273,7 +273,7 @@ export const TEMPLATE_BUILDER_CANONICAL_MERGE_FIELDS: TemplateBuilderMergeFieldD
   {
     kind: "canonical",
     category: "Matter",
-    fieldLabel: "Provider Hidden Street",
+    fieldLabel: "Provider Street",
     mergeField: "{{provider.hidden_street}}",
     exampleOutput: "445 Broadhollow Road",
     aliases: ["provider hidden street", "hidden_street"],
@@ -286,7 +286,7 @@ export const TEMPLATE_BUILDER_CANONICAL_MERGE_FIELDS: TemplateBuilderMergeFieldD
   {
     kind: "canonical",
     category: "Matter",
-    fieldLabel: "Provider Hidden City",
+    fieldLabel: "Provider City",
     mergeField: "{{provider.hidden_city}}",
     exampleOutput: "Melville",
     aliases: ["provider hidden city", "hidden_city"],
@@ -299,7 +299,7 @@ export const TEMPLATE_BUILDER_CANONICAL_MERGE_FIELDS: TemplateBuilderMergeFieldD
   {
     kind: "canonical",
     category: "Matter",
-    fieldLabel: "Provider Hidden State",
+    fieldLabel: "Provider State",
     mergeField: "{{provider.hidden_state}}",
     exampleOutput: "NY",
     aliases: ["provider hidden state", "hidden_state"],
@@ -312,7 +312,7 @@ export const TEMPLATE_BUILDER_CANONICAL_MERGE_FIELDS: TemplateBuilderMergeFieldD
   {
     kind: "canonical",
     category: "Matter",
-    fieldLabel: "Provider Hidden Zipcode",
+    fieldLabel: "Provider Zipcode",
     mergeField: "{{provider.hidden_zipcode}}",
     exampleOutput: "11747",
     aliases: ["provider hidden zipcode", "hidden_zipcode"],
@@ -364,7 +364,7 @@ export const TEMPLATE_BUILDER_CANONICAL_MERGE_FIELDS: TemplateBuilderMergeFieldD
   {
     kind: "canonical",
     category: "Matter",
-    fieldLabel: "Insurer Hidden Street",
+    fieldLabel: "Insurer Street",
     mergeField: "{{insurer.hidden_street}}",
     exampleOutput: "445 Broadhollow Road",
     aliases: ["insurer hidden street"],
@@ -377,7 +377,7 @@ export const TEMPLATE_BUILDER_CANONICAL_MERGE_FIELDS: TemplateBuilderMergeFieldD
   {
     kind: "canonical",
     category: "Matter",
-    fieldLabel: "Insurer Hidden City",
+    fieldLabel: "Insurer City",
     mergeField: "{{insurer.hidden_city}}",
     exampleOutput: "Melville",
     aliases: ["insurer hidden city"],
@@ -390,7 +390,7 @@ export const TEMPLATE_BUILDER_CANONICAL_MERGE_FIELDS: TemplateBuilderMergeFieldD
   {
     kind: "canonical",
     category: "Matter",
-    fieldLabel: "Insurer Hidden State",
+    fieldLabel: "Insurer State",
     mergeField: "{{insurer.hidden_state}}",
     exampleOutput: "NY",
     aliases: ["insurer hidden state"],
@@ -403,7 +403,7 @@ export const TEMPLATE_BUILDER_CANONICAL_MERGE_FIELDS: TemplateBuilderMergeFieldD
   {
     kind: "canonical",
     category: "Matter",
-    fieldLabel: "Insurer Hidden Zipcode",
+    fieldLabel: "Insurer Zipcode",
     mergeField: "{{insurer.hidden_zipcode}}",
     exampleOutput: "11747",
     aliases: ["insurer hidden zipcode"],

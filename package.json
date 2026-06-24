@@ -676,7 +676,8 @@
     "verify:template-builder-field-cleanup": "node scripts/verify-template-builder-field-cleanup.mjs",
     "verify:template-builder-curated-fields": "node scripts/verify-template-builder-curated-fields.mjs",
     "verify:template-builder-example-outputs": "node scripts/verify-template-builder-example-outputs.mjs",
-    "verify:template-builder-remove-extra-fields": "node scripts/verify-template-builder-remove-extra-fields.mjs"
+    "verify:template-builder-remove-extra-fields": "node scripts/verify-template-builder-remove-extra-fields.mjs",
+    "verify:template-builder-remove-hidden-labels": "node scripts/verify-template-builder-remove-hidden-labels.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",

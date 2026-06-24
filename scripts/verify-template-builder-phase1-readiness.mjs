@@ -32,8 +32,12 @@ add("Landing states BM cloud only and not Clio", landing.includes("BM cloud stor
 add("Landing references templates.manage", landing.includes("templates.manage"));
 
 const build = read("app/admin/document-templates/build/page.tsx");
-for (const token of ["Search merge fields", "Category", "Field Label", "Merge Field", "Example Output", "Copy", "Matter", "People → Signature/Header", "General", "{{signature.phoneLine}}", "{{signature.block}}", "{{custom.settlementDeadline}}"]) {
+const mergeLibrary = read("src/lib/templates/template-builder-merge-field-library.ts");
+for (const token of ["Search merge fields", "Category", "Field Label", "Merge Field", "Example Output", "Copy", "Matter", "General"]) {
   add(`Build Template page contains ${token}`, build.includes(token));
+}
+for (const token of ["People", "Signature/Header", "{{signature.phoneLine}}", "{{signature.block}}", "templateBuilderTokenForCustomLabel", "{{custom"]) {
+  add(`Build Template shared library contains ${token}`, mergeLibrary.includes(token));
 }
 
 const view = read("app/admin/document-templates/view/page.tsx");

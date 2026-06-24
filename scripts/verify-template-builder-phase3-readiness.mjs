@@ -59,7 +59,7 @@ for (const token of [
 
 const build = read("app/admin/document-templates/build/page.tsx");
 for (const token of [
-  "Template Builder Phase 3",
+  "Phase 3 locks",
   "TEMPLATE_BUILDER_CANONICAL_MERGE_FIELDS",
   "TEMPLATE_BUILDER_CUSTOM_PLACEHOLDER_FIELD_TYPES",
   "TEMPLATE_BUILDER_CUSTOM_PLACEHOLDER_FIELDS",

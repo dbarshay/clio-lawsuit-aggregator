@@ -70,7 +70,7 @@ export default function ViewTemplatesPage() {
       </div>
 
       <section style={{ marginTop: "18px", padding: "16px", borderRadius: "12px", border: "1px solid #fde68a", background: "#fffbeb", color: "#713f12", lineHeight: 1.55 }}>
-        Status lifecycle actions are audit logged and move DOCX objects between BM cloud template namespaces. They do not update Last Edited or Last Edited By. Make Active requires a fresh token scan before activation. This screen reflects the templates.manage lifecycle contract for Phase 2 readiness.
+        Status lifecycle actions are audit logged and move DOCX objects between BM cloud template namespaces. They do not update Last Edited or Last Edited By. Make Active requires a fresh token scan before activation. Make Active token scan readiness is defined in Phase 4 before production activation is wired. This screen reflects the templates.manage lifecycle contract for Phase 2 readiness.
       </section>
     </main>
   );

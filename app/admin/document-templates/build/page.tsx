@@ -139,6 +139,13 @@ export default function BuildTemplatePage() {
           </div>
         </div>
       </section>
+
+      <section style={{ marginTop: "22px", padding: "18px", border: "1px solid #bfdbfe", borderRadius: "12px", background: "#eff6ff" }}>
+        <h2 style={{ margin: "0 0 10px", color: "#1e3a8a", fontSize: "20px" }}>Token scan readiness</h2>
+        <p style={{ margin: 0, color: "#1e293b", lineHeight: 1.55 }}>
+          Phase 4 defines the scanner contract for body paragraphs, tables, detectable text boxes, split Word runs, warning-only unknown tokens, blocking malformed tokens, invalid modifiers, incompatible modifiers, approximate locations, and the standard BM token scan popup. Production DOCX upload and Generate Documents remain unwired.
+        </p>
+      </section>
     </main>
   );
 }

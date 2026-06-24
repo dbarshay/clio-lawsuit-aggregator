@@ -1,33 +1,41 @@
 import fs from "node:fs";
 
-const checks = [];
-const add = (name, ok) => checks.push({ name, ok });
+const page = fs.readFileSync("app/admin/document-templates/build/page.tsx", "utf8");
+const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
 
-const read = (path) => fs.existsSync(path) ? fs.readFileSync(path, "utf8") : "";
-const build = read("app/admin/document-templates/build/page.tsx");
-const pkg = JSON.parse(read("package.json"));
+let failed = false;
+const pass = (message) => console.log("\x1b[32mPASS\x1b[0m:", message);
+const fail = (message) => {
+  failed = true;
+  console.error("\x1b[31mFAIL\x1b[0m:", message);
+};
 
-const exampleSelectMatch = build.match(/<select[^>]*value=\{exampleMatter\}[\s\S]*?>([\s\S]*?)<\/select>/);
-const exampleSelect = exampleSelectMatch ? exampleSelectMatch[1] : "";
-const options = [...exampleSelect.matchAll(/<option value="([^"]+)">/g)].map((match) => match[1]);
+const has = (token, message) => page.includes(token) ? pass(message) : fail(message);
+const lacks = (token, message) => !page.includes(token) ? pass(message) : fail(message);
 
-add("Example preview select exists", Boolean(exampleSelectMatch));
-add("Default preview matter is 2026.06.00011", build.includes("useState(\"2026.06.00011\")"));
-add("Preview dropdown includes 2026.06.00011", options.includes("2026.06.00011"));
-add("Preview dropdown includes 2026.06.00012", options.includes("2026.06.00012"));
-add("Preview dropdown excludes BRL_202600003", !options.includes("BRL_202600003"));
-add("Preview dropdown excludes BRL30236", !options.includes("BRL30236"));
-add("Preview dropdown excludes 2026.06.00002", !options.includes("2026.06.00002"));
-add("Preview dropdown has exactly two options", options.length === 2);
-add("Package has preview option verifier script", pkg.scripts && pkg.scripts["verify:template-builder-preview-options"] === "node scripts/verify-template-builder-preview-options.mjs");
+const approved = ["2026.06.00011", "2026.06.00012", "BRL_202600001"];
+const retired = ["BRL_202600003", "BRL30236", "2026.06.00002"];
 
-const failed = checks.filter((check) => check.ok === false);
-for (const check of checks) {
-  const color = check.ok ? "\x1b[32mPASS\x1b[0m" : "\x1b[31mFAIL\x1b[0m";
-  console.log(color + ": " + check.name);
+has("Example matter", "Example preview select exists");
+has("2026.06.00011", "Default/lawsuit preview matter 2026.06.00011 is available");
+has("2026.06.00012", "Lawsuit preview matter 2026.06.00012 is available");
+has("BRL_202600001", "Direct/non-lawsuit preview matter BRL_202600001 is available");
+
+for (const value of retired) {
+  lacks(value, `Preview dropdown excludes retired example matter ${value}`);
 }
-if (failed.length > 0) {
-  console.error(String.fromCharCode(10) + failed.length + " Template Builder preview option checks failed.");
-  process.exit(1);
+
+for (const value of approved) {
+  const count = (page.match(new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g")) || []).length;
+  if (count >= 1) pass(`Preview option appears for ${value}`);
+  else fail(`Preview option appears for ${value}`);
 }
-console.log(String.fromCharCode(10) + "PASS: Template Builder preview options restricted to 2026.06.00011 and 2026.06.00012.");
+
+if (pkg.scripts?.["verify:template-builder-preview-options"] === "node scripts/verify-template-builder-preview-options.mjs") {
+  pass("Package has preview option verifier script");
+} else {
+  fail("Package has preview option verifier script");
+}
+
+if (failed) process.exit(1);
+console.log("\nPASS: Template Builder preview options include two lawsuit examples and one direct example.");

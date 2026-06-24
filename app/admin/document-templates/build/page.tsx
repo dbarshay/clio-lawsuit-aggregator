@@ -255,6 +255,7 @@ export default function BuildTemplatePage() {
           <select value={exampleMatter} onChange={(event) => setExampleMatter(event.target.value)} style={{ padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "10px", background: "#ffffff" }}>
               <option value="2026.06.00011">2026.06.00011</option>
               <option value="2026.06.00012">2026.06.00012</option>
+              <option value="BRL_202600001">BRL_202600001</option>
             </select>
         </label>
       </section>

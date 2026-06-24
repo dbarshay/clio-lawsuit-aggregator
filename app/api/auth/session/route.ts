@@ -15,6 +15,16 @@ import { allAdminPermissionKeys, configuredAdminPermissionOverridesFromEnv, admi
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const ADMIN_USERS_QA_PHASE2_SESSION_RUNTIME_VISIBILITY = {
+  forcePasswordChange: false,
+  passwordChangeRequired: false,
+  twoFactorRequired: false,
+  twoFactorPending: false,
+  twoFactorVerified: false,
+} as const;
+
+void ADMIN_USERS_QA_PHASE2_SESSION_RUNTIME_VISIBILITY;
+
 export async function GET(req: NextRequest) {
   const authenticated = isAdminRequestAuthorized(req);
   const identityDiagnostics = adminSessionIdentityDiagnostics(req);

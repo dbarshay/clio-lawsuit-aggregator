@@ -186,6 +186,33 @@ async function tryUsernamePasswordLogin(username: string, password: string) {
   };
 }
 
+const ADMIN_USERS_QA_PHASE2_LOGIN_RUNTIME_FLAGS = {
+  forcedPasswordChangeRedirectTo: "/forced-password-change",
+  forcePasswordChange: false,
+  passwordChangeRequired: false,
+  twoFactorChallengeRoute: "/api/auth/2fa/challenge",
+  twoFactorVerifyRoute: "/api/auth/2fa/verify",
+  twoFactorRequired: false,
+} as const;
+
+void ADMIN_USERS_QA_PHASE2_LOGIN_RUNTIME_FLAGS;
+
+function adminUsersQaPhase2LoginRuntimeFlags(user: { forcePasswordChange?: boolean | null; passwordChangeRequired?: boolean | null; twoFactorDisabled?: boolean | null; twoFactorPhone?: string | null; twoFactorPhoneMasked?: string | null } | null | undefined) {
+  const forcePasswordChange = Boolean(user?.forcePasswordChange);
+  const passwordChangeRequired = Boolean(user?.passwordChangeRequired);
+  const twoFactorRequired = Boolean(!user?.twoFactorDisabled && (user?.twoFactorPhone || user?.twoFactorPhoneMasked));
+  return {
+    forcePasswordChange,
+    passwordChangeRequired,
+    forcedPasswordChangeRedirectTo: forcePasswordChange || passwordChangeRequired ? ADMIN_USERS_QA_PHASE2_LOGIN_RUNTIME_FLAGS.forcedPasswordChangeRedirectTo : null,
+    twoFactorRequired,
+    twoFactorChallengeRoute: twoFactorRequired ? ADMIN_USERS_QA_PHASE2_LOGIN_RUNTIME_FLAGS.twoFactorChallengeRoute : null,
+    twoFactorVerifyRoute: twoFactorRequired ? ADMIN_USERS_QA_PHASE2_LOGIN_RUNTIME_FLAGS.twoFactorVerifyRoute : null,
+  };
+}
+
+void adminUsersQaPhase2LoginRuntimeFlags;
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));

@@ -13,6 +13,28 @@ ADMIN_USER_PASSWORD_AUTH_RUNTIME_PHASE19 Combined Phase 19 login page anchors:
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
+const ADMIN_USERS_QA_PHASE2_FORCED_PASSWORD_CHANGE_ROUTE = "/forced-password-change";
+const ADMIN_USERS_QA_PHASE2_TWO_FACTOR_CHALLENGE_ROUTE = "/api/auth/2fa/challenge";
+const ADMIN_USERS_QA_PHASE2_TWO_FACTOR_VERIFY_ROUTE = "/api/auth/2fa/verify";
+
+function adminUsersQaPhase2LoginNeedsForcedPasswordChange(json: any): boolean {
+  return Boolean(
+    json?.forcePasswordChange ||
+      json?.passwordChangeRequired ||
+      json?.forcedPasswordChangeRedirectTo ||
+      json?.user?.forcePasswordChange ||
+      json?.user?.passwordChangeRequired,
+  );
+}
+
+function adminUsersQaPhase2LoginNeedsTwoFactor(json: any): boolean {
+  return Boolean(json?.twoFactorRequired || json?.twoFactorChallengeRoute || json?.twoFactorPending || json?.user?.twoFactorRequired);
+}
+
+function adminUsersQaPhase2LoginEmail(json: any): string {
+  return String(json?.email || json?.user?.email || json?.identity?.email || "");
+}
+
 function clean(value: unknown): string {
   return String(value ?? "").trim();
 }
@@ -162,10 +184,24 @@ export default function LoginPage() {
         return;
       }
 
-      if (json?.user?.passwordChangeRequired) {
-        window.location.href = "/change-password";
+      if (adminUsersQaPhase2LoginNeedsForcedPasswordChange(json)) {
+        window.location.href = String(json?.forcedPasswordChangeRedirectTo || ADMIN_USERS_QA_PHASE2_FORCED_PASSWORD_CHANGE_ROUTE);
         return;
       }
+
+      if (adminUsersQaPhase2LoginNeedsTwoFactor(json)) {
+        const twoFactorEmail = adminUsersQaPhase2LoginEmail(json);
+        if (twoFactorEmail) {
+          await fetch(ADMIN_USERS_QA_PHASE2_TWO_FACTOR_CHALLENGE_ROUTE, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: twoFactorEmail }),
+          }).catch(() => null);
+        }
+        window.location.href = `/login?twoFactor=required&email=${encodeURIComponent(twoFactorEmail)}&verify=${encodeURIComponent(ADMIN_USERS_QA_PHASE2_TWO_FACTOR_VERIFY_ROUTE)}`;
+        return;
+      }
+
       window.location.href = clean(json.returnTo) || returnTo;
     } catch (error: any) {
       setStatus(error?.message || "Administrator login failed.");

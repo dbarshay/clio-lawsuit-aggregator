@@ -141,7 +141,7 @@ export default function AdminHomePage() {
   async function logoutAdministrator() {
     try {
       setAdminSessionBusy(true);
-      await fetch("/api/auth/logout", { method: "POST" });
+      await fetch("/api/auth/signout", { method: "POST" });
       window.location.href = "/login?from=/admin";
     } catch (error: any) {
       setAdminSessionStatus(error?.message || "Logout failed");

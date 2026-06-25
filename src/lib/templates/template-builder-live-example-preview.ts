@@ -266,7 +266,9 @@ function costNumber(options: Record<string, unknown>, keys: string[]): number | 
 function addressBlock(street: string, city: string, state: string, zipcode: string): string {
   const cleanPart = (value: string): string => value === DASH ? "" : clean(value);
   const streetLine = cleanPart(street);
-  const localityLine = [cleanPart(city), cleanPart(state), cleanPart(zipcode)].filter(Boolean).join(" ");
+  const cityPart = cleanPart(city);
+  const stateZipLine = [cleanPart(state), cleanPart(zipcode)].filter(Boolean).join(" ");
+  const localityLine = cityPart && stateZipLine ? cityPart + ", " + stateZipLine : cityPart || stateZipLine;
   const lines = [streetLine, localityLine].filter(Boolean);
   return lines.length ? lines.join("\n") : DASH;
 }

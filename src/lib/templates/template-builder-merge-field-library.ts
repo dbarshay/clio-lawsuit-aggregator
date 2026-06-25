@@ -173,7 +173,7 @@ export const TEMPLATE_BUILDER_CANONICAL_MERGE_FIELDS: TemplateBuilderCanonicalMe
     mergeField: "{{insurer.fullAddressBlock}}",
     fieldType: "text",
     compatibleModifiers: TEXT_MODIFIERS,
-    exampleOutput: "—",
+    exampleOutput: "3100 Sanders Road, Suite 201\\nNorthbrook, Illinois 60062",
   },
   {
     kind: "canonical",
@@ -353,7 +353,7 @@ export const TEMPLATE_BUILDER_CANONICAL_MERGE_FIELDS: TemplateBuilderCanonicalMe
     mergeField: "{{adversary.fullAddressBlock}}",
     fieldType: "text",
     compatibleModifiers: TEXT_MODIFIERS,
-    exampleOutput: "—",
+    exampleOutput: "445 Broadhollow Road, Suite CL18\\nMelville, New York 11747",
   },
   {
     kind: "canonical",

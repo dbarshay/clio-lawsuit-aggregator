@@ -342,13 +342,22 @@ export default function AdminUsersPlanningPage() {
   }, []);
 
   useEffect(() => {
-    const handleAdminUsersPageShow = (event: PageTransitionEvent) => {
-      if (!event.persisted) return;
+    const reloadAdminUsersLivePage = () => {
       closeAdminUsersTransientActionState();
       void loadAdminUsersPlanning();
     };
+    const handleAdminUsersPageShow = () => {
+      reloadAdminUsersLivePage();
+    };
+    const handleAdminUsersVisibilityChange = () => {
+      if (document.visibilityState === "visible") reloadAdminUsersLivePage();
+    };
     window.addEventListener("pageshow", handleAdminUsersPageShow);
-    return () => window.removeEventListener("pageshow", handleAdminUsersPageShow);
+    document.addEventListener("visibilitychange", handleAdminUsersVisibilityChange);
+    return () => {
+      window.removeEventListener("pageshow", handleAdminUsersPageShow);
+      document.removeEventListener("visibilitychange", handleAdminUsersVisibilityChange);
+    };
   }, []);
 
   async function postAdminUsersAction(path: string, body: Record<string, unknown>, label: string) {
@@ -803,7 +812,7 @@ export default function AdminUsersPlanningPage() {
 
 
   return (
-    <main data-barsh-admin-users-planning-page="phase3-guarded" data-barsh-admin-users-browser-back-action-history="true" data-barsh-admin-users-audit-history-back-live-reload="true" style={{ minHeight: "100vh", background: "#f8fafc", color: "#0f172a", padding: 30, boxSizing: "border-box" }}>
+    <main data-barsh-admin-users-planning-page="phase3-guarded" data-barsh-admin-users-browser-back-action-history="true" data-barsh-admin-users-audit-history-back-live-reload="true" data-barsh-admin-users-audit-history-back-always-live="true" style={{ minHeight: "100vh", background: "#f8fafc", color: "#0f172a", padding: 30, boxSizing: "border-box" }}>
       <div style={{ maxWidth: 1220, margin: "0 auto", display: "grid", gap: 18 }}>
         <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 24, padding: 22 }}>
           <h1 style={{ margin: 0, fontSize: 30 }}>Users & Roles</h1>

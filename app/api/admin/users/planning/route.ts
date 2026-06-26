@@ -41,6 +41,7 @@ export async function GET() {
           lastName: user.lastName,
           displayName: user.displayName,
           username: user.username,
+          lastLoginAt: user.lastLoginAt,
           phoneExtension: user.phoneExtension,
           faxNumber: user.faxNumber,
           signatureBlockName: user.signatureBlockName,

@@ -78,32 +78,6 @@ function cleanEmail(value: string) {
   return String(value || "").trim().toLowerCase();
 }
 
-const ADMIN_PERMISSION_KEYS = [
-  "admin.home.view",
-  "admin.readiness.view",
-  "admin.claimIndex.view",
-  "admin.claimIndex.audit",
-  "admin.lawsuits.audit",
-  "admin.documentReadiness.audit",
-  "admin.lawsuitCleanup.view",
-  "admin.lawsuitCleanup.confirm",
-  "admin.ticklers.view",
-  "admin.ticklers.run",
-  "admin.clients.view",
-  "admin.clients.edit",
-  "admin.invoices.view",
-  "admin.invoices.create",
-  "admin.invoices.finalize",
-  "admin.invoices.void",
-  "admin.referenceData.view",
-  "admin.referenceData.import",
-  "admin.auditHistory.view",
-  "admin.documentTemplates.view",
-  "admin.documentTemplates.manage",
-  "admin.backups.view",
-  "admin.backups.run",
-  "admin.backups.restorePreview",
-] as const;
 
 
 const ADMIN_USERS_PHASE12_SIGNER_PROFILE_UPDATE_ROUTE = "/api/admin/users/signer-profile";
@@ -224,14 +198,6 @@ export default function AdminUsersPlanningPage() {
   const [removeBusy, setRemoveBusy] = useState(false);
   const [removeMessage, setRemoveMessage] = useState("");
   const [removeResult, setRemoveResult] = useState<any>(null);
-  const [overrideTargetEmail, setOverrideTargetEmail] = useState("");
-  const [overridePermissionKey, setOverridePermissionKey] = useState("admin.invoices.view");
-  const [overrideAction, setOverrideAction] = useState("allow");
-  const [overrideReason, setOverrideReason] = useState("");
-  const [overrideActorEmail, setOverrideActorEmail] = useState("dbarshay15@gmail.com");
-  const [overrideBusy, setOverrideBusy] = useState(false);
-  const [overrideMessage, setOverrideMessage] = useState("");
-  const [overrideResult, setOverrideResult] = useState<any>(null);
   const [lockoutTargetEmail, setLockoutTargetEmail] = useState("");
   const [lockoutAction, setLockoutAction] = useState("lock");
   const [lockoutReason, setLockoutReason] = useState("");
@@ -248,6 +214,9 @@ export default function AdminUsersPlanningPage() {
   const [passwordResetResult, setPasswordResetResult] = useState<any>(null);
   const [passwordResetOneTimePassword, setPasswordResetOneTimePassword] = useState("");
   const [passwordResetCopyMessage, setPasswordResetCopyMessage] = useState("");
+  const [adminUsersAction, setAdminUsersAction] = useState<"none" | "create">("none");
+  const [adminUsersRowBusy, setAdminUsersRowBusy] = useState(false);
+  const [adminUsersRowMessage, setAdminUsersRowMessage] = useState("");
 
 
   async function loadAdminUsersPlanning() {
@@ -307,6 +276,210 @@ export default function AdminUsersPlanningPage() {
       passwordResetResult?.mode === "preview" &&
       passwordResetResult?.wouldReset?.email === cleanEmail(passwordResetTargetEmail)
   );
+
+
+  function formatAdminUserDate(value: unknown): string {
+    if (!value) return "—";
+    const date = new Date(String(value));
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleString();
+  }
+
+  function roleLabelForUser(user: any): string {
+    return Array.isArray(user?.roleKeys) && user.roleKeys.length ? user.roleKeys.join(", ") : "None";
+  }
+
+  function twoFactorEnforcedForUser(user: any): boolean {
+    return user?.twoFactorDisabled !== true && Boolean(user?.twoFactorPhone || user?.twoFactorPhoneMasked || user?.twoFactorRequired);
+  }
+
+  function openCreateUserAction(): void {
+    setAdminUsersAction("create");
+    setCreateResult(null);
+    setCreateMessage("");
+  }
+
+  function closeAdminUsersAction(): void {
+    setAdminUsersAction("none");
+  }
+
+  async function postAdminUsersAction(path: string, body: Record<string, unknown>, label: string) {
+    const response = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify(body),
+    });
+    const json = await readAdminUsersJsonResponse(response, label);
+    if (!response.ok || !json?.ok) throw new Error(json?.error || `${label} failed with HTTP ${response.status}.`);
+    return json;
+  }
+
+  async function patchAdminUsersAction(path: string, body: Record<string, unknown>, label: string) {
+    const response = await fetch(path, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify(body),
+    });
+    const json = await readAdminUsersJsonResponse(response, label);
+    if (!response.ok || !json?.ok) throw new Error(json?.error || `${label} failed with HTTP ${response.status}.`);
+    return json;
+  }
+
+  async function editAdminUserFromRow(user: any): Promise<void> {
+    const displayName = window.prompt("Display Name", String(user?.displayName || ""));
+    if (displayName === null) return;
+    const username = window.prompt("User Name", String(user?.username || ""));
+    if (username === null) return;
+    const phoneExtension = window.prompt("Phone Extension", String(user?.phoneExtension || ""));
+    if (phoneExtension === null) return;
+    const faxNumber = window.prompt("Fax Number", String(user?.faxNumber || ""));
+    if (faxNumber === null) return;
+    const signatureBlockName = window.prompt("Signature Block Name", String(user?.signatureBlockName || user?.displayName || ""));
+    if (signatureBlockName === null) return;
+    try {
+      setAdminUsersRowBusy(true);
+      setAdminUsersRowMessage(`Editing ${user.email}...`);
+      await patchAdminUsersAction("/api/admin/users/signer-profile", {
+        apply: true,
+        actorEmail: createActorEmail,
+        userId: user.id,
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        displayName,
+        username,
+        email: user.email,
+        phoneExtension,
+        faxNumber,
+        signatureBlockName,
+        locked: Boolean(user.locked),
+        inactive: Boolean(user.inactive),
+        twoFactorPhone: user.twoFactorPhone || "",
+        twoFactorDisabled: Boolean(user.twoFactorDisabled),
+        twoFactorPendingSetup: Boolean(user.twoFactorPendingSetup),
+      }, "Edit admin user");
+      setAdminUsersRowMessage(`Edited ${user.email}.`);
+      await loadAdminUsersPlanning();
+    } catch (error: any) {
+      setAdminUsersRowMessage(error?.message || "Edit failed.");
+    } finally {
+      setAdminUsersRowBusy(false);
+    }
+  }
+
+  async function resetPasswordFromRow(user: any): Promise<void> {
+    const reason = window.prompt(`Reason for resetting password for ${user.email}`, "Administrator password reset");
+    if (!reason) return;
+    try {
+      setAdminUsersRowBusy(true);
+      const json = await postAdminUsersAction("/api/admin/users/password-reset", { apply: true, targetEmail: user.email, reason, actorEmail: createActorEmail }, "Password reset");
+      if (json?.temporaryPassword && json?.temporaryPasswordOneTimeDisplay) {
+        setPasswordResetOneTimePassword(String(json.temporaryPassword));
+        setPasswordResetCopyMessage("");
+      }
+      setAdminUsersRowMessage(`Password reset for ${user.email}.`);
+      await loadAdminUsersPlanning();
+    } catch (error: any) {
+      setAdminUsersRowMessage(error?.message || "Password reset failed.");
+    } finally {
+      setAdminUsersRowBusy(false);
+    }
+  }
+
+  async function activateTwoFactorFromRow(user: any): Promise<void> {
+    if (twoFactorEnforcedForUser(user)) return;
+    const phone = window.prompt(`2FA phone for ${user.email}`, String(user?.twoFactorPhone || ""));
+    if (!phone) return;
+    try {
+      setAdminUsersRowBusy(true);
+      await patchAdminUsersAction("/api/admin/users/signer-profile", {
+        apply: true,
+        actorEmail: createActorEmail,
+        userId: user.id,
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        displayName: user.displayName || "",
+        username: user.username || "",
+        email: user.email,
+        phoneExtension: user.phoneExtension || "",
+        faxNumber: user.faxNumber || "",
+        signatureBlockName: user.signatureBlockName || "",
+        locked: Boolean(user.locked),
+        inactive: Boolean(user.inactive),
+        twoFactorPhone: phone,
+        twoFactorDisabled: false,
+        twoFactorPendingSetup: false,
+      }, "Activate 2FA");
+      setAdminUsersRowMessage(`2FA enforced for ${user.email}.`);
+      await loadAdminUsersPlanning();
+    } catch (error: any) {
+      setAdminUsersRowMessage(error?.message || "2FA activation failed.");
+    } finally {
+      setAdminUsersRowBusy(false);
+    }
+  }
+
+  async function lockUserFromRow(user: any): Promise<void> {
+    const lockoutAction = user.status === "active" && !user.locked && !user.inactive ? "lock" : "unlock";
+    const reason = window.prompt(`Reason to ${lockoutAction} ${user.email}`, `Administrator ${lockoutAction} action`);
+    if (!reason) return;
+    try {
+      setAdminUsersRowBusy(true);
+      await postAdminUsersAction("/api/admin/users/lockout", { apply: true, targetEmail: user.email, lockoutAction, reason, actorEmail: createActorEmail }, "Lock user");
+      setAdminUsersRowMessage(`${lockoutAction === "lock" ? "Locked" : "Unlocked"} ${user.email}.`);
+      await loadAdminUsersPlanning();
+    } catch (error: any) {
+      setAdminUsersRowMessage(error?.message || "Lock action failed.");
+    } finally {
+      setAdminUsersRowBusy(false);
+    }
+  }
+
+  async function signOutUserFromRow(user: any): Promise<void> {
+    if (!window.confirm(`Sign out ${user.email} and invalidate that session?`)) return;
+    try {
+      setAdminUsersRowBusy(true);
+      await postAdminUsersAction("/api/auth/signout", { email: user.email, reason: "Administrator row sign out action" }, "Sign out user");
+      setAdminUsersRowMessage(`Signed out ${user.email}.`);
+      await loadAdminUsersPlanning();
+    } catch (error: any) {
+      setAdminUsersRowMessage(error?.message || "Sign out failed.");
+    } finally {
+      setAdminUsersRowBusy(false);
+    }
+  }
+
+  async function assignRoleFromRow(user: any): Promise<void> {
+    const roleKey = window.prompt(`Role to assign to ${user.email}`, "");
+    if (!roleKey) return;
+    try {
+      setAdminUsersRowBusy(true);
+      await postAdminUsersAction("/api/admin/users/assign-role", { apply: true, targetEmail: user.email, roleKey, actorEmail: createActorEmail }, "Assign role");
+      setAdminUsersRowMessage(`Assigned ${roleKey} to ${user.email}.`);
+      await loadAdminUsersPlanning();
+    } catch (error: any) {
+      setAdminUsersRowMessage(error?.message || "Assign role failed.");
+    } finally {
+      setAdminUsersRowBusy(false);
+    }
+  }
+
+  async function removeRoleFromRow(user: any): Promise<void> {
+    const currentRoles = roleLabelForUser(user);
+    const roleKey = window.prompt(`Role to remove from ${user.email}`, currentRoles === "None" ? "" : currentRoles.split(",")[0].trim());
+    if (!roleKey) return;
+    try {
+      setAdminUsersRowBusy(true);
+      await postAdminUsersAction("/api/admin/users/remove-role", { apply: true, targetEmail: user.email, roleKey, actorEmail: createActorEmail }, "Remove role");
+      setAdminUsersRowMessage(`Removed ${roleKey} from ${user.email}.`);
+      await loadAdminUsersPlanning();
+    } catch (error: any) {
+      setAdminUsersRowMessage(error?.message || "Remove role failed.");
+    } finally {
+      setAdminUsersRowBusy(false);
+    }
+  }
 
   async function copyPasswordResetOneTimePassword() {
     if (!passwordResetOneTimePassword) return;
@@ -541,43 +714,7 @@ export default function AdminUsersPlanningPage() {
     }
   }
 
-  async function submitPermissionOverride(apply: boolean) {
-    try {
-      setOverrideBusy(true);
-      setOverrideMessage(apply ? "Applying guarded permission override request..." : "Previewing guarded permission override request...");
-      const response = await fetch("/api/admin/users/permission-override", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-        body: JSON.stringify({
-          apply,
-          targetEmail: overrideTargetEmail,
-          permissionKey: overridePermissionKey,
-          overrideAction,
-          reason: overrideReason,
-          actorEmail: overrideActorEmail,
-        }),
-      });
-      const json = await readAdminUsersJsonResponse(response, "Admin users request").catch(() => ({ ok: false, error: "Permission override route did not return JSON." }));
-      setOverrideResult({ ...json, httpStatus: response.status });
-      if (!response.ok || !json?.ok) {
-        setOverrideMessage(json?.error || `Permission override request failed with HTTP ${response.status}.`);
-        return;
-      }
-      if (apply) {
-        setOverrideMessage("Admin permission override saved. Permission enforcement setting was not changed.");
-        setOverrideResult(null);
-        await loadAdminUsersPlanning();
-      } else {
-        setOverrideMessage("Preview complete. No AdminUserPermissionOverride row was saved. Review the result before Apply.");
-      }
-    } catch (err: any) {
-      setOverrideMessage(err?.message || "Permission override request failed.");
-      setOverrideResult({ ok: false, error: err?.message || "Permission override request failed." });
-    } finally {
-      setOverrideBusy(false);
-    }
-  }
+
 
   return (
     <main data-barsh-admin-users-planning-page="phase3-guarded" style={{ minHeight: "100vh", background: "#f8fafc", color: "#0f172a", padding: 30, boxSizing: "border-box" }}>
@@ -591,87 +728,24 @@ export default function AdminUsersPlanningPage() {
         {error ? <section data-barsh-admin-users-planning-error="true" style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", borderRadius: 18, padding: 16 }}>{error}</section> : null}
 
         <section data-barsh-admin-users-planning-summary="true" style={cardStyle}>
-          <strong>Mode:</strong> {data?.mode || "loading"} | <strong>Enforcement Enabled:</strong> {enforcementLabel} | <strong>Planning Roles:</strong> {roles.length} | <strong>Planning Users:</strong> {users.length} | <strong>DB Roles:</strong> {data?.databasePreview?.roleCount ?? 0} | <strong>DB Users:</strong> {data?.databasePreview?.userCount ?? 0}
+          <strong>Users:</strong> {data?.databasePreview?.userCount ?? 0} | <strong>Roles:</strong> {data?.databasePreview?.roleCount ?? 0} | <strong>Enforcement Enabled:</strong> {enforcementLabel}
+        </section>
+
+        <section data-barsh-admin-users-top-actions="true" style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <h2 style={{ margin: 0 }}>Administrator Users</h2>
+            <p style={{ margin: "6px 0 0", color: "#475569" }}>All users are managed from the table below. Row actions use the existing guarded backend routes.</p>
+          </div>
+          <button data-barsh-admin-users-create-top-button="true" type="button" onClick={openCreateUserAction} style={primaryButtonStyle}>Create User</button>
+          {adminUsersRowMessage ? <div data-barsh-admin-users-row-action-message="true" style={{ width: "100%", color: adminUsersRowMessage.toLowerCase().includes("failed") ? "#991b1b" : "#166534", fontWeight: 900 }}>{adminUsersRowMessage}</div> : null}
         </section>
 
 
 
-        <section data-barsh-admin-users-password-reset-card="true" style={cardStyle}>
-          <h2 style={{ marginTop: 0 }}>Reset Temporary Password</h2>
-          <p style={{ margin: "8px 0 0", color: "#475569", lineHeight: 1.5 }}>Phase 12K guarded route. Preview is the default. Apply hashes the temporary password immediately, sets passwordChangeRequired, resets failed login counters, and never returns or displays the password. This does not enable impersonation and does not enable permission enforcement.</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginTop: 14 }}>
-            <label style={{ fontSize: 12, fontWeight: 900, color: "#334155" }}>
-              Target User
-              <select data-barsh-admin-users-password-reset-target-email="true" value={passwordResetTargetEmail} onChange={(event) => { setPasswordResetTargetEmail(event.target.value); setPasswordResetResult(null); }} style={inputStyle}>
-                <option value="">Choose user</option>
-                {dbUsers.map((user: any) => <option key={user.email} value={user.email}>{user.displayName || user.email} · {user.username || "no username"} · {user.status}</option>)}
-              </select>
-            </label>
-            <label style={{ fontSize: 12, fontWeight: 900, color: "#334155" }}>
-              Temporary Password
-              <input data-barsh-admin-users-password-reset-temporary-password="true" type="password" value={passwordResetTemporaryPassword} onChange={(event) => { setPasswordResetTemporaryPassword(event.target.value); setPasswordResetResult(null); }} style={inputStyle} placeholder="Min 10 + upper/lower/number/symbol" />
-            </label>
-            <label style={{ fontSize: 12, fontWeight: 900, color: "#334155" }}>
-              Actor Email
-              <input data-barsh-admin-users-password-reset-actor-email="true" value={passwordResetActorEmail} onChange={(event) => setPasswordResetActorEmail(event.target.value)} style={inputStyle} placeholder="owner_admin email" />
-            </label>
-            <label style={{ fontSize: 12, fontWeight: 900, color: "#334155" }}>
-              Reason
-              <input data-barsh-admin-users-password-reset-reason="true" value={passwordResetReason} onChange={(event) => { setPasswordResetReason(event.target.value); setPasswordResetResult(null); }} style={inputStyle} placeholder="Required reason" />
-            </label>
-          </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 14 }}>
-            <button data-barsh-admin-users-password-reset-preview-button="true" type="button" onClick={() => void submitAdminUserPasswordReset(false)} disabled={passwordResetBusy} style={{ ...secondaryButtonStyle, opacity: passwordResetBusy ? 0.7 : 1 }}>
-              Preview Password Reset
-            </button>
-            <button data-barsh-admin-users-password-reset-apply-button="true" type="button" onClick={() => void submitAdminUserPasswordReset(true)} disabled={passwordResetBusy || !passwordResetPreviewReady} style={{ ...primaryButtonStyle, opacity: passwordResetBusy || !passwordResetPreviewReady ? 0.55 : 1, cursor: passwordResetBusy || !passwordResetPreviewReady ? "not-allowed" : "pointer" }}>
-              Apply Password Reset
-            </button>
-            <span data-barsh-admin-users-password-reset-message="true" style={{ color: passwordResetResult?.ok ? "#166534" : "#991b1b", fontWeight: 900 }}>{passwordResetMessage}</span>
-          </div>
-          {passwordResetResult ? <pre data-barsh-admin-users-password-reset-result="true" style={{ marginTop: 12, whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, maxHeight: 260, overflow: "auto" }}>{JSON.stringify(passwordResetResult, null, 2)}</pre> : null}
-          <p style={{ margin: "12px 0 0", color: "#991b1b", fontWeight: 900 }}>Safety: passwords are not viewable or recoverable. This route hashes the temporary password and never returns it. Login impersonation remains intentionally unavailable.</p>
-        </section>
 
-        <section data-barsh-admin-users-lockout-card="true" style={cardStyle}>
-          <h2 style={{ marginTop: 0 }}>Lock / Unlock Admin User</h2>
-          <p style={{ margin: "8px 0 0", color: "#475569", lineHeight: 1.5 }}>Preview first. Apply changes only AdminUser.status between active and inactive. The route blocks locking the last active bootstrapSafe owner_admin user, does not expose passwords, does not impersonate users, and does not enable permission enforcement.</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginTop: 14 }}>
-            <label style={{ fontSize: 12, fontWeight: 900, color: "#334155" }}>
-              Target User
-              <select data-barsh-admin-users-lockout-target-email="true" value={lockoutTargetEmail} onChange={(event) => { setLockoutTargetEmail(event.target.value); setLockoutResult(null); }} style={inputStyle}>
-                <option value="">Choose user</option>
-                {dbUsers.map((user: any) => <option key={user.email} value={user.email}>{user.displayName || user.email} · {user.status}</option>)}
-              </select>
-            </label>
-            <label style={{ fontSize: 12, fontWeight: 900, color: "#334155" }}>
-              Action
-              <select data-barsh-admin-users-lockout-action="true" value={lockoutAction} onChange={(event) => { setLockoutAction(event.target.value); setLockoutResult(null); }} style={inputStyle}>
-                <option value="lock">Lock out user</option>
-                <option value="unlock">Unlock user</option>
-              </select>
-            </label>
-            <label style={{ fontSize: 12, fontWeight: 900, color: "#334155" }}>
-              Actor Email
-              <input data-barsh-admin-users-lockout-actor-email="true" value={lockoutActorEmail} onChange={(event) => setLockoutActorEmail(event.target.value)} style={inputStyle} placeholder="owner_admin email" />
-            </label>
-            <label style={{ fontSize: 12, fontWeight: 900, color: "#334155" }}>
-              Reason
-              <input data-barsh-admin-users-lockout-reason="true" value={lockoutReason} onChange={(event) => { setLockoutReason(event.target.value); setLockoutResult(null); }} style={inputStyle} placeholder="Required reason" />
-            </label>
-          </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 14 }}>
-            <button data-barsh-admin-users-lockout-preview-button="true" type="button" onClick={() => void submitAdminUserLockout(false)} disabled={lockoutBusy} style={{ ...secondaryButtonStyle, opacity: lockoutBusy ? 0.7 : 1 }}>
-              Preview Lock / Unlock
-            </button>
-            <button data-barsh-admin-users-lockout-apply-button="true" type="button" onClick={() => void submitAdminUserLockout(true)} disabled={lockoutBusy || !lockoutPreviewReady} style={{ ...primaryButtonStyle, opacity: lockoutBusy || !lockoutPreviewReady ? 0.55 : 1, cursor: lockoutBusy || !lockoutPreviewReady ? "not-allowed" : "pointer" }}>
-              Apply Lock / Unlock
-            </button>
-            <span data-barsh-admin-users-lockout-message="true" style={{ color: lockoutResult?.ok ? "#166534" : "#991b1b", fontWeight: 900 }}>{lockoutMessage}</span>
-          </div>
-          {lockoutResult ? <pre data-barsh-admin-users-lockout-result="true" style={{ marginTop: 12, whiteSpace: "pre-wrap", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, maxHeight: 260, overflow: "auto" }}>{JSON.stringify(lockoutResult, null, 2)}</pre> : null}
-          <p style={{ margin: "12px 0 0", color: "#991b1b", fontWeight: 900 }}>Safety: owner/bootstrap no-lockout protection remains active. Password viewing and login impersonation are intentionally not available.</p>
-        </section>
+        
+
+        
 
         <section data-barsh-admin-users-enforcement-banner="disabled" style={{ background: "#fefce8", border: "1px solid #fde68a", color: "#713f12", borderRadius: 18, padding: 16, lineHeight: 1.5 }}>
           <strong>Enforcement Disabled:</strong> persisted users, roles, role permissions, and effective permissions are still displayed for review only. They are not used to block pages or API functions in this phase.
@@ -687,7 +761,7 @@ export default function AdminUsersPlanningPage() {
           </a>
         </section>
 
-        <section data-barsh-admin-users-create-user-control="phase3-guarded" style={{ ...cardStyle, border: "1px solid #bfdbfe", boxShadow: "0 12px 26px rgba(30, 58, 138, 0.08)" }}>
+        {adminUsersAction === "create" ? (<section data-barsh-admin-users-create-user-control="phase3-guarded" style={{ ...cardStyle, border: "1px solid #bfdbfe", boxShadow: "0 12px 26px rgba(30, 58, 138, 0.08)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14, flexWrap: "wrap" }}>
             <div>
               <h2 style={{ margin: 0 }}>Create User</h2>
@@ -780,251 +854,56 @@ export default function AdminUsersPlanningPage() {
             <div style={{ fontWeight: 950, color: createResult?.ok ? "#166534" : createResult ? "#991b1b" : "#475569" }}>{createMessage || "Preview the request before applying. Apply remains disabled until a matching preview succeeds."}</div>
             {createResult ? <pre style={{ margin: "10px 0 0", whiteSpace: "pre-wrap", fontSize: 12, fontFamily: "monospace" }}>{JSON.stringify(createResult, null, 2)}</pre> : null}
           </div>
-        </section>
+        </section>) : null}
 
-        <section data-barsh-admin-users-assign-role-control="phase3-guarded" style={{ ...cardStyle, border: "1px solid #bbf7d0", boxShadow: "0 12px 26px rgba(22, 101, 52, 0.08)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14, flexWrap: "wrap" }}>
-            <div>
-              <h2 style={{ margin: 0 }}>Assign Admin Role</h2>
-              <p style={{ margin: "8px 0 0", color: "#475569", lineHeight: 1.5 }}>Preview first. Apply creates only an AdminUserRole join row. It requires an active target user, active role, active owner_admin actor, duplicate-assignment prevention, and active bootstrapSafe owner_admin preservation. It does not create users, create roles, create permission overrides, or enable enforcement.</p>
-            </div>
-            <span data-barsh-admin-users-assign-role-enforcement-disabled="true" style={{ border: "1px solid #fde68a", background: "#fefce8", color: "#713f12", borderRadius: 999, padding: "7px 10px", fontWeight: 950, fontSize: 12 }}>Enforcement Disabled</span>
-          </div>
+        
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginTop: 14 }}>
-            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
-              Target Active Admin User
-              <select data-barsh-admin-users-assign-target-email="true" value={assignTargetEmail} onChange={(event) => { setAssignTargetEmail(event.target.value); setAssignResult(null); }} style={inputStyle}>
-                <option value="">Choose active user...</option>
-                {activeDbUsers.map((user: any) => <option key={user.email} value={user.email}>{user.email}{user.displayName ? ` — ${user.displayName}` : ""}</option>)}
-              </select>
-            </label>
-            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
-              Active Role
-              <select data-barsh-admin-users-assign-role-key="true" value={assignRoleKey} onChange={(event) => { setAssignRoleKey(event.target.value); setAssignResult(null); }} style={inputStyle}>
-                <option value="">Choose active role...</option>
-                {activeDbRoles.map((role: any) => <option key={role.key} value={role.key}>{role.key} — {role.label}</option>)}
-              </select>
-            </label>
-            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
-              Owner Admin Actor Email
-              <input data-barsh-admin-users-assign-actor-email="true" value={assignActorEmail} onChange={(event) => setAssignActorEmail(event.target.value)} style={inputStyle} placeholder="owner_admin email" />
-            </label>
-          </div>
+        
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
-            <button data-barsh-admin-users-assign-preview-button="true" type="button" onClick={() => void submitAssignAdminRole(false)} disabled={assignBusy} style={{ ...secondaryButtonStyle, opacity: assignBusy ? 0.7 : 1 }}>
-              {assignBusy ? "Working..." : "Preview Assign Role"}
-            </button>
-            <button data-barsh-admin-users-assign-apply-button="true" type="button" onClick={() => void submitAssignAdminRole(true)} disabled={assignBusy || !assignPreviewReady} style={{ ...primaryButtonStyle, opacity: assignBusy || !assignPreviewReady ? 0.55 : 1, cursor: assignBusy || !assignPreviewReady ? "not-allowed" : "pointer" }}>
-              Apply Assign Role
-            </button>
-          </div>
+        
 
-          <div data-barsh-admin-users-assign-result="true" style={{ marginTop: 14, background: assignResult?.ok ? "#f0fdf4" : assignResult ? "#fef2f2" : "#f8fafc", border: `1px solid ${assignResult?.ok ? "#bbf7d0" : assignResult ? "#fecaca" : "#e2e8f0"}`, borderRadius: 14, padding: 12 }}>
-            <div style={{ fontWeight: 950, color: assignResult?.ok ? "#166534" : assignResult ? "#991b1b" : "#475569" }}>{assignMessage || "Preview the role assignment before applying. Apply remains disabled until a matching preview succeeds."}</div>
-            {assignResult ? <pre style={{ margin: "10px 0 0", whiteSpace: "pre-wrap", fontSize: 12, fontFamily: "monospace" }}>{JSON.stringify(assignResult, null, 2)}</pre> : null}
-          </div>
-        </section>
-
-        <section data-barsh-admin-users-remove-role-control="phase3-guarded" style={{ ...cardStyle, border: "1px solid #fecaca", boxShadow: "0 12px 26px rgba(153, 27, 27, 0.08)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14, flexWrap: "wrap" }}>
-            <div>
-              <h2 style={{ margin: 0 }}>Remove Admin Role</h2>
-              <p style={{ margin: "8px 0 0", color: "#475569", lineHeight: 1.5 }}>Preview first. Apply deletes only an AdminUserRole join row. It blocks missing assignments and blocks removing owner_admin from the last active bootstrapSafe owner_admin user. It does not delete users, delete roles, create permission overrides, or enable enforcement.</p>
-            </div>
-            <span data-barsh-admin-users-remove-role-enforcement-disabled="true" style={{ border: "1px solid #fde68a", background: "#fefce8", color: "#713f12", borderRadius: 999, padding: "7px 10px", fontWeight: 950, fontSize: 12 }}>Enforcement Disabled</span>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginTop: 14 }}>
-            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
-              Target Admin User With Roles
-              <select data-barsh-admin-users-remove-target-email="true" value={removeTargetEmail} onChange={(event) => { setRemoveTargetEmail(event.target.value); setRemoveRoleKey(""); setRemoveResult(null); }} style={inputStyle}>
-                <option value="">Choose user...</option>
-                {dbUsers.filter((user: any) => (user.roleKeys || []).length > 0).map((user: any) => <option key={user.email} value={user.email}>{user.email}{user.displayName ? ` — ${user.displayName}` : ""}</option>)}
-              </select>
-            </label>
-            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
-              Assigned Role To Remove
-              <select data-barsh-admin-users-remove-role-key="true" value={removeRoleKey} onChange={(event) => { setRemoveRoleKey(event.target.value); setRemoveResult(null); }} style={inputStyle}>
-                <option value="">Choose assigned role...</option>
-                {selectedRemoveUserRoleKeys.map((roleKey: string) => {
-                  const role = dbRoles.find((entry: any) => entry.key === roleKey);
-                  return <option key={roleKey} value={roleKey}>{roleKey}{role?.label ? ` — ${role.label}` : ""}</option>;
-                })}
-              </select>
-            </label>
-            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
-              Owner Admin Actor Email
-              <input data-barsh-admin-users-remove-actor-email="true" value={removeActorEmail} onChange={(event) => setRemoveActorEmail(event.target.value)} style={inputStyle} placeholder="owner_admin email" />
-            </label>
-          </div>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
-            <button data-barsh-admin-users-remove-preview-button="true" type="button" onClick={() => void submitRemoveAdminRole(false)} disabled={removeBusy} style={{ ...secondaryButtonStyle, opacity: removeBusy ? 0.7 : 1 }}>
-              {removeBusy ? "Working..." : "Preview Remove Role"}
-            </button>
-            <button data-barsh-admin-users-remove-apply-button="true" type="button" onClick={() => void submitRemoveAdminRole(true)} disabled={removeBusy || !removePreviewReady} style={{ ...primaryButtonStyle, background: "#991b1b", border: "1px solid #991b1b", opacity: removeBusy || !removePreviewReady ? 0.55 : 1, cursor: removeBusy || !removePreviewReady ? "not-allowed" : "pointer" }}>
-              Apply Remove Role
-            </button>
-          </div>
-
-          <div data-barsh-admin-users-remove-result="true" style={{ marginTop: 14, background: removeResult?.ok ? "#f0fdf4" : removeResult ? "#fef2f2" : "#f8fafc", border: `1px solid ${removeResult?.ok ? "#bbf7d0" : removeResult ? "#fecaca" : "#e2e8f0"}`, borderRadius: 14, padding: 12 }}>
-            <div style={{ fontWeight: 950, color: removeResult?.ok ? "#166534" : removeResult ? "#991b1b" : "#475569" }}>{removeMessage || "Preview the role removal before applying. Apply remains disabled until a matching preview succeeds."}</div>
-            {removeResult ? <pre style={{ margin: "10px 0 0", whiteSpace: "pre-wrap", fontSize: 12, fontFamily: "monospace" }}>{JSON.stringify(removeResult, null, 2)}</pre> : null}
-          </div>
-        </section>
-
-        <section data-barsh-admin-users-permission-override-control="phase3-guarded" style={{ ...cardStyle, border: "1px solid #ddd6fe", boxShadow: "0 12px 26px rgba(91, 33, 182, 0.08)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14, flexWrap: "wrap" }}>
-            <div>
-              <h2 style={{ margin: 0 }}>Permission Override</h2>
-              <p style={{ margin: "8px 0 0", color: "#475569", lineHeight: 1.5 }}>Preview first. Apply creates or updates only one AdminUserPermissionOverride row. It requires an explicit reason and blocks any block override mapped to administrator lockout safety routes. It does not change roles or enable enforcement.</p>
-            </div>
-            <span data-barsh-admin-users-permission-override-enforcement-disabled="true" style={{ border: "1px solid #fde68a", background: "#fefce8", color: "#713f12", borderRadius: 999, padding: "7px 10px", fontWeight: 950, fontSize: 12 }}>Enforcement Disabled</span>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginTop: 14 }}>
-            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
-              Target Admin User
-              <select data-barsh-admin-users-override-target-email="true" value={overrideTargetEmail} onChange={(event) => { setOverrideTargetEmail(event.target.value); setOverrideResult(null); }} style={inputStyle}>
-                <option value="">Choose user...</option>
-                {dbUsers.map((user: any) => <option key={user.email} value={user.email}>{user.email}{user.displayName ? ` — ${user.displayName}` : ""}</option>)}
-              </select>
-            </label>
-            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
-              Permission Key
-              <select data-barsh-admin-users-override-permission-key="true" value={overridePermissionKey} onChange={(event) => { setOverridePermissionKey(event.target.value); setOverrideResult(null); }} style={inputStyle}>
-                {ADMIN_PERMISSION_KEYS.map((permissionKey) => <option key={permissionKey} value={permissionKey}>{permissionKey}</option>)}
-              </select>
-            </label>
-            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
-              Action
-              <select data-barsh-admin-users-override-action="true" value={overrideAction} onChange={(event) => { setOverrideAction(event.target.value); setOverrideResult(null); }} style={inputStyle}>
-                <option value="allow">allow</option>
-                <option value="block">block</option>
-              </select>
-            </label>
-            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
-              Owner Admin Actor Email
-              <input data-barsh-admin-users-override-actor-email="true" value={overrideActorEmail} onChange={(event) => setOverrideActorEmail(event.target.value)} style={inputStyle} placeholder="owner_admin email" />
-            </label>
-            <label style={{ display: "grid", gap: 6, fontWeight: 850, gridColumn: "span 2" }}>
-              Explicit Reason
-              <input data-barsh-admin-users-override-reason="true" value={overrideReason} onChange={(event) => { setOverrideReason(event.target.value); setOverrideResult(null); }} style={inputStyle} placeholder="Required reason for allow/block override" />
-            </label>
-          </div>
-
-          <div style={{ marginTop: 12, background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", borderRadius: 14, padding: 12, lineHeight: 1.45 }}>
-            <strong>Lockout protection:</strong> Block overrides are rejected if the permission maps to never-block safety routes, including /admin, /admin/permissions, /api/admin/permissions, and /api/admin/permissions/check.
-          </div>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
-            <button data-barsh-admin-users-override-preview-button="true" type="button" onClick={() => void submitPermissionOverride(false)} disabled={overrideBusy} style={{ ...secondaryButtonStyle, opacity: overrideBusy ? 0.7 : 1 }}>
-              {overrideBusy ? "Working..." : "Preview Permission Override"}
-            </button>
-            <button data-barsh-admin-users-override-apply-button="true" type="button" onClick={() => void submitPermissionOverride(true)} disabled={overrideBusy || !overridePreviewReady} style={{ ...primaryButtonStyle, opacity: overrideBusy || !overridePreviewReady ? 0.55 : 1, cursor: overrideBusy || !overridePreviewReady ? "not-allowed" : "pointer" }}>
-              Apply Permission Override
-            </button>
-          </div>
-
-          <div data-barsh-admin-users-override-result="true" style={{ marginTop: 14, background: overrideResult?.ok ? "#f0fdf4" : overrideResult ? "#fef2f2" : "#f8fafc", border: `1px solid ${overrideResult?.ok ? "#bbf7d0" : overrideResult ? "#fecaca" : "#e2e8f0"}`, borderRadius: 14, padding: 12 }}>
-            <div style={{ fontWeight: 950, color: overrideResult?.ok ? "#166534" : overrideResult ? "#991b1b" : "#475569" }}>{overrideMessage || "Preview the permission override before applying. Apply remains disabled until a matching preview succeeds."}</div>
-            {overrideResult ? <pre style={{ margin: "10px 0 0", whiteSpace: "pre-wrap", fontSize: 12, fontFamily: "monospace" }}>{JSON.stringify(overrideResult, null, 2)}</pre> : null}
-          </div>
-        </section>
-
-        <section data-barsh-admin-users-db-preview="read-only" style={{ ...cardStyle, overflowX: "auto" }}>
-          <h2 style={{ marginTop: 0 }}>Database-Backed Preview</h2>
-          <p style={{ color: "#475569" }}>Preview of persisted admin users and roles. These records are not used for enforcement yet.</p>
-          <h3>DB Users</h3>
+        
+        <section data-barsh-admin-users-table="true" style={{ ...cardStyle, overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead><tr>{["Name", "Email", "Status", "Bootstrap Safe", "Roles", "Overrides"].map((header) => <th key={header} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #cbd5e1" }}>{header}</th>)}</tr></thead>
-            <tbody>{dbUsers.length ? dbUsers.map((user: any) => <tr key={user.id}><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontWeight: 900 }}>{user.displayName || ""}</td><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontFamily: "monospace" }}>{user.email}</td><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontFamily: "monospace" }}>{user.username || "—"}</td><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{user.status === "active" && !user.locked && !user.inactive ? "Active" : "Locked / Inactive"}</td><td data-barsh-admin-users-signer-profile-status-cell="true" style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontWeight: 900 }}>{user.signerProfileStatus || adminUsersPhase12SignerProfileStatusLabel(user)}</td><td data-barsh-admin-users-two-factor-status-cell="true" style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontWeight: 900 }}>{user.twoFactorStatus || adminUsersPhase12TwoFactorStatusLabel(user)}</td><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{user.bootstrapSafe ? "Yes" : "No"}</td><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{(user.roleKeys || []).join(", ") || "None"}</td><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{user.effectivePermissionCount ?? 0}</td></tr>) : <tr><td colSpan={9} style={{ padding: 10, borderBottom: "1px solid #e5e7eb", color: "#64748b" }}>No persisted admin users yet.</td></tr>}</tbody>
-          </table>
-          <h3>DB Roles</h3>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead><tr>{["Key", "Label", "Status", "System Role", "Permission Count"].map((header) => <th key={header} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #cbd5e1" }}>{header}</th>)}</tr></thead>
-            <tbody>{dbRoles.length ? dbRoles.map((role: any) => <tr key={role.id}><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontFamily: "monospace", fontWeight: 900 }}>{role.key}</td><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{role.label}</td><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{role.status}</td><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{role.systemRole ? "Yes" : "No"}</td><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{role.permissionCount ?? (role.permissionKeys || []).length}</td></tr>) : <tr><td colSpan={5} style={{ padding: 10, borderBottom: "1px solid #e5e7eb", color: "#64748b" }}>No persisted admin roles yet.</td></tr>}</tbody>
-          </table>
-        </section>
-
-        <section data-barsh-admin-users-effective-permissions="read-only" style={{ ...cardStyle, overflowX: "auto" }}>
-          <h2 style={{ marginTop: 0 }}>Effective Permissions</h2>
-          <p style={{ color: "#475569" }}>Effective permission calculation from persisted DB roles and overrides. Enforcement remains unchanged.</p>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead><tr>{["User", "Roles", "Effective Permission Count", "Effective Permissions"].map((header) => <th key={header} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #cbd5e1" }}>{header}</th>)}</tr></thead>
-            <tbody>{dbUsers.length ? dbUsers.map((user: any) => <tr key={user.id}><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontFamily: "monospace", fontWeight: 900 }}>{user.email}</td><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{(user.roleKeys || []).join(", ") || "None"}</td><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{user.effectivePermissionCount ?? 0}</td><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontFamily: "monospace" }}>{(user.effectivePermissionKeys || []).join(", ")}</td></tr>) : <tr><td colSpan={4} style={{ padding: 10, borderBottom: "1px solid #e5e7eb", color: "#64748b" }}>No persisted admin users yet.</td></tr>}</tbody>
-          </table>
-        </section>
-
-        <section data-barsh-admin-users-write-controls-preview="phase3-mixed" style={{ ...cardStyle, overflowX: "auto" }}>
-          <h2 style={{ marginTop: 0 }}>Write Controls Roadmap</h2>
-          <p style={{ color: "#475569", lineHeight: 1.5 }}>Create User, Assign Role, Remove Role, and Permission Override are active in guarded preview/apply mode. Enforcement remains unavailable and separate.</p>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr>
-                {["Action", "Guardrail", "Status"].map((header) => <th key={header} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #cbd5e1" }}>{header}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                ["Create User", "Requires active admin session, active owner_admin actor, duplicate-email check, active/inactive status validation, preview/apply, and audit logging on apply.", "Active guarded route"],
-                ["Assign Role", "Requires active admin session, active owner_admin actor, active target user, active role, duplicate-assignment prevention, preview/apply, bootstrap owner preservation, and audit logging on apply.", "Active guarded route"],
-                ["Remove Role", "Requires active admin session, active owner_admin actor, existing assignment, preview/apply, audit logging on apply, and last active bootstrapSafe owner_admin protection.", "Active guarded route"],
-                ["Permission Override", "Requires active admin session, active owner_admin actor, known permission key, allow/block action, explicit reason, preview/apply, audit logging on apply, and never-block safety route protection.", "Active guarded route"],
-                ["Enable Enforcement", "Separate phase only after persisted permissions are verified and lockout simulations pass.", "Not available"],
-              ].map((row) => <tr key={row[0]}><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontWeight: 900 }}>{row[0]}</td><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{row[1]}</td><td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", color: row[2].startsWith("Active") ? "#166534" : "#92400e", fontWeight: 900 }}>{row[2]}</td></tr>)}
-            </tbody>
-          </table>
-        </section>
-
-        <section data-barsh-admin-users-planning-users="true" style={{ ...cardStyle, overflowX: "auto" }}>
-          <h2 style={{ marginTop: 0 }}>Planned Users</h2>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr>
-                {["Name", "Email", "Roles", "Explicit Allow", "Explicit Block", "Effective Permissions", "Source"].map((header) => <th key={header} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #cbd5e1" }}>{header}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user: any) => (
-                <tr key={user.email}>
-                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontWeight: 900 }}>{user.displayName}</td>
-                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontFamily: "monospace" }}>{user.email}</td>
-                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{(user.plannedRoles || []).join(", ")}</td>
-                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{(user.explicitAllow || []).join(", ") || "None"}</td>
-                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{(user.explicitBlock || []).join(", ") || "None"}</td>
-                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{user.effectivePermissionCount}</td>
-                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{user.source}</td>
+            <thead><tr>{["Display Name", "User Name", "Role", "Last Sign-in", "Actions"].map((header) => <th key={header} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #cbd5e1" }}>{header}</th>)}</tr></thead>
+            <tbody>{dbUsers.length ? dbUsers.map((user: any) => {
+              const active = user.status === "active" && !user.locked && !user.inactive;
+              const twoFactorEnforced = twoFactorEnforcedForUser(user);
+              return (
+                <tr key={user.id} data-barsh-admin-users-table-row="true">
+                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontWeight: 900 }}>{user.displayName || user.email}</td>
+                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontFamily: "monospace" }}>{user.username || "—"}</td>
+                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>
+                    <div style={{ fontWeight: 900 }}>{roleLabelForUser(user)}</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                      <button data-barsh-admin-users-role-assign-row-button="true" type="button" onClick={() => void assignRoleFromRow(user)} disabled={adminUsersRowBusy} style={secondaryButtonStyle}>Assign</button>
+                      <button data-barsh-admin-users-role-remove-row-button="true" type="button" onClick={() => void removeRoleFromRow(user)} disabled={adminUsersRowBusy || !Array.isArray(user.roleKeys) || user.roleKeys.length === 0} style={secondaryButtonStyle}>Remove</button>
+                    </div>
+                  </td>
+                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{formatAdminUserDate(user.lastLoginAt)}</td>
+                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <button data-barsh-admin-users-edit-row-button="true" type="button" onClick={() => void editAdminUserFromRow(user)} disabled={adminUsersRowBusy} style={secondaryButtonStyle}>Edit</button>
+                      <button data-barsh-admin-users-reset-password-row-button="true" type="button" onClick={() => void resetPasswordFromRow(user)} disabled={adminUsersRowBusy} style={secondaryButtonStyle}>Reset Password</button>
+                      {twoFactorEnforced ? <span data-barsh-admin-users-2fa-enforced-label="true" style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534", borderRadius: 999, padding: "10px 12px", fontSize: 13, fontWeight: 950 }}>2FA Enforced</span> : <button data-barsh-admin-users-activate-2fa-row-button="true" type="button" onClick={() => void activateTwoFactorFromRow(user)} disabled={adminUsersRowBusy} style={secondaryButtonStyle}>Activate 2FA</button>}
+                      <button data-barsh-admin-users-lock-row-button="true" type="button" onClick={() => void lockUserFromRow(user)} disabled={adminUsersRowBusy} style={secondaryButtonStyle}>{active ? "Lock" : "Unlock"}</button>
+                      <button data-barsh-admin-users-signout-row-button="true" type="button" onClick={() => void signOutUserFromRow(user)} disabled={adminUsersRowBusy} style={secondaryButtonStyle}>Sign out</button>
+                    </div>
+                  </td>
                 </tr>
-              ))}
-            </tbody>
+              );
+            }) : <tr><td colSpan={5} style={{ padding: 10, borderBottom: "1px solid #e5e7eb", color: "#64748b" }}>No administrator users found.</td></tr>}</tbody>
           </table>
-          <p style={{ color: "#475569" }}>Effective permissions are calculated for review only. They are not enforced and are not persisted.</p>
         </section>
 
-        <section data-barsh-admin-users-planning-roles="true" style={{ ...cardStyle, overflowX: "auto" }}>
-          <h2 style={{ marginTop: 0 }}>Planned Roles</h2>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr>
-                {["Role", "Description", "Write Capable", "Permission Count", "Permissions"].map((header) => <th key={header} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #cbd5e1" }}>{header}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {roles.map((role: any) => (
-                <tr key={role.key}>
-                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontFamily: "monospace", fontWeight: 900 }}>{role.label}</td>
-                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{role.description}</td>
-                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{role.writeCapable ? "Yes" : "No"}</td>
-                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{role.permissionCount}</td>
-                  <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontFamily: "monospace" }}>{(role.permissions || []).join(", ")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+
+        
+
+        
+
+        
+
+        
       </div>
 
       {passwordResetOneTimePassword ? (

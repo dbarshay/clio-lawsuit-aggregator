@@ -256,13 +256,6 @@ export default function AdminUsersPlanningPage() {
       removeResult?.wouldRemove?.email === cleanEmail(removeTargetEmail) &&
       removeResult?.wouldRemove?.roleKey === removeRoleKey
   );
-  const overridePreviewReady = Boolean(
-    overrideResult?.ok &&
-      overrideResult?.mode === "preview" &&
-      overrideResult?.wouldOverride?.email === cleanEmail(overrideTargetEmail) &&
-      overrideResult?.wouldOverride?.permissionKey === overridePermissionKey &&
-      overrideResult?.wouldOverride?.overrideAction === overrideAction
-  );
 
   const lockoutPreviewReady = Boolean(
     lockoutResult?.ok &&

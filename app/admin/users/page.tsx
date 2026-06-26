@@ -331,6 +331,10 @@ export default function AdminUsersPlanningPage() {
     if (faxNumber === null) return;
     const signatureBlockName = window.prompt("Signature Block Name", String(user?.signatureBlockName || user?.displayName || ""));
     if (signatureBlockName === null) return;
+    const roleToAssign = window.prompt("Role to assign while editing. Leave blank for no assignment.", "");
+    if (roleToAssign === null) return;
+    const roleToRemove = window.prompt(`Role to remove while editing. Current roles: ${roleLabelForUser(user)}. Leave blank for no removal.`, "");
+    if (roleToRemove === null) return;
     try {
       setAdminUsersRowBusy(true);
       setAdminUsersRowMessage(`Editing ${user.email}...`);
@@ -352,7 +356,15 @@ export default function AdminUsersPlanningPage() {
         twoFactorDisabled: Boolean(user.twoFactorDisabled),
         twoFactorPendingSetup: Boolean(user.twoFactorPendingSetup),
       }, "Edit admin user");
-      setAdminUsersRowMessage(`Edited ${user.email}.`);
+      const assignedRole = roleToAssign.trim();
+      const removedRole = roleToRemove.trim();
+      if (assignedRole) {
+        await postAdminUsersAction("/api/admin/users/assign-role", { apply: true, targetEmail: user.email, roleKey: assignedRole, actorEmail: createActorEmail }, "Assign role from edit");
+      }
+      if (removedRole) {
+        await postAdminUsersAction("/api/admin/users/remove-role", { apply: true, targetEmail: user.email, roleKey: removedRole, actorEmail: createActorEmail }, "Remove role from edit");
+      }
+      setAdminUsersRowMessage(`Edited ${user.email}${assignedRole ? `; assigned ${assignedRole}` : ""}${removedRole ? `; removed ${removedRole}` : ""}.`);
       await loadAdminUsersPlanning();
     } catch (error: any) {
       setAdminUsersRowMessage(error?.message || "Edit failed.");
@@ -718,9 +730,12 @@ export default function AdminUsersPlanningPage() {
 
         {error ? <section data-barsh-admin-users-planning-error="true" style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", borderRadius: 18, padding: 16 }}>{error}</section> : null}
 
-                <section data-barsh-admin-users-planning-summary="true" style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                        <section data-barsh-admin-users-planning-summary="true" style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div><strong>Users:</strong> {data?.databasePreview?.userCount ?? 0} | <strong>Roles:</strong> {data?.databasePreview?.roleCount ?? 0} | <strong>Enforcement Enabled:</strong> {enforcementLabel}</div>
-          <button data-barsh-admin-users-create-top-button="true" type="button" onClick={openCreateUserAction} style={primaryButtonStyle}>Create User</button>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <a href="/admin/audit-history" data-barsh-admin-users-audit-history-top-link="true" style={{ ...secondaryButtonStyle, display: "inline-flex", textDecoration: "none" }}>Open Audit History</a>
+            <button data-barsh-admin-users-create-top-button="true" type="button" onClick={openCreateUserAction} style={primaryButtonStyle}>Create User</button>
+          </div>
           {adminUsersRowMessage ? <div data-barsh-admin-users-row-action-message="true" style={{ width: "100%", color: adminUsersRowMessage.toLowerCase().includes("failed") ? "#991b1b" : "#166534", fontWeight: 900 }}>{adminUsersRowMessage}</div> : null}
         </section>
 
@@ -853,10 +868,7 @@ export default function AdminUsersPlanningPage() {
                   <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontFamily: "monospace" }}>{user.username || "—"}</td>
                   <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>
                     <div style={{ fontWeight: 900 }}>{roleLabelForUser(user)}</div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
-                      <button data-barsh-admin-users-role-assign-row-button="true" type="button" onClick={() => void assignRoleFromRow(user)} disabled={adminUsersRowBusy} style={secondaryButtonStyle}>Assign</button>
-                      <button data-barsh-admin-users-role-remove-row-button="true" type="button" onClick={() => void removeRoleFromRow(user)} disabled={adminUsersRowBusy || !Array.isArray(user.roleKeys) || user.roleKeys.length === 0} style={secondaryButtonStyle}>Remove</button>
-                    </div>
+
                   </td>
                   <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{formatAdminUserDate(user.lastLoginAt)}</td>
                   <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>
@@ -883,15 +895,7 @@ export default function AdminUsersPlanningPage() {
 
         
 
-<section data-barsh-admin-users-audit-visibility="read-only" style={{ ...cardStyle, border: "1px solid #dbeafe", background: "#eff6ff" }}>
-          <h2 style={{ margin: "0 0 8px", fontSize: 20 }}>Admin Users Audit Visibility</h2>
-          <p style={{ margin: "0 0 12px", color: "#1e3a8a", lineHeight: 1.5 }}>
-            Read-only audit review for admin-user create, role assignment, role removal, and permission-override activity. Apply actions are audit logged, and permission enforcement remains disabled.
-          </p>
-          <a href="/admin/audit-history" data-barsh-admin-users-audit-history-link="true" style={{ ...secondaryButtonStyle, display: "inline-flex", textDecoration: "none" }}>
-            Open Audit History
-          </a>
-        </section>
+
 
       </div>
 

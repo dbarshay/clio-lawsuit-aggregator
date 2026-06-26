@@ -9,7 +9,8 @@ if (page.includes("key={format}")) failures.push("format button still uses raw f
 if (page.includes("selectedFormats.includes(format)")) failures.push("selectedFormats still checks raw format object");
 if (page.includes("toggleFormat(format)")) failures.push("toggleFormat still receives raw format object");
 if (!page.includes("formatValue") || !page.includes("formatLabelText")) failures.push("format value/label normalization is missing");
-if (!page.includes("key={formatValue || formatLabelText}")) failures.push("format button does not use normalized unique key");
+if (page.includes("key={formatValue || formatLabelText}") && !page.includes("formatReactKey")) console.log("NOTICE: Phase 1M key expression present without Phase 1N hardening");
+if (!page.includes("key={formatValue || formatLabelText}") && !page.includes("key={formatReactKey}")) failures.push("format button does not use normalized unique key");
 if (!page.includes("onClick={() => toggleFormat(formatValue)}")) failures.push("format button click does not use normalized value");
 if (!page.includes("selectedFormats.includes(formatValue)")) failures.push("format checked state does not use normalized value");
 if (!page.includes("{checked ? \"✓ \" : \"\"}{formatLabelText}")) failures.push("format button label does not use normalized display label");

@@ -107,11 +107,20 @@ function profileSnapshot(user: {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!isAdminRequestAuthorized(req)) {
-    return NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
-  }
-
   try {
+    if (!isAdminRequestAuthorized(req)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          action: "admin-user-signer-profile-update",
+          mode: "blocked",
+          error: "Authenticated administrator session required.",
+          enforcementChanged: false,
+        },
+        { status: 401 }
+      );
+    }
+
     const body = (await req.json().catch(() => ({}))) as AdminSignerProfileUpdateBody;
     const actorEmail = cleanEmail(body.actorEmail);
     const userId = cleanString(body.userId);

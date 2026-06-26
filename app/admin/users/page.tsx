@@ -499,7 +499,7 @@ export default function AdminUsersPlanningPage() {
         twoFactorPhone: editTwoFactorPhone,
         twoFactorDisabled: editTwoFactorDisabled,
         twoFactorPendingSetup: editTwoFactorPendingSetup,
-      }, "Edit admin user");
+      }, "Save user");
 
       const assignedRole = editRoleToAssign.trim();
       const removedRole = editRoleToRemove.trim();
@@ -516,8 +516,8 @@ export default function AdminUsersPlanningPage() {
       closeEditAdminUserPanel();
       await loadAdminUsersPlanning();
     } catch (error: any) {
-      setEditMessage(error?.message || "Edit failed.");
-      setAdminUsersRowMessage(error?.message || "Edit failed.");
+      setEditMessage(error?.message || "Save user failed.");
+      setAdminUsersRowMessage(error?.message || "Save user failed.");
     } finally {
       setEditBusy(false);
     }

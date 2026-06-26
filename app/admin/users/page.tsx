@@ -733,7 +733,7 @@ export default function AdminUsersPlanningPage() {
                         <section data-barsh-admin-users-planning-summary="true" style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div><strong>Users:</strong> {data?.databasePreview?.userCount ?? 0} | <strong>Roles:</strong> {data?.databasePreview?.roleCount ?? 0} | <strong>Enforcement Enabled:</strong> {enforcementLabel}</div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <a href="/admin/audit-history" data-barsh-admin-users-audit-history-top-link="true" style={{ ...secondaryButtonStyle, display: "inline-flex", textDecoration: "none" }}>Open Audit History</a>
+            <a href="/admin/audit-history" data-barsh-admin-users-audit-history-top-link="true" style={{ ...primaryButtonStyle, display: "inline-flex", textDecoration: "none", color: "#ffffff" }}>Open Audit History</a>
             <button data-barsh-admin-users-create-top-button="true" type="button" onClick={openCreateUserAction} style={primaryButtonStyle}>Create User</button>
           </div>
           {adminUsersRowMessage ? <div data-barsh-admin-users-row-action-message="true" style={{ width: "100%", color: adminUsersRowMessage.toLowerCase().includes("failed") ? "#991b1b" : "#166534", fontWeight: 900 }}>{adminUsersRowMessage}</div> : null}

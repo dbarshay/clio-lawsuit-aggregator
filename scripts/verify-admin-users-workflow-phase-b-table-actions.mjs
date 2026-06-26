@@ -18,6 +18,7 @@ const createTopIndex = page.indexOf("data-barsh-admin-users-create-top-button");
 const tableIndex = page.indexOf("data-barsh-admin-users-table");
 must(summaryIndex >= 0 && auditTopIndex > summaryIndex && createTopIndex > auditTopIndex && createTopIndex < tableIndex, "Audit History and Create User buttons must be in the summary row before the table.");
 
+must(page.includes("data-barsh-admin-users-audit-history-top-link=\"true\" style={{ ...primaryButtonStyle, display: \"inline-flex\", textDecoration: \"none\", color: \"#ffffff\" }}"), "Audit History top action must use primary blue/white styling.");
 for (const removedRoleButton of ["data-barsh-admin-users-role-assign-row-button","data-barsh-admin-users-role-remove-row-button",">Assign</button>",">Remove</button>"]) must(!page.includes(removedRoleButton), "Role column assign/remove button must not remain: " + removedRoleButton);
 for (const editRoleToken of ["Role to assign while editing","Role to remove while editing","Assign role from edit","Remove role from edit"]) must(page.includes(editRoleToken), "Edit flow missing role management token: " + editRoleToken);
 for (const forbidden of ["graphFetchJson","sendMail(","legacyClioOperationalRouteBlocked","DocumentTemplate"]) must(!page.includes(forbidden), "forbidden workflow token present: " + forbidden);

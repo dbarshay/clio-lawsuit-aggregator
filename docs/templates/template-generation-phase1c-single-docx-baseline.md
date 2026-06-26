@@ -1,28 +1,55 @@
-# Template Generation Phase 1C — Initial Billing Letter Single-DOCX Baseline
+# Template Generation Phase 1C — Fresh Local DOCX Baseline
 
-## Scope
+This phase resets Template Generation to a fresh user-created DOCX workflow.
 
-This phase resets Template Generation Phase 1 to a fresh single-document path for `initial-billing-letter` only.
+## Current baseline
 
-The old layout-asset architecture is removed from the active repo path. Barsh Matters is not using the prior `letterhead-simple`, pleading-paper, or layout-composition architecture for this fresh generation track.
+Barsh Matters is not using prior saved/legacy DOCX files as the active template source.
+
+The active source workflow is:
+
+1. The user creates a local Word DOCX outside the repository.
+2. The user copies canonical merge fields from the Template Builder UI into that DOCX.
+3. The fresh DOCX is then imported or inspected as the selected template source.
+4. Generation/rendering uses only canonical Template Builder tokens.
+
+## Removed from active source baseline
+
+The following legacy saved DOCX files are intentionally absent from the active repo baseline:
+
+- `templates/docx/base/letterhead-simple.docx`
+- `templates/docx/incoming/Initial Billing Letter.docx`
+- `templates/docx/letters/initial-billing-letter.docx`
+- `templates/docx/letters/vr-response.docx`
 
 ## Preserved
 
-- `templates/docx/letters/initial-billing-letter.docx` remains the selected single DOCX source.
-- The current Template Builder canonical merge-field library remains intact.
-- Multiline address-block tokens remain canonical:
-  - `{{insurer.fullAddressBlock}}`
-  - `{{adversary.fullAddressBlock}}`
-- No legacy-token compatibility layer is added.
+The Template Builder canonical token library remains the source for merge fields, including:
 
-## Removed / decommissioned
+- `{{matter.fileNumber}}`
+- `{{matter.providerName}}`
+- `{{matter.patientName}}`
+- `{{matter.billedAmount}}`
+- `{{claim.number}}`
+- `{{claim.dateOfLoss}}`
+- `{{claim.dateOfService}}`
+- `{{claim.denialReason}}`
+- `{{claim.balance}}`
+- `{{insurer.fullAddressBlock}}`
+- `{{adversary.fullAddressBlock}}`
 
-- Layout-composition admin validation page/API.
-- Layout-composition validator/report/runtime registry files.
-- Stale layout-composition docs/fixtures/verifiers.
-- Stale letterhead/pleading layout-asset import and verification scripts.
-- Stale package scripts that invoked the old layout-composition and letterhead/pleading asset architecture.
+Address-block rendering remains locked to:
 
-## Next phase
+```text
+Street
+City, State Zip
 
-Template Generation Phase 1D should inspect the single Initial Billing Letter DOCX and add the smallest safe canonical-token render path for `BRL_202600001` only. It should not restore layout assets, should not add multiple templates, and should not add legacy-token compatibility.
+## Phase 1D explicit out-of-scope locks
+
+- Do not restore letterhead-simple architecture.
+- Do not restore pleading-paper architecture.
+- Do not build legacy-token compatibility.
+- Do not import a DOCX into the database.
+- Do not upload to Clio.
+- Do not call Microsoft Graph.
+- Do not print or queue documents.

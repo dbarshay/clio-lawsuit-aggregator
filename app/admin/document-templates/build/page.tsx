@@ -279,12 +279,14 @@ export default function BuildTemplatePage() {
         <div style={{ marginBottom: "10px", fontWeight: 800, color: "#0f172a" }}>Formats for copy</div>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           {TEMPLATE_BUILDER_SUPPORTED_FORMAT_MODIFIERS.map((format) => {
-            const checked = selectedFormats.includes(format);
+            const formatValue = typeof format === "string" ? format : String((format as any)?.value || (format as any)?.format || (format as any)?.label || "");
+            const formatLabelText = typeof format === "string" ? formatLabel(format) : String((format as any)?.label || (format as any)?.format || (format as any)?.value || formatValue);
+            const checked = selectedFormats.includes(formatValue);
             return (
               <button
-                key={format}
+                key={formatValue || formatLabelText}
                 type="button"
-                onClick={() => toggleFormat(format)}
+                onClick={() => toggleFormat(formatValue)}
                 aria-pressed={checked}
                 style={{
                   border: checked ? "1px solid #1e3a8a" : "1px solid #cbd5e1",
@@ -297,7 +299,7 @@ export default function BuildTemplatePage() {
                   whiteSpace: "nowrap",
                 }}
               >
-                {checked ? "✓ " : ""}{formatLabel(format)}
+                {checked ? "✓ " : ""}{formatLabelText}
               </button>
             );
           })}

@@ -27,7 +27,10 @@ must(auth.includes("roleKeys?: string[]"), "admin auth identity input supports r
 must(auth.includes("roleKeys: Array.isArray(identity.roleKeys)") || auth.includes("roleKeys: Array.isArray(identity?.roleKeys)"), "admin auth writes roleKeys into signed gate identity");
 must(auth.includes("roleKeys: Array.isArray(signedIdentity?.roleKeys)") || auth.includes("roleKeys: signedIdentity"), "admin auth exposes roleKeys diagnostics");
 must(login.includes("roleKeys: user.roleKeys"), "login includes roleKeys in signed identity/session response");
-must(session.includes("roleKeys: identityDiagnostics.roleKeys"), "session refresh preserves identity roleKeys");
+const identityPayloadStart = session.indexOf("const identityCookieInput = identityDiagnostics.identityBound");
+const identityPayloadEnd = session.indexOf("setAdminGateCookie(response, identityCookieInput)", identityPayloadStart);
+const identityPayloadBlock = identityPayloadStart >= 0 && identityPayloadEnd > identityPayloadStart ? session.slice(identityPayloadStart, identityPayloadEnd) : "";
+must(identityPayloadBlock.includes("roleKeys: identityDiagnostics.roleKeys"), "session refresh identityCookieInput preserves roleKeys");
 must(!proxy.includes("/matters") && !proxy.includes("/lawsuits"), "proxy remains scoped away from normal matter/lawsuit pages");
 
 if (failed) {

@@ -46,7 +46,8 @@ export async function GET(req: NextRequest) {
           email: identityDiagnostics.email,
           username: identityDiagnostics.username,
           
-      roleKeys: identityDiagnostics.roleKeys,identityBound: identityDiagnostics.identityBound,
+      roleKeys: identityDiagnostics.roleKeys,
+      identityBound: identityDiagnostics.identityBound,
         }
       : null,
     permissions,
@@ -65,7 +66,8 @@ export async function GET(req: NextRequest) {
           id: identityDiagnostics.id,
           email: identityDiagnostics.email,
           username: identityDiagnostics.username,
-        }
+        roleKeys: identityDiagnostics.roleKeys,
+    }
       : null;
     setAdminGateCookie(response, identityCookieInput);
     if (identityCookieInput) {

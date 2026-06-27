@@ -357,6 +357,34 @@ export default function AdminUsersPlanningPage() {
     return phaseV2RoleOptions;
   }
 
+  function adminUsersPhaseV4EGrantedAdminCardLabels(user: any): string[] {
+    const keys = adminUsersPhaseV4CNormalizeGrantKeys(user?.adminCardGrantKeys);
+    if (!Array.isArray(user?.roleKeys) || !user.roleKeys.includes("administrator") || keys.length === 0) return [];
+    return keys.map((key) => {
+      const card = finalAdminCardOptions.find((option: any) => option?.grantPermissionKey === key);
+      return String(card?.label || key);
+    }).sort((a, b) => a.localeCompare(b));
+  }
+
+  function adminUsersPhaseV4ERoleDisplay(user: any) {
+    const roleKeys = Array.isArray(user?.roleKeys) ? user.roleKeys : [];
+    const grantedCards = adminUsersPhaseV4EGrantedAdminCardLabels(user);
+    return (
+      <div data-barsh-admin-users-phase-v4e-role-display="true" style={{ display: "grid", gap: 5 }}>
+        <strong>{roleKeys.join(", ") || "—"}</strong>
+        {grantedCards.length > 0 ? (
+          <div data-barsh-admin-users-phase-v4e-admin-card-labels="true" style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+            {grantedCards.map((label) => (
+              <span key={label} data-barsh-admin-users-phase-v4e-admin-card-label="true" style={{ border: "1px solid #bfdbfe", background: "#eff6ff", color: "#1e3a8a", borderRadius: 999, padding: "3px 7px", fontSize: 11, fontWeight: 850 }}>
+                {label}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   function roleOptionKey(role: any): string {
     return String(role?.key || role?.roleKey || "").trim();
   }
@@ -810,7 +838,7 @@ export default function AdminUsersPlanningPage() {
   }
 
   async function removeRoleFromRow(user: any): Promise<void> {
-    const currentRoles = roleLabelForUser(user);
+    const currentRoles = adminUsersPhaseV4ERoleDisplay(user);
     const roleKey = window.prompt(`Role to remove from ${user.email}`, currentRoles === "None" ? "" : currentRoles.split(",")[0].trim());
     if (!roleKey) return;
     try {
@@ -1416,7 +1444,7 @@ export default function AdminUsersPlanningPage() {
                   <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontWeight: 900 }}>{user.displayName || user.email}</td>
                   <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb", fontFamily: "monospace" }}>{user.username || "—"}</td>
                   <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>
-                    <div style={{ fontWeight: 900 }}>{roleLabelForUser(user)}</div>
+                    <div style={{ fontWeight: 900 }}>{adminUsersPhaseV4ERoleDisplay(user)}</div>
 
                   </td>
                   <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{formatAdminUserDate(user.lastLoginAt)}</td>
@@ -1493,6 +1521,31 @@ export default function AdminUsersPlanningPage() {
         </div>
       ) : null}
 
-    </main>
+            <section data-barsh-admin-users-phase-v4e-role-explanation="true" style={{ ...cardStyle, display: "grid", gap: 12 }}>
+          <h2 style={{ margin: 0, fontSize: 18 }}>Role Guide</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 10 }}>
+            <div style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 12, background: "#ffffff" }}>
+              <strong>Owner</strong>
+              <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.4 }}>Everything. Full system access, all Admin cards, user/security controls, and no-lockout protection.</p>
+            </div>
+            <div style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 12, background: "#ffffff" }}>
+              <strong>Administrator</strong>
+              <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.4 }}>Everything outside Admin. Admin access is limited to the selected Admin-card grants shown under the role.</p>
+            </div>
+            <div style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 12, background: "#ffffff" }}>
+              <strong>Full User</strong>
+              <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.4 }}>Full non-admin app access, including payment functions. No Admin screen.</p>
+            </div>
+            <div style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 12, background: "#ffffff" }}>
+              <strong>Basic User</strong>
+              <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.4 }}>Full non-admin app access except payment, billing, and payment-status functions. No Admin screen.</p>
+            </div>
+            <div style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 12, background: "#ffffff" }}>
+              <strong>View Only</strong>
+              <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.4 }}>Can view non-admin screens only. No create, edit, delete, upload, finalize, payment, or Admin actions.</p>
+            </div>
+          </div>
+        </section>
+</main>
   );
 }

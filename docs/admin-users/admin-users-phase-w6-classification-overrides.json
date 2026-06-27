@@ -1,0 +1,147 @@
+{
+  "phase": "admin-users-phase-w6-classification-overrides",
+  "basedOnPhaseW5": "admin-users-phase-w5-classification-review",
+  "runtimeEnforcementChanged": false,
+  "uiHidingActive": false,
+  "backendRouteBlockingActive": false,
+  "databaseMutated": false,
+  "overridePlanOnly": true,
+  "overrideCount": 32,
+  "byReviewedDisposition": {
+    "admin_card_mapping": 4,
+    "admin_context_only": 1,
+    "payment_sensitive": 4,
+    "financial_settlement_sensitive": 3,
+    "read_only_preview": 20
+  },
+  "overrides": [
+    {
+      "path": "app/admin/audit-history/page.tsx",
+      "reviewedDisposition": "admin_card_mapping"
+    },
+    {
+      "path": "app/admin/lawsuits/audit/page.tsx",
+      "reviewedDisposition": "admin_card_mapping"
+    },
+    {
+      "path": "app/api/admin/lawsuits/audit/route.ts",
+      "reviewedDisposition": "admin_card_mapping"
+    },
+    {
+      "path": "app/api/admin/authorize/route.ts",
+      "reviewedDisposition": "admin_context_only"
+    },
+    {
+      "path": "app/api/admin/email-automation-status/route.ts",
+      "reviewedDisposition": "admin_card_mapping"
+    },
+    {
+      "path": "app/admin/clients/[id]/page.tsx",
+      "reviewedDisposition": "payment_sensitive"
+    },
+    {
+      "path": "app/admin/clients/page.tsx",
+      "reviewedDisposition": "payment_sensitive"
+    },
+    {
+      "path": "app/api/admin/clients/[id]/route.ts",
+      "reviewedDisposition": "payment_sensitive"
+    },
+    {
+      "path": "app/api/admin/clients/route.ts",
+      "reviewedDisposition": "payment_sensitive"
+    },
+    {
+      "path": "app/api/settlements/attorney-fee-breakdown/route.ts",
+      "reviewedDisposition": "financial_settlement_sensitive"
+    },
+    {
+      "path": "app/api/settlements/local-provider-fee-defaults/route.ts",
+      "reviewedDisposition": "financial_settlement_sensitive"
+    },
+    {
+      "path": "app/api/settlements/provider-fee-defaults/route.ts",
+      "reviewedDisposition": "financial_settlement_sensitive"
+    },
+    {
+      "path": "app/api/admin/backups/restore-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/admin/clients/[id]/invoice/create-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/admin/lawsuits/cleanup-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/documents/clio-finalization-target-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/documents/clio-master-crossref-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/documents/clio-master-matter-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/documents/delivery-draft-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/documents/direct-finalize-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/documents/finalize-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/documents/generate-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/documents/preview-pdf/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/documents/templates/import-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/graph/draft-payload-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/lawsuits/local-generation-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/reference-data/import-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/settlements/close-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/settlements/local-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/settlements/local-record-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/settlements/preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    },
+    {
+      "path": "app/api/settlements/writeback-preview/route.ts",
+      "reviewedDisposition": "read_only_preview"
+    }
+  ]
+}

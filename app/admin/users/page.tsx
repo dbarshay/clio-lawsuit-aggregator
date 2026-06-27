@@ -241,6 +241,11 @@ export default function AdminUsersPlanningPage() {
   const [twoFactorSetupMessage, setTwoFactorSetupMessage] = useState("");
   const [twoFactorSetupBusy, setTwoFactorSetupBusy] = useState(false);
   const [twoFactorSetupNeedsReauth, setTwoFactorSetupNeedsReauth] = useState(false);
+  const [twoFactorVerifyUser, setTwoFactorVerifyUser] = useState<any>(null);
+  const [twoFactorVerifyCode, setTwoFactorVerifyCode] = useState("");
+  const [twoFactorVerifyMessage, setTwoFactorVerifyMessage] = useState("");
+  const [twoFactorVerifyBusy, setTwoFactorVerifyBusy] = useState(false);
+  const [twoFactorSetupChallengeCode, setTwoFactorSetupChallengeCode] = useState("");
 
 
   async function loadAdminUsersPlanning() {
@@ -603,6 +608,76 @@ export default function AdminUsersPlanningPage() {
     setTwoFactorSetupMessage("");
     setTwoFactorSetupBusy(false);
     setTwoFactorSetupNeedsReauth(false);
+  }
+
+  function openTwoFactorVerifyPanel(user: any) {
+    setTwoFactorVerifyUser(user);
+    setTwoFactorVerifyCode("");
+    setTwoFactorVerifyMessage("");
+    setTwoFactorSetupChallengeCode("");
+  }
+
+  function closeTwoFactorVerifyPanel() {
+    setTwoFactorVerifyUser(null);
+    setTwoFactorVerifyCode("");
+    setTwoFactorVerifyMessage("");
+    setTwoFactorSetupChallengeCode("");
+    setTwoFactorVerifyBusy(false);
+  }
+
+  async function createTwoFactorSetupChallenge(): Promise<void> {
+    if (!twoFactorVerifyUser?.email) return;
+    setTwoFactorVerifyBusy(true);
+    setTwoFactorVerifyMessage("Creating setup verification challenge...");
+    setTwoFactorSetupChallengeCode("");
+    try {
+      const response = await fetch("/api/auth/2fa/challenge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: twoFactorVerifyUser.email, setupVerification: true }),
+      });
+      const json = await response.json().catch(() => ({ ok: false, error: "2FA challenge route did not return JSON." }));
+      if (!response.ok || !json?.ok) {
+        setTwoFactorVerifyMessage(json?.error || `2FA challenge failed with HTTP ${response.status}.`);
+        return;
+      }
+      setTwoFactorSetupChallengeCode(String(json?.setupVerificationCode || ""));
+      setTwoFactorVerifyMessage("Setup verification challenge created. Enter the code shown below.");
+    } catch (error: any) {
+      setTwoFactorVerifyMessage(error?.message || "2FA challenge failed.");
+    } finally {
+      setTwoFactorVerifyBusy(false);
+    }
+  }
+
+  async function verifyTwoFactorSetupCode(): Promise<void> {
+    if (!twoFactorVerifyUser?.email) return;
+    if (!twoFactorVerifyCode.trim()) {
+      setTwoFactorVerifyMessage("Enter the setup verification code.");
+      return;
+    }
+    setTwoFactorVerifyBusy(true);
+    setTwoFactorVerifyMessage("Verifying 2FA setup code...");
+    try {
+      const response = await fetch("/api/auth/2fa/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: twoFactorVerifyUser.email, code: twoFactorVerifyCode.trim(), setupVerification: true }),
+      });
+      const json = await response.json().catch(() => ({ ok: false, error: "2FA verify route did not return JSON." }));
+      if (!response.ok || !json?.ok) {
+        setTwoFactorVerifyMessage(json?.error || `2FA verify failed with HTTP ${response.status}.`);
+        return;
+      }
+      setTwoFactorVerifyMessage("2FA setup verified. This user is now marked 2FA Enforced.");
+      setAdminUsersRowMessage(`2FA setup verified for ${twoFactorVerifyUser.email}.`);
+      await loadAdminUsersPlanning();
+      closeTwoFactorVerifyPanel();
+    } catch (error: any) {
+      setTwoFactorVerifyMessage(error?.message || "2FA verification failed.");
+    } finally {
+      setTwoFactorVerifyBusy(false);
+    }
   }
 
   async function startTwoFactorSetupFromPanel(): Promise<void> {
@@ -1172,6 +1247,26 @@ export default function AdminUsersPlanningPage() {
           ) : null}
         </section>) : null}
 
+        {twoFactorVerifyUser ? (<section data-barsh-admin-users-2fa-verify-panel="true" style={{ ...cardStyle, border: "1px solid #bbf7d0", boxShadow: "0 12px 26px rgba(22, 101, 52, 0.08)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+            <div>
+              <h2 style={{ margin: 0 }}>Verify 2FA Setup</h2>
+              <p style={{ margin: "8px 0 0", color: "#475569", fontWeight: 800 }}>Create a setup challenge, enter the verification code, and then mark 2FA as enforced.</p>
+            </div>
+            <button data-barsh-admin-users-2fa-verify-cancel-button="true" type="button" onClick={closeTwoFactorVerifyPanel} disabled={twoFactorVerifyBusy} style={secondaryButtonStyle}>Cancel</button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 14 }}>
+            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>User<input value={twoFactorVerifyUser.email || ""} readOnly style={inputStyle} /></label>
+            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>Verification Code<input data-barsh-admin-users-2fa-verify-code="true" value={twoFactorVerifyCode} onChange={(event) => setTwoFactorVerifyCode(event.target.value)} style={inputStyle} inputMode="numeric" autoComplete="one-time-code" /></label>
+          </div>
+          {twoFactorSetupChallengeCode ? <div data-barsh-admin-users-2fa-setup-code-preview="true" style={{ marginTop: 12, padding: 14, border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534", borderRadius: 12, fontFamily: "monospace", fontWeight: 950 }}>Setup verification code: {twoFactorSetupChallengeCode}</div> : null}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
+            <button data-barsh-admin-users-2fa-create-challenge-button="true" type="button" onClick={() => void createTwoFactorSetupChallenge()} disabled={twoFactorVerifyBusy} style={{ ...secondaryButtonStyle, opacity: twoFactorVerifyBusy ? 0.7 : 1 }}>Create Setup Challenge</button>
+            <button data-barsh-admin-users-2fa-verify-setup-button="true" type="button" onClick={() => void verifyTwoFactorSetupCode()} disabled={twoFactorVerifyBusy} style={{ ...primaryButtonStyle, color: "#ffffff", opacity: twoFactorVerifyBusy ? 0.7 : 1 }}>Verify Setup</button>
+          </div>
+          {twoFactorVerifyMessage ? <p data-barsh-admin-users-2fa-verify-message="true" style={{ margin: "12px 0 0", color: twoFactorVerifyMessage.toLowerCase().includes("failed") || twoFactorVerifyMessage.toLowerCase().includes("enter") ? "#991b1b" : "#166534", fontWeight: 900 }}>{twoFactorVerifyMessage}</p> : null}
+        </section>) : null}
+
         <section data-barsh-admin-users-table="true" style={{ ...cardStyle, overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead><tr>{["Display Name", "User Name", "Role", "Last Sign-in", "Actions"].map((header) => <th key={header} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #cbd5e1" }}>{header}</th>)}</tr></thead>
@@ -1192,7 +1287,7 @@ export default function AdminUsersPlanningPage() {
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       <button data-barsh-admin-users-edit-row-button="true" type="button" onClick={() => openEditAdminUserPanel(user)} disabled={adminUsersRowBusy} style={{ ...primaryButtonStyle, color: "#ffffff" }}>Edit</button>
                       <button data-barsh-admin-users-reset-password-row-button="true" type="button" onClick={() => void resetPasswordFromRow(user)} disabled={adminUsersRowBusy} style={{ ...primaryButtonStyle, color: "#ffffff" }}>Reset Password</button>
-                      {twoFactorSetupPending ? <span data-barsh-admin-users-2fa-pending-label="true" style={{ border: "1px solid #fde68a", background: "#fefce8", color: "#713f12", borderRadius: 999, padding: "10px 12px", fontSize: 13, fontWeight: 950 }}>2FA Setup Pending</span> : twoFactorEnforced ? <span data-barsh-admin-users-2fa-enforced-label="true" style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534", borderRadius: 999, padding: "10px 12px", fontSize: 13, fontWeight: 950 }}>2FA Enforced</span> : <button data-barsh-admin-users-activate-2fa-row-button="true" type="button" onClick={() => openTwoFactorSetupPanel(user)} disabled={adminUsersRowBusy} style={{ ...primaryButtonStyle, color: "#ffffff" }}>Activate 2FA</button>}
+                      {twoFactorSetupPending ? <><span data-barsh-admin-users-2fa-pending-label="true" style={{ border: "1px solid #fde68a", background: "#fefce8", color: "#713f12", borderRadius: 999, padding: "10px 12px", fontSize: 13, fontWeight: 950 }}>2FA Setup Pending</span><button data-barsh-admin-users-verify-2fa-setup-row-button="true" type="button" onClick={() => openTwoFactorVerifyPanel(user)} disabled={adminUsersRowBusy} style={{ ...secondaryButtonStyle, border: "1px solid #16a34a", color: "#166534" }}>Verify Setup</button></> : twoFactorEnforced ? <span data-barsh-admin-users-2fa-enforced-label="true" style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534", borderRadius: 999, padding: "10px 12px", fontSize: 13, fontWeight: 950 }}>2FA Enforced</span> : <button data-barsh-admin-users-activate-2fa-row-button="true" type="button" onClick={() => openTwoFactorSetupPanel(user)} disabled={adminUsersRowBusy} style={{ ...primaryButtonStyle, color: "#ffffff" }}>Activate 2FA</button>}
                       <button data-barsh-admin-users-lock-row-button="true" type="button" onClick={() => void lockUserFromRow(user)} disabled={adminUsersRowBusy} style={{ ...primaryButtonStyle, color: "#ffffff" }}>{active ? "Lock" : "Unlock"}</button>
                       <button data-barsh-admin-users-signout-row-button="true" type="button" onClick={() => void signOutUserFromRow(user)} disabled={adminUsersRowBusy} style={{ ...primaryButtonStyle, color: "#ffffff" }}>Sign out</button>
                     </div>

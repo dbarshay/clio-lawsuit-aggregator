@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 
 type TwoFactorChallengeBody = {
   email?: unknown;
+  setupVerification?: unknown;
 };
 
 function cleanString(value: unknown): string {
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json().catch(() => ({}))) as TwoFactorChallengeBody;
     const email = cleanEmail(body.email);
+    const setupVerification = body.setupVerification === true;
     if (!email) {
       return NextResponse.json({ ok: false, action: "admin-user-2fa-challenge", error: "Email is required." }, { status: 400 });
     }
@@ -93,11 +95,16 @@ export async function POST(req: NextRequest) {
       ok: true,
       action: "admin-user-2fa-challenge",
       twoFactorRequired: true,
-      deliveryPendingExternalSms: true,
-      codeReturned: false,
+      setupVerification,
+      deliveryPendingExternalSms: !setupVerification,
+      codeReturned: setupVerification,
+      setupVerificationCode: setupVerification ? challenge.code : null,
       maskedPhone: updated.twoFactorPhoneMasked,
       expiresAt: updated.twoFactorChallengeExpiresAt,
       source: ADMIN_USER_TWO_FACTOR_RUNTIME_PHASE21,
+      note: setupVerification
+        ? "Setup verification code is returned only for owner-admin setup verification before SMS delivery is wired."
+        : "2FA code was not returned; external SMS delivery remains pending.",
     });
   } catch (error) {
     return NextResponse.json({ ok: false, action: "admin-user-2fa-challenge", error: error instanceof Error ? error.message : "2FA challenge route failed." }, { status: 500 });

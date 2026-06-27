@@ -16,6 +16,7 @@ export const dynamic = "force-dynamic";
 type TwoFactorVerifyBody = {
   email?: unknown;
   code?: unknown;
+  setupVerification?: unknown;
 };
 
 function cleanString(value: unknown): string {
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
     const body = (await req.json().catch(() => ({}))) as TwoFactorVerifyBody;
     const email = cleanEmail(body.email);
     const code = cleanString(body.code);
+    const setupVerification = body.setupVerification === true;
     if (!email || !code) {
       return NextResponse.json({ ok: false, action: "admin-user-2fa-verify", error: "Email and code are required." }, { status: 400 });
     }
@@ -48,6 +50,7 @@ export async function POST(req: NextRequest) {
         twoFactorChallengeExpiresAt: true,
         twoFactorChallengeAttempts: true,
         twoFactorChallengeLockedAt: true,
+        twoFactorPendingSetup: true,
       },
     });
 
@@ -78,8 +81,11 @@ export async function POST(req: NextRequest) {
 
     const updated = await prisma.adminUser.update({
       where: { id: user.id },
-      data: buildTwoFactorChallengeClearDataPhase21(),
-      select: { id: true, email: true },
+      data: {
+        ...buildTwoFactorChallengeClearDataPhase21(),
+        ...(setupVerification ? { twoFactorPendingSetup: false, twoFactorDisabled: false, twoFactorConfiguredAt: new Date(), twoFactorMethod: "sms" } : {}),
+      },
+      select: { id: true, email: true, twoFactorPendingSetup: true, twoFactorDisabled: true, twoFactorConfiguredAt: true, twoFactorMethod: true },
     });
 
     await createMatterAuditLogEntry({
@@ -92,13 +98,24 @@ export async function POST(req: NextRequest) {
         targetUserId: user.id,
         email: user.email,
         twoFactorVerified: true,
+        setupVerification,
+        twoFactorPendingSetupCleared: setupVerification,
         codeStoredPlaintext: false,
         codeReturned: false,
         source: ADMIN_USER_TWO_FACTOR_RUNTIME_PHASE21,
       },
     });
 
-    return NextResponse.json({ ok: true, action: "admin-user-2fa-verify", user: updated, twoFactorVerified: true, codeStoredPlaintext: false, source: ADMIN_USER_TWO_FACTOR_RUNTIME_PHASE21 });
+    return NextResponse.json({
+      ok: true,
+      action: "admin-user-2fa-verify",
+      user: updated,
+      twoFactorVerified: true,
+      setupVerification,
+      twoFactorPendingSetupCleared: setupVerification,
+      codeStoredPlaintext: false,
+      source: ADMIN_USER_TWO_FACTOR_RUNTIME_PHASE21,
+    });
   } catch (error) {
     return NextResponse.json({ ok: false, action: "admin-user-2fa-verify", error: error instanceof Error ? error.message : "2FA verify route failed." }, { status: 500 });
   }

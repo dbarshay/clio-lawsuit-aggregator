@@ -10,10 +10,9 @@ const actionRowStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "flex-end",
-  gap: 8,
+  gap: 6,
   whiteSpace: "nowrap",
-  flexWrap: "wrap",
-  transform: "translateX(48px)",
+  flexWrap: "nowrap",
 };
 
 const baseActionStyle: React.CSSProperties = {
@@ -22,7 +21,7 @@ const baseActionStyle: React.CSSProperties = {
   justifyContent: "center",
   gap: 6,
   minHeight: 30,
-  padding: "7px 11px",
+  padding: "7px 10px",
   border: "1px solid #cbd5e1",
   borderRadius: 999,
   background: "#f8fafc",
@@ -34,7 +33,22 @@ const baseActionStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
+const signOutActionStyle: React.CSSProperties = {
+  ...baseActionStyle,
+  border: "1px solid #dc2626",
+  background: "#fef2f2",
+  color: "#991b1b",
+};
+
 export default function BarshHeaderActions({ onAdministratorClick }: BarshHeaderActionsProps) {
+  async function signOutAdministrator() {
+    try {
+      await fetch("/api/auth/signout", { method: "POST" });
+    } finally {
+      window.location.href = "/login?from=/admin";
+    }
+  }
+
   const administratorContent = (
     <>
       <span aria-hidden="true">🔐</span>
@@ -66,6 +80,16 @@ export default function BarshHeaderActions({ onAdministratorClick }: BarshHeader
       >
         {administratorContent}
       </a>
+
+      <button
+        type="button"
+        onClick={() => void signOutAdministrator()}
+        title="Sign out of Administrator session."
+        style={signOutActionStyle}
+        data-barsh-header-signout-button="true"
+      >
+        <span>Sign Out</span>
+      </button>
     </nav>
   );
 }

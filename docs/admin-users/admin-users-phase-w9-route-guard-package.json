@@ -1,0 +1,15 @@
+{
+  "phase": "admin-users-phase-w9-route-guard-package",
+  "basedOnPhaseW8": "admin-users-phase-w8-enforcement-kill-switch-scaffold",
+  "runtimeEnforcementChanged": false,
+  "routeGuardWired": false,
+  "responseBlockingImplemented": false,
+  "routeBlockingActive": false,
+  "uiHidingActive": false,
+  "databaseMutated": false,
+  "sessionModeChanged": false,
+  "guardPackageReady": true,
+  "safeToActivateInW9": false,
+  "rollbackPlanDocumented": true,
+  "killSwitchEnvKey": "BARSH_ADMIN_USERS_PERMISSION_ENFORCEMENT"
+}

@@ -1,0 +1,13 @@
+{
+  "phase": "admin-users-phase-v4d-card-grant-smoke",
+  "runtimeEnforcementChanged": false,
+  "sessionBehaviorChanged": false,
+  "databaseMutationScope": "AdminUserRole administrator assignment for test user plus selected AdminUserPermissionOverride allow rows",
+  "testEmail": "jane.doe.limited@example.com",
+  "grantPermissionKeys": [
+    "admin.card.auditHistory",
+    "admin.card.documentTemplates",
+    "admin.card.referenceData"
+  ],
+  "next": "Browser/UI smoke test for Admin Users edit-panel card-grant display."
+}

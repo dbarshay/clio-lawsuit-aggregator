@@ -715,7 +715,9 @@
     "verify:admin-users-workflow-phase-v3-final-role-db-seed": "node scripts/verify-admin-users-workflow-phase-v3-final-role-db-seed.mjs",
     "verify:admin-users-workflow-phase-v4a-card-grant-schema-inspection": "node scripts/verify-admin-users-workflow-phase-v4a-card-grant-schema-inspection.mjs",
     "verify:admin-users-workflow-phase-v4b-card-grant-persistence": "node scripts/verify-admin-users-workflow-phase-v4b-card-grant-persistence.mjs",
-    "verify:admin-users-workflow-phase-v4c-card-grant-ui-wiring": "node scripts/verify-admin-users-workflow-phase-v4c-card-grant-ui-wiring.mjs"
+    "verify:admin-users-workflow-phase-v4c-card-grant-ui-wiring": "node scripts/verify-admin-users-workflow-phase-v4c-card-grant-ui-wiring.mjs",
+    "smoke:admin-users-phase-v4d-card-grants": "node scripts/smoke-admin-users-phase-v4d-card-grants.mjs",
+    "verify:admin-users-workflow-phase-v4d-card-grant-smoke": "node scripts/verify-admin-users-workflow-phase-v4d-card-grant-smoke.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

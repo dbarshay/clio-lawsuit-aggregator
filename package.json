@@ -736,7 +736,9 @@
     "verify:admin-users-phase-w6-classification-overrides": "node scripts/verify-admin-users-phase-w6-classification-overrides.mjs",
     "verify:admin-users-phase-w7-apply-classification-overrides": "node scripts/verify-admin-users-phase-w7-apply-classification-overrides.mjs",
     "verify:admin-users-phase-w8-enforcement-kill-switch-scaffold": "node scripts/verify-admin-users-phase-w8-enforcement-kill-switch-scaffold.mjs",
-    "verify:admin-users-phase-w9-route-guard-package": "node scripts/verify-admin-users-phase-w9-route-guard-package.mjs"
+    "verify:admin-users-phase-w9-route-guard-package": "node scripts/verify-admin-users-phase-w9-route-guard-package.mjs",
+    "build:admin-users-phase-w10-guard-dry-run-smoke": "node scripts/build-admin-users-phase-w10-guard-dry-run-smoke.mjs",
+    "verify:admin-users-phase-w10-guard-dry-run-smoke": "node scripts/verify-admin-users-phase-w10-guard-dry-run-smoke.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

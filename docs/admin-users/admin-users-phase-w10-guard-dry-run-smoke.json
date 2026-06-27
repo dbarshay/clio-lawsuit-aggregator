@@ -1,0 +1,373 @@
+{
+  "phase": "admin-users-phase-w10-guard-dry-run-smoke",
+  "basedOnPhaseW9": "admin-users-phase-w9-route-guard-package",
+  "runtimeEnforcementChanged": false,
+  "routeGuardWired": false,
+  "responseBlockingImplemented": false,
+  "routeBlockingActive": false,
+  "uiHidingActive": false,
+  "databaseMutated": false,
+  "sessionModeChanged": false,
+  "dryRunOnly": true,
+  "scenarioCount": 10,
+  "passCount": 10,
+  "failCount": 0,
+  "stableRoutes": {
+    "adminUsers": "app/admin/users/page.tsx",
+    "documentTemplates": "app/admin/document-templates/page.tsx",
+    "nonAdminPayment": "app/api/matters/apply-payment/route.ts",
+    "nonAdminReadOnly": "app/api/aggregation/expand-claim/route.ts",
+    "nonAdminMutation": "app/api/advanced-search/candidates/route.ts"
+  },
+  "results": [
+    {
+      "scenarioKey": "kill-switch-off-allows-basic-admin-route",
+      "actorKey": "basic-user",
+      "routePath": "app/admin/users/page.tsx",
+      "killSwitchEnabled": false,
+      "expectedAllowed": true,
+      "actualAllowed": true,
+      "pass": true,
+      "reason": "Permission enforcement kill switch is off; this helper is dry-run only and must not block.",
+      "routeContext": {
+        "path": "app/admin/users/page.tsx",
+        "areaKey": "admin_cards",
+        "operationFamilies": [
+          "admin_manage",
+          "delete",
+          "edit",
+          "finalize",
+          "run",
+          "search",
+          "upload",
+          "view",
+          "void"
+        ],
+        "paymentSensitive": false,
+        "adminOnly": true,
+        "adminCardGrantKey": "admin.card.usersRoles"
+      },
+      "result": {
+        "allowed": true,
+        "reason": "Permission enforcement kill switch is off; this helper is dry-run only and must not block.",
+        "enforcementActive": false,
+        "killSwitchEnabled": false,
+        "dryRunOnly": true,
+        "routeBlockingActive": false,
+        "uiHidingActive": false,
+        "databaseMutated": false
+      }
+    },
+    {
+      "scenarioKey": "owner-admin-users-allowed",
+      "actorKey": "owner",
+      "routePath": "app/admin/users/page.tsx",
+      "killSwitchEnabled": true,
+      "expectedAllowed": true,
+      "actualAllowed": true,
+      "pass": true,
+      "reason": "Owner is allowed everything and remains protected from lockout.",
+      "routeContext": {
+        "path": "app/admin/users/page.tsx",
+        "areaKey": "admin_cards",
+        "operationFamilies": [
+          "admin_manage",
+          "delete",
+          "edit",
+          "finalize",
+          "run",
+          "search",
+          "upload",
+          "view",
+          "void"
+        ],
+        "paymentSensitive": false,
+        "adminOnly": true,
+        "adminCardGrantKey": "admin.card.usersRoles"
+      },
+      "result": {
+        "allowed": true,
+        "reason": "Owner is allowed everything and remains protected from lockout.",
+        "enforcementActive": true,
+        "killSwitchEnabled": true,
+        "dryRunOnly": true,
+        "routeBlockingActive": false,
+        "uiHidingActive": false,
+        "databaseMutated": false
+      }
+    },
+    {
+      "scenarioKey": "administrator-selected-card-allowed",
+      "actorKey": "administrator-selected",
+      "routePath": "app/admin/document-templates/page.tsx",
+      "killSwitchEnabled": true,
+      "expectedAllowed": true,
+      "actualAllowed": true,
+      "pass": true,
+      "reason": "Dry-run decision: Administrator has Admin route/card access.",
+      "routeContext": {
+        "path": "app/admin/document-templates/page.tsx",
+        "areaKey": "admin_cards",
+        "operationFamilies": [
+          "admin_manage",
+          "view"
+        ],
+        "paymentSensitive": false,
+        "adminOnly": true,
+        "adminCardGrantKey": "admin.card.documentTemplates"
+      },
+      "result": {
+        "allowed": true,
+        "reason": "Dry-run decision: Administrator has Admin route/card access.",
+        "enforcementActive": true,
+        "killSwitchEnabled": true,
+        "dryRunOnly": true,
+        "routeBlockingActive": false,
+        "uiHidingActive": false,
+        "databaseMutated": false
+      }
+    },
+    {
+      "scenarioKey": "administrator-unselected-card-blocked",
+      "actorKey": "administrator-selected",
+      "routePath": "app/admin/users/page.tsx",
+      "killSwitchEnabled": true,
+      "expectedAllowed": false,
+      "actualAllowed": false,
+      "pass": true,
+      "reason": "Dry-run decision: Administrator lacks selected Admin-card grant.",
+      "routeContext": {
+        "path": "app/admin/users/page.tsx",
+        "areaKey": "admin_cards",
+        "operationFamilies": [
+          "admin_manage",
+          "delete",
+          "edit",
+          "finalize",
+          "run",
+          "search",
+          "upload",
+          "view",
+          "void"
+        ],
+        "paymentSensitive": false,
+        "adminOnly": true,
+        "adminCardGrantKey": "admin.card.usersRoles"
+      },
+      "result": {
+        "allowed": false,
+        "reason": "Dry-run decision: Administrator lacks selected Admin-card grant.",
+        "enforcementActive": true,
+        "killSwitchEnabled": true,
+        "dryRunOnly": true,
+        "routeBlockingActive": false,
+        "uiHidingActive": false,
+        "databaseMutated": false
+      }
+    },
+    {
+      "scenarioKey": "full-user-admin-blocked",
+      "actorKey": "full-user",
+      "routePath": "app/admin/users/page.tsx",
+      "killSwitchEnabled": true,
+      "expectedAllowed": false,
+      "actualAllowed": false,
+      "pass": true,
+      "reason": "Dry-run decision: non-admin role would be blocked from Admin-only route.",
+      "routeContext": {
+        "path": "app/admin/users/page.tsx",
+        "areaKey": "admin_cards",
+        "operationFamilies": [
+          "admin_manage",
+          "delete",
+          "edit",
+          "finalize",
+          "run",
+          "search",
+          "upload",
+          "view",
+          "void"
+        ],
+        "paymentSensitive": false,
+        "adminOnly": true,
+        "adminCardGrantKey": "admin.card.usersRoles"
+      },
+      "result": {
+        "allowed": false,
+        "reason": "Dry-run decision: non-admin role would be blocked from Admin-only route.",
+        "enforcementActive": true,
+        "killSwitchEnabled": true,
+        "dryRunOnly": true,
+        "routeBlockingActive": false,
+        "uiHidingActive": false,
+        "databaseMutated": false
+      }
+    },
+    {
+      "scenarioKey": "full-user-non-admin-payment-allowed",
+      "actorKey": "full-user",
+      "routePath": "app/api/matters/apply-payment/route.ts",
+      "killSwitchEnabled": true,
+      "expectedAllowed": true,
+      "actualAllowed": true,
+      "pass": true,
+      "reason": "Dry-run decision: role allows non-admin access.",
+      "routeContext": {
+        "path": "app/api/matters/apply-payment/route.ts",
+        "areaKey": "client_billing_payments",
+        "operationFamilies": [
+          "create",
+          "delete",
+          "edit",
+          "payment_manage",
+          "run",
+          "search",
+          "view",
+          "void"
+        ],
+        "paymentSensitive": true,
+        "adminOnly": false,
+        "adminCardGrantKey": null
+      },
+      "result": {
+        "allowed": true,
+        "reason": "Dry-run decision: role allows non-admin access.",
+        "enforcementActive": true,
+        "killSwitchEnabled": true,
+        "dryRunOnly": true,
+        "routeBlockingActive": false,
+        "uiHidingActive": false,
+        "databaseMutated": false
+      }
+    },
+    {
+      "scenarioKey": "basic-user-payment-blocked",
+      "actorKey": "basic-user",
+      "routePath": "app/api/matters/apply-payment/route.ts",
+      "killSwitchEnabled": true,
+      "expectedAllowed": false,
+      "actualAllowed": false,
+      "pass": true,
+      "reason": "Dry-run decision: Basic User would be blocked from payment/billing/void route.",
+      "routeContext": {
+        "path": "app/api/matters/apply-payment/route.ts",
+        "areaKey": "client_billing_payments",
+        "operationFamilies": [
+          "create",
+          "delete",
+          "edit",
+          "payment_manage",
+          "run",
+          "search",
+          "view",
+          "void"
+        ],
+        "paymentSensitive": true,
+        "adminOnly": false,
+        "adminCardGrantKey": null
+      },
+      "result": {
+        "allowed": false,
+        "reason": "Dry-run decision: Basic User would be blocked from payment/billing/void route.",
+        "enforcementActive": true,
+        "killSwitchEnabled": true,
+        "dryRunOnly": true,
+        "routeBlockingActive": false,
+        "uiHidingActive": false,
+        "databaseMutated": false
+      }
+    },
+    {
+      "scenarioKey": "basic-user-non-payment-view-allowed",
+      "actorKey": "basic-user",
+      "routePath": "app/api/aggregation/expand-claim/route.ts",
+      "killSwitchEnabled": true,
+      "expectedAllowed": true,
+      "actualAllowed": true,
+      "pass": true,
+      "reason": "Dry-run decision: Basic User would be allowed non-payment non-admin route.",
+      "routeContext": {
+        "path": "app/api/aggregation/expand-claim/route.ts",
+        "areaKey": "individual_matters",
+        "operationFamilies": [
+          "view"
+        ],
+        "paymentSensitive": false,
+        "adminOnly": false,
+        "adminCardGrantKey": null
+      },
+      "result": {
+        "allowed": true,
+        "reason": "Dry-run decision: Basic User would be allowed non-payment non-admin route.",
+        "enforcementActive": true,
+        "killSwitchEnabled": true,
+        "dryRunOnly": true,
+        "routeBlockingActive": false,
+        "uiHidingActive": false,
+        "databaseMutated": false
+      }
+    },
+    {
+      "scenarioKey": "view-only-read-allowed",
+      "actorKey": "view-only",
+      "routePath": "app/api/aggregation/expand-claim/route.ts",
+      "killSwitchEnabled": true,
+      "expectedAllowed": true,
+      "actualAllowed": true,
+      "pass": true,
+      "reason": "Dry-run decision: View Only would be allowed read-only non-admin route.",
+      "routeContext": {
+        "path": "app/api/aggregation/expand-claim/route.ts",
+        "areaKey": "individual_matters",
+        "operationFamilies": [
+          "view"
+        ],
+        "paymentSensitive": false,
+        "adminOnly": false,
+        "adminCardGrantKey": null
+      },
+      "result": {
+        "allowed": true,
+        "reason": "Dry-run decision: View Only would be allowed read-only non-admin route.",
+        "enforcementActive": true,
+        "killSwitchEnabled": true,
+        "dryRunOnly": true,
+        "routeBlockingActive": false,
+        "uiHidingActive": false,
+        "databaseMutated": false
+      }
+    },
+    {
+      "scenarioKey": "view-only-mutation-blocked",
+      "actorKey": "view-only",
+      "routePath": "app/api/advanced-search/candidates/route.ts",
+      "killSwitchEnabled": true,
+      "expectedAllowed": false,
+      "actualAllowed": false,
+      "pass": true,
+      "reason": "Dry-run decision: View Only would be blocked from payment or mutation/action route.",
+      "routeContext": {
+        "path": "app/api/advanced-search/candidates/route.ts",
+        "areaKey": "home_dashboard",
+        "operationFamilies": [
+          "search",
+          "view",
+          "void"
+        ],
+        "paymentSensitive": false,
+        "adminOnly": false,
+        "adminCardGrantKey": null
+      },
+      "result": {
+        "allowed": false,
+        "reason": "Dry-run decision: View Only would be blocked from payment or mutation/action route.",
+        "enforcementActive": true,
+        "killSwitchEnabled": true,
+        "dryRunOnly": true,
+        "routeBlockingActive": false,
+        "uiHidingActive": false,
+        "databaseMutated": false
+      }
+    }
+  ]
+}

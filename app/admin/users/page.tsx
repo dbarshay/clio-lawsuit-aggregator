@@ -270,6 +270,16 @@ export default function AdminUsersPlanningPage() {
   const enforcementLabel = useMemo(() => (data?.enforcementEnabled ? "Yes" : "No"), [data?.enforcementEnabled]);
   const activeDbUsers = dbUsers.filter((user: any) => user.status === "active");
   const activeDbRoles = dbRoles.filter((role: any) => role.status === "active");
+  const finalRoleModel = data?.finalRoleModel || {};
+  const finalRoleOptions = Array.isArray(finalRoleModel?.roles) ? finalRoleModel.roles : [];
+  const finalAdminCardOptions = Array.isArray(finalRoleModel?.adminCards) ? finalRoleModel.adminCards : [];
+  const finalActiveRoleOptions = finalRoleOptions.filter((role: any) => role && String(role?.status || "active").toLowerCase() === "active");
+  const phaseV2RoleOptions = finalActiveRoleOptions.length ? finalActiveRoleOptions : activeDbRoles;
+  const editUserRoleKeys = Array.isArray(editUser?.roleKeys) ? editUser.roleKeys.map((roleKey: any) => String(roleKey)) : [];
+  const editUserIsAdministratorPlanning = editUserRoleKeys.includes("administrator") || editRoleToAssign === "administrator";
+  const editUserIsOwnerPlanning = editUserRoleKeys.includes("owner_admin") || editRoleToAssign === "owner_admin";
+  const phaseV2AdministratorCardPlanningVisible = Boolean(editUser && (editUserIsAdministratorPlanning || editUserIsOwnerPlanning));
+  const phaseV2AdministratorCardPlanningMode = editUserIsOwnerPlanning ? "owner_all_cards" : editUserIsAdministratorPlanning ? "administrator_selected_cards" : "none";
   const previewReady = Boolean(createResult?.ok && createResult?.mode === "preview" && createResult?.wouldCreate?.email === cleanEmail(createEmail));
   const assignPreviewReady = Boolean(
     assignResult?.ok &&
@@ -312,12 +322,7 @@ export default function AdminUsersPlanningPage() {
   }
 
   function adminRoleOptions(): any[] {
-    const roles = Array.isArray(data?.databasePreview?.roles)
-      ? data.databasePreview.roles
-      : Array.isArray(data?.roles)
-        ? data.roles
-        : [];
-    return roles.filter((role: any) => role && String(role?.status || "active").toLowerCase() === "active");
+    return phaseV2RoleOptions;
   }
 
   function roleOptionKey(role: any): string {
@@ -1033,10 +1038,13 @@ export default function AdminUsersPlanningPage() {
         {error ? <section data-barsh-admin-users-planning-error="true" style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", borderRadius: 18, padding: 16 }}>{error}</section> : null}
 
                         <section data-barsh-admin-users-planning-summary="true" style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <div><strong>Users:</strong> {data?.databasePreview?.userCount ?? 0} | <strong>Roles:</strong> {data?.databasePreview?.roleCount ?? 0} | <strong>Enforcement Enabled:</strong> {enforcementLabel}</div>
+          <div><strong>Users:</strong> {data?.databasePreview?.userCount ?? 0} | <strong>Roles:</strong> {data?.databasePreview?.roleCount ?? 0} | <strong>Final Roles:</strong> {finalRoleOptions.length || 0} | <strong>Admin Cards:</strong> {finalAdminCardOptions.length || 0} | <strong>Enforcement Enabled:</strong> {enforcementLabel}</div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <a href="/admin/audit-history" data-barsh-admin-users-audit-history-top-link="true" onClick={markAdminUsersAuditHistoryNavigation} style={{ ...primaryButtonStyle, display: "inline-flex", textDecoration: "none", color: "#ffffff" }}>Open Audit History</a>
             <button data-barsh-admin-users-create-top-button="true" type="button" onClick={openCreateUserAction} style={primaryButtonStyle}>Create User</button>
+          </div>
+          <div data-barsh-admin-users-phase-v2-final-role-model-note="true" style={{ width: "100%", border: "1px solid #dbeafe", background: "#eff6ff", color: "#1e3a8a", borderRadius: 12, padding: 10, fontWeight: 850 }}>
+            Phase V2: final five-role model is visible for planning. Administrator Admin-card checkboxes are read-only planning controls; they do not save grants or enable enforcement yet.
           </div>
           {adminUsersRowMessage ? <div data-barsh-admin-users-row-action-message="true" style={{ width: "100%", color: adminUsersRowMessage.toLowerCase().includes("failed") ? "#991b1b" : "#166534", fontWeight: 900 }}>{adminUsersRowMessage}</div> : null}
         </section>
@@ -1176,7 +1184,7 @@ export default function AdminUsersPlanningPage() {
             <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>2FA Phone<input data-barsh-admin-users-edit-two-factor-phone="true" value={editTwoFactorPhone} onChange={(event) => setEditTwoFactorPhone(event.target.value)} style={inputStyle} /></label>
             <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
               Role to Assign
-              <select data-barsh-admin-users-edit-role-assign-picklist="true" value={editRoleToAssign} onChange={(event) => setEditRoleToAssign(event.target.value)} style={inputStyle}>
+              <select data-barsh-admin-users-edit-role-assign-picklist="true" data-barsh-admin-users-phase-v2-final-role-picklist="true" value={editRoleToAssign} onChange={(event) => setEditRoleToAssign(event.target.value)} style={inputStyle}>
                 <option value="">No role assignment</option>
                 {editAssignableRoleOptions().map((role: any) => {
                   const key = roleOptionKey(role);
@@ -1186,7 +1194,7 @@ export default function AdminUsersPlanningPage() {
             </label>
             <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
               Role to Remove
-              <select data-barsh-admin-users-edit-role-remove-picklist="true" value={editRoleToRemove} onChange={(event) => setEditRoleToRemove(event.target.value)} style={inputStyle}>
+              <select data-barsh-admin-users-edit-role-remove-picklist="true" data-barsh-admin-users-phase-v2-final-role-remove-picklist="true" value={editRoleToRemove} onChange={(event) => setEditRoleToRemove(event.target.value)} style={inputStyle}>
                 <option value="">No role removal</option>
                 {editRemovableRoleOptions().map((role: any) => {
                   const key = roleOptionKey(role);
@@ -1201,6 +1209,37 @@ export default function AdminUsersPlanningPage() {
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
+            {phaseV2AdministratorCardPlanningVisible ? (
+              <section data-barsh-admin-users-phase-v2-admin-card-planning="true" style={{ gridColumn: "1 / -1", border: "1px solid #dbeafe", background: "#eff6ff", borderRadius: 14, padding: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <div>
+                    <h3 style={{ margin: "0 0 6px", fontSize: 16 }}>Administrator Admin Cards</h3>
+                    <p style={{ margin: 0, color: "#1e3a8a", lineHeight: 1.45, fontWeight: 800 }}>
+                      Phase V2 planning only. These checkboxes show the future card-by-card Administrator model. They do not save card grants, change roles, or enable runtime enforcement yet.
+                    </p>
+                  </div>
+                  <span data-barsh-admin-users-phase-v2-admin-card-mode="true" style={{ border: "1px solid #93c5fd", background: "#ffffff", color: "#1e3a8a", borderRadius: 999, padding: "7px 10px", fontWeight: 950, fontSize: 12 }}>
+                    {phaseV2AdministratorCardPlanningMode}
+                  </span>
+                </div>
+                <div data-barsh-admin-users-phase-v2-admin-card-checkboxes="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 10, marginTop: 12 }}>
+                  {finalAdminCardOptions.map((card: any) => {
+                    const checked = editUserIsOwnerPlanning;
+                    return (
+                      <label key={card.key} data-barsh-admin-users-phase-v2-admin-card-option={card.key} style={{ display: "grid", gap: 4, border: "1px solid #bfdbfe", background: "#ffffff", borderRadius: 12, padding: 10 }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 900 }}>
+                          <input type="checkbox" checked={checked} readOnly disabled data-barsh-admin-users-phase-v2-admin-card-checkbox="true" />
+                          {card.label}
+                        </span>
+                        <span style={{ fontFamily: "monospace", color: "#475569", fontSize: 12 }}>{card.grantPermissionKey}</span>
+                        <span style={{ color: "#475569", lineHeight: 1.35, fontSize: 12 }}>{card.description}</span>
+                        {card.ownerOnlyRecommended ? <span style={{ color: "#7c2d12", fontSize: 12, fontWeight: 900 }}>Owner-only recommended unless explicitly granted.</span> : null}
+                      </label>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
             <button data-barsh-admin-users-edit-save-button="true" type="button" onClick={() => void saveEditAdminUserPanel()} disabled={editBusy} style={{ ...primaryButtonStyle, opacity: editBusy ? 0.7 : 1 }}>{editBusy ? "Saving..." : "Save User"}</button>
           </div>
 

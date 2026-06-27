@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { configuredAdminPermissionsEnforcementEnabled } from "@/lib/adminPermissions";
 import { ADMIN_ROLE_PLANNING_DEFINITIONS, ADMIN_USER_PLANNING_ROWS, adminRolePlanningSummary, effectiveAdminUserPlanningRows } from "@/lib/adminUsersPlanning";
+import { ADMIN_USERS_PHASE_V1_ADMIN_CARDS, ADMIN_USERS_PHASE_V1_FINAL_ROLE_DEFINITIONS } from "@/src/lib/admin-users/admin-users-final-role-model-phase-v1";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,40 @@ export async function GET() {
 
   return NextResponse.json({
     action: "admin-users-roles-planning-read-only",
+    finalRoleModel: {
+      phase: "admin-users-phase-v2-role-ui-card-planning",
+      runtimeEnforcementChanged: false,
+      databaseMutated: false,
+      roles: ADMIN_USERS_PHASE_V1_FINAL_ROLE_DEFINITIONS.map((role) => ({
+        key: role.key,
+        label: role.label,
+        description: role.description,
+        status: "active",
+        systemRole: true,
+        adminAccessMode: role.adminAccessMode,
+        nonAdminAccessMode: role.nonAdminAccessMode,
+        paymentAccessMode: role.paymentAccessMode,
+        mutationMode: role.mutationMode,
+        adminCardGrantMode: role.adminCardGrantMode,
+        protectedFromLockout: role.protectedFromLockout,
+        mayManageUsersAndRoles: role.mayManageUsersAndRoles,
+        mayResetPasswords: role.mayResetPasswords,
+        mayConfigureTwoFactor: role.mayConfigureTwoFactor,
+        permissionCount: 0,
+        permissionKeys: [],
+        source: "phase-v1-final-role-contract",
+      })),
+      adminCards: ADMIN_USERS_PHASE_V1_ADMIN_CARDS.map((card) => ({
+        key: card.key,
+        label: card.label,
+        route: card.route,
+        grantPermissionKey: card.grantPermissionKey,
+        sensitive: card.sensitive,
+        ownerOnlyRecommended: card.ownerOnlyRecommended,
+        description: card.description,
+      })),
+      note: "Read-only final role/card model for Admin Users UI planning. This does not assign roles, save card grants, or enable runtime enforcement.",
+    },
     mode: "db-preview-plus-planning",
     enforcementEnabled: configuredAdminPermissionsEnforcementEnabled(),
     note: "Read-only Phase 2 planning surface. This endpoint reads DB-backed admin user/role tables for preview only. It does not create users, edit roles, assign permissions, write database records, write Clio, or enable enforcement.",

@@ -1,0 +1,17 @@
+{
+  "phase": "admin-users-phase-v2-final-role-ui-card-planning",
+  "runtimeEnforcementChanged": false,
+  "databaseMutated": false,
+  "sessionBehaviorChanged": false,
+  "rolePicklistsPreferFinalRoleModel": true,
+  "administratorCardPlanningVisible": true,
+  "administratorCardPlanningSavesGrants": false,
+  "finalRoleKeys": [
+    "owner_admin",
+    "administrator",
+    "full_user",
+    "basic_user",
+    "view_only"
+  ],
+  "next": "Add DB seed/update path for final role records without activating enforcement."
+}

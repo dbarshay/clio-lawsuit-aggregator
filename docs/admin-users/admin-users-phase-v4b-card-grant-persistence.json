@@ -1,0 +1,12 @@
+{
+  "phase": "admin-users-phase-v4b-card-grant-persistence",
+  "runtimeEnforcementChanged": false,
+  "sessionBehaviorChanged": false,
+  "databaseMutationScope": "AdminUserPermissionOverride allow rows for admin.card.* keys only",
+  "route": "/api/admin/users/card-grants",
+  "targetRoleRequired": "administrator",
+  "actorRoleRequired": "owner_admin",
+  "ownerUsersBlocked": true,
+  "unknownCardKeysRejected": true,
+  "next": "Wire Admin Users edit panel checkboxes to card-grants preview/apply route."
+}

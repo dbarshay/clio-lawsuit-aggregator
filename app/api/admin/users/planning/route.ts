@@ -4,6 +4,9 @@ import { configuredAdminPermissionsEnforcementEnabled } from "@/lib/adminPermiss
 import { ADMIN_ROLE_PLANNING_DEFINITIONS, ADMIN_USER_PLANNING_ROWS, adminRolePlanningSummary, effectiveAdminUserPlanningRows } from "@/lib/adminUsersPlanning";
 import { ADMIN_USERS_PHASE_V1_ADMIN_CARDS, ADMIN_USERS_PHASE_V1_FINAL_ROLE_DEFINITIONS } from "@/src/lib/admin-users/admin-users-final-role-model-phase-v1";
 
+const ADMIN_USERS_PHASE_V4B_ADMIN_CARD_GRANT_KEYS = ADMIN_USERS_PHASE_V1_ADMIN_CARDS.map((card) => card.grantPermissionKey);
+const ADMIN_USERS_PHASE_V4B_ADMIN_CARD_GRANT_KEY_SET = new Set(ADMIN_USERS_PHASE_V4B_ADMIN_CARD_GRANT_KEYS);
+
 export const dynamic = "force-dynamic";
 
 export async function GET() {
@@ -66,6 +69,8 @@ export async function GET() {
         const roleKeys = user.roles.map((entry: any) => entry.role.key).sort();
         const rolePermissionKeys = Array.from(new Set(user.roles.flatMap((entry: any) => (entry.role.permissions || []).map((permission: any) => permission.permissionKey)))).sort();
         const explicitOverrides = user.permissionOverrides.map((entry: any) => ({ permissionKey: entry.permissionKey, action: entry.action, reason: entry.reason })).sort((a: any, b: any) => a.permissionKey.localeCompare(b.permissionKey));
+        const adminCardGrantKeys = explicitOverrides.filter((entry: any) => ADMIN_USERS_PHASE_V4B_ADMIN_CARD_GRANT_KEY_SET.has(entry.permissionKey) && entry.action === "allow").map((entry: any) => entry.permissionKey).sort();
+        const adminCardBlockKeys = explicitOverrides.filter((entry: any) => ADMIN_USERS_PHASE_V4B_ADMIN_CARD_GRANT_KEY_SET.has(entry.permissionKey) && entry.action === "block").map((entry: any) => entry.permissionKey).sort();
         const explicitBlocks = new Set(explicitOverrides.filter((entry: any) => entry.action === "block").map((entry: any) => entry.permissionKey));
         const explicitAllows = explicitOverrides.filter((entry: any) => entry.action === "allow").map((entry: any) => entry.permissionKey);
         const effectivePermissionKeys = Array.from(new Set([...rolePermissionKeys.filter((permissionKey: any) => !explicitBlocks.has(permissionKey)), ...explicitAllows])).sort();
@@ -94,6 +99,10 @@ export async function GET() {
           effectivePermissionCount: effectivePermissionKeys.length,
           effectivePermissionKeys,
           explicitOverrides,
+          adminCardGrantKeys,
+          adminCardBlockKeys,
+          adminCardGrantCount: adminCardGrantKeys.length,
+          adminCardGrantPersistenceMode: roleKeys.includes("owner_admin") ? "owner_all_cards" : roleKeys.includes("administrator") ? "administrator_selected_cards" : "none",
           lockoutEligible: !user.bootstrapSafe,
           lockedOut: user.status !== "active",
           passwordConfigured: Boolean(user.passwordHash),

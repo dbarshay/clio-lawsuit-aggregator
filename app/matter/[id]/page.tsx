@@ -4228,13 +4228,22 @@ function openClaimAmountEditDialog() {
       return;
     }
 
-    const directMatterId = directMatterNumericIdForDocuments();
+    const rawDirectMatterDisplayNumber = textValue(matter?.displayNumber || matter?.display_number || matterId || "");
+    const normalizedDirectMatterDisplayNumber =
+      /^BRL_\d{9}$/i.test(rawDirectMatterDisplayNumber)
+        ? rawDirectMatterDisplayNumber.toUpperCase()
+        : /^BRL\d{9}$/i.test(rawDirectMatterDisplayNumber)
+          ? `BRL_${rawDirectMatterDisplayNumber.slice(3)}`
+          : /^\d{9}$/.test(rawDirectMatterDisplayNumber)
+            ? `BRL_${rawDirectMatterDisplayNumber}`
+            : rawDirectMatterDisplayNumber;
     const directMatterDisplayNumber =
-      textValue(matter?.displayNumber || matter?.display_number) ||
-      (directMatterId ? `BRL${directMatterId}` : "");
+      normalizedDirectMatterDisplayNumber ||
+      (directMatterNumericIdForDocuments() ? `BRL_${directMatterNumericIdForDocuments()}` : "");
+    const directMatterIdForRequest = null;
 
-    if (!directMatterId && !directMatterDisplayNumber) {
-      alert("No valid direct matter ID is available for finalization.");
+    if (!directMatterDisplayNumber) {
+      alert("No valid direct matter display number is available for finalization.");
       return;
     }
 
@@ -4267,6 +4276,7 @@ function openClaimAmountEditDialog() {
           confirmUpload: true,
           uploadTargetMode: "direct-matter",
           directMatterId,
+          directMatterId: directMatterIdForRequest,
           directMatterDisplayNumber,
           documentKeys: [effectiveSelectedDocumentKey].filter(Boolean),
           workingDocumentDriveItemId,

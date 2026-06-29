@@ -5940,6 +5940,11 @@ function openClaimAmountEditDialog() {
 
     const templateOptions = [
       {
+        key: "blank-letterhead",
+        label: "Blank Letterhead",
+        description: "Current stored DOCX template from the local Barsh Matters template repository.",
+      },
+      {
         key: "bill-schedule",
         label: "Bill Schedule",
         description: "Schedule of lawsuit bills and balances for this direct matter.",

@@ -624,7 +624,7 @@ const activeGroupKey =
   const [matterDocumentTemplateQuery, setMatterDocumentTemplateQuery] = useState("");
   const [matterSelectedDocumentTemplateKey, setMatterSelectedDocumentTemplateKey] = useState("");
   const [matterDocumentSignerEmail, setMatterDocumentSignerEmail] = useState("dbarshay@brlfirm.com");
-  const [matterDocumentWorkflowStage, setMatterDocumentWorkflowStage] = useState<"select" | "chooseAction" | "preview" | "edit" | "finalize" | "delivery">("select");
+  const [matterDocumentWorkflowStage, setMatterDocumentWorkflowStage] = useState<"select" | "signer" | "chooseAction" | "preview" | "edit" | "finalize" | "delivery">("select");
 
   const [matterDocumentDataPreview, setMatterDocumentDataPreview] = useState<any>(null);
   const [matterDocumentGenerationPopupOpen, setMatterDocumentGenerationPopupOpen] = useState(false);
@@ -5978,6 +5978,7 @@ function openClaimAmountEditDialog() {
         matterDocumentWorkflowStage === "finalize");
 
     const showSelectStep = matterDocumentWorkflowStage === "select";
+    const showSignerStep = matterDocumentWorkflowStage === "signer";
     const showActionStep = matterDocumentWorkflowStage === "chooseAction";
     const showPreviewStep = matterDocumentWorkflowStage === "preview";
     const showEditStep = matterDocumentWorkflowStage === "edit";
@@ -6079,7 +6080,7 @@ function openClaimAmountEditDialog() {
         return;
       }
 
-      if (matterDocumentWorkflowStage === "preview" || matterDocumentWorkflowStage === "edit" || matterDocumentWorkflowStage === "chooseAction") {
+      if (matterDocumentWorkflowStage === "preview" || matterDocumentWorkflowStage === "edit" || matterDocumentWorkflowStage === "chooseAction" || matterDocumentWorkflowStage === "signer") {
         setMatterSelectedDocumentTemplateKey("");
         setMatterDocumentTemplateQuery("");
         setDocumentPreview(null);
@@ -6163,7 +6164,8 @@ function openClaimAmountEditDialog() {
               {stepBadge(
                 2,
                 "Select Signer / Generate",
-                matterDocumentWorkflowStage === "chooseAction" ||
+                matterDocumentWorkflowStage === "signer" ||
+                  matterDocumentWorkflowStage === "chooseAction" ||
                   matterDocumentWorkflowStage === "preview" ||
                   matterDocumentWorkflowStage === "edit",
                 step2Complete
@@ -6242,7 +6244,7 @@ function openClaimAmountEditDialog() {
                     <button
                       type="button"
                       data-barsh-direct-document-generation-continue-to-signer="true"
-                      onClick={() => setMatterDocumentWorkflowStage("chooseAction")}
+                      onClick={() => setMatterDocumentWorkflowStage("signer")}
                       style={{
                         marginTop: 12,
                         border: "1px solid #1e3a8a",
@@ -6416,7 +6418,19 @@ function openClaimAmountEditDialog() {
                   </div>
                 )}
 
-              <div data-barsh-direct-document-generation-signer-heading="true">
+              {showSignerStep && selectedTemplate && (
+              <section
+                data-barsh-direct-document-generation-signer-only-section="true"
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 18,
+                  padding: 18,
+                  background: "#ffffff",
+                  display: "grid",
+                  gap: 14,
+                }}
+              >
+<div data-barsh-direct-document-generation-signer-heading="true">
                 <h3 style={{ margin: 0, fontSize: 18 }}>Step 2: Select Signer</h3>
                 <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
                   Choose the signer for this document before previewing, editing, or finalizing.
@@ -6463,6 +6477,34 @@ function openClaimAmountEditDialog() {
                   Default signer is David M. Barshay. The selected display name controls signer.* document fields; the stored signer email is sent only for backend signer-profile resolution.
                 </div>
               </div>
+
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  <button
+                    type="button"
+                    data-barsh-direct-document-generation-continue-to-actions="true"
+                    onClick={() => setMatterDocumentWorkflowStage("chooseAction")}
+                    style={{
+                      border: "1px solid #1e3a8a",
+                      background: "#1e3a8a",
+                      color: "#ffffff",
+                      borderRadius: 12,
+                      padding: "10px 14px",
+                      fontWeight: 950,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Continue to Generate
+                  </button>
+                </div>
+              </section>
+            )}
+
+                <div data-barsh-direct-document-generation-actions-heading="true">
+                  <h3 style={{ margin: 0, fontSize: 18 }}>Step 3: Generate Document</h3>
+                  <p style={{ margin: "6px 0 12px", color: "#64748b", lineHeight: 1.45 }}>
+                    Signer confirmed. Choose whether to preview, edit, or finalize the selected document.
+                  </p>
+                </div>
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   

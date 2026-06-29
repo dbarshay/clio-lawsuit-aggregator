@@ -38,8 +38,18 @@ function bytesToBase64Url(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
+function configuredSessionToken(): string {
+  const configured = clean(process.env.BARSH_ADMIN_SESSION_TOKEN);
+  if (configured) return configured;
+  // Dev fallback mirrors lib/adminAuth.ts so the middleware validates the same cookies the
+  // app issues in development. In production an unset token yields "" → every cookie fails
+  // (fail-closed), never a predictable token.
+  if (process.env.NODE_ENV !== "production") return "barsh-admin-dev-session";
+  return "";
+}
+
 async function signPayload(encodedPayload: string): Promise<string> {
-  const token = clean(process.env.BARSH_ADMIN_SESSION_TOKEN);
+  const token = configuredSessionToken();
   if (!token) return "";
   const key = await crypto.subtle.importKey(
     "raw",
@@ -68,7 +78,7 @@ async function readSignedGatePayload(value: string | undefined): Promise<SignedG
   try {
     const parsed = JSON.parse(base64UrlDecodeText(encodedPayload)) as SignedGatePayload;
     if (!parsed || parsed.source !== "signed-gate") return null;
-    if (parsed.token !== clean(process.env.BARSH_ADMIN_SESSION_TOKEN)) return null;
+    if (parsed.token !== configuredSessionToken()) return null;
     if (!Number.isFinite(Number(parsed.lastActivityAt))) return null;
 
     const inactiveForMs = Date.now() - Number(parsed.lastActivityAt);
@@ -112,8 +122,8 @@ export async function proxy(req: NextRequest) {
 
   const gate = await readSignedGatePayload(req.cookies.get(ADMIN_COOKIE_NAME)?.value);
 
-  // No valid signed gate: let existing route/page auth continue to handle login redirects/401s.
-  if (!gate) return NextResponse.next();
+  // No valid signed gate: fail CLOSED on admin surfaces (was previously fail-open).
+  if (!gate) return blockedResponse(req);
 
   // Legacy/generic owner recovery sessions have no identity in the signed gate and remain allowed.
   const identityEmail = clean(gate.identity?.email).toLowerCase();

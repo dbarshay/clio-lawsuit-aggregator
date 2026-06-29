@@ -58,5 +58,6 @@ backups/manual-claimindex-normalizations/
 
 templates/docx/incoming/
 
-.tmp-phase18c-output/
-.tmp-phase18e-output/
+# scratch/output dirs from phased work (broadened to catch all)
+.tmp-*/
+.tmp-*

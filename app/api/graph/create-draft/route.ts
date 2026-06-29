@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAdminRequestAuthorized, adminUnauthorizedJson } from "@/lib/adminAuth";
 import { assertGraphDraftEnvironmentReady, graphApiBase, graphFetchJson, graphMailboxMessagesUrl } from "@/lib/graph/client";
 import { clioFetch } from "@/lib/clio";
 import { listClioMatterDocuments } from "@/lib/clioDocumentUpload";
@@ -224,6 +225,7 @@ async function addFileAttachmentToGraphDraft(params: {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isAdminRequestAuthorized(req)) return adminUnauthorizedJson();
   const confirm = req.nextUrl.searchParams.get("confirm") || "";
 
   let body: Record<string, any> = {};

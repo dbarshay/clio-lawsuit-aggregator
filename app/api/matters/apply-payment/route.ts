@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createMatterAuditLogEntry } from "@/lib/auditLog";
+import type { NextRequest } from "next/server";
+import { isAdminRequestAuthorized, adminUnauthorizedJson } from "@/lib/adminAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -333,6 +335,7 @@ async function writePaymentAudit(input: {
 }
 
 export async function GET(request: Request) {
+  if (!isAdminRequestAuthorized(request as unknown as NextRequest)) return adminUnauthorizedJson();
   try {
     const url = new URL(request.url);
     const matterId = Number(url.searchParams.get("matterId") || "");
@@ -378,6 +381,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!isAdminRequestAuthorized(request as unknown as NextRequest)) return adminUnauthorizedJson();
   try {
     const body = await request.json();
 
@@ -627,6 +631,7 @@ export async function PATCH() {
 }
 
 export async function DELETE(request: Request) {
+  if (!isAdminRequestAuthorized(request as unknown as NextRequest)) return adminUnauthorizedJson();
   try {
     const body = await request.json();
 

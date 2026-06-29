@@ -326,6 +326,7 @@ async function generateDocumentBuffer(req: NextRequest, document: PlannedDocumen
 }
 
 export async function POST(req: NextRequest) {
+  if (!isAdminRequestAuthorized(req)) return adminUnauthorizedJson();
   const uploaded: any[] = [];
   const skipped: any[] = [];
 

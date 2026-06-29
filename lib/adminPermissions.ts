@@ -331,7 +331,17 @@ export function adminRoutePermissionDryRunDecisions(overrides = configuredAdminP
 
 
 export function configuredAdminPermissionsEnforcementEnabled(): boolean {
-  return String(process.env.BARSH_ADMIN_PERMISSIONS_ENFORCEMENT ?? "").trim() === "1";
+  // Accept both the documented activation flag (BARSH_ADMIN_PERMISSIONS_ENFORCEMENT_ENABLED,
+  // value "true") and the legacy checked flag (BARSH_ADMIN_PERMISSIONS_ENFORCEMENT, value "1"),
+  // so following the documented procedure actually enables enforcement.
+  const raw = String(
+    process.env.BARSH_ADMIN_PERMISSIONS_ENFORCEMENT_ENABLED ??
+      process.env.BARSH_ADMIN_PERMISSIONS_ENFORCEMENT ??
+      "",
+  )
+    .trim()
+    .toLowerCase();
+  return raw === "1" || raw === "true";
 }
 
 

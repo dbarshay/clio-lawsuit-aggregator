@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clioFetch } from "@/lib/clio";
+import { isAdminRequestAuthorized, adminUnauthorizedJson } from "@/lib/adminAuth";
 
 function clean(value: unknown): string {
   return String(value ?? "").trim();
@@ -138,6 +139,9 @@ async function getDocumentMetadata(documentId: string) {
 }
 
 export async function GET(req: NextRequest) {
+  // Require an authenticated session — finalized documents contain client PII and the
+  // documentId is enumerable (was an unauthenticated IDOR).
+  if (!isAdminRequestAuthorized(req)) return adminUnauthorizedJson();
   try {
     const documentId = clean(req.nextUrl.searchParams.get("documentId"));
     const mode = clean(req.nextUrl.searchParams.get("mode")) || "download";

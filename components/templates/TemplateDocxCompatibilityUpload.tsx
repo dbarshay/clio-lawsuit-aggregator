@@ -34,7 +34,9 @@ function utf8(bytes: Uint8Array) {
 }
 
 async function inflate(bytes: Uint8Array) {
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  const blobPart = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(blobPart).set(bytes);
+  const stream = new Blob([blobPart]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 

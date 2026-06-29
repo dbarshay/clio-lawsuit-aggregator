@@ -324,23 +324,31 @@ export async function POST(req: NextRequest) {
         action: "admin-user-card-grants",
         summary: `Updated Administrator Admin-card grants for ${targetUser.email}.`,
         entityType: "admin_user_permission_override",
-        entityId: targetUser.id,
         fieldName: "AdminUserPermissionOverride",
-        oldValue: JSON.stringify(existingAllowedGrantKeys),
-        newValue: JSON.stringify(requestedGrantKeys),
-        source: "barsh_matters_admin",
-        changedBy: actorEmail,
-        metadata: {
-          route: "/api/admin/users/card-grants",
+        priorValue: {
+          targetEmail,
+          targetUserId: targetUser.id,
+          existingAllowedGrantKeys,
+        },
+        newValue: {
           targetEmail,
           targetUserId: targetUser.id,
           requestedGrantKeys,
           toAllow,
           toRemoveAllow,
+        },
+        details: {
+          route: "/api/admin/users/card-grants",
+          mode: "apply",
+          lockoutProtection: true,
           enforcementChanged: false,
           runtimeEnforcementChanged: false,
         },
-      }, tx);
+        sourcePage: "/admin/users",
+        workflow: "admin-users-card-grants",
+        actorName: actor.displayName || "Administrator",
+        actorEmail,
+      });
 
       return refreshed;
     });

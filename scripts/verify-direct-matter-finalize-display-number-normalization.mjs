@@ -27,6 +27,7 @@ lacks("finalize request must not send directMatterNumericIdForDocuments directly
 lacks("finalize request must not generate BRL without underscore", "`BRL${directMatterNumericIdForDocuments()}`");
 lacks("finalize request must not use inline BRL directMatterId expression", "directMatterId: /^BRL_");
 lacks("finalize request must not send raw numeric directMatterId", "directMatterId: directMatterId,");
+lacks("finalize request must not contain duplicate shorthand directMatterId before request value", "directMatterId,\n          directMatterId: directMatterIdForRequest,");
 
 console.log("RESULT: direct matter finalize display number normalization verifier");
 if (failed) process.exit(1);

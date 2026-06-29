@@ -6191,46 +6191,6 @@ function openClaimAmountEditDialog() {
                 </p>
               </div>
 
-              <div
-                data-barsh-direct-document-generation-signer-default="true"
-                style={{
-                  display: "grid",
-                  gap: 8,
-                  border: "1px solid #bfdbfe",
-                  borderRadius: 14,
-                  padding: 12,
-                  background: "#eff6ff",
-                }}
-              >
-                <label style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 950, color: "#1e3a8a" }}>
-                  Signer
-                  <select
-                    value={matterDocumentSignerEmail}
-                    onChange={(event) => setMatterDocumentSignerEmail(event.target.value)}
-                    style={{
-                      width: "100%",
-                      boxSizing: "border-box",
-                      border: "1px solid #93c5fd",
-                      borderRadius: 10,
-                      padding: "9px 11px",
-                      fontSize: 13,
-                      fontWeight: 900,
-                      color: "#0f172a",
-                      background: "#ffffff",
-                    }}
-                  >
-                    {matterDocumentSignerOptions.map((signer) => (
-                      <option key={signer.email} value={signer.email}>
-                        {signer.displayName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.35 }}>
-                  Default signer is David M. Barshay. The selected display name controls signer.* document fields; the stored signer email is sent only for backend signer-profile resolution.
-                </div>
-              </div>
-
               <div style={{ display: "grid", gap: 10 }}>
                 <input
                   value={matterDocumentTemplateQuery}
@@ -6438,6 +6398,47 @@ function openClaimAmountEditDialog() {
                     </button>
                   </div>
                 )}
+
+              <div
+                data-barsh-direct-document-generation-signer-default="true"
+                data-barsh-direct-document-generation-signer-step="true"
+                style={{
+                  display: "grid",
+                  gap: 8,
+                  border: "1px solid #bfdbfe",
+                  borderRadius: 14,
+                  padding: 12,
+                  background: "#eff6ff",
+                }}
+              >
+                <label style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 950, color: "#1e3a8a" }}>
+                  Signer
+                  <select
+                    value={matterDocumentSignerEmail}
+                    onChange={(event) => setMatterDocumentSignerEmail(event.target.value)}
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      border: "1px solid #93c5fd",
+                      borderRadius: 10,
+                      padding: "9px 11px",
+                      fontSize: 13,
+                      fontWeight: 900,
+                      color: "#0f172a",
+                      background: "#ffffff",
+                    }}
+                  >
+                    {matterDocumentSignerOptions.map((signer) => (
+                      <option key={signer.email} value={signer.email}>
+                        {signer.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.35 }}>
+                  Default signer is David M. Barshay. The selected display name controls signer.* document fields; the stored signer email is sent only for backend signer-profile resolution.
+                </div>
+              </div>
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   

@@ -32,7 +32,7 @@ if (working.includes('const resolvedSignerEmail = signerEmail || "firm";')) {
 
 has("generate-preview has Firm handling", generator, "const isFirmSignerContactRequest =");
 has("generate-preview has Firm pseudo signer id", generator, 'id: "firm"');
-has("generate-preview has Firm signature block name", generator, 'signatureBlockName: "Barsh Rizzo & Lopez PLLC"');
+has("generate-preview has Firm signature block name", generator, 'signatureBlockName: "Barshay, Rizzo & Lopez, PLLC"');
 has("generate-preview returns Firm pseudo signer", generator, 'return { signer, status: 200, error: "" };');
 
 console.log("RESULT: direct matter Firm signer/contact option verifier");

@@ -21,7 +21,7 @@ has("Firm request accepts aliases", '"firm-contact"');
 has("Firm pseudo signer id exists", 'id: "firm"');
 has("Firm email exists", 'email: "info@brlfirm.com"');
 has("Firm display name exists", 'displayName: "Firm"');
-has("Firm signature block name exists", 'signatureBlockName: "Barsh Rizzo & Lopez PLLC"');
+has("Firm signature block name exists", 'signatureBlockName: "Barshay, Rizzo & Lopez, PLLC"');
 has("Firm fax exists", 'faxNumber: "(516) 706-5055"');
 has("Firm signer profile is complete", 'signerProfileStatus: "Complete"');
 has("Firm resolver returns signer", 'return { signer, status: 200, error: "" };');

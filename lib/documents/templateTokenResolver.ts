@@ -56,6 +56,21 @@ function detailsObject(value: unknown): Record<string, any> {
   return {};
 }
 
+// Reference entity addresses/tax IDs are often nested under details._hiddenImportFields
+// with "hidden_"-prefixed keys (e.g. hidden_street/hidden_city/hidden_state/hidden_zipcode).
+// Flatten those up so the same `pick` keys resolve them.
+function flattenReferenceDetails(value: unknown): Record<string, any> {
+  const base = detailsObject(value);
+  const hidden = detailsObject(base._hiddenImportFields);
+  const merged: Record<string, any> = { ...base };
+  for (const [key, val] of Object.entries(hidden)) {
+    if (!(key in merged)) merged[key] = val;
+    const stripped = key.replace(/^hidden_/i, "");
+    if (stripped && !(stripped in merged)) merged[stripped] = val;
+  }
+  return merged;
+}
+
 function pick(details: Record<string, any>, keys: string[]): string {
   for (const key of keys) {
     const v = clean(details[key]);
@@ -83,7 +98,8 @@ function composeAddress(details: Record<string, any>): string {
   const state = pick(details, ["state"]);
   const zip = pick(details, ["zip", "zipcode", "zipCode", "postalCode"]);
   const cityStateZip = joinNonEmpty([city, joinNonEmpty([state, zip], " ")], ", ");
-  return joinNonEmpty([street, cityStateZip], ", ");
+  // Newline-separated; the fill engine converts "\n" to a Word line break.
+  return joinNonEmpty([street, cityStateZip], "\n");
 }
 
 async function findReferenceEntityByName(types: string[], name: string) {
@@ -188,7 +204,7 @@ export async function resolveTemplateTokenBaseValues(params: {
       ["insurer", "insurer_company", "company"],
       claim.insurer_name,
     );
-    const insurerDetails = detailsObject(insurerEntity?.details);
+    const insurerDetails = flattenReferenceDetails(insurerEntity?.details);
     text("insurer.street", joinNonEmpty([pick(insurerDetails, ["addressLine1", "street", "address"]), pick(insurerDetails, ["addressLine2"])], ", "));
     text("insurer.city", pick(insurerDetails, ["city"]));
     text("insurer.state", pick(insurerDetails, ["state"]));
@@ -200,7 +216,7 @@ export async function resolveTemplateTokenBaseValues(params: {
       ["provider", "client", "company"],
       claim.client_name || claim.provider_name,
     );
-    const providerDetails = detailsObject(providerEntity?.details);
+    const providerDetails = flattenReferenceDetails(providerEntity?.details);
     text("provider.taxId", pick(providerDetails, ["taxId", "tax_id", "federalTaxId", "ein", "EIN"]));
   }
 
@@ -245,7 +261,7 @@ export async function resolveTemplateTokenBaseValues(params: {
         ["adversary_attorney", "attorney", "adversary"],
         adversaryName,
       );
-      adversaryDetails = detailsObject(adversaryEntity?.details);
+      adversaryDetails = flattenReferenceDetails(adversaryEntity?.details);
     }
     const adv = adversaryDetails || {};
     text("adversaryAttorney.street", joinNonEmpty([pick(adv, ["addressLine1", "street", "address"]), pick(adv, ["addressLine2"])], ", "));
@@ -258,7 +274,7 @@ export async function resolveTemplateTokenBaseValues(params: {
     const courtName = clean(lawsuit.venue || lawsuit.venueSelection || opts.venue || opts.courtName);
     if (courtName) {
       const courtEntity = await findReferenceEntityByName(["court", "venue"], courtName);
-      const courtDetails = detailsObject(courtEntity?.details);
+      const courtDetails = flattenReferenceDetails(courtEntity?.details);
       text("court.name", pick(courtDetails, ["shortName", "name"]) || courtName);
       text("court.longName1", pick(courtDetails, ["longName1", "longName"]));
       text("court.longName2", pick(courtDetails, ["longName2"]));

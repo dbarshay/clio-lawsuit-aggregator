@@ -13,7 +13,7 @@ has("dropdown placeholder exists", '<option value="">Select document</option>');
 has("Blank Letterhead dropdown option exists", '<option value="blank-letterhead">Blank Letterhead</option>');
 has("dropdown uses selected template key", 'value={matterSelectedDocumentTemplateKey}');
 has("dropdown selects Blank Letterhead via helper", 'selectBlankLetterhead();');
-has("selected document summary exists", 'data-barsh-direct-document-generation-selected-document-summary="true"');
+lacks("selected document summary removed", 'data-barsh-direct-document-generation-selected-document-summary="true"');
 has("selectBlankLetterhead advances to signer", 'setMatterDocumentWorkflowStage("signer")');
 has("signer-only section still exists", 'data-barsh-direct-document-generation-signer-only-section="true"');
 has("actions section still exists", 'data-barsh-direct-document-generation-actions-section="true"');

@@ -5977,7 +5977,7 @@ function openClaimAmountEditDialog() {
         ? {
             key: "blank-letterhead",
             label: "Blank Letterhead",
-            description: "Current stored DOCX template from the local Barsh Matters template repository.",
+            description: "",
           }
         : null;
 
@@ -6228,25 +6228,6 @@ function openClaimAmountEditDialog() {
                     <option value="blank-letterhead">Blank Letterhead</option>
                   </select>
                 </label>
-
-                {matterSelectedDocumentTemplateKey === "blank-letterhead" && (
-                  <div
-                    data-barsh-direct-document-generation-selected-document-summary="true"
-                    style={{
-                      border: "1px solid #c7d2fe",
-                      background: "#eef2ff",
-                      borderRadius: 14,
-                      padding: 14,
-                      color: "#3730a3",
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    <strong>Selected:</strong> Blank Letterhead
-                    <div style={{ marginTop: 4, color: "#475569" }}>
-                      Current stored DOCX template from the local Barsh Matters template repository.
-                    </div>
-                  </div>
-                )}
               </section>
             )}
 

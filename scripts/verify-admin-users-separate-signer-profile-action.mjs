@@ -11,6 +11,8 @@ must(page.includes('data-barsh-admin-users-edit-row-button="true"'), "missing Ed
 must(page.includes('>Edit</button><button data-barsh-admin-users-signer-profile-row-button="true"'), "Edit and Signer Profile are not separate adjacent action buttons");
 must(page.includes('data-barsh-admin-users-signer-profile-row-button="true"'), "missing Signer Profile row button");
 must(page.includes('openSignerProfilePanel(user)'), "Signer Profile row button does not open signer popup");
+must(page.includes('function openSignerProfilePanel(user: any)'), "missing openSignerProfilePanel function");
+must(page.includes('async function saveSignerProfilePanel()'), "missing saveSignerProfilePanel function");
 must(page.includes('data-barsh-admin-users-signer-profile-modal="true"'), "missing signer profile modal");
 must(page.includes('data-barsh-admin-users-signer-profile-only-fields="true"'), "missing signer-only fields anchor");
 must(page.includes('data-barsh-admin-users-signer-profile-email="true"'), "missing signer profile email field");

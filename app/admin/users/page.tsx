@@ -14,7 +14,7 @@ Password Reset Phase 16 one-time modal contract:
 /*
 Signer Profile Phase 12 UI wiring contract:
 - Create-user UI must include firstName, lastName, displayName, username, email, phoneExtension, faxNumber, signatureBlockName, locked, inactive, twoFactorPhone, twoFactorDisabled, and twoFactorPendingSetup in the payload sent to /api/admin/users/create.
-- Edit-user signer/contact/status UI must use PATCH /api/admin/users/signer-profile with preview/apply behavior.
+- Signer Profile popup must use PATCH /api/admin/users/signer-profile with preview/apply behavior and edit only signer-generation fields.
 - The signer-profile edit route is separate from lockout, password reset, failed-login clear, role assignment, and permission override routes.
 - The Users admin table should show derived signer status Complete/Missing Fields and 2FA status Enabled/Disabled/Missing Phone/Pending Setup.
 - This UI phase must not wire production document-generation signer validation.
@@ -27,7 +27,7 @@ Signer Profile Phase 1 UI contract:
 - table indicators: signer profile Complete/Missing Fields, Locked, Inactive, Failed-login locked, 2FA Enabled/Disabled/Missing Phone/Pending Setup
 - row actions: Reset Password, Unlock Login, Clear Failed-Login Lockout
 - reset temporary password must display once in the standard Barsh Matters modal with copy button and one-time warning
-- edit form should show specific missing signer fields
+- signer profile popup should show specific missing signer fields
 */
 
 "use client";
@@ -258,6 +258,15 @@ export default function AdminUsersPlanningPage() {
   const [editMessage, setEditMessage] = useState("");
   const [editBusy, setEditBusy] = useState(false);
   const [editNeedsReauth, setEditNeedsReauth] = useState(false);
+  const [signerProfileUser, setSignerProfileUser] = useState<any>(null);
+  const [signerProfileEmail, setSignerProfileEmail] = useState("");
+  const [signerProfilePhoneExtension, setSignerProfilePhoneExtension] = useState("");
+  const [signerProfileFaxNumber, setSignerProfileFaxNumber] = useState("");
+  const [signerProfileSignatureBlockName, setSignerProfileSignatureBlockName] = useState("");
+  const [signerProfileEligible, setSignerProfileEligible] = useState(true);
+  const [signerProfileBusy, setSignerProfileBusy] = useState(false);
+  const [signerProfileMessage, setSignerProfileMessage] = useState("");
+  const [signerProfileResult, setSignerProfileResult] = useState<any>(null);
   const [twoFactorSetupUser, setTwoFactorSetupUser] = useState<any>(null);
   const [twoFactorSetupPhone, setTwoFactorSetupPhone] = useState("");
   const [twoFactorSetupMessage, setTwoFactorSetupMessage] = useState("");
@@ -1143,6 +1152,63 @@ export default function AdminUsersPlanningPage() {
     }
   }
 
+  function openSignerProfilePanel(user: any) {
+    setSignerProfileUser(user);
+    setSignerProfileEmail(String(user?.email || ""));
+    setSignerProfilePhoneExtension(String(user?.phoneExtension || ""));
+    setSignerProfileFaxNumber(String(user?.faxNumber || ""));
+    setSignerProfileSignatureBlockName(String(user?.signatureBlockName || user?.displayName || ""));
+    setSignerProfileEligible(user?.signerEligible !== false);
+    setSignerProfileMessage("");
+    setSignerProfileResult(null);
+  }
+
+  function closeSignerProfilePanel() {
+    if (signerProfileBusy) return;
+    setSignerProfileUser(null);
+    setSignerProfileMessage("");
+    setSignerProfileResult(null);
+  }
+
+  async function saveSignerProfilePanel() {
+    if (!signerProfileUser) return;
+    setSignerProfileBusy(true);
+    setSignerProfileMessage("");
+    setSignerProfileResult(null);
+    try {
+      const response = await fetch(ADMIN_USERS_PHASE12_SIGNER_PROFILE_UPDATE_ROUTE, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(buildAdminUsersPhase12SignerProfilePayload({
+          targetEmail: signerProfileUser.email,
+          email: signerProfileEmail,
+          phoneExtension: signerProfilePhoneExtension,
+          faxNumber: signerProfileFaxNumber,
+          signatureBlockName: signerProfileSignatureBlockName,
+          signerEligible: signerProfileEligible,
+          preview: false,
+          apply: true,
+        })),
+      });
+      const data = await readAdminUsersJsonResponse(response, "Save signer profile");
+      setSignerProfileResult(data);
+      if (data?.ok === false) {
+        setSignerProfileMessage(data?.error || "Signer profile save failed.");
+        return;
+      }
+      setSignerProfileMessage("Signer profile saved.");
+      await loadAdminUsersPlanning();
+      setTimeout(() => {
+        setSignerProfileUser(null);
+        setSignerProfileMessage("");
+        setSignerProfileResult(null);
+      }, 450);
+    } catch (err: any) {
+      setSignerProfileMessage(err?.message || "Signer profile save failed.");
+    } finally {
+      setSignerProfileBusy(false);
+    }
+  }
 
   return (
     <main data-barsh-admin-users-planning-page="phase3-guarded" data-barsh-admin-users-browser-back-action-history="true" data-barsh-admin-users-audit-history-back-live-reload="true" data-barsh-admin-users-audit-history-back-always-live="true" data-barsh-admin-users-audit-history-back-hard-refresh="true" data-barsh-admin-users-audit-history-back-cache-bust="true" style={{ minHeight: "100vh", background: "#f8fafc", color: "#0f172a", padding: 30, boxSizing: "border-box" }}>
@@ -1150,7 +1216,7 @@ export default function AdminUsersPlanningPage() {
         <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 24, padding: 22 }}>
           <h1 style={{ margin: 0, fontSize: 30 }}>Users & Roles</h1>
           <p data-barsh-admin-users-signer-profile-location-note="true" style={{ margin: "8px 0 0", color: "#475569", lineHeight: 1.5 }}>
-            Signer profiles are managed on each Admin User. Use <strong>Edit / Signer Profile</strong> to manage signer eligibility, signature name, email, phone extension, and fax. These fields drive signer.* document-generation tokens.
+            Signer profiles are managed on each Admin User. Use <strong>Signer Profile</strong> to manage signer eligibility, signature name, email, phone extension, and fax. Use <strong>Edit</strong> for roles, security, and general user settings. These fields drive signer.* document-generation tokens.
           </p>
         </section>
 
@@ -1300,10 +1366,6 @@ export default function AdminUsersPlanningPage() {
             <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>Display Name<input data-barsh-admin-users-edit-display-name="true" value={editDisplayName} onChange={(event) => setEditDisplayName(event.target.value)} style={inputStyle} /></label>
             <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>User Name<input data-barsh-admin-users-edit-username="true" value={editUsername} onChange={(event) => setEditUsername(event.target.value)} style={inputStyle} /></label>
             <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>Email<input data-barsh-admin-users-edit-email="true" value={editEmail} onChange={(event) => setEditEmail(event.target.value)} style={inputStyle} /></label>
-            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>Phone Extension<input data-barsh-admin-users-edit-phone-extension="true" value={editPhoneExtension} onChange={(event) => setEditPhoneExtension(event.target.value)} style={inputStyle} /></label>
-            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>Fax Number<input data-barsh-admin-users-edit-fax-number="true" value={editFaxNumber} onChange={(event) => setEditFaxNumber(event.target.value)} style={inputStyle} /></label>
-            <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>Signature Name<input data-barsh-admin-users-edit-signature-block-name="true" value={editSignatureBlockName} onChange={(event) => setEditSignatureBlockName(event.target.value)} style={inputStyle} /></label>
-            <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 850 }}><input data-barsh-admin-users-edit-signer-eligible="true" type="checkbox" checked={editSignerEligible} onChange={(event) => setEditSignerEligible(event.target.checked)} />Eligible signer for document generation</label>
             <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>2FA Phone<input data-barsh-admin-users-edit-two-factor-phone="true" value={editTwoFactorPhone} onChange={(event) => setEditTwoFactorPhone(event.target.value)} style={inputStyle} /></label>
             <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
               Role to Assign
@@ -1333,7 +1395,7 @@ export default function AdminUsersPlanningPage() {
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
             {phaseV2AdministratorCardPlanningVisible ? (
-              <section data-barsh-admin-users-admin-cards-full-width="true" data-barsh-admin-users-phase-v2-admin-card-planning="true" style={{ width: "100%", maxWidth: "none", gridColumn: "1 / -1",  gridColumn: "1 / -1", border: "1px solid #dbeafe", background: "#eff6ff", borderRadius: 14, padding: 14 }}>
+              <section data-barsh-admin-users-admin-cards-full-width="true" data-barsh-admin-users-phase-v2-admin-card-planning="true" style={{ width: "100%", maxWidth: "none", gridColumn: "1 / -1", border: "1px solid #dbeafe", background: "#eff6ff", borderRadius: 14, padding: 14 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
                   <div>
                     <h3 style={{ margin: "0 0 6px", fontSize: 16 }}>Administrator Admin Cards</h3>
@@ -1511,7 +1573,7 @@ export default function AdminUsersPlanningPage() {
                   <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>{formatAdminUserDate(user.lastLoginAt)}</td>
                   <td style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      <button data-barsh-admin-users-edit-row-button="true" type="button" onClick={() => openEditAdminUserPanel(user)} disabled={adminUsersRowBusy} style={{ ...primaryButtonStyle, color: "#ffffff" }}>Edit / Signer Profile</button>
+                      <button data-barsh-admin-users-edit-row-button="true" type="button" onClick={() => openEditAdminUserPanel(user)} disabled={adminUsersRowBusy} style={{ ...primaryButtonStyle, color: "#ffffff" }}>Edit</button><button data-barsh-admin-users-signer-profile-row-button="true" type="button" onClick={() => openSignerProfilePanel(user)} disabled={adminUsersRowBusy} style={{ ...primaryButtonStyle, color: "#ffffff" }}>Signer Profile</button>
                       <button data-barsh-admin-users-reset-password-row-button="true" type="button" onClick={() => void resetPasswordFromRow(user)} disabled={adminUsersRowBusy} style={{ ...primaryButtonStyle, color: "#ffffff" }}>Reset Password</button>
                       {twoFactorSetupPending ? <><span data-barsh-admin-users-2fa-pending-label="true" style={{ border: "1px solid #fde68a", background: "#fefce8", color: "#713f12", borderRadius: 999, padding: "10px 12px", fontSize: 13, fontWeight: 950 }}>2FA Setup Pending</span><button data-barsh-admin-users-verify-2fa-setup-row-button="true" type="button" onClick={() => openTwoFactorVerifyPanel(user)} disabled={adminUsersRowBusy} style={{ ...secondaryButtonStyle, border: "1px solid #16a34a", color: "#166534" }}>Verify Setup</button></> : twoFactorEnforced ? <span data-barsh-admin-users-2fa-enforced-label="true" style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534", borderRadius: 999, padding: "10px 12px", fontSize: 13, fontWeight: 950 }}>2FA Enforced</span> : <button data-barsh-admin-users-activate-2fa-row-button="true" type="button" onClick={() => openTwoFactorSetupPanel(user)} disabled={adminUsersRowBusy} style={{ ...primaryButtonStyle, color: "#ffffff" }}>Activate 2FA</button>}
                       <button data-barsh-admin-users-lock-row-button="true" type="button" onClick={() => void lockUserFromRow(user)} disabled={adminUsersRowBusy} style={{ ...primaryButtonStyle, color: "#ffffff" }}>{active ? "Lock" : "Unlock"}</button>
@@ -1582,7 +1644,51 @@ export default function AdminUsersPlanningPage() {
         </div>
       ) : null}
 
-            <section data-barsh-admin-users-phase-v4e-role-explanation="true" style={{ ...cardStyle, display: "grid", gap: 12 }}>
+            
+      {signerProfileUser ? (
+        <div data-barsh-admin-users-signer-profile-modal="true" role="dialog" aria-modal="true" aria-label="Signer Profile" style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.45)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <section style={{ width: "min(760px, 100%)", maxHeight: "90vh", overflow: "auto", background: "#ffffff", borderRadius: 22, border: "1px solid #cbd5e1", boxShadow: "0 24px 80px rgba(15, 23, 42, 0.25)" }}>
+            <div style={{ background: "#1e3a8a", color: "#ffffff", padding: "16px 20px", borderTopLeftRadius: 22, borderTopRightRadius: 22, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 20 }}>Signer Profile</h2>
+                <p style={{ margin: "4px 0 0", opacity: 0.9, fontSize: 13 }}>{signerProfileUser.displayName || signerProfileUser.email}</p>
+              </div>
+              <button data-barsh-admin-users-signer-profile-close-button="true" type="button" onClick={closeSignerProfilePanel} disabled={signerProfileBusy} style={{ border: "1px solid rgba(255,255,255,0.75)", background: "transparent", color: "#ffffff", borderRadius: 999, padding: "8px 12px", fontWeight: 950, cursor: "pointer" }}>Close</button>
+            </div>
+            <div style={{ padding: 20, display: "grid", gap: 14 }}>
+              <p style={{ margin: 0, color: "#475569", lineHeight: 1.5 }}>
+                These fields control signer.* template generation tokens only. This popup does not edit roles, password, lockout, 2FA, or admin-card access.
+              </p>
+              <div data-barsh-admin-users-signer-profile-only-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+                <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>Email<input data-barsh-admin-users-signer-profile-email="true" value={signerProfileEmail} onChange={(event) => setSignerProfileEmail(event.target.value)} style={inputStyle} /></label>
+                <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>Phone Extension<input data-barsh-admin-users-signer-profile-phone-extension="true" value={signerProfilePhoneExtension} onChange={(event) => setSignerProfilePhoneExtension(event.target.value)} style={inputStyle} /></label>
+                <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>Fax Number<input data-barsh-admin-users-signer-profile-fax-number="true" value={signerProfileFaxNumber} onChange={(event) => setSignerProfileFaxNumber(event.target.value)} style={inputStyle} /></label>
+                <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>Signature Name<input data-barsh-admin-users-signer-profile-signature-name="true" value={signerProfileSignatureBlockName} onChange={(event) => setSignerProfileSignatureBlockName(event.target.value)} style={inputStyle} /></label>
+              </div>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 850 }}>
+                <input data-barsh-admin-users-signer-profile-eligible="true" type="checkbox" checked={signerProfileEligible} onChange={(event) => setSignerProfileEligible(event.target.checked)} />
+                Eligible signer for document generation
+              </label>
+              {signerProfileResult?.signerMissingFields?.length ? (
+                <div data-barsh-admin-users-signer-profile-missing-fields="true" style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 12, padding: 10, fontWeight: 850 }}>
+                  Missing signer fields: {signerProfileResult.signerMissingFields.join(", ")}
+                </div>
+              ) : null}
+              {signerProfileMessage ? (
+                <div data-barsh-admin-users-signer-profile-message="true" style={{ color: signerProfileMessage.toLowerCase().includes("failed") ? "#991b1b" : "#166534", fontWeight: 900 }}>
+                  {signerProfileMessage}
+                </div>
+              ) : null}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+                <button data-barsh-admin-users-signer-profile-cancel-button="true" type="button" onClick={closeSignerProfilePanel} disabled={signerProfileBusy} style={secondaryButtonStyle}>Cancel</button>
+                <button data-barsh-admin-users-signer-profile-save-button="true" type="button" onClick={() => void saveSignerProfilePanel()} disabled={signerProfileBusy} style={{ ...primaryButtonStyle, color: "#ffffff", opacity: signerProfileBusy ? 0.7 : 1 }}>{signerProfileBusy ? "Saving..." : "Save Signer Profile"}</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+<section data-barsh-admin-users-phase-v4e-role-explanation="true" style={{ ...cardStyle, display: "grid", gap: 12 }}>
           <h2 style={{ margin: 0, fontSize: 18 }}>Role Guide</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 10 }}>
             <div style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 12, background: "#ffffff" }}>

@@ -7,6 +7,9 @@ const working = fs.existsSync("app/api/documents/working-docx/route.ts")
 const generator = fs.existsSync("app/api/documents/templates/generate-preview/route.ts")
   ? fs.readFileSync("app/api/documents/templates/generate-preview/route.ts", "utf8")
   : "";
+const firmContact = fs.existsSync("lib/firmContact.ts")
+  ? fs.readFileSync("lib/firmContact.ts", "utf8")
+  : "";
 
 let failed = false;
 function pass(message) { console.log("PASS:", message); }
@@ -31,8 +34,9 @@ if (working.includes('const resolvedSignerEmail = signerEmail || "firm";')) {
 }
 
 has("generate-preview has Firm handling", generator, "const isFirmSignerContactRequest =");
-has("generate-preview has Firm pseudo signer id", generator, 'id: "firm"');
-has("generate-preview has Firm signature block name", generator, 'signatureBlockName: "Barshay, Rizzo & Lopez, PLLC"');
+has("generate-preview sources firm from single firm-contact constant", generator, "BARSH_FIRM_CONTACT");
+has("firm-contact constant has Firm pseudo signer id", firmContact, 'id: "firm"');
+has("firm-contact constant has Firm signature block name", firmContact, 'signatureBlockName: "Barshay, Rizzo & Lopez, PLLC"');
 has("generate-preview returns Firm pseudo signer", generator, 'return { signer, status: 200, error: "" };');
 
 console.log("RESULT: direct matter Firm signer/contact option verifier");

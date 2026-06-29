@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import JSZip from "jszip";
 import { prisma } from "@/lib/prisma";
+import { BARSH_FIRM_CONTACT } from "@/lib/firmContact";
 import { resolveTemplateTokenBaseValues } from "@/lib/documents/templateTokenResolver";
 import { extractTemplateTokens, parseTemplateToken, formatTokenValue } from "@/lib/documents/templateTokenFormat";
 
@@ -92,19 +93,14 @@ async function resolveSigner(req: NextRequest): Promise<{ signer: ResolvedSigner
   );
 
   if (isFirmSignerContactRequest) {
+    // Firm signer/contact is sourced from the single firm-contact constant.
     const signer: ResolvedSigner = {
-      id: "firm",
-      email: "info@brlfirm.com",
-      displayName: "Firm",
-      signatureBlockName: "Barshay, Rizzo & Lopez, PLLC",
-      phoneExtension: "",
-      faxNumber: "(516) 706-5055",
+      ...BARSH_FIRM_CONTACT,
       signerEligible: true,
       signerProfileStatus: "Complete",
       signerMissingFields: [],
       signatureImageUrl: "",
       signatureImageDataUrl: "",
-      signatureText: "Barshay, Rizzo & Lopez, PLLC",
       contactMode: "firm",
     } as ResolvedSigner;
 

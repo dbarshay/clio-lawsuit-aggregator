@@ -31,6 +31,29 @@ Dev server: `npm run dev` (runs with `NEXT_DISABLE_TURBOPACK=1`). App runs at
   `CLIO_SINGLE_MASTER_UPLOAD_REWIRE_ENABLED`, `CLIO_SINGLE_MASTER_CREATE_FOLDERS_ENABLED`,
   `CLIO_SINGLE_MASTER_LIVE_WRITE_ENABLED`.
 
+### Clio boundary — source of truth (ADR 0001)
+
+Per `docs/adr/0001-clio-single-master-storage.md` (ADR = Architecture Decision Record),
+the Clio-centric model was **reversed**:
+
+- **Barsh Matters local DB is the operational source of truth** (matter/claim/lawsuit
+  identity, grouping, workflow, permissions, document visibility). Clio is NOT.
+- **Barsh Matters generates the file numbers** — both individual `BRL_YYYYNNNNN` numbers
+  and lawsuit `YYYY.MM.NNNNNN` numbers (e.g. lawsuit numbers via `buildMasterId()` in
+  `app/api/lawsuits/local-generation-create/route.ts`). Clio does NOT create matters or
+  mint numbers anymore.
+- Legacy Clio-operational routes are **disabled**: `lib/legacyClioOperationalRouteBlocked.ts`
+  returns HTTP 410 with "Barsh Matters local schema is now the operational source of
+  truth." Guarded by `verify-clio-rule1-boundary-safety` and
+  `verify-legacy-clio-settlement-routes-disabled-safety`.
+
+**Clio's remaining (allowed) role is the document vault — and this MUST be preserved:**
+uploading finalized docs, **listing** them, and **opening/calling** stored docs from the
+BM UI (`/api/documents/clio-document-open`, `clio-matter-documents`, the document vault
+APIs). Do not let "Clio is not source of truth" work break BM's ability to call/open
+stored documents. Also note: the repo is still *named* `clio-lawsuit-aggregator` — that's
+legacy naming, not current architecture.
+
 ### View Documents vs finalize (read-only vs get-or-create)
 
 - **View Documents** (listing) must be **read-only**: resolve the existing folder by

@@ -6162,7 +6162,7 @@ function openClaimAmountEditDialog() {
               {stepArrow(step1Complete)}
               {stepBadge(
                 2,
-                "Preview PDF / Edit / Finalize",
+                "Select Signer / Generate",
                 matterDocumentWorkflowStage === "chooseAction" ||
                   matterDocumentWorkflowStage === "preview" ||
                   matterDocumentWorkflowStage === "edit",
@@ -6239,6 +6239,23 @@ function openClaimAmountEditDialog() {
                   >
                     <strong>Selected:</strong> {selectedTemplate.label}
                     <div style={{ marginTop: 4, color: "#475569" }}>{selectedTemplate.description}</div>
+                    <button
+                      type="button"
+                      data-barsh-direct-document-generation-continue-to-signer="true"
+                      onClick={() => setMatterDocumentWorkflowStage("chooseAction")}
+                      style={{
+                        marginTop: 12,
+                        border: "1px solid #1e3a8a",
+                        background: "#1e3a8a",
+                        color: "#ffffff",
+                        borderRadius: 12,
+                        padding: "9px 13px",
+                        fontWeight: 950,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Continue to Signer
+                    </button>
                   </div>
                 )}
 
@@ -6274,19 +6291,19 @@ function openClaimAmountEditDialog() {
                   "Preview PDF",
                   () => launchMatterStep2PdfPreview(selectedTemplate),
                   !selectedTemplate,
-                  !selectedTemplate ? "Select a document first." : "Open a temporary PDF preview without uploading to Clio."
+                  !selectedTemplate ? "Select a document first." : "Confirm signer, then open a temporary PDF preview without uploading to Clio."
                 )}
                 {actionButton(
                   "Edit Document",
                   () => launchMatterStep2GeneratedDocumentEdit(selectedTemplate),
                   !selectedTemplate,
-                  !selectedTemplate ? "Select a document first." : "Create a working DOCX and edit it in Word Web."
+                  !selectedTemplate ? "Select a document first." : "Confirm signer, then create a working DOCX and edit it in Word Web."
                 )}
                 {actionButton(
                   documentPreviewLoading || finalizeUploadLoading ? "Finalizing..." : "Finalize Document",
                   () => finalizeMatterDocumentFromStep2(selectedTemplate),
                   !selectedTemplate || documentPreviewLoading || finalizeUploadLoading,
-                  !selectedTemplate ? "Select a document first." : "Finalize and upload the selected document to Clio."
+                  !selectedTemplate ? "Select a document first." : "Confirm signer, then finalize the selected document."
                 )}
               </div>
 
@@ -6398,6 +6415,13 @@ function openClaimAmountEditDialog() {
                     </button>
                   </div>
                 )}
+
+              <div data-barsh-direct-document-generation-signer-heading="true">
+                <h3 style={{ margin: 0, fontSize: 18 }}>Step 2: Select Signer</h3>
+                <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
+                  Choose the signer for this document before previewing, editing, or finalizing.
+                </p>
+              </div>
 
               <div
                 data-barsh-direct-document-generation-signer-default="true"

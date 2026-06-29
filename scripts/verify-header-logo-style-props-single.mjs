@@ -18,7 +18,7 @@ for (const tag of containedTags) {
   const styleCount = (tag.match(/\bstyle=/g) || []).length;
   if (styleCount === 1) pass(`${src} has exactly one style prop`);
   else fail(`${src} has ${styleCount} style props`);
-  if (tag.includes("maxWidth: 126") && tag.includes("maxHeight: 86") && tag.includes('objectFit: "contain"')) {
+  if (tag.includes("maxWidth:") && tag.includes("maxHeight:") && tag.includes('objectFit: "contain"')) {
     pass(`${src} has logo containment sizing`);
   } else {
     fail(`${src} missing logo containment sizing`);

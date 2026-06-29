@@ -117,6 +117,7 @@ export async function POST(req: NextRequest) {
     const settlementRecordId = clean(body?.settlementRecordId);
     const singleMasterDirectStorage = body?.singleMasterDirectStorage === true || body?.useSingleMasterClioStorage === true;
     const requestedKeys = asStringArray(body?.documentKeys);
+    const signerEmail = clean(body?.signerEmail || body?.signerEmailAddress || body?.signer?.email);
     const confirmCreate = body?.confirmCreate === true;
 
     if (!masterLawsuitId && uploadTargetMode !== "direct-matter") {
@@ -178,6 +179,22 @@ export async function POST(req: NextRequest) {
       plannedDocuments.find((document: any) => requestedKeys.includes(clean(document?.key))) || null;
 
     if (requestedKeys.length > 0 && !requestedDocument) {
+    if (!selectedDocument && requestedKeys.some((key) => clean(key).toLowerCase() === "blank-letterhead")) {
+      selectedDocument = {
+        key: "blank-letterhead",
+        label: "Blank Letterhead",
+        description: "Current stored DOCX template from the local Barsh Matters template repository.",
+        filename: "Blank Letterhead.docx",
+        templateSource: "barsh-matters-db-template-repository",
+        repositorySource: "barsh-matters-db",
+        storageKind: "db-docx-base64",
+        currentVersionId: "",
+        generatedFromStoredDbDocx: true,
+        fallbackReason: "blank-letterhead-db-docx-fallback",
+      };
+    }
+
+
       return NextResponse.json(
         {
           ok: false,
@@ -196,7 +213,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const selectedDocument =
+    let selectedDocument =
       requestedDocument ||
       plannedDocuments.find((document: any) => document?.wouldGenerate && document?.availableNow);
 

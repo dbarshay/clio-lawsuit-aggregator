@@ -5964,6 +5964,13 @@ function openClaimAmountEditDialog() {
     const selectedTemplate =
       sortedTemplateOptions.find((option) => option.key === matterSelectedDocumentTemplateKey) || null;
 
+    const matterDocumentSignerOptions = [
+      {
+        email: "dbarshay@brlfirm.com",
+        displayName: "David M. Barshay",
+      },
+    ];
+
     const canFinalize =
       Boolean(selectedTemplate) &&
       (matterDocumentWorkflowStage === "preview" ||
@@ -6197,10 +6204,9 @@ function openClaimAmountEditDialog() {
               >
                 <label style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 950, color: "#1e3a8a" }}>
                   Signer
-                  <input
+                  <select
                     value={matterDocumentSignerEmail}
                     onChange={(event) => setMatterDocumentSignerEmail(event.target.value)}
-                    placeholder="dbarshay@brlfirm.com"
                     style={{
                       width: "100%",
                       boxSizing: "border-box",
@@ -6208,14 +6214,20 @@ function openClaimAmountEditDialog() {
                       borderRadius: 10,
                       padding: "9px 11px",
                       fontSize: 13,
-                      fontWeight: 800,
+                      fontWeight: 900,
                       color: "#0f172a",
                       background: "#ffffff",
                     }}
-                  />
+                  >
+                    {matterDocumentSignerOptions.map((signer) => (
+                      <option key={signer.email} value={signer.email}>
+                        {signer.displayName}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.35 }}>
-                  Default signer is the generating user. Use this signer for signer.* fields unless another eligible signer is selected.
+                  Default signer is David M. Barshay. The selected display name controls signer.* document fields; the stored signer email is sent only for backend signer-profile resolution.
                 </div>
               </div>
 
@@ -7763,7 +7775,7 @@ function openClaimAmountEditDialog() {
     >
       <div style={bmGlobalTopBarStyle}>
         <div style={bmGlobalLeftLogoWrapStyle}>
-          <img data-barsh-header-logo-containment="true" src="/brl-logo.png" alt="BRL Logo" style={{ ...bmGlobalBrlLogoStyle, maxWidth: 126, maxHeight: 86, width: "auto", height: "auto", objectFit: "contain" }} />
+          <img data-barsh-header-logo-containment="true" src="/brl-logo.png" alt="BRL Logo" style={{ ...bmGlobalBrlLogoStyle, width: 96, maxWidth: 96, height: "auto", maxHeight: 64, objectFit: "contain" }} />
           <div style={{ paddingTop: 8 }}>
             <BarshHeaderQuickNav />
           </div>
@@ -7872,7 +7884,7 @@ function openClaimAmountEditDialog() {
           </div>
 
           <a href="/" title="Return to Barsh Matters entry screen" style={bmGlobalLogoLinkStyle}>
-            <img data-barsh-header-logo-containment="true" src="/barsh-matters-cropped-transparent.png" alt="Barsh Matters Logo" style={{ ...bmGlobalLogoStyle, maxWidth: 126, maxHeight: 86, width: "auto", height: "auto", objectFit: "contain" }} />
+            <img data-barsh-header-logo-containment="true" src="/barsh-matters-cropped-transparent.png" alt="Barsh Matters Logo" style={{ ...bmGlobalLogoStyle, width: 112, maxWidth: 112, height: "auto", maxHeight: 70, objectFit: "contain" }} />
           </a>
         </div>
       </div>

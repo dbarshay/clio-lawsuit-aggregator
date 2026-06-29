@@ -99,6 +99,9 @@ export default function AdminDocumentTemplateDetailPage() {
   const [replacementMessage, setReplacementMessage] = useState("");
   const [replacementPreview, setReplacementPreview] = useState<any>(null);
   const [replacingDocx, setReplacingDocx] = useState(false);
+  const [editTemplateWorkingDoc, setEditTemplateWorkingDoc] = useState<any>(null);
+  const [editTemplateMessage, setEditTemplateMessage] = useState("");
+  const [editTemplateBusy, setEditTemplateBusy] = useState(false);
   const [templateText, setTemplateText] = useState("");
   const [textEditFind, setTextEditFind] = useState("");
   const [textEditReplace, setTextEditReplace] = useState("");
@@ -243,6 +246,68 @@ export default function AdminDocumentTemplateDetailPage() {
       setTextEditMessage(error?.message || "Text edit save failed.");
     } finally {
       setTextEditBusy(false);
+    }
+  }
+
+  async function launchEditTemplate() {
+    setEditTemplateBusy(true);
+    setEditTemplateMessage("Launching editable DOCX…");
+    try {
+      const response = await fetch("/api/documents/templates/edit-working-docx", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key, mode: "launch" }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || json?.ok === false) {
+        throw new Error(json?.error || "Could not launch template editor.");
+      }
+
+      setEditTemplateWorkingDoc(json.workingDocument || null);
+      setEditTemplateMessage("Editable DOCX launched. Make edits in Word, save/close there, then click Save Edited Template here.");
+
+      const openUrl = json?.workingDocument?.msWordEditUrl || json?.workingDocument?.webUrl || "";
+      if (openUrl) {
+        window.open(openUrl, "_blank", "noopener,noreferrer");
+      }
+    } catch (error: any) {
+      setEditTemplateMessage(error?.message || "Could not launch template editor.");
+    } finally {
+      setEditTemplateBusy(false);
+    }
+  }
+
+  async function saveEditedTemplate() {
+    if (!editTemplateWorkingDoc?.driveItemId) {
+      setEditTemplateMessage("Click Edit Template first so there is a working DOCX to save back.");
+      return;
+    }
+
+    const confirmed = window.confirm("Save the edited Word document back as the new active template version?\n\nMake sure you saved your edits in Word first. This creates a new DocumentTemplateVersion, preserves prior versions, and makes the edited DOCX current.");
+    if (!confirmed) {
+      setEditTemplateMessage("Save cancelled. No database records changed.");
+      return;
+    }
+
+    setEditTemplateBusy(true);
+    setEditTemplateMessage("Saving edited DOCX back to the template repository…");
+    try {
+      const response = await fetch("/api/documents/templates/edit-working-docx", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key, mode: "save", driveItemId: editTemplateWorkingDoc.driveItemId }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || json?.ok === false) {
+        throw new Error(json?.error || "Could not save edited template.");
+      }
+
+      setEditTemplateMessage("Saved edited template as v" + (json?.version?.versionNumber || "next") + ". It is now the active/current DOCX.");
+      await loadTemplateDetail();
+    } catch (error: any) {
+      setEditTemplateMessage(error?.message || "Could not save edited template.");
+    } finally {
+      setEditTemplateBusy(false);
     }
   }
 
@@ -449,6 +514,34 @@ export default function AdminDocumentTemplateDetailPage() {
                 <button type="button" onClick={saveMetadata} disabled={saving} style={buttonStyle(saving)}>
                   {saving ? "Saving…" : "Save Template Settings"}
                 </button>
+                <div data-barsh-admin-document-template-edit-template-workflow="true" style={{ gridColumn: "1 / -1", marginTop: 10, border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 14, padding: 14, display: "grid", gap: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: 16 }}>Edit Template</h3>
+                      <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.45 }}>
+                        Open the current repository DOCX in Word, make edits, save in Word, then save the edited DOCX back as the new active template version. Prior versions are preserved.
+                      </p>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button data-barsh-admin-document-template-edit-template-button="true" type="button" onClick={() => void launchEditTemplate()} disabled={editTemplateBusy || !currentVersion?.hasStoredDocx} style={buttonStyle(editTemplateBusy || !currentVersion?.hasStoredDocx)}>
+                        {editTemplateBusy ? "Working…" : "Edit Template"}
+                      </button>
+                      <button data-barsh-admin-document-template-save-edited-template-button="true" type="button" onClick={() => void saveEditedTemplate()} disabled={editTemplateBusy || !editTemplateWorkingDoc?.driveItemId} style={buttonStyle(editTemplateBusy || !editTemplateWorkingDoc?.driveItemId)}>
+                        Save Edited Template
+                      </button>
+                    </div>
+                  </div>
+                  {editTemplateWorkingDoc?.webUrl ? (
+                    <div data-barsh-admin-document-template-edit-template-working-doc="true" style={{ border: "1px solid #bfdbfe", background: "#ffffff", color: "#1e3a8a", borderRadius: 12, padding: 10, fontWeight: 850 }}>
+                      Working DOCX: <a href={editTemplateWorkingDoc.webUrl} target="_blank" rel="noreferrer" style={{ color: "#1e3a8a", fontWeight: 950 }}>{editTemplateWorkingDoc.name || "Open in Word"}</a>
+                    </div>
+                  ) : null}
+                  {editTemplateMessage ? (
+                    <div data-barsh-admin-document-template-edit-template-message="true" style={{ color: editTemplateMessage.toLowerCase().includes("could not") || editTemplateMessage.toLowerCase().includes("failed") ? "#991b1b" : "#166534", fontWeight: 900 }}>
+                      {editTemplateMessage}
+                    </div>
+                  ) : null}
+                </div>
                 <div data-barsh-admin-document-template-text-editor="true" style={{ gridColumn: "1 / -1", marginTop: 10, border: "1px solid #bbf7d0", background: "#f0fdf4", borderRadius: 14, padding: 14, display: "grid", gap: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
                     <div>

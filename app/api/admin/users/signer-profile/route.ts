@@ -243,12 +243,22 @@ export async function PATCH(req: NextRequest) {
       existing.inactive === false &&
       (await activeBootstrapOwnerAdminCount()) <= 1;
 
-    if (
-      targetIsSoleBootstrapOwner &&
+    const existingTwoFactorEnforced =
+      existing.twoFactorDisabled === false &&
+      existing.twoFactorPendingSetup === false &&
+      Boolean(existing.twoFactorPhone);
+
+    const payloadTwoFactorEnforced =
       payload.twoFactorDisabled === false &&
       payload.twoFactorPendingSetup === false &&
-      Boolean(payload.twoFactorPhone)
-    ) {
+      Boolean(payload.twoFactorPhone);
+
+    const movingSoleBootstrapOwnerIntoEnforcedTwoFactor =
+      targetIsSoleBootstrapOwner &&
+      existingTwoFactorEnforced === false &&
+      payloadTwoFactorEnforced === true;
+
+    if (movingSoleBootstrapOwnerIntoEnforcedTwoFactor) {
       return NextResponse.json({
         ok: false,
         action: "admin-user-signer-profile-update",

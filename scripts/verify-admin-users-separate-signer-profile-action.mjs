@@ -16,6 +16,7 @@ must(page.includes('async function saveSignerProfilePanel()'), "missing saveSign
 must(!page.includes("body: JSON.stringify(buildAdminUsersPhase12SignerProfilePayload("), "popup save should not call undefined helper");
 must(page.includes('reason: "Signer profile updated from Admin Users signer-profile popup."'), "popup save missing direct signer-profile payload reason");
 must(page.includes("actorEmail: ownerAdminActorEmail"), "popup save missing actorEmail payload");
+must(page.includes("userId: signerProfileUser.id"), "popup save missing userId payload");
 must(page.includes('data-barsh-admin-users-signer-profile-modal="true"'), "missing signer profile modal");
 must(page.includes('data-barsh-admin-users-signer-profile-only-fields="true"'), "missing signer-only fields anchor");
 must(page.includes('data-barsh-admin-users-signer-profile-email="true"'), "missing signer profile email field");

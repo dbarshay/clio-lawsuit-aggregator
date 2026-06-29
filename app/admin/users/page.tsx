@@ -1181,6 +1181,7 @@ export default function AdminUsersPlanningPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           actorEmail: ownerAdminActorEmail,
+          userId: signerProfileUser.id,
           targetEmail: signerProfileUser.email,
           email: signerProfileEmail,
           phoneExtension: signerProfilePhoneExtension,

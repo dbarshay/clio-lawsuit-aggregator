@@ -370,6 +370,8 @@ export async function POST(req: NextRequest) {
     body?.graphDraftPayloadPreview?.context?.source
   );
   const settlementFinalizedPdfDelivery = sourceForReadiness === "settlement_finalized_pdf_delivery";
+  const directMatterFinalizedPdfDelivery = sourceForReadiness === "direct_matter_finalized_pdf_delivery";
+  const finalizedPdfDelivery = settlementFinalizedPdfDelivery || directMatterFinalizedPdfDelivery;
 
   const normalizeSettlementAttachment = (attachment: any) => {
     const clioDocumentId =
@@ -417,7 +419,7 @@ export async function POST(req: NextRequest) {
     };
   };
 
-  if (settlementFinalizedPdfDelivery) {
+  if (finalizedPdfDelivery) {
     const contextAttachment = {
       ...(body?.context || {}),
       ...(body?.selectedFinalizedDocument || {}),
@@ -452,7 +454,7 @@ export async function POST(req: NextRequest) {
 
   if (
     !preview?.validation?.readyForGraphDraftCreate &&
-    !(settlementFinalizedPdfDelivery && hasFinalizedSettlementPdfAttachment)
+    !(finalizedPdfDelivery && hasFinalizedSettlementPdfAttachment)
   ) {
     return NextResponse.json(
       {

@@ -2,6 +2,7 @@
 
 import { formatDateOnlyForDisplay } from "@/lib/dateOnlyDisplay";
 import { BARSH_MATTER_STATUS_OPTIONS } from "@/lib/matterStatusOptions";
+import { normalizeProviderName } from "@/lib/providerNameCase";
 
 const DIRECT_MATTER_SETTLEMENTS_ENABLED = false;
 
@@ -664,6 +665,28 @@ const activeGroupKey =
   const [matterClioDocumentsResult, setMatterClioDocumentsResult] = useState<any>(null);
   const [matterViewDocumentsPopupOpen, setMatterViewDocumentsPopupOpen] = useState(false);
   const [matterSelectedViewDocumentId, setMatterSelectedViewDocumentId] = useState("");
+  const [emailDeliveryPopupOpen, setEmailDeliveryPopupOpen] = useState(false);
+  const [emailDeliveryContext, setEmailDeliveryContext] = useState<any>(null);
+  const [emailDeliveryTo, setEmailDeliveryTo] = useState("");
+  const [emailDeliveryContactQuery, setEmailDeliveryContactQuery] = useState("");
+  const [emailDeliveryContactResults, setEmailDeliveryContactResults] = useState<any[]>([]);
+  const [emailDeliveryContactLoading, setEmailDeliveryContactLoading] = useState(false);
+  const [emailDeliverySending, setEmailDeliverySending] = useState(false);
+
+  // Predictable live search: update recipient results as the query changes (debounced).
+  useEffect(() => {
+    if (!emailDeliveryPopupOpen) return;
+    const q = emailDeliveryContactQuery.trim();
+    if (q.length < 2) {
+      setEmailDeliveryContactResults([]);
+      return;
+    }
+    const handle = setTimeout(() => {
+      void searchEmailDeliveryContacts();
+    }, 300);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emailDeliveryContactQuery, emailDeliveryPopupOpen]);
   const [matterDocumentActivityPopupOpen, setMatterDocumentActivityPopupOpen] = useState(false);
   const [matterDocumentActivityLoading, setMatterDocumentActivityLoading] = useState(false);
   const [matterDocumentActivityError, setMatterDocumentActivityError] = useState("");
@@ -6034,6 +6057,204 @@ function openClaimAmountEditDialog() {
     );
   }
 
+  function openEmailDeliveryPopup(ctx: any) {
+    setEmailDeliveryContext(ctx);
+    setEmailDeliveryTo("");
+    setEmailDeliveryContactQuery("");
+    setEmailDeliveryContactResults([]);
+    setEmailDeliveryPopupOpen(true);
+    void prefillEmailDeliveryRecipient();
+  }
+
+  function closeEmailDeliveryPopup() {
+    setEmailDeliveryPopupOpen(false);
+    setEmailDeliveryContext(null);
+    setEmailDeliveryTo("");
+    setEmailDeliveryContactQuery("");
+    setEmailDeliveryContactResults([]);
+  }
+
+  // Prefill the recipient only when a "settled with" contact is saved for this matter.
+  async function prefillEmailDeliveryRecipient() {
+    const directEmail = textValue(matter?.settledWithContactEmail || matter?.settled_with_contact_email);
+    if (directEmail) {
+      setEmailDeliveryTo(directEmail);
+      return;
+    }
+    const name = textValue(matter?.settledWith || matter?.settled_with || matter?.settledWithContactName);
+    if (!name) return;
+    try {
+      const res = await fetch(`/api/settlements/contacts?q=${encodeURIComponent(name)}`);
+      const json = await res.json().catch(() => null);
+      const contacts = Array.isArray(json?.contacts) ? json.contacts : [];
+      const match = contacts.find((c: any) => textValue(c?.email)) || null;
+      if (match) setEmailDeliveryTo(textValue(match.email));
+    } catch {
+      // Prefill is best-effort; leave the field blank on lookup failure.
+    }
+  }
+
+  async function searchEmailDeliveryContacts() {
+    const q = textValue(emailDeliveryContactQuery);
+    if (q.length < 2) {
+      alert("Enter at least 2 characters to search contacts.");
+      return;
+    }
+    setEmailDeliveryContactLoading(true);
+    try {
+      const [settledRes, adversaryRes] = await Promise.all([
+        fetch(`/api/settlements/contacts?q=${encodeURIComponent(q)}`).then((r) => r.json()).catch(() => null),
+        fetch(`/api/reference-data/contact-search?q=${encodeURIComponent(q)}&type=adversary_attorney`).then((r) => r.json()).catch(() => null),
+      ]);
+      const settled = (Array.isArray(settledRes?.contacts) ? settledRes.contacts : []).map((c: any) => ({
+        id: textValue(c?.id),
+        name: textValue(c?.name),
+        email: textValue(c?.email),
+        company: textValue(c?.company),
+        source: "Settled-with contact",
+      }));
+      const adversary = (Array.isArray(adversaryRes?.contacts) ? adversaryRes.contacts : []).map((c: any) => ({
+        id: textValue(c?.id),
+        name: textValue(c?.name),
+        email: textValue(c?.email),
+        company: textValue(c?.company || c?.firm),
+        source: "Adversary attorney",
+      }));
+      const merged = [...settled, ...adversary].filter((c) => c.name || c.email);
+      merged.sort((a, b) => (a.email ? 0 : 1) - (b.email ? 0 : 1));
+      setEmailDeliveryContactResults(merged);
+    } catch (err: any) {
+      alert(err?.message || "Could not search contacts.");
+      setEmailDeliveryContactResults([]);
+    } finally {
+      setEmailDeliveryContactLoading(false);
+    }
+  }
+
+  function selectEmailDeliveryContact(contact: any) {
+    const email = textValue(contact?.email);
+    if (!email) {
+      alert(`${textValue(contact?.name) || "This contact"} has no email address on file.`);
+      return;
+    }
+    setEmailDeliveryTo(email);
+  }
+
+  async function submitEmailDeliveryDraft() {
+    const ctx = emailDeliveryContext;
+    if (!ctx?.clioDocumentId) {
+      alert("No finalized document is available to email yet.");
+      return;
+    }
+    const to = textValue(emailDeliveryTo);
+    setEmailDeliverySending(true);
+    try {
+      const res = await fetch("/api/graph/create-draft?confirm=create-graph-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: ctx.subject,
+          bodyText: "Please see the attached document.",
+          source: "direct_matter_finalized_pdf_delivery",
+          ...(to ? { to: [{ email: to }] } : {}),
+          context: {
+            source: "direct_matter_finalized_pdf_delivery",
+            matterId: ctx.masterMatterId,
+            clioMatterId: ctx.masterMatterId,
+            matterDisplayNumber: ctx.displayNumber,
+            clioDisplayNumber: ctx.displayNumber,
+            masterLawsuitId: ctx.masterLawsuitId,
+          },
+          attachments: [
+            {
+              name: ctx.name || "Finalized Document.pdf",
+              contentType: "application/pdf",
+              clioDocumentId: ctx.clioDocumentId,
+              clioMatterId: ctx.masterMatterId,
+              clioDisplayNumber: ctx.displayNumber,
+              requiredForFinalGraphDraft: true,
+              source: "direct_matter_finalized_pdf_delivery",
+            },
+          ],
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.createsOutlookDraft) {
+        alert(json?.error || "Could not create the Outlook draft with the attached document.");
+        return;
+      }
+      const webLink = textValue(json?.draft?.webLink);
+      closeEmailDeliveryPopup();
+      if (webLink) {
+        window.open(webLink, "_blank", "noopener,noreferrer");
+      } else {
+        alert("Outlook draft created with the finalized PDF attached. Open Outlook to review and send.");
+      }
+    } catch (err: any) {
+      alert(err?.message || "Could not create the Outlook draft.");
+    } finally {
+      setEmailDeliverySending(false);
+    }
+  }
+
+  function renderMatterEmailDeliveryPopup() {
+    if (!emailDeliveryPopupOpen) return null;
+    const ctx = emailDeliveryContext || {};
+    return (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Email Finalized Document"
+        onClick={closeEmailDeliveryPopup}
+        style={{ position: "fixed", inset: 0, zIndex: 10001, background: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+      >
+        <div onClick={(event) => event.stopPropagation()} style={{ width: "min(620px, 96vw)", maxHeight: "88vh", overflow: "hidden", border: "1px solid #1e3a8a", borderRadius: 18, background: "#ffffff", boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)", display: "flex", flexDirection: "column" }}>
+          <div style={{ padding: "16px 20px", background: "#1e3a8a", color: "#ffffff", textAlign: "center" }}>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 950 }}>Email Finalized Document</h2>
+          </div>
+          <div style={{ padding: 20, display: "grid", gap: 14, overflowY: "auto" }}>
+            <div style={{ color: "#475569", fontSize: 12, fontWeight: 700 }}>Subject: {textValue(ctx.subject)}</div>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={{ color: "#334155", fontSize: 13, fontWeight: 900 }}>To</span>
+              <input
+                type="email"
+                value={emailDeliveryTo}
+                onChange={(event) => setEmailDeliveryTo(event.target.value)}
+                placeholder="recipient@example.com"
+                style={{ height: 40, border: "1px solid #cbd5e1", borderRadius: 10, padding: "0 12px", fontSize: 14 }}
+              />
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                type="text"
+                value={emailDeliveryContactQuery}
+                onChange={(event) => setEmailDeliveryContactQuery(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void searchEmailDeliveryContacts(); } }}
+                placeholder="Search settled-with contacts and adversary attorneys"
+                style={{ flex: 1, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, padding: "0 12px", fontSize: 13 }}
+              />
+              <button type="button" onClick={() => void searchEmailDeliveryContacts()} disabled={emailDeliveryContactLoading} style={{ minWidth: 90, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: emailDeliveryContactLoading ? "not-allowed" : "pointer" }}>{emailDeliveryContactLoading ? "..." : "Search"}</button>
+            </div>
+            {emailDeliveryContactResults.length > 0 && (
+              <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, maxHeight: 220, overflowY: "auto" }}>
+                {emailDeliveryContactResults.map((contact: any, index: number) => (
+                  <button key={`${contact.source}-${contact.id || index}`} type="button" onClick={() => selectEmailDeliveryContact(contact)} style={{ display: "block", width: "100%", textAlign: "left", border: 0, borderBottom: "1px solid #f1f5f9", background: "#ffffff", padding: "8px 12px", cursor: "pointer" }}>
+                    <div style={{ fontWeight: 800, color: "#0f172a", fontSize: 13 }}>{contact.name || contact.email || "Contact"}</div>
+                    <div style={{ color: "#64748b", fontSize: 12 }}>{[contact.email || "no email on file", contact.company, contact.source].filter(Boolean).join(" · ")}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 20px 18px", borderTop: "1px solid #e2e8f0" }}>
+            <button type="button" onClick={closeEmailDeliveryPopup} style={{ minWidth: 90, height: 40, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#334155", fontWeight: 900, cursor: "pointer" }}>Cancel</button>
+            <button type="button" onClick={() => void submitEmailDeliveryDraft()} disabled={emailDeliverySending} style={{ minWidth: 150, height: 40, border: "1px solid #1e3a8a", borderRadius: 10, background: emailDeliverySending ? "#dbeafe" : "#1e3a8a", color: "#ffffff", fontWeight: 950, cursor: emailDeliverySending ? "not-allowed" : "pointer" }}>{emailDeliverySending ? "Creating..." : "Create Outlook Draft"}</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   function renderMatterDocumentGenerationPopup() {
     if (!matterDocumentGenerationPopupOpen) return null;
 
@@ -6243,6 +6464,21 @@ function openClaimAmountEditDialog() {
       firstDocumentDeliveryUrl(finalizeUploadResult) ||
       buildFinalizedClioDocumentOpenUrl(finalizedClioDocument);
 
+    const finalizedMasterMatterId =
+      finalizeUploadResult?.folderResolution?.targetPlan?.masterMatterId ||
+      finalizeUploadResult?.clioUploadTarget?.folderResolution?.targetPlan?.masterMatterId ||
+      null;
+    const finalizedDocumentDescription = textValue(selectedTemplate?.label) || "Finalized Document";
+    const finalizedEmailSubject = (() => {
+      const provider = normalizeProviderName(matter?.providerName || matter?.provider_name || matter?.provider);
+      const patient = textValue(matter?.patient?.name || matter?.patient);
+      const insurer = textValue(matter?.insurerName || matter?.insurer_name || matter?.insurer);
+      const fileNumber = directMatterDisplayNumberForDocumentActivity();
+      return `${provider} a/a/o ${patient} v. ${insurer}-- ${finalizedDocumentDescription}-- ${fileNumber}`
+        .replace(/\s+/g, " ")
+        .trim();
+    })();
+
     const openFinalizedDocumentForDelivery = () => {
       if (!finalizedDocumentDeliveryUrl) {
         alert("No finalized document link is available yet.");
@@ -6271,31 +6507,91 @@ function openClaimAmountEditDialog() {
         alert("No finalized document link is available yet.");
         return;
       }
-      const printWindow = window.open(finalizedDocumentDeliveryUrl, "_blank", "noopener,noreferrer");
-      if (printWindow) {
-        setTimeout(() => {
-          try {
-            printWindow.focus();
-            printWindow.print();
-          } catch {
-            // Browser may block cross-origin print. Opening the finalized document is still useful.
-          }
-        }, 600);
-      }
+      // Load the finalized PDF in a hidden same-origin iframe and invoke the
+      // system print dialog directly, falling back to a print-focused tab.
+      const existing = document.getElementById("barsh-finalized-print-frame");
+      if (existing) existing.remove();
+      const iframe = document.createElement("iframe");
+      iframe.id = "barsh-finalized-print-frame";
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "0";
+      iframe.src = finalizedDocumentDeliveryUrl;
+      iframe.onload = () => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch {
+          window.open(finalizedDocumentDeliveryUrl, "_blank", "noopener,noreferrer");
+        }
+      };
+      document.body.appendChild(iframe);
     };
 
     const emailFinalizedDocumentForDelivery = () => {
-      const subject = encodeURIComponent(`${selectedTemplate?.label || "Finalized Document"} - ${directMatterDisplayNumberForDocumentActivity() || ""}`.trim());
-      const body = encodeURIComponent(
-        finalizedDocumentDeliveryUrl
-          ? `Finalized document: ${finalizedDocumentDeliveryUrl}`
-          : "The finalized document has been prepared in Barsh Matters."
-      );
-      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+      if (!finalizedClioDocument?.id) {
+        alert("No finalized document is available to email yet.");
+        return;
+      }
+      openEmailDeliveryPopup({
+        subject: finalizedEmailSubject,
+        clioDocumentId: finalizedClioDocument.id,
+        name: finalizedClioDocument.name,
+        masterMatterId: finalizedMasterMatterId,
+        displayNumber: directMatterDisplayNumberForDocumentActivity(),
+        masterLawsuitId: usableMasterLawsuitIdForDocuments(),
+      });
     };
 
-    const sendFinalizedDocumentToPrintQueueForDelivery = () => {
-      alert("Send to Print Queue is not wired for this finalized document yet.");
+    const sendFinalizedDocumentToPrintQueueForDelivery = async () => {
+      if (!finalizedClioDocument?.id) {
+        alert("No finalized document is available to queue yet.");
+        return;
+      }
+      const masterLawsuitId = usableMasterLawsuitIdForDocuments();
+      if (!masterLawsuitId) {
+        alert("No master lawsuit ID is available to queue this document.");
+        return;
+      }
+      const displayNumber = directMatterDisplayNumberForDocumentActivity();
+      try {
+        const res = await fetch("/api/documents/print-queue", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            masterLawsuitId,
+            confirmAdd: true,
+            directMatterCandidates: [
+              {
+                clioDocumentId: finalizedClioDocument.id,
+                clioMatterId: finalizedMasterMatterId,
+                masterMatterId: finalizedMasterMatterId,
+                masterDisplayNumber: displayNumber,
+                directMatterDisplayNumber: displayNumber,
+                filename: finalizedClioDocument.name,
+                clioDocumentName: finalizedClioDocument.name,
+                label: finalizedDocumentDescription,
+                key: textValue(matterSelectedDocumentTemplateKey) || "finalized-document",
+              },
+            ],
+          }),
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.ok) {
+          alert(json?.error || "Could not add the document to the print queue.");
+          return;
+        }
+        alert(
+          json.createdCount > 0
+            ? "Added the finalized document to the print queue."
+            : "This finalized document is already in the print queue."
+        );
+      } catch (err: any) {
+        alert(err?.message || "Could not add the document to the print queue.");
+      }
     };
 
     const selectBlankLetterhead = () => {
@@ -6805,21 +7101,6 @@ function openClaimAmountEditDialog() {
                   >
                     Generate Another Document
                   </button>
-                  <button
-                    type="button"
-                    onClick={closeMatterDocumentGeneration}
-                    style={{
-                      border: "1px solid #cbd5e1",
-                      background: "#ffffff",
-                      color: "#334155",
-                      borderRadius: 12,
-                      padding: "10px 14px",
-                      fontWeight: 900,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Close
-                  </button>
                 </div>
               </section>
             )}
@@ -6876,7 +7157,7 @@ function openClaimAmountEditDialog() {
                 cursor: documentPreviewLoading || finalizeUploadLoading ? "not-allowed" : "pointer",
               }}
             >
-              Cancel
+              {matterDocumentWorkflowStage === "delivery" ? "Close" : "Cancel"}
             </button>
           </div>
         </div>
@@ -8924,7 +9205,7 @@ function openClaimAmountEditDialog() {
                     </button>
                   </div>
                   <div className="barsh-direct-summary-value">
-                    {providerValue(matter) || "—"}
+                    {normalizeProviderName(providerValue(matter)) || "—"}
                   </div>
                 </a>
 
@@ -10580,6 +10861,7 @@ function openClaimAmountEditDialog() {
       )}
 
       {renderMatterViewDocumentsPopup()}
+      {renderMatterEmailDeliveryPopup()}
       {renderMatterDocumentActivityPopup()}
       {renderMatterDocumentGenerationPopup()}
       

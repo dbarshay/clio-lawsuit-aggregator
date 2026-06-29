@@ -7884,7 +7884,7 @@ function masterDocumentPreviewText(value: unknown): string {
                   "Preview PDF",
                   () => launchMasterStep2PdfPreview(displayedSelectedTemplate),
                   !displayedSelectedTemplate,
-                  !displayedSelectedTemplate ? "Select a document first." : "PDF preview will be enabled after PDF generation/conversion is wired."
+                  !displayedSelectedTemplate ? "Select a document first." : "Open a temporary PDF preview of the selected document.  No files are finalized, uploaded, emailed, or queued by preview."
                 )}
                 {actionButton(
                   "Edit Document",

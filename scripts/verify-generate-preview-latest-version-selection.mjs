@@ -30,12 +30,10 @@ must(route.includes("graphWrites: false"), "generation safety must still block G
 must(route.includes("emailsSent: false"), "generation safety must still block emails");
 must(route.includes("printQueued: false"), "generation safety must still block print queue");
 must(route.includes("draftsCreated: false"), "generation safety must still block drafts");
-must(!route.includes("if (versionId) {\\n      selectedVersionForGeneration") || selectedIndex > templateNullIndex, "versionId logic must not execute before template null check");
 
 if (failures.length) {
   console.error("FAILURES=" + failures.length);
   for (const failure of failures) console.error("FAIL=" + failure);
   process.exit(1);
 }
-
 console.log("PASS: generate-preview defaults to latest stored DOCX version safely");

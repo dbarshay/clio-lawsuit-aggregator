@@ -151,6 +151,20 @@ function docxTextPartName(name: string) {
   );
 }
 
+function signerReplacementValueForContext(token: string, value: string, fullText: string, tokenStart: number) {
+  if (token !== "{{signer.signatureName}}") return value;
+
+  const beforeToken = fullText.slice(0, tokenStart).replace(/\s+$/g, "");
+  const closingImmediatelyBeforeSignature =
+    beforeToken.endsWith("Very truly yours,") ||
+    beforeToken.endsWith("Very truly yours:");
+
+  if (!closingImmediatelyBeforeSignature) return value;
+  if (/^\s*\r?\n/.test(value)) return value;
+
+  return "\n" + value;
+}
+
 function replaceTokenAcrossTextNodes(xml: string, token: string, value: string) {
   let nextXml = xml;
   let count = 0;
@@ -202,12 +216,14 @@ function replaceTokenAcrossTextNodes(xml: string, token: string, value: string) 
 
     if (firstNodeIndex < 0 || lastNodeIndex < 0) break;
 
+    const replacementValue = signerReplacementValueForContext(token, value, fullText, tokenStart);
+
     const changed = nodes.map((node, index) => {
       if (index < firstNodeIndex || index > lastNodeIndex) return node.text;
       if (firstNodeIndex === lastNodeIndex) {
-        return node.text.slice(0, firstOffset) + value + node.text.slice(lastOffset);
+        return node.text.slice(0, firstOffset) + replacementValue + node.text.slice(lastOffset);
       }
-      if (index === firstNodeIndex) return node.text.slice(0, firstOffset) + value;
+      if (index === firstNodeIndex) return node.text.slice(0, firstOffset) + replacementValue;
       if (index === lastNodeIndex) return node.text.slice(lastOffset);
       return "";
     });

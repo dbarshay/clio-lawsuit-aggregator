@@ -6,15 +6,12 @@ const must = (condition, message) => { if (!condition) failures.push(message); }
 
 must(route.includes("function replaceTokenInsideTextScope"), "missing scoped text replacement helper");
 must(route.includes("function replaceTokenAcrossTextNodes"), "missing replacement entrypoint");
-must(route.includes('new RegExp("<w:t([^>]*)>([\\\\s\\\\S]*?)</w:t>", "g")'), "text node regex must use correct RegExp constructor escaping");
-must(route.includes('new RegExp("<w:p[\\\\s\\\\S]*?</w:p>", "g")'), "paragraph regex must use correct RegExp constructor escaping");
-must(!route.includes('[\\\\\\\\s\\\\\\\\S]'), "route must not over-escape RegExp constructor character classes");
-must(!route.includes("/<w:t([^>]*)>"), "route must not use fragile text-node regex literal");
-must(!route.includes("/<w:p[\\\\s\\\\S]"), "route must not use fragile paragraph regex literal");
+must(route.includes('new RegExp("(<w:t\\\\b[^>]*>)([\\\\s\\\\S]*?)(</w:t>)", "g")'), "text-node regex must preserve exact open/close tags");
+must(route.includes('new RegExp("<w:p\\\\b[\\\\s\\\\S]*?</w:p>", "g")'), "paragraph regex must scope to Word paragraphs");
+must(route.includes("node.open + xmlEscape(changed[index]) + node.close"), "replacement must preserve exact w:t open/close tags");
 must(route.includes("xml.replace(paragraphRegex"), "replacement must replace paragraph-by-paragraph");
-must(route.includes("Do not build one full text stream for the whole document part"), "route must document paragraph-boundary safety");
-must(route.includes("return { xml: xmlWithParagraphReplacements, count }"), "paragraph replacements must return before whole-part fallback");
-must(route.includes("xmlEscape(changed[index])"), "replacement must escape text only");
+must(route.includes("paragraph boundaries and blank"), "route must document paragraph-boundary safety");
+must(route.includes("if (changed) return { xml: xmlWithParagraphReplacements, count }"), "paragraph replacements must return before fallback");
 must(!route.includes("xmlTextWithBreaks"), "replacement must not inject raw break XML");
 must(!route.includes("signerReplacementValueForContext"), "replacement must not force signer layout");
 must(!route.includes("normalizeSignatureBreaksBeforeGeneration"), "replacement must not normalize template XML before replacement");
@@ -31,4 +28,4 @@ if (failures.length) {
   for (const failure of failures) console.error("FAIL=" + failure);
   process.exit(1);
 }
-console.log("PASS: template generation preserves Word paragraphs during token replacement");
+console.log("PASS: template generation preserves Word paragraphs and exact text tags during token replacement");

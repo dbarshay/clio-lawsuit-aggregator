@@ -145,32 +145,26 @@ function docxTextPartName(name: string) {
 }
 
 function replaceTokenInsideTextScope(xml: string, token: string, value: string) {
-  const textNodeRegex = new RegExp("<w:t([^>]*)>([\\s\\S]*?)</w:t>", "g");
-  const nodes: Array<{ start: number; end: number; attrs: string; textStart: number; textEnd: number; text: string }> = [];
-  let match: RegExpExecArray | null;
-
-  while ((match = textNodeRegex.exec(xml)) !== null) {
-    const full = match[0];
-    const attrs = match[1] || "";
-    const encodedText = match[2] || "";
-    const textStart = (match.index || 0) + full.indexOf(encodedText);
-    const textEnd = textStart + encodedText.length;
-    nodes.push({
-      start: match.index || 0,
-      end: (match.index || 0) + full.length,
-      attrs,
-      textStart,
-      textEnd,
-      text: xmlUnescape(encodedText),
-    });
-  }
-
-  if (!nodes.length) return { xml, count: 0 };
-
   let nextXml = xml;
   let count = 0;
 
   while (true) {
+    const textNodeRegex = new RegExp("(<w:t\\b[^>]*>)([\\s\\S]*?)(</w:t>)", "g");
+    const nodes: Array<{ start: number; end: number; open: string; close: string; text: string }> = [];
+    let match: RegExpExecArray | null;
+
+    while ((match = textNodeRegex.exec(nextXml)) !== null) {
+      nodes.push({
+        start: match.index || 0,
+        end: (match.index || 0) + match[0].length,
+        open: match[1],
+        close: match[3],
+        text: xmlUnescape(match[2] || ""),
+      });
+    }
+
+    if (!nodes.length) break;
+
     const fullText = nodes.map((node) => node.text).join("");
     const tokenStart = fullText.indexOf(token);
     if (tokenStart < 0) break;
@@ -183,9 +177,8 @@ function replaceTokenInsideTextScope(xml: string, token: string, value: string) 
     let lastOffset = 0;
 
     for (let index = 0; index < nodes.length; index += 1) {
-      const node = nodes[index];
       const nodeStart = cursor;
-      const nodeEnd = cursor + node.text.length;
+      const nodeEnd = cursor + nodes[index].text.length;
 
       if (firstNodeIndex < 0 && tokenStart >= nodeStart && tokenStart <= nodeEnd) {
         firstNodeIndex = index;
@@ -218,27 +211,23 @@ function replaceTokenInsideTextScope(xml: string, token: string, value: string) 
 
     nodes.forEach((node, index) => {
       rebuilt += nextXml.slice(priorEnd, node.start);
-      rebuilt += `<w:t${node.attrs}>${xmlEscape(changed[index])}</w:t>`;
+      rebuilt += node.open + xmlEscape(changed[index]) + node.close;
       priorEnd = node.end;
     });
 
     rebuilt += nextXml.slice(priorEnd);
     nextXml = rebuilt;
     count += 1;
-
-    // Re-run on the rebuilt scope because XML offsets changed.
-    const again = replaceTokenInsideTextScope(nextXml, token, value);
-    return { xml: again.xml, count: count + again.count };
   }
 
   return { xml: nextXml, count };
 }
 
 function replaceTokenAcrossTextNodes(xml: string, token: string, value: string) {
-  // Critical: operate inside each Word paragraph/run scope only.
-  // Do not build one full text stream for the whole document part, because blank paragraphs
-  // and paragraph boundaries have no text nodes and can be collapsed by cross-paragraph replacement.
-  const paragraphRegex = new RegExp("<w:p[\\s\\S]*?</w:p>", "g");
+  // Critical: operate inside each Word paragraph only. Do not build one full text
+  // stream for the whole document part because paragraph boundaries and blank
+  // paragraphs have no text nodes and can be collapsed by cross-paragraph replacement.
+  const paragraphRegex = new RegExp("<w:p\\b[\\s\\S]*?</w:p>", "g");
   let count = 0;
   let changed = false;
 
@@ -254,10 +243,9 @@ function replaceTokenAcrossTextNodes(xml: string, token: string, value: string) 
 
   if (changed) return { xml: xmlWithParagraphReplacements, count };
 
-  // Fallback for tokens in headers, footers, textboxes, or uncommon DOCX structures without paragraph wrappers.
-  // This fallback only runs when no paragraph replacement occurred.
-  const fallback = replaceTokenInsideTextScope(xml, token, value);
-  return fallback;
+  // Fallback for rare non-paragraph text scopes. This runs only when no paragraph
+  // replacement occurred in the part.
+  return replaceTokenInsideTextScope(xml, token, value);
 }
 
 async function replaceTokensInDocx(buffer: Buffer, tokenValues: Record<string, string>) {

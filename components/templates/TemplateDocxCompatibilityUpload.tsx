@@ -226,6 +226,7 @@ export default function TemplateDocxCompatibilityUpload() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showCreateTemplateModal, setShowCreateTemplateModal] = useState(false);
 
   const borderColor = useMemo(() => {
@@ -240,6 +241,7 @@ export default function TemplateDocxCompatibilityUpload() {
     if (file === undefined) return;
 
     setShowCreateTemplateModal(false);
+    setSelectedFile(file);
 
     setResult({
       fileName: file.name,
@@ -254,7 +256,7 @@ export default function TemplateDocxCompatibilityUpload() {
       const scanResult = await scanDocx(file);
       setResult(scanResult);
       if (scanResult.status === "compatible") {
-        setShowCreateTemplateModal(true);
+        window.setTimeout(() => setShowCreateTemplateModal(true), 0);
       }
     } catch (error) {
       setResult({
@@ -349,7 +351,7 @@ export default function TemplateDocxCompatibilityUpload() {
         </div>
       )}
 
-      {showCreateTemplateModal && result?.status === "compatible" && (
+      {showCreateTemplateModal && result?.status === "compatible" && selectedFile && (
         <div
           role="dialog"
           aria-modal="true"
@@ -411,7 +413,7 @@ export default function TemplateDocxCompatibilityUpload() {
               </button>
             </header>
             <div style={{ padding: "18px" }}>
-              <CreateTemplateMetadataShell />
+              <CreateTemplateMetadataShell file={selectedFile} tokens={result.tokens} partCount={result.partCount} onCancel={() => setShowCreateTemplateModal(false)} />
             </div>
           </div>
         </div>

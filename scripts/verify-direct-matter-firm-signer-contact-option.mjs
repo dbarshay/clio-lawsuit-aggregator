@@ -30,11 +30,10 @@ if (working.includes('const resolvedSignerEmail = signerEmail || "firm";')) {
   fail("working-docx signer fallback not recognized");
 }
 
-if (generator.includes("const isFirmSignerContactRequest =")) {
-  pass("generate-preview has Firm handling");
-} else {
-  pass("generate-preview Firm handling not applied in this parse repair");
-}
+has("generate-preview has Firm handling", generator, "const isFirmSignerContactRequest =");
+has("generate-preview has Firm pseudo signer id", generator, 'id: "firm"');
+has("generate-preview has Firm signature block name", generator, 'signatureBlockName: "Barsh Rizzo & Lopez PLLC"');
+has("generate-preview returns Firm pseudo signer", generator, 'return { signer, status: 200, error: "" };');
 
 console.log("RESULT: direct matter Firm signer/contact option verifier");
 if (failed) process.exit(1);

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 
 const page = fs.readFileSync("app/admin/users/page.tsx", "utf8");
+const api = fs.readFileSync("app/api/admin/users/planning/route.ts", "utf8");
 const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
 const failures = [];
 const must = (condition, message) => { if (!condition) failures.push(message); };
@@ -80,12 +81,65 @@ for (const removed of [
   "data-barsh-admin-users-audit-visibility",
 ]) must(!page.includes(removed), "removed panel still present: " + removed);
 
+for (const forbiddenOverride of [
+  "overridePreviewReady",
+  "overrideResult",
+  "overrideTargetEmail",
+  "overridePermissionKey",
+  "overrideAction",
+  "overrideReason",
+  "overrideActorEmail",
+  "setOverride",
+  "submitPermissionOverride",
+  "/api/admin/users/permission-override",
+]) must(!page.includes(forbiddenOverride), "Permission Override leftover must not remain in Users landing: " + forbiddenOverride);
+
+const summaryIndex = page.indexOf("data-barsh-admin-users-planning-summary");
+const auditTopIndex = page.indexOf("data-barsh-admin-users-audit-history-top-link");
+const createTopIndex = page.indexOf("data-barsh-admin-users-create-top-button");
+const tableIndex = page.indexOf("data-barsh-admin-users-table");
+must(summaryIndex >= 0 && auditTopIndex > summaryIndex && createTopIndex > auditTopIndex && createTopIndex < tableIndex, "Audit History and Create User buttons must be in the summary row before the table.");
+
+for (const rowActionStyleToken of [
+  "data-barsh-admin-users-edit-row-button",
+  "data-barsh-admin-users-signer-profile-row-button",
+  "data-barsh-admin-users-reset-password-row-button",
+  "data-barsh-admin-users-activate-2fa-row-button",
+  "data-barsh-admin-users-lock-row-button",
+  "data-barsh-admin-users-signout-row-button",
+]) {
+  const idx = page.indexOf(rowActionStyleToken + "=\"true\"");
+  const start = page.lastIndexOf("<button", idx);
+  const end = page.indexOf("</button>", idx);
+  const block = page.slice(start, end);
+  must(idx >= 0 && start >= 0 && end > start, "Row action button block not found: " + rowActionStyleToken);
+  must(block.includes("...primaryButtonStyle") && block.includes("color: \"#ffffff\""), "Row action button must use unified primary blue/white style: " + rowActionStyleToken);
+  must(!block.includes("secondaryButtonStyle"), "Row action button must not use secondary style: " + rowActionStyleToken);
+}
+
+for (const removedRoleButton of [
+  "data-barsh-admin-users-role-assign-row-button",
+  "data-barsh-admin-users-role-remove-row-button",
+  ">Assign</button>",
+  ">Remove</button>",
+]) must(!page.includes(removedRoleButton), "Role column assign/remove button must not remain: " + removedRoleButton);
+
+for (const forbidden of [
+  "graphFetchJson",
+  "sendMail(",
+  "legacyClioOperationalRouteBlocked",
+  "DocumentTemplate",
+]) must(!page.includes(forbidden), "forbidden workflow token present: " + forbidden);
+
 must(page.includes(">Edit</button><button data-barsh-admin-users-signer-profile-row-button"), "Edit and Signer Profile buttons should be separate adjacent actions");
 must(!page.includes(">Edit / Signer Profile</button>"), "combined Edit / Signer Profile button should not remain");
 must(!page.includes('data-barsh-admin-users-edit-phone-extension="true"'), "full Edit panel should not include signer extension");
 must(!page.includes('data-barsh-admin-users-edit-fax-number="true"'), "full Edit panel should not include signer fax");
 must(!page.includes('data-barsh-admin-users-edit-signature-block-name="true"'), "full Edit panel should not include signer signature name");
 must(!page.includes('data-barsh-admin-users-edit-signer-eligible="true"'), "full Edit panel should not include signer eligibility");
+
+must(api.includes("lastLoginAt: user.lastLoginAt"), "planning API must expose lastLoginAt");
+must(page.includes("credentials: \"same-origin\""), "guarded fetches must explicitly carry same-origin credentials");
 must(pkg.scripts?.["verify:admin-users-workflow-phase-b-table-actions"] === "node scripts/verify-admin-users-workflow-phase-b-table-actions.mjs", "package script missing for phase B verifier");
 
 if (failures.length) {

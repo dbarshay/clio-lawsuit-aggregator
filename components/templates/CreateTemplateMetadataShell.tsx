@@ -93,7 +93,7 @@ export default function CreateTemplateMetadataShell({ file, tokens, partCount, o
   const defaultDisplayName = useMemo(() => file.name.replace(/\.docx$/i, "").replace(/[-_]+/g, " ").trim(), [file.name]);
   const [displayName, setDisplayName] = useState(defaultDisplayName);
   const [templateKey, setTemplateKey] = useState(slugify(defaultDisplayName || file.name));
-  const [category, setCategory] = useState("direct_matter");
+  const [category, setCategory] = useState("general");
   const [defaultContactDisplayMode, setDefaultContactDisplayMode] =
     useState<TemplateContactDisplayDefaultPhase1H>("signer");
   const [defaultSignerMode, setDefaultSignerMode] = useState<DefaultSignerMode>("signed_in_user");
@@ -299,9 +299,9 @@ export default function CreateTemplateMetadataShell({ file, tokens, partCount, o
             onChange={(event) => setCategory(event.target.value)}
             style={inputStyle}
           >
-            <option value="direct_matter">Direct / Individual Matter</option>
-            <option value="lawsuit">Lawsuit</option>
-            <option value="settlement">Settlement</option>
+            <option value="correspondence">Correspondence</option>
+            <option value="pleadings">Pleadings</option>
+            <option value="discovery">Discovery</option>
             <option value="general">General</option>
           </select>
           <p style={helperStyle}>Used later for filtering and generation availability.</p>

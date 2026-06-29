@@ -13,10 +13,9 @@ function clean(value: unknown): string {
 function normalizeCategory(value: string): BarshDocumentTemplateCategory | "all" {
   const cleaned = clean(value);
   if (
-    cleaned === "settlement" ||
-    cleaned === "lawsuit" ||
-    cleaned === "direct_matter" ||
-    cleaned === "payment" ||
+    cleaned === "correspondence" ||
+    cleaned === "pleadings" ||
+    cleaned === "discovery" ||
     cleaned === "general" ||
     cleaned === "all"
   ) {

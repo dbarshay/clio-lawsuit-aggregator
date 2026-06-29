@@ -3,58 +3,87 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
+type EditState = {
+  label: string;
+  category: string;
+  defaultFilenameSuffix: string;
+  outputFormat: string;
+  description: string;
+  generationEndpoint: string;
+  defaultSignerMode: string;
+  defaultContactDisplayMode: string;
+};
+
 function display(value: unknown, fallback = "—"): string {
   const text = String(value ?? "").trim();
   return text || fallback;
 }
 
-function statusBadgeStyle(kind: "ok" | "warn" | "neutral" = "neutral"): React.CSSProperties {
-  const styles: Record<string, React.CSSProperties> = {
-    ok: { border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534" },
-    warn: { border: "1px solid #fed7aa", background: "#fff7ed", color: "#9a3412" },
-    neutral: { border: "1px solid #cbd5e1", background: "#f8fafc", color: "#334155" },
-  };
+function buttonStyle(disabled = false): React.CSSProperties {
   return {
-    ...styles[kind],
-    display: "inline-flex",
-    alignItems: "center",
-    borderRadius: 999,
-    padding: "4px 10px",
-    fontSize: 12,
+    border: "1px solid #1e3a8a",
+    borderRadius: "8px",
+    background: "#1e3a8a",
+    color: "#ffffff",
     fontWeight: 900,
-    whiteSpace: "nowrap",
+    padding: "9px 12px",
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.65 : 1,
+    textDecoration: "none",
+    display: "inline-block",
   };
 }
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  border: "1px solid #cbd5e1",
+  borderRadius: "10px",
+  padding: "10px 12px",
+  fontSize: "14px",
+  background: "#ffffff",
+  color: "#0f172a",
+};
+
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontWeight: 900,
+  color: "#0f172a",
+  marginBottom: 6,
+};
 
 function cardStyle(): React.CSSProperties {
   return {
     border: "1px solid #e2e8f0",
-    borderRadius: 18,
-    background: "#fff",
-    boxShadow: "0 16px 35px rgba(15, 23, 42, 0.06)",
+    borderRadius: 16,
+    background: "#ffffff",
+    boxShadow: "0 10px 25px rgba(15, 23, 42, 0.05)",
     padding: 18,
   };
 }
 
-function jsonBlock(value: unknown) {
-  return (
-    <pre
-      style={{
-        margin: 0,
-        whiteSpace: "pre-wrap",
-        overflowWrap: "anywhere",
-        fontSize: 12,
-        lineHeight: 1.45,
-        color: "#334155",
-        background: "#f8fafc",
-        border: "1px solid #e2e8f0",
-        borderRadius: 12,
-        padding: 12,
-      }}
-    >
-      {JSON.stringify(value || {}, null, 2)}
-    </pre>
-  );
+function statusFrom(template: any) {
+  const metadata = template?.metadata || {};
+  const versionStatus = String(template?.currentVersion?.status || "").trim().toLowerCase();
+  if (metadata.deleted === true || versionStatus === "deleted") return "Deleted";
+  if (metadata.archived === true || versionStatus === "archived") return "Archived";
+  if (template?.enabled === false) return "Inactive";
+  if (versionStatus === "production-ready" || metadata.productionTemplateReady === true) return "Production Ready";
+  if (versionStatus === "draft") return "Draft";
+  return "Inactive";
+}
+
+function initialEditState(template: any): EditState {
+  const metadata = template?.metadata || {};
+  return {
+    label: String(template?.label || ""),
+    category: String(template?.category || "general"),
+    defaultFilenameSuffix: String(template?.defaultFilenameSuffix || ""),
+    outputFormat: String(template?.outputFormat || "docx"),
+    description: String(template?.description || ""),
+    generationEndpoint: String(template?.generationEndpoint || ""),
+    defaultSignerMode: String(metadata.defaultSignerMode || "signed_in_user"),
+    defaultContactDisplayMode: String(metadata.defaultContactDisplayMode || "signer"),
+  };
 }
 
 export default function AdminDocumentTemplateDetailPage() {
@@ -62,152 +91,30 @@ export default function AdminDocumentTemplateDetailPage() {
   const key = useMemo(() => decodeURIComponent(String(params?.key || "")), [params?.key]);
 
   const [data, setData] = useState<any>(null);
+  const [edit, setEdit] = useState<EditState | null>(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
   const [error, setError] = useState("");
-  const [replacementFile, setReplacementFile] = useState<any>(null);
-  const [replacementError, setReplacementError] = useState("");
-  const [replacementPreview, setReplacementPreview] = useState<any>(null);
-  const [replacementConfirmResult, setReplacementConfirmResult] = useState<any>(null);
-  const [replacementLoading, setReplacementLoading] = useState(false);
-
-  function readReplacementFileAsBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error("Could not read the selected replacement DOCX file."));
-      reader.onload = () => {
-        const value = String(reader.result || "");
-        const marker = "base64,";
-        const idx = value.indexOf(marker);
-        resolve(idx >= 0 ? value.slice(idx + marker.length) : value);
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  async function handleReplacementFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    setReplacementError("");
-    setReplacementPreview(null);
-    setReplacementConfirmResult(null);
-
-    const file = event.target.files?.[0] || null;
-    if (!file) {
-      setReplacementFile(null);
-      return;
-    }
-
-    if (!file.name.toLowerCase().endsWith(".docx")) {
-      setReplacementFile(null);
-      setReplacementError("Use a .docx Word template file for replacement versioning.");
-      return;
-    }
-
-    try {
-      const contentBase64 = await readReplacementFileAsBase64(file);
-      setReplacementFile({
-        name: file.name,
-        size: file.size,
-        type: file.type || "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        lastModified: file.lastModified,
-        lastModifiedIso: new Date(file.lastModified).toISOString(),
-        storageKind: "db-docx-base64",
-        actualFileStored: true,
-        contentRead: true,
-        contentBase64,
-        contentBase64Length: contentBase64.length,
-        contentByteLength: file.size,
-      });
-    } catch (err: any) {
-      setReplacementFile(null);
-      setReplacementError(err?.message || "Could not read the selected replacement DOCX file.");
-    }
-  }
-
-  async function submitReplacementVersion(confirm: boolean) {
-    if (!replacementFile?.contentBase64) {
-      setReplacementError("Select a replacement .docx file first.");
-      return;
-    }
-
-    if (confirm && !replacementPreview?.ok) {
-      setReplacementError("Preview the replacement before confirming.");
-      return;
-    }
-
-    const action = confirm ? "confirm" : "preview";
-    if (confirm) {
-      const ok = window.confirm(
-        "This will create a new template version and make it the current version. Prior versions will be preserved. Continue?"
-      );
-      if (!ok) return;
-    }
-
-    setReplacementLoading(true);
-    setReplacementError("");
-    if (!confirm) {
-      setReplacementPreview(null);
-      setReplacementConfirmResult(null);
-    }
-
-    try {
-      const response = await fetch("/api/documents/templates/replace-version", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          templateKey: key,
-          confirm,
-          replacementLabel: replacementFile.name.replace(/\.docx$/i, ""),
-          note: confirm ? "Confirmed from template detail page." : "Preview from template detail page.",
-          file: replacementFile,
-        }),
-      });
-
-      const responseText = await response.text();
-      let json: any = null;
-      try {
-        json = responseText ? JSON.parse(responseText) : null;
-      } catch {
-        json = null;
-      }
-
-      if (!response.ok || !json?.ok) {
-        const bodyPreview = responseText ? responseText.slice(0, 300) : "";
-        throw new Error(
-          json?.error ||
-            `Template replacement ${action} failed. Status ${response.status}. Response: ${bodyPreview || "empty response"}`
-        );
-      }
-
-      if (confirm) {
-        setReplacementConfirmResult(json);
-        setReplacementPreview(null);
-        await loadTemplateDetail();
-      } else {
-        setReplacementPreview(json);
-      }
-    } catch (err: any) {
-      setReplacementError(err?.message || `Template replacement ${action} failed.`);
-    } finally {
-      setReplacementLoading(false);
-    }
-  }
 
   async function loadTemplateDetail() {
     if (!key) return;
     setLoading(true);
     setError("");
+
     try {
-      const response = await fetch(
-        `/api/documents/templates/detail?key=${encodeURIComponent(key)}&category=all`,
-        { cache: "no-store" }
-      );
+      const response = await fetch(`/api/documents/templates/detail?key=${encodeURIComponent(key)}&category=all`, { cache: "no-store" });
       const json = await response.json().catch(() => null);
       if (!response.ok || !json?.ok) {
         throw new Error(json?.error || "Template detail lookup failed.");
       }
       setData(json);
-    } catch (err: any) {
-      setError(err?.message || "Template detail lookup failed.");
+      setEdit(initialEditState(json.template || {}));
+      setStatusMessage("");
+    } catch (caught: any) {
+      setError(caught?.message || "Template detail lookup failed.");
       setData(null);
+      setEdit(null);
     } finally {
       setLoading(false);
     }
@@ -218,10 +125,42 @@ export default function AdminDocumentTemplateDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
+  function updateEdit(field: keyof EditState, value: string) {
+    setEdit((current) => current ? { ...current, [field]: value } : current);
+  }
+
+  async function saveMetadata() {
+    if (!edit) return;
+
+    setSaving(true);
+    setError("");
+    setStatusMessage("Saving template metadata…");
+
+    try {
+      const response = await fetch("/api/documents/templates/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ key, ...edit }),
+      });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json?.ok) {
+        throw new Error(json?.error || "Template update failed.");
+      }
+      setStatusMessage("Template metadata saved.");
+      await loadTemplateDetail();
+    } catch (caught: any) {
+      setError(caught?.message || "Template update failed.");
+      setStatusMessage("Template metadata save failed.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const template = data?.template || {};
-  const versions = Array.isArray(template?.versions) ? template.versions : [];
-  const mergeFields = Array.isArray(template?.mergeFields) ? template.mergeFields : [];
   const currentVersion = template?.currentVersion || null;
+  const mergeFields = Array.isArray(template?.mergeFields) ? template.mergeFields : [];
+  const versions = Array.isArray(template?.versions) ? template.versions : [];
 
   return (
     <main
@@ -230,280 +169,191 @@ export default function AdminDocumentTemplateDetailPage() {
         minHeight: "100vh",
         background: "#f8fafc",
         color: "#0f172a",
-        padding: "28px",
+        padding: "32px 40px",
+        width: "100%",
+        maxWidth: "none",
+        margin: 0,
         fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       }}
     >
-      <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gap: 18 }}>
+      <div style={{ display: "grid", gap: 18, width: "100%" }}>
         <section style={{ ...cardStyle(), display: "grid", gap: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
             <div>
-              <a href="/admin/document-templates" style={{ color: "#4f46e5", fontWeight: 900, textDecoration: "none" }}>
-                ← Back to Document Templates
+              <a href="/admin/document-templates/view" style={{ color: "#1e3a8a", fontWeight: 900, textDecoration: "none" }}>
+                ← Back to View Templates
               </a>
-              <h1 style={{ margin: "12px 0 4px", fontSize: 32, lineHeight: 1.1 }}>
-                {display(template?.label, "Document Template Detail")}
+              <h1 style={{ margin: "12px 0 4px", fontSize: 34, lineHeight: 1.1 }}>
+                {display(template?.label, "Edit Template")}
               </h1>
               <div style={{ color: "#64748b", fontWeight: 800 }}>{display(template?.key || key)}</div>
             </div>
+
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-              <span style={statusBadgeStyle(template?.repositorySource === "barsh-matters-db" ? "ok" : "warn")}>
-                {display(template?.repositorySource, "Unknown source")}
-              </span>
-              <span style={statusBadgeStyle(template?.enabled === false ? "warn" : "ok")}>
-                {template?.enabled === false ? "Disabled" : "Enabled"}
-              </span>
-              <button
-                type="button"
-                onClick={loadTemplateDetail}
-                style={{
-                  border: "1px solid #cbd5e1",
-                  background: "#fff",
-                  color: "#334155",
-                  borderRadius: 999,
-                  padding: "8px 12px",
-                  fontWeight: 900,
-                  cursor: "pointer",
-                }}
-              >
+              <span style={buttonStyle(false)}>{statusFrom(template)}</span>
+              {currentVersion?.hasStoredDocx && currentVersion?.storedDocxUrl ? (
+                <a href={currentVersion.storedDocxUrl} style={buttonStyle(false)}>
+                  Download DOCX
+                </a>
+              ) : null}
+              <button type="button" onClick={loadTemplateDetail} style={buttonStyle(false)}>
                 Refresh
               </button>
             </div>
           </div>
 
-          <p style={{ margin: 0, color: "#475569", lineHeight: 1.55 }}>
-            Read-only template detail view for repository architecture, current version, prior versions,
-            stored DOCX status, and merge-field inventory.  Replacement/edit workflows should create new
-            versions rather than mutating historical versions.
-          </p>
-
-          {loading && <div style={{ color: "#64748b", fontWeight: 800 }}>Loading template detail...</div>}
+          {loading && <div style={{ color: "#64748b", fontWeight: 800 }}>Loading template detail…</div>}
+          {statusMessage && (
+            <div style={{ border: "1px solid #bfdbfe", background: "#eff6ff", color: "#1e3a8a", borderRadius: 12, padding: 12, fontWeight: 900 }}>
+              {statusMessage}
+            </div>
+          )}
           {error && (
-            <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 14, padding: 12, fontWeight: 800 }}>
+            <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 12, padding: 12, fontWeight: 900 }}>
               {error}
             </div>
           )}
         </section>
 
-        {data?.ok && (
+        {data?.ok && edit && (
           <>
-            <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
+            <section style={cardStyle()}>
+              <h2 style={{ margin: "0 0 14px", fontSize: 24 }}>Template Settings</h2>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
+                <div>
+                  <label style={labelStyle}>Display name</label>
+                  <input value={edit.label} onChange={(event) => updateEdit("label", event.target.value)} style={inputStyle} />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Category</label>
+                  <select value={edit.category} onChange={(event) => updateEdit("category", event.target.value)} style={inputStyle}>
+                    <option value="correspondence">Correspondence</option>
+                    <option value="pleadings">Pleadings</option>
+                    <option value="discovery">Discovery</option>
+                    <option value="general">General</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Default filename suffix</label>
+                  <input value={edit.defaultFilenameSuffix} onChange={(event) => updateEdit("defaultFilenameSuffix", event.target.value)} style={inputStyle} />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Output format</label>
+                  <input value={edit.outputFormat} onChange={(event) => updateEdit("outputFormat", event.target.value)} style={inputStyle} />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Default signer</label>
+                  <select value={edit.defaultSignerMode} onChange={(event) => updateEdit("defaultSignerMode", event.target.value)} style={inputStyle}>
+                    <option value="signed_in_user">Signed-in generating user</option>
+                    <option value="select_at_generation">Select during generation</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Default contact display</label>
+                  <select value={edit.defaultContactDisplayMode} onChange={(event) => updateEdit("defaultContactDisplayMode", event.target.value)} style={inputStyle}>
+                    <option value="signer">Signer contact</option>
+                    <option value="firm">Firm contact</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Generation endpoint</label>
+                  <input value={edit.generationEndpoint} onChange={(event) => updateEdit("generationEndpoint", event.target.value)} style={inputStyle} />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Description</label>
+                  <input value={edit.description} onChange={(event) => updateEdit("description", event.target.value)} style={inputStyle} />
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+                <button type="button" onClick={saveMetadata} disabled={saving} style={buttonStyle(saving)}>
+                  {saving ? "Saving…" : "Save Template Settings"}
+                </button>
+              </div>
+            </section>
+
+            <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
               {[
-                ["Category", template?.category],
-                ["Output Format", template?.outputFormat],
-                ["Default Filename Suffix", template?.defaultFilenameSuffix],
-                ["Generation Endpoint", template?.generationEndpoint],
-                ["Source of Truth", template?.sourceOfTruth],
-                ["Repository Status", template?.repositoryStatus],
-                ["Current Version", currentVersion ? `v${currentVersion.versionNumber}` : "No DB version"],
+                ["Status", statusFrom(template)],
+                ["Version", currentVersion ? `v${currentVersion.versionNumber}` : "No DB version"],
                 ["Stored DOCX", currentVersion?.hasStoredDocx ? `${currentVersion.storedDocxBytes || 0} bytes` : "No"],
+                ["Repository", display(template?.repositorySource)],
+                ["Current Version ID", display(template?.currentVersionId)],
+                ["Merge Fields", String(mergeFields.length)],
               ].map(([label, value]) => (
                 <div key={label} style={cardStyle()}>
                   <div style={{ color: "#64748b", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: ".06em" }}>
                     {label}
                   </div>
-                  <div style={{ marginTop: 6, fontWeight: 950, overflowWrap: "anywhere" }}>{display(value)}</div>
+                  <div style={{ marginTop: 6, fontWeight: 950, overflowWrap: "anywhere" }}>{value}</div>
                 </div>
               ))}
             </section>
 
             <section style={cardStyle()}>
-              <h2 style={{ margin: "0 0 10px", fontSize: 22 }}>Current Version</h2>
-              {currentVersion ? (
-                <div style={{ display: "grid", gap: 10 }}>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <span style={statusBadgeStyle("ok")}>v{currentVersion.versionNumber}</span>
-                    <span style={statusBadgeStyle("neutral")}>{display(currentVersion.status)}</span>
-                    <span style={statusBadgeStyle("neutral")}>{display(currentVersion.storageKind)}</span>
-                    {currentVersion.hasStoredDocx && (
-                      <a
-                        href={currentVersion.storedDocxUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ ...statusBadgeStyle("ok"), textDecoration: "none" }}
-                      >
-                        Download Stored DOCX
-                      </a>
-                    )}
-                  </div>
-                  {jsonBlock(currentVersion.metadata)}
-                </div>
-              ) : (
-                <div style={{ color: "#64748b", fontWeight: 800 }}>No DB version exists for this fallback template.</div>
-              )}
-            </section>
-
-            <section data-barsh-template-replacement-workflow="true" style={cardStyle()}>
-              <h2 style={{ margin: "0 0 10px", fontSize: 22 }}>Replace Current DOCX Template</h2>
-              <p style={{ margin: "0 0 12px", color: "#475569", lineHeight: 1.55 }}>
-                Upload a replacement Word DOCX from this detail page.  Preview validates the replacement without
-                changing the database.  Confirm creates a new DocumentTemplateVersion, preserves prior versions,
-                and makes the new version current.
-              </p>
-
-              <div style={{ display: "grid", gap: 12 }}>
-                <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>
-                  Replacement DOCX
-                  <input
-                    type="file"
-                    accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    onChange={handleReplacementFileChange}
-                    style={{
-                      border: "1px solid #cbd5e1",
-                      borderRadius: 12,
-                      padding: 10,
-                      background: "#fff",
-                      fontWeight: 700,
-                    }}
-                  />
-                </label>
-
-                {replacementFile && (
-                  <div style={{ border: "1px solid #dbeafe", background: "#eff6ff", color: "#1e3a8a", borderRadius: 14, padding: 12, display: "grid", gap: 4 }}>
-                    <div><strong>File:</strong> {display(replacementFile.name)}</div>
-                    <div><strong>Size:</strong> {replacementFile.size || replacementFile.contentByteLength || 0} bytes</div>
-                    <div><strong>Storage kind:</strong> {display(replacementFile.storageKind)}</div>
-                    <div><strong>Base64 length:</strong> {replacementFile.contentBase64Length || 0}</div>
-                  </div>
-                )}
-
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    onClick={() => submitReplacementVersion(false)}
-                    disabled={replacementLoading || !replacementFile}
-                    style={{
-                      border: "1px solid #bfdbfe",
-                      background: replacementLoading || !replacementFile ? "#f1f5f9" : "#eff6ff",
-                      color: replacementLoading || !replacementFile ? "#64748b" : "#1d4ed8",
-                      borderRadius: 999,
-                      padding: "10px 14px",
-                      fontWeight: 950,
-                      cursor: replacementLoading || !replacementFile ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    {replacementLoading ? "Working..." : "Preview Replacement"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => submitReplacementVersion(true)}
-                    disabled={replacementLoading || !replacementPreview?.ok}
-                    style={{
-                      border: replacementLoading || !replacementPreview?.ok ? "1px solid #cbd5e1" : "1px solid #16a34a",
-                      background: replacementLoading || !replacementPreview?.ok ? "#f1f5f9" : "#f0fdf4",
-                      color: replacementLoading || !replacementPreview?.ok ? "#64748b" : "#166534",
-                      borderRadius: 999,
-                      padding: "10px 14px",
-                      fontWeight: 950,
-                      cursor: replacementLoading || !replacementPreview?.ok ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    Confirm Replacement Version
-                  </button>
-                </div>
-
-                {replacementError && (
-                  <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 14, padding: 12, fontWeight: 850 }}>
-                    {replacementError}
-                  </div>
-                )}
-
-                {replacementPreview?.ok && (
-                  <div style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534", borderRadius: 14, padding: 12, display: "grid", gap: 4 }}>
-                    <strong>Replacement Preview Ready</strong>
-                    <div>Current version: {display(replacementPreview.preview?.currentVersionNumber)}</div>
-                    <div>Next version: {display(replacementPreview.preview?.nextVersionNumber)}</div>
-                    <div>Replacement bytes: {display(replacementPreview.preview?.replacementByteLength)}</div>
-                    <div>Merge fields preserved: {display(replacementPreview.preview?.mergeFieldCount)}</div>
-                    <div>Database changed: {String(Boolean(replacementPreview.safety?.databaseRecordsChanged))}</div>
-                  </div>
-                )}
-
-                {replacementConfirmResult?.ok && (
-                  <div style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534", borderRadius: 14, padding: 12, display: "grid", gap: 4 }}>
-                    <strong>Replacement Confirmed</strong>
-                    <div>New current version: v{display(replacementConfirmResult.version?.versionNumber)}</div>
-                    <div>Stored DOCX bytes: {display(replacementConfirmResult.version?.storedDocxBytes)}</div>
-                    <div>Prior versions preserved: {String(Boolean(replacementConfirmResult.safety?.preservesPriorVersions))}</div>
-                    <div>Database changed: {String(Boolean(replacementConfirmResult.safety?.databaseRecordsChanged))}</div>
-                  </div>
-                )}
+              <h2 style={{ margin: "0 0 12px", fontSize: 24 }}>Merge Fields</h2>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", minWidth: 900, borderCollapse: "collapse" }}>
+                  <thead style={{ background: "#1e3a8a", color: "#ffffff" }}>
+                    <tr>
+                      <th style={{ padding: 10, textAlign: "left" }}>Key</th>
+                      <th style={{ padding: 10, textAlign: "left" }}>Label</th>
+                      <th style={{ padding: 10, textAlign: "left" }}>Source</th>
+                      <th style={{ padding: 10, textAlign: "left" }}>Required</th>
+                      <th style={{ padding: 10, textAlign: "left" }}>Visibility</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mergeFields.map((field: any) => (
+                      <tr key={field.id || field.key} style={{ borderTop: "1px solid #e2e8f0" }}>
+                        <td style={{ padding: 10, fontWeight: 900 }}>{display(field.key)}</td>
+                        <td style={{ padding: 10 }}>{display(field.label)}</td>
+                        <td style={{ padding: 10 }}>{display(field.source)}</td>
+                        <td style={{ padding: 10 }}>{field.required ? "Yes" : "No"}</td>
+                        <td style={{ padding: 10 }}>{display(field.visibility)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </section>
 
             <section style={cardStyle()}>
-              <h2 style={{ margin: "0 0 10px", fontSize: 22 }}>Version History</h2>
-              {versions.length === 0 ? (
-                <div style={{ color: "#64748b", fontWeight: 800 }}>No version history found.</div>
-              ) : (
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-                    <thead>
-                      <tr style={{ textAlign: "left", color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>
-                        <th style={{ padding: "10px 8px" }}>Version</th>
-                        <th style={{ padding: "10px 8px" }}>Status</th>
-                        <th style={{ padding: "10px 8px" }}>Storage</th>
-                        <th style={{ padding: "10px 8px" }}>Stored DOCX</th>
-                        <th style={{ padding: "10px 8px" }}>Updated</th>
+              <h2 style={{ margin: "0 0 12px", fontSize: 24 }}>Versions</h2>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", minWidth: 900, borderCollapse: "collapse" }}>
+                  <thead style={{ background: "#1e3a8a", color: "#ffffff" }}>
+                    <tr>
+                      <th style={{ padding: 10, textAlign: "left" }}>Version</th>
+                      <th style={{ padding: 10, textAlign: "left" }}>Status</th>
+                      <th style={{ padding: 10, textAlign: "left" }}>Storage</th>
+                      <th style={{ padding: 10, textAlign: "left" }}>Stored DOCX</th>
+                      <th style={{ padding: 10, textAlign: "left" }}>Created</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {versions.map((version: any) => (
+                      <tr key={version.id} style={{ borderTop: "1px solid #e2e8f0" }}>
+                        <td style={{ padding: 10, fontWeight: 900 }}>v{version.versionNumber}</td>
+                        <td style={{ padding: 10 }}>{display(version.status)}</td>
+                        <td style={{ padding: 10 }}>{display(version.storageKind)}</td>
+                        <td style={{ padding: 10 }}>
+                          {version.hasStoredDocx && version.storedDocxUrl ? <a href={version.storedDocxUrl} style={{ color: "#1e3a8a", fontWeight: 900 }}>Download</a> : "No"}
+                        </td>
+                        <td style={{ padding: 10 }}>{display(version.createdAt)}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {versions.map((version: any) => (
-                        <tr key={version.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                          <td style={{ padding: "10px 8px", fontWeight: 950 }}>v{version.versionNumber}</td>
-                          <td style={{ padding: "10px 8px" }}>{display(version.status)}</td>
-                          <td style={{ padding: "10px 8px" }}>{display(version.storageKind)}</td>
-                          <td style={{ padding: "10px 8px" }}>
-                            {version.hasStoredDocx ? (
-                              <a href={version.storedDocxUrl} target="_blank" rel="noreferrer" style={{ color: "#4f46e5", fontWeight: 900 }}>
-                                {version.storedDocxBytes || 0} bytes
-                              </a>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                          <td style={{ padding: "10px 8px" }}>{display(version.updatedAt)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-
-            <section style={cardStyle()}>
-              <h2 style={{ margin: "0 0 10px", fontSize: 22 }}>Merge Fields</h2>
-              {mergeFields.length === 0 ? (
-                <div style={{ color: "#64748b", fontWeight: 800 }}>No merge fields found.</div>
-              ) : (
-                <div style={{ display: "grid", gap: 8 }}>
-                  {mergeFields.map((field: any) => (
-                    <div key={field.id || field.key} style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 12, background: "#f8fafc" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                        <div>
-                          <strong>{display(field.label || field.key)}</strong>
-                          <div style={{ color: "#64748b", fontSize: 13 }}>{display(field.key)}</div>
-                        </div>
-                        <span style={statusBadgeStyle("neutral")}>{display(field.visibility)}</span>
-                      </div>
-                      <div style={{ marginTop: 8, color: "#475569", fontSize: 13 }}>
-                        Source: {display(field.source)} · Required: {field.required ? "Yes" : "No"} · Example: {display(field.exampleValue)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section style={cardStyle()}>
-              <h2 style={{ margin: "0 0 10px", fontSize: 22 }}>Planned Repository Workflows</h2>
-              {jsonBlock(data?.workflows)}
-            </section>
-
-            <section style={cardStyle()}>
-              <h2 style={{ margin: "0 0 10px", fontSize: 22 }}>Safety</h2>
-              {jsonBlock(data?.safety)}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
           </>
         )}

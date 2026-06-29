@@ -1,9 +1,12 @@
 export type BarshDocumentTemplateCategory =
+  | "correspondence"
+  | "pleadings"
+  | "discovery"
+  | "general"
   | "settlement"
   | "lawsuit"
   | "direct_matter"
-  | "payment"
-  | "general";
+  | "payment";
 
 export type BarshDocumentMergeFieldDefinition = {
   key: string;

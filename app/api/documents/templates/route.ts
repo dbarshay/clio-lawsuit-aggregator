@@ -16,10 +16,9 @@ function clean(value: unknown): string {
 function normalizeCategory(value: string): BarshDocumentTemplateCategory | "all" {
   const v = clean(value);
   if (
-    v === "settlement" ||
-    v === "lawsuit" ||
-    v === "direct_matter" ||
-    v === "payment" ||
+    v === "correspondence" ||
+    v === "pleadings" ||
+    v === "discovery" ||
     v === "general"
   ) {
     return v;
@@ -108,11 +107,10 @@ function readOnlyDbTemplateToRepositoryRecord(row: any) {
   };
 }
 
-async function readDatabaseTemplates(category: BarshDocumentTemplateCategory | "all") {
-  const where =
-    category === "all"
-      ? { enabled: true }
-      : { enabled: true, category };
+async function readDatabaseTemplates(category: BarshDocumentTemplateCategory | "all", includeInactive = false) {
+  const where = includeInactive
+    ? (category === "all" ? {} : { category })
+    : (category === "all" ? { enabled: true } : { enabled: true, category });
 
   const rows = await prisma.documentTemplate.findMany({
     where,
@@ -158,9 +156,10 @@ export async function GET(req: NextRequest) {
     const allowFallbackRegistry =
       req.nextUrl.searchParams.get("includeFallbackRegistry") === "1" ||
       process.env.BARSH_DOCUMENT_TEMPLATE_ALLOW_CODE_REGISTRY_FALLBACK === "1";
+    const includeInactive = req.nextUrl.searchParams.get("includeInactive") === "1";
 
     let repositorySource = "barsh-matters-db";
-    let templates = await readDatabaseTemplates(category);
+    let templates = await readDatabaseTemplates(category, includeInactive);
     let fallbackSuppressed = false;
 
     if (templates.length === 0 && allowFallbackRegistry) {
@@ -180,6 +179,7 @@ export async function GET(req: NextRequest) {
       fallbackSuppressed,
       fallbackRegistryAvailable: templates.length === 0 && fallbackSuppressed,
       fallbackRegistryOptIn: allowFallbackRegistry,
+      includeInactive,
       repositoryFuture: "editable document-template repository with versioning, merge fields, uploaded Word templates, and finalized document vault integration",
       category,
       count: templates.length,
@@ -187,6 +187,7 @@ export async function GET(req: NextRequest) {
       safety: {
         ...safetyDocumentTemplateRepository(),
         databaseTemplateRowsOnlyByDefault: true,
+        inactiveDatabaseTemplateRowsIncluded: includeInactive,
         codeRegistryFallbackHiddenByDefault: true,
         codeRegistryFallbackRequiresExplicitOptIn: true,
       },

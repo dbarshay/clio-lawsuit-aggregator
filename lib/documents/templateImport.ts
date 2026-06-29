@@ -51,8 +51,8 @@ function bool(value: unknown, fallback = false): boolean {
 
 function category(value: unknown): BarshDocumentTemplateCategory {
   const text = clean(value);
-  if (text === "settlement" || text === "lawsuit" || text === "direct_matter" || text === "payment" || text === "general") {
-    return text;
+  if (text === "correspondence" || text === "pleadings" || text === "discovery" || text === "general") {
+    return text as BarshDocumentTemplateCategory;
   }
   return "general";
 }

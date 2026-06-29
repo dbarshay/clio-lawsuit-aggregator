@@ -94,20 +94,9 @@ export default function AdminDocumentTemplateDetailPage() {
   const [edit, setEdit] = useState<EditState | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [replacementFile, setReplacementFile] = useState<File | null>(null);
-  const [replacementLabel, setReplacementLabel] = useState("");
-  const [replacementMessage, setReplacementMessage] = useState("");
-  const [replacementPreview, setReplacementPreview] = useState<any>(null);
-  const [replacingDocx, setReplacingDocx] = useState(false);
   const [editTemplateWorkingDoc, setEditTemplateWorkingDoc] = useState<any>(null);
   const [editTemplateMessage, setEditTemplateMessage] = useState("");
   const [editTemplateBusy, setEditTemplateBusy] = useState(false);
-  const [templateText, setTemplateText] = useState("");
-  const [textEditFind, setTextEditFind] = useState("");
-  const [textEditReplace, setTextEditReplace] = useState("");
-  const [textEditPreview, setTextEditPreview] = useState<any>(null);
-  const [textEditMessage, setTextEditMessage] = useState("");
-  const [textEditBusy, setTextEditBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -172,82 +161,9 @@ export default function AdminDocumentTemplateDetailPage() {
   }
 
   const template = data?.template || {};
-  async function loadTemplateTextEditor() {
-    setTextEditBusy(true);
-    setTextEditMessage("");
-    try {
-      const response = await fetch(`/api/documents/templates/text-edit-version?key=${encodeURIComponent(key)}`, { cache: "no-store" });
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok || json?.ok === false) {
-        throw new Error(json?.error || "Could not load template text.");
-      }
-      setTemplateText(json.combinedText || "");
-      setTextEditMessage("Template text loaded for review.");
-    } catch (error: any) {
-      setTextEditMessage(error?.message || "Could not load template text.");
-    } finally {
-      setTextEditBusy(false);
-    }
-  }
 
-  function resetTextEditPreview() {
-    setTextEditPreview(null);
-  }
 
-  async function previewTemplateTextEdit() {
-    if (!textEditFind) {
-      setTextEditMessage("Enter exact text to find.");
-      return;
-    }
-    setTextEditBusy(true);
-    setTextEditMessage("");
-    setTextEditPreview(null);
-    try {
-      const response = await fetch("/api/documents/templates/text-edit-version", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key, findText: textEditFind, replacementText: textEditReplace, apply: false }),
-      });
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok || json?.ok === false) {
-        throw new Error(json?.error || "Text edit preview failed.");
-      }
-      setTextEditPreview(json);
-      setTextEditMessage("Text edit preview ready. Matches: " + (json?.preview?.replacementCount || 0) + ". Confirm to save as a new version.");
-    } catch (error: any) {
-      setTextEditMessage(error?.message || "Text edit preview failed.");
-    } finally {
-      setTextEditBusy(false);
-    }
-  }
 
-  async function confirmTemplateTextEdit() {
-    if (!textEditPreview) {
-      setTextEditMessage("Preview the text edit before confirming.");
-      return;
-    }
-    setTextEditBusy(true);
-    setTextEditMessage("");
-    try {
-      const response = await fetch("/api/documents/templates/text-edit-version", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key, findText: textEditFind, replacementText: textEditReplace, apply: true }),
-      });
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok || json?.ok === false) {
-        throw new Error(json?.error || "Text edit save failed.");
-      }
-      setTextEditPreview(null);
-      setTextEditMessage("Saved text edit as v" + (json?.version?.versionNumber || "next") + ". Prior versions were preserved.");
-      await loadTemplateDetail();
-      await loadTemplateTextEditor();
-    } catch (error: any) {
-      setTextEditMessage(error?.message || "Text edit save failed.");
-    } finally {
-      setTextEditBusy(false);
-    }
-  }
 
   async function launchEditTemplate() {
     setEditTemplateBusy(true);
@@ -311,88 +227,7 @@ export default function AdminDocumentTemplateDetailPage() {
     }
   }
 
-  function resetReplacementPreview() {
-    setReplacementPreview(null);
-  }
 
-  async function previewReplacementDocxVersion() {
-    if (!replacementFile) {
-      setReplacementMessage("Select a replacement .docx file first.");
-      return;
-    }
-    if (!replacementFile.name.toLowerCase().endsWith(".docx")) {
-      setReplacementMessage("Replacement file must be a .docx Word template.");
-      return;
-    }
-
-    setReplacingDocx(true);
-    setReplacementMessage("");
-    setReplacementPreview(null);
-    try {
-      const previewForm = new FormData();
-      previewForm.append("templateKey", key);
-      previewForm.append("replacementLabel", replacementLabel || replacementFile.name.replace(/\.docx$/i, ""));
-      previewForm.append("file", replacementFile);
-      previewForm.append("apply", "false");
-
-      const previewResponse = await fetch("/api/documents/templates/replace-version", {
-        method: "POST",
-        body: previewForm,
-      });
-      const preview = await previewResponse.json().catch(() => ({}));
-      if (!previewResponse.ok || preview?.ok === false) {
-        throw new Error(preview?.error || "Replacement preview failed.");
-      }
-
-      setReplacementPreview(preview);
-      const previewDetails = preview?.preview || preview;
-      setReplacementMessage("Replacement preview ready. Confirm to create DocumentTemplateVersion v" + (previewDetails?.nextVersionNumber || "next") + ".");
-    } catch (error: any) {
-      setReplacementMessage(error?.message || "Replacement preview failed.");
-    } finally {
-      setReplacingDocx(false);
-    }
-  }
-
-  async function confirmReplacementDocxVersion() {
-    if (!replacementFile) {
-      setReplacementMessage("Select a replacement .docx file first.");
-      return;
-    }
-    if (!replacementPreview) {
-      setReplacementMessage("Preview the replacement before confirming.");
-      return;
-    }
-
-    setReplacingDocx(true);
-    setReplacementMessage("");
-    try {
-      const applyForm = new FormData();
-      applyForm.append("templateKey", key);
-      applyForm.append("replacementLabel", replacementLabel || replacementFile.name.replace(/\.docx$/i, ""));
-      applyForm.append("file", replacementFile);
-      applyForm.append("apply", "true");
-
-      const applyResponse = await fetch("/api/documents/templates/replace-version", {
-        method: "POST",
-        body: applyForm,
-      });
-      const applied = await applyResponse.json().catch(() => ({}));
-      if (!applyResponse.ok || applied?.ok === false) {
-        throw new Error(applied?.error || "Replacement upload failed.");
-      }
-
-      setReplacementMessage("Confirmed replacement version v" + (applied?.version?.versionNumber || "next") + ". Prior versions were preserved and currentVersionId now points to the new DocumentTemplateVersion.");
-      setReplacementPreview(null);
-      setReplacementFile(null);
-      setReplacementLabel("");
-      await loadTemplateDetail();
-    } catch (error: any) {
-      setReplacementMessage(error?.message || "Replacement upload failed.");
-    } finally {
-      setReplacingDocx(false);
-    }
-  }
 
 
   const currentVersion = template?.currentVersion || null;
@@ -542,93 +377,7 @@ export default function AdminDocumentTemplateDetailPage() {
                     </div>
                   ) : null}
                 </div>
-                <div data-barsh-admin-document-template-text-editor="true" style={{ gridColumn: "1 / -1", marginTop: 10, border: "1px solid #bbf7d0", background: "#f0fdf4", borderRadius: 14, padding: 14, display: "grid", gap: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: 16 }}>Template Text Editor</h3>
-                      <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.45 }}>
-                        View extracted DOCX text and make exact text replacements in the UI. Confirming creates a new DocumentTemplateVersion and preserves prior versions. This does not generate documents, upload to Clio, send email, create drafts, print, or queue documents.
-                      </p>
-                    </div>
-                    <button data-barsh-admin-document-template-load-text-button="true" type="button" onClick={() => void loadTemplateTextEditor()} disabled={textEditBusy} style={buttonStyle(textEditBusy)}>
-                      {textEditBusy ? "Loading…" : "Load Template Text"}
-                    </button>
-                  </div>
-                  <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
-                    Current extracted DOCX text
-                    <textarea data-barsh-admin-document-template-text-editor-current-text="true" value={templateText} readOnly rows={10} style={{ ...inputStyle, fontFamily: "monospace", minHeight: 180 }} />
-                  </label>
-                  <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 1fr) minmax(260px, 1fr)", gap: 10 }}>
-                    <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
-                      Find exact text
-                      <textarea data-barsh-admin-document-template-text-editor-find="true" value={textEditFind} onChange={(event) => { setTextEditFind(event.target.value); resetTextEditPreview(); }} rows={4} style={{ ...inputStyle, fontFamily: "monospace" }} placeholder={"Very truly yours,{{signer.signatureName}}"} />
-                    </label>
-                    <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
-                      Replace with
-                      <textarea data-barsh-admin-document-template-text-editor-replace="true" value={textEditReplace} onChange={(event) => { setTextEditReplace(event.target.value); resetTextEditPreview(); }} rows={4} style={{ ...inputStyle, fontFamily: "monospace" }} placeholder={"Very truly yours,\n{{signer.signatureName}}"} />
-                    </label>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                    <button data-barsh-admin-document-template-preview-text-edit-button="true" type="button" onClick={() => void previewTemplateTextEdit()} disabled={textEditBusy || !textEditFind} style={buttonStyle(textEditBusy || !textEditFind)}>
-                      {textEditBusy ? "Previewing…" : "Preview Text Edit"}
-                    </button>
-                    <button data-barsh-admin-document-template-confirm-text-edit-button="true" type="button" onClick={() => void confirmTemplateTextEdit()} disabled={textEditBusy || !textEditPreview} style={buttonStyle(textEditBusy || !textEditPreview)}>
-                      {textEditBusy ? "Saving…" : "Confirm Text Edit Version"}
-                    </button>
-                  </div>
-                  {textEditPreview ? (
-                    <div data-barsh-admin-document-template-text-edit-preview-summary="true" style={{ border: "1px solid #86efac", background: "#ffffff", color: "#166534", borderRadius: 12, padding: 10, fontWeight: 850 }}>
-                      Preview ready: {textEditPreview?.preview?.replacementCount || 0} replacement(s). Confirming will create DocumentTemplateVersion v{textEditPreview?.preview?.nextVersionNumber || "next"}.
-                    </div>
-                  ) : null}
-                  {textEditMessage ? (
-                    <div data-barsh-admin-document-template-text-edit-message="true" style={{ color: textEditMessage.toLowerCase().includes("failed") || textEditMessage.toLowerCase().includes("required") || textEditMessage.toLowerCase().includes("not found") ? "#991b1b" : "#166534", fontWeight: 900 }}>
-                      {textEditMessage}
-                    </div>
-                  ) : null}
                 </div>
-                <div data-barsh-admin-document-template-replacement-workflow="true" data-barsh-admin-document-template-replace-docx="true" style={{ gridColumn: "1 / -1", marginTop: 10, border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 14, padding: 14, display: "grid", gap: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: 16 }}>Replace DOCX / Upload New Version</h3>
-                      <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.45 }}>
-                        Upload a corrected .docx to preview and then confirm a new DocumentTemplateVersion. Prior versions are preserved, and currentVersionId is updated only after confirmation. This does not generate documents, upload to Clio, send email, create drafts, print, or queue documents.
-                      </p>
-                    </div>
-                    <span data-barsh-admin-document-template-replace-docx-versioning-note="true" style={{ border: "1px solid #93c5fd", background: "#ffffff", color: "#1e3a8a", borderRadius: 999, padding: "7px 10px", fontWeight: 950, fontSize: 12 }}>
-                      Append-only versioning
-                    </span>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 1fr) minmax(220px, 0.7fr) auto", gap: 10, alignItems: "end" }}>
-                    <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
-                      Replacement DOCX
-                      <input data-barsh-admin-document-template-replace-docx-file="true" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => { setReplacementFile(event.currentTarget.files?.[0] || null); setReplacementMessage(""); resetReplacementPreview(); }} style={inputStyle} />
-                    </label>
-                    <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
-                      Replacement label
-                      <input data-barsh-admin-document-template-replace-docx-label="true" value={replacementLabel} onChange={(event) => { setReplacementLabel(event.target.value); resetReplacementPreview(); }} placeholder={replacementFile?.name?.replace(/\.docx$/i, "") || "Optional"} style={inputStyle} />
-                    </label>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button data-barsh-admin-document-template-preview-replacement-button="true" type="button" onClick={() => void previewReplacementDocxVersion()} disabled={replacingDocx || !replacementFile} style={buttonStyle(replacingDocx || !replacementFile)}>
-                        {replacingDocx ? "Previewing…" : "Preview Replacement"}
-                      </button>
-                      <button data-barsh-admin-document-template-confirm-replacement-button="true" type="button" onClick={() => void confirmReplacementDocxVersion()} disabled={replacingDocx || !replacementFile || !replacementPreview} style={buttonStyle(replacingDocx || !replacementFile || !replacementPreview)}>
-                        {replacingDocx ? "Confirming…" : "Confirm Replacement Version"}
-                      </button>
-                    </div>
-                  </div>
-                  {replacementPreview ? (
-                    <div data-barsh-admin-document-template-replacement-preview-summary="true" style={{ border: "1px solid #bfdbfe", background: "#ffffff", color: "#1e3a8a", borderRadius: 12, padding: 10, fontWeight: 850 }}>
-                      Preview ready: new DocumentTemplateVersion v{(replacementPreview?.preview || replacementPreview)?.nextVersionNumber || "next"} will be created from {(replacementPreview?.preview || replacementPreview)?.replacementFilename || replacementFile?.name || "replacement DOCX"} after confirmation. Prior versions will be preserved.
-                    </div>
-                  ) : null}
-                  {replacementMessage ? (
-                    <div data-barsh-admin-document-template-replace-docx-message="true" style={{ color: replacementMessage.toLowerCase().includes("failed") || replacementMessage.toLowerCase().includes("must") ? "#991b1b" : "#166534", fontWeight: 900 }}>
-                      {replacementMessage}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
             </section>
 
             <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>

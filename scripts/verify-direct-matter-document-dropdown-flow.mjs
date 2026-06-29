@@ -9,7 +9,7 @@ function has(label, token) { page.includes(token) ? pass(label) : fail(`${label}
 function lacks(label, token) { !page.includes(token) ? pass(label) : fail(`${label} should not contain ${token}`); }
 
 has("document dropdown marker exists", 'data-barsh-direct-document-generation-template-dropdown="true"');
-has("dropdown placeholder exists", '<option value="">Select document template</option>');
+has("dropdown placeholder exists", '<option value="">Select document</option>');
 has("Blank Letterhead dropdown option exists", '<option value="blank-letterhead">Blank Letterhead</option>');
 has("dropdown uses selected template key", 'value={matterSelectedDocumentTemplateKey}');
 has("dropdown selects Blank Letterhead via helper", 'selectBlankLetterhead();');

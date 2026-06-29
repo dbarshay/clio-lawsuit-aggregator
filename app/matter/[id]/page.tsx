@@ -6215,7 +6215,7 @@ function openClaimAmountEditDialog() {
                       background: "#ffffff",
                     }}
                   >
-                    <option value="">Select document template</option>
+                    <option value="">Select document</option>
                     <option value="blank-letterhead">Blank Letterhead</option>
                   </select>
                 </label>

@@ -97,6 +97,7 @@ export default function AdminDocumentTemplateDetailPage() {
   const [replacementFile, setReplacementFile] = useState<File | null>(null);
   const [replacementLabel, setReplacementLabel] = useState("");
   const [replacementMessage, setReplacementMessage] = useState("");
+  const [replacementPreview, setReplacementPreview] = useState<any>(null);
   const [replacingDocx, setReplacingDocx] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [error, setError] = useState("");
@@ -162,7 +163,11 @@ export default function AdminDocumentTemplateDetailPage() {
   }
 
   const template = data?.template || {};
-  async function replaceDocxVersion() {
+  function resetReplacementPreview() {
+    setReplacementPreview(null);
+  }
+
+  async function previewReplacementDocxVersion() {
     if (!replacementFile) {
       setReplacementMessage("Select a replacement .docx file first.");
       return;
@@ -174,6 +179,7 @@ export default function AdminDocumentTemplateDetailPage() {
 
     setReplacingDocx(true);
     setReplacementMessage("");
+    setReplacementPreview(null);
     try {
       const previewForm = new FormData();
       previewForm.append("templateKey", key);
@@ -190,21 +196,29 @@ export default function AdminDocumentTemplateDetailPage() {
         throw new Error(preview?.error || "Replacement preview failed.");
       }
 
+      setReplacementPreview(preview);
       const previewDetails = preview?.preview || preview;
-      const nextVersionNumber = previewDetails?.nextVersionNumber || "next";
-      const warnings = Array.isArray(preview?.warnings) && preview.warnings.length ? "\n\nWarnings:\n- " + preview.warnings.join("\n- ") : "";
-      const confirmed = window.confirm(
-        "Upload replacement DOCX for " + (template?.label || key) + "?\n\n" +
-        "This creates a new template version and makes it current. It preserves prior versions and does not generate documents, upload to Clio, send email, create drafts, print, or queue documents.\n\n" +
-        "Replacement file: " + replacementFile.name + "\n" +
-        "Next version: v" + nextVersionNumber + warnings
-      );
+      setReplacementMessage("Replacement preview ready. Confirm to create DocumentTemplateVersion v" + (previewDetails?.nextVersionNumber || "next") + ".");
+    } catch (error: any) {
+      setReplacementMessage(error?.message || "Replacement preview failed.");
+    } finally {
+      setReplacingDocx(false);
+    }
+  }
 
-      if (!confirmed) {
-        setReplacementMessage("Replacement cancelled. No database records changed.");
-        return;
-      }
+  async function confirmReplacementDocxVersion() {
+    if (!replacementFile) {
+      setReplacementMessage("Select a replacement .docx file first.");
+      return;
+    }
+    if (!replacementPreview) {
+      setReplacementMessage("Preview the replacement before confirming.");
+      return;
+    }
 
+    setReplacingDocx(true);
+    setReplacementMessage("");
+    try {
       const applyForm = new FormData();
       applyForm.append("templateKey", key);
       applyForm.append("replacementLabel", replacementLabel || replacementFile.name.replace(/\.docx$/i, ""));
@@ -220,7 +234,8 @@ export default function AdminDocumentTemplateDetailPage() {
         throw new Error(applied?.error || "Replacement upload failed.");
       }
 
-      setReplacementMessage("Uploaded replacement DOCX as v" + (applied?.version?.versionNumber || nextVersionNumber) + ". Prior versions were preserved.");
+      setReplacementMessage("Confirmed replacement version v" + (applied?.version?.versionNumber || "next") + ". Prior versions were preserved and currentVersionId now points to the new DocumentTemplateVersion.");
+      setReplacementPreview(null);
       setReplacementFile(null);
       setReplacementLabel("");
       await loadTemplateDetail();
@@ -230,6 +245,7 @@ export default function AdminDocumentTemplateDetailPage() {
       setReplacingDocx(false);
     }
   }
+
 
   const currentVersion = template?.currentVersion || null;
   const mergeFields = Array.isArray(template?.mergeFields) ? template.mergeFields : [];
@@ -350,12 +366,12 @@ export default function AdminDocumentTemplateDetailPage() {
                 <button type="button" onClick={saveMetadata} disabled={saving} style={buttonStyle(saving)}>
                   {saving ? "Saving…" : "Save Template Settings"}
                 </button>
-                <div data-barsh-admin-document-template-replace-docx="true" style={{ gridColumn: "1 / -1", marginTop: 10, border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 14, padding: 14, display: "grid", gap: 10 }}>
+                <div data-barsh-admin-document-template-replacement-workflow="true" data-barsh-admin-document-template-replace-docx="true" style={{ gridColumn: "1 / -1", marginTop: 10, border: "1px solid #bfdbfe", background: "#eff6ff", borderRadius: 14, padding: 14, display: "grid", gap: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: 16 }}>Replace DOCX / Upload New Version</h3>
                       <p style={{ margin: "6px 0 0", color: "#475569", lineHeight: 1.45 }}>
-                        Upload a corrected .docx to create a new version and make it current. Prior versions are preserved. This does not generate documents, upload to Clio, send email, create drafts, print, or queue documents.
+                        Upload a corrected .docx to preview and then confirm a new DocumentTemplateVersion. Prior versions are preserved, and currentVersionId is updated only after confirmation. This does not generate documents, upload to Clio, send email, create drafts, print, or queue documents.
                       </p>
                     </div>
                     <span data-barsh-admin-document-template-replace-docx-versioning-note="true" style={{ border: "1px solid #93c5fd", background: "#ffffff", color: "#1e3a8a", borderRadius: 999, padding: "7px 10px", fontWeight: 950, fontSize: 12 }}>
@@ -365,16 +381,26 @@ export default function AdminDocumentTemplateDetailPage() {
                   <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 1fr) minmax(220px, 0.7fr) auto", gap: 10, alignItems: "end" }}>
                     <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
                       Replacement DOCX
-                      <input data-barsh-admin-document-template-replace-docx-file="true" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => { setReplacementFile(event.currentTarget.files?.[0] || null); setReplacementMessage(""); }} style={inputStyle} />
+                      <input data-barsh-admin-document-template-replace-docx-file="true" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => { setReplacementFile(event.currentTarget.files?.[0] || null); setReplacementMessage(""); resetReplacementPreview(); }} style={inputStyle} />
                     </label>
                     <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
                       Replacement label
-                      <input data-barsh-admin-document-template-replace-docx-label="true" value={replacementLabel} onChange={(event) => setReplacementLabel(event.target.value)} placeholder={replacementFile?.name?.replace(/\.docx$/i, "") || "Optional"} style={inputStyle} />
+                      <input data-barsh-admin-document-template-replace-docx-label="true" value={replacementLabel} onChange={(event) => { setReplacementLabel(event.target.value); resetReplacementPreview(); }} placeholder={replacementFile?.name?.replace(/\.docx$/i, "") || "Optional"} style={inputStyle} />
                     </label>
-                    <button data-barsh-admin-document-template-replace-docx-button="true" type="button" onClick={() => void replaceDocxVersion()} disabled={replacingDocx || !replacementFile} style={buttonStyle(replacingDocx || !replacementFile)}>
-                      {replacingDocx ? "Uploading…" : "Upload New Version"}
-                    </button>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button data-barsh-admin-document-template-preview-replacement-button="true" type="button" onClick={() => void previewReplacementDocxVersion()} disabled={replacingDocx || !replacementFile} style={buttonStyle(replacingDocx || !replacementFile)}>
+                        {replacingDocx ? "Previewing…" : "Preview Replacement"}
+                      </button>
+                      <button data-barsh-admin-document-template-confirm-replacement-button="true" type="button" onClick={() => void confirmReplacementDocxVersion()} disabled={replacingDocx || !replacementFile || !replacementPreview} style={buttonStyle(replacingDocx || !replacementFile || !replacementPreview)}>
+                        {replacingDocx ? "Confirming…" : "Confirm Replacement Version"}
+                      </button>
+                    </div>
                   </div>
+                  {replacementPreview ? (
+                    <div data-barsh-admin-document-template-replacement-preview-summary="true" style={{ border: "1px solid #bfdbfe", background: "#ffffff", color: "#1e3a8a", borderRadius: 12, padding: 10, fontWeight: 850 }}>
+                      Preview ready: new DocumentTemplateVersion v{(replacementPreview?.preview || replacementPreview)?.nextVersionNumber || "next"} will be created from {(replacementPreview?.preview || replacementPreview)?.replacementFilename || replacementFile?.name || "replacement DOCX"} after confirmation. Prior versions will be preserved.
+                    </div>
+                  ) : null}
                   {replacementMessage ? (
                     <div data-barsh-admin-document-template-replace-docx-message="true" style={{ color: replacementMessage.toLowerCase().includes("failed") || replacementMessage.toLowerCase().includes("must") ? "#991b1b" : "#166534", fontWeight: 900 }}>
                       {replacementMessage}

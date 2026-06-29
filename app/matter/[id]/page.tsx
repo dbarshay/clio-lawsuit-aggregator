@@ -623,7 +623,7 @@ const activeGroupKey =
   const [matterDocumentDataPreviewLoading, setMatterDocumentDataPreviewLoading] = useState(false);
   const [matterDocumentTemplateQuery, setMatterDocumentTemplateQuery] = useState("");
   const [matterSelectedDocumentTemplateKey, setMatterSelectedDocumentTemplateKey] = useState("");
-  const [matterDocumentSignerEmail, setMatterDocumentSignerEmail] = useState("dbarshay@brlfirm.com");
+  const [matterDocumentSignerEmail, setMatterDocumentSignerEmail] = useState("firm");
   const [matterDocumentWorkflowStage, setMatterDocumentWorkflowStage] = useState<"select" | "signer" | "chooseAction" | "preview" | "edit" | "finalize" | "delivery">("select");
 
   const [matterDocumentDataPreview, setMatterDocumentDataPreview] = useState<any>(null);
@@ -4075,7 +4075,7 @@ function openClaimAmountEditDialog() {
           uploadTargetMode: "direct-matter",
           directMatterId: directMatterIdForRequest,
           directMatterDisplayNumber,
-          signerEmail: matterDocumentSignerEmail.trim() || "dbarshay@brlfirm.com",
+          signerEmail: matterDocumentSignerEmail.trim() || "firm",
           documentKeys: [selectedTemplate.key],
         }),
       });
@@ -4158,7 +4158,7 @@ function openClaimAmountEditDialog() {
           uploadTargetMode: "direct-matter",
           directMatterId: directMatterIdForRequest,
           directMatterDisplayNumber,
-          signerEmail: matterDocumentSignerEmail.trim() || "dbarshay@brlfirm.com",
+          signerEmail: matterDocumentSignerEmail.trim() || "firm",
           documentKeys: [selectedTemplate.key],
         }),
       });
@@ -4268,7 +4268,7 @@ function openClaimAmountEditDialog() {
           uploadTargetMode: "direct-matter",
           directMatterId: directMatterIdForRequest,
           directMatterDisplayNumber,
-          signerEmail: matterDocumentSignerEmail.trim() || "dbarshay@brlfirm.com",
+          signerEmail: matterDocumentSignerEmail.trim() || "firm",
           documentKeys: [effectiveSelectedDocumentKey].filter(Boolean),
         }),
       });
@@ -6006,8 +6006,20 @@ function openClaimAmountEditDialog() {
 
     const matterDocumentSignerOptions = [
       {
+        value: "firm",
+        email: "firm",
+        label: "Firm",
+        displayName: "Firm",
+        signerEmail: "firm",
+        contactMode: "firm",
+      },
+      {
+        value: "dbarshay@brlfirm.com",
         email: "dbarshay@brlfirm.com",
+        label: "David M. Barshay",
         displayName: "David M. Barshay",
+        signerEmail: "dbarshay@brlfirm.com",
+        contactMode: "signer",
       },
     ];
 
@@ -6128,7 +6140,7 @@ function openClaimAmountEditDialog() {
     };
 
     const confirmSignerAndContinue = () => {
-      setMatterDocumentSignerEmail(matterDocumentSignerEmail.trim() || "dbarshay@brlfirm.com");
+      setMatterDocumentSignerEmail(matterDocumentSignerEmail.trim() || "firm");
       setMatterDocumentWorkflowStage("chooseAction");
     };
 
@@ -6193,7 +6205,7 @@ function openClaimAmountEditDialog() {
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               {stepBadge(1, "Select Document", showSelectStep, !showSelectStep)}
               {stepArrow(!showSelectStep)}
-              {stepBadge(2, "Select Signer", showSignerStep, showActionStep || showPreviewStep || showEditStep || showFinalizeStep || showDeliveryStep)}
+              {stepBadge(2, "Select Signature / Contact", showSignerStep, showActionStep || showPreviewStep || showEditStep || showFinalizeStep || showDeliveryStep)}
               {stepArrow(showActionStep || showPreviewStep || showEditStep || showFinalizeStep || showDeliveryStep)}
               {stepBadge(3, "Generate", showActionStep || showPreviewStep || showEditStep || showFinalizeStep, showDeliveryStep)}
               {stepArrow(showDeliveryStep)}
@@ -6267,7 +6279,7 @@ function openClaimAmountEditDialog() {
                 }}
               >
                 <div data-barsh-direct-document-generation-signer-heading="true">
-                  <h3 style={{ margin: 0, fontSize: 18 }}>Step 2: Select Signer</h3>
+                  <h3 style={{ margin: 0, fontSize: 18 }}>Step 2: Select Signature / Contact</h3>
                   <p style={{ margin: "6px 0 0", color: "#64748b", lineHeight: 1.45 }}>
                     Choose the signer for <strong>{selectedTemplate.label}</strong> before generating the document.
                   </p>

@@ -8,8 +8,8 @@ function fail(message) { failed = true; console.error("FAIL:", message); }
 function has(label, token) { route.includes(token) ? pass(label) : fail(`${label} missing ${token}`); }
 
 has("working-docx reads signerEmail from body", "const signerEmail = clean(body?.signerEmail");
-has("working-docx defines default resolved signer email", 'const resolvedSignerEmail = signerEmail || "dbarshay@brlfirm.com";');
-has("Blank Letterhead sourceEndpoint includes default signerEmail", "signerEmail=dbarshay%40brlfirm.com");
+has("working-docx defines default resolved signer contact", 'const resolvedSignerEmail = signerEmail || "firm";');
+has("Blank Letterhead sourceEndpoint includes default Firm signer contact", "signerEmail=firm");
 has("Blank Letterhead fallback still exists", "requestedBlankLetterheadFallback");
 has("Blank Letterhead fallback is selected", "requestedBlankLetterheadFallback ||");
 has("DB DOCX storage kind remains", 'storageKind: "db-docx-base64"');

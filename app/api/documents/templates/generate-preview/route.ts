@@ -34,18 +34,105 @@ function safeFilename(value: string) {
     .slice(0, 120) || "generated-template";
 }
 
-function buildTokenValues(req: NextRequest) {
-  const query = req.nextUrl.searchParams;
-  const signatureName = clean(query.get("signer.signatureName")) || clean(query.get("signatureName")) || "Test Signer";
-  const email = clean(query.get("signer.email")) || clean(query.get("email")) || "test.signer@brlfirm.com";
-  const extension = clean(query.get("signer.extension")) || clean(query.get("extension")) || "000";
-  const fax = clean(query.get("signer.fax")) || clean(query.get("fax")) || "(516) 706-5055";
+type ResolvedSigner = {
+  id: string;
+  email: string;
+  displayName: string | null;
+  signatureBlockName: string | null;
+  phoneExtension: string | null;
+  faxNumber: string | null;
+  signerEligible: boolean;
+  signerProfileStatus: "Complete" | "Missing Fields";
+  signerMissingFields: string[];
+};
 
+function signerMissingFields(user: {
+  displayName: string | null;
+  email: string;
+  signatureBlockName: string | null;
+  phoneExtension: string | null;
+  faxNumber: string | null;
+}): string[] {
+  const fields: Array<[string, string | null | undefined]> = [
+    ["displayName", user.displayName],
+    ["email", user.email],
+    ["signatureBlockName", user.signatureBlockName],
+    ["phoneExtension", user.phoneExtension],
+    ["faxNumber", user.faxNumber],
+  ];
+
+  return fields
+    .filter((entry) => clean(entry[1]).length === 0)
+    .map((entry) => entry[0]);
+}
+
+async function resolveSigner(req: NextRequest): Promise<{ signer: ResolvedSigner | null; error?: string; status?: number }> {
+  const query = req.nextUrl.searchParams;
+  const signerUserId = clean(query.get("signerUserId") || query.get("signer.id"));
+  const signerEmail = clean(query.get("signerEmail") || query.get("signer.email") || query.get("email")).toLowerCase();
+
+  if (!signerUserId && !signerEmail) {
+    return {
+      signer: null,
+      status: 400,
+      error: "A signerUserId or signerEmail is required. Generation must resolve signer.* tokens from an eligible Admin User signer profile.",
+    };
+  }
+
+  const user = await prisma.adminUser.findFirst({
+    where: signerUserId ? { id: signerUserId } : { email: signerEmail },
+    select: {
+      id: true,
+      email: true,
+      displayName: true,
+      signatureBlockName: true,
+      phoneExtension: true,
+      faxNumber: true,
+      signerEligible: true,
+      status: true,
+      locked: true,
+      inactive: true,
+    },
+  });
+
+  if (!user) {
+    return { signer: null, status: 404, error: "Selected signer was not found." };
+  }
+
+  if (user.signerEligible === false) {
+    return { signer: null, status: 409, error: "Selected Admin User is not signer-eligible." };
+  }
+
+  if (user.status !== "active" || user.locked === true || user.inactive === true) {
+    return { signer: null, status: 409, error: "Selected signer must be active, unlocked, and not inactive." };
+  }
+
+  const missing = signerMissingFields(user);
+  const signer: ResolvedSigner = {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    signatureBlockName: user.signatureBlockName,
+    phoneExtension: user.phoneExtension,
+    faxNumber: user.faxNumber,
+    signerEligible: Boolean(user.signerEligible),
+    signerProfileStatus: missing.length === 0 ? "Complete" : "Missing Fields",
+    signerMissingFields: missing,
+  };
+
+  if (missing.length > 0) {
+    return { signer, status: 409, error: "Selected signer profile is missing required signer fields." };
+  }
+
+  return { signer };
+}
+
+function buildTokenValuesFromSigner(signer: ResolvedSigner) {
   return {
-    "{{signer.signatureName}}": signatureName,
-    "{{signer.email}}": email,
-    "{{signer.extension}}": extension,
-    "{{signer.fax}}": fax,
+    "{{signer.signatureName}}": clean(signer.signatureBlockName),
+    "{{signer.email}}": clean(signer.email),
+    "{{signer.extension}}": clean(signer.phoneExtension),
+    "{{signer.fax}}": clean(signer.faxNumber),
   };
 }
 
@@ -225,8 +312,34 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const resolvedSigner = await resolveSigner(req);
+    if (resolvedSigner.error || !resolvedSigner.signer) {
+      return NextResponse.json(
+        {
+          ok: false,
+          action: "document-template-generate-preview",
+          error: resolvedSigner.error || "Signer resolution failed.",
+          signer: resolvedSigner.signer,
+          safety: {
+            localFirst: true,
+            templateRepositoryWrites: false,
+            clioWrites: false,
+            documentsGeneratedToDatabase: false,
+            graphWrites: false,
+            printQueued: false,
+            emailsSent: false,
+            draftsCreated: false,
+          signerResolvedFromAdminUser: true,
+          wetSignatureRequired: false,
+          wetSignatureStored: false,
+          },
+        },
+        { status: resolvedSigner.status || 409 }
+      );
+    }
+
     const sourceBuffer = Buffer.from(currentVersion.contentText, "base64");
-    const tokenValues = buildTokenValues(req);
+    const tokenValues = buildTokenValuesFromSigner(resolvedSigner.signer);
     const generated = await replaceTokensInDocx(sourceBuffer, tokenValues);
     const filename = `${safeFilename(template.label || template.key)} - Generated Preview.docx`;
 
@@ -238,6 +351,17 @@ export async function GET(req: NextRequest) {
         "X-Barsh-Matters-Action": "document-template-generate-preview",
         "X-Barsh-Matters-Template-Key": template.key,
         "X-Barsh-Matters-Template-Version": String(currentVersion.versionNumber),
+        "X-Barsh-Matters-Signer": encodeURIComponent(JSON.stringify({
+          id: resolvedSigner.signer.id,
+          email: resolvedSigner.signer.email,
+          signatureBlockName: resolvedSigner.signer.signatureBlockName,
+          phoneExtension: resolvedSigner.signer.phoneExtension,
+          faxNumber: resolvedSigner.signer.faxNumber,
+          signerEligible: resolvedSigner.signer.signerEligible,
+          signerProfileStatus: resolvedSigner.signer.signerProfileStatus,
+          wetSignatureRequired: false,
+          wetSignatureStored: false,
+        })),
         "X-Barsh-Matters-Replacements": encodeURIComponent(JSON.stringify(generated.replacements)),
         "X-Barsh-Matters-Safety": encodeURIComponent(JSON.stringify({
           localFirst: true,
@@ -248,6 +372,9 @@ export async function GET(req: NextRequest) {
           printQueued: false,
           emailsSent: false,
           draftsCreated: false,
+          signerResolvedFromAdminUser: true,
+          wetSignatureRequired: false,
+          wetSignatureStored: false,
         })),
       },
     });

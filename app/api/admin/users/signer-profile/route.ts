@@ -22,6 +22,7 @@ type AdminSignerProfileUpdateBody = {
   phoneExtension?: unknown;
   faxNumber?: unknown;
   signatureBlockName?: unknown;
+  signerEligible?: unknown;
   locked?: unknown;
   inactive?: unknown;
   twoFactorPhone?: unknown;
@@ -100,6 +101,7 @@ function profileSnapshot(user: {
   phoneExtension: string | null;
   faxNumber: string | null;
   signatureBlockName: string | null;
+  signerEligible: boolean;
   locked: boolean;
   inactive: boolean;
   twoFactorPhone: string | null;
@@ -117,6 +119,7 @@ function profileSnapshot(user: {
     phoneExtension: user.phoneExtension,
     faxNumber: user.faxNumber,
     signatureBlockName: user.signatureBlockName,
+    signerEligible: user.signerEligible,
     locked: user.locked,
     inactive: user.inactive,
     twoFactorPhone: user.twoFactorPhone,
@@ -177,6 +180,7 @@ export async function PATCH(req: NextRequest) {
         phoneExtension: true,
         faxNumber: true,
         signatureBlockName: true,
+        signerEligible: true,
         locked: true,
         inactive: true,
         twoFactorPhone: true,
@@ -198,6 +202,7 @@ export async function PATCH(req: NextRequest) {
       phoneExtension: body.phoneExtension === undefined ? existing.phoneExtension : String(body.phoneExtension ?? ""),
       faxNumber: body.faxNumber === undefined ? existing.faxNumber : String(body.faxNumber ?? ""),
       signatureBlockName: nullableString(body.signatureBlockName) ?? existing.signatureBlockName,
+      signerEligible: body.signerEligible === undefined ? existing.signerEligible : cleanBoolean(body.signerEligible),
       locked: body.locked === undefined ? existing.locked : cleanBoolean(body.locked),
       inactive: body.inactive === undefined ? existing.inactive : cleanBoolean(body.inactive),
       twoFactorPhone: nullableString(body.twoFactorPhone) ?? existing.twoFactorPhone,
@@ -268,6 +273,7 @@ export async function PATCH(req: NextRequest) {
       phoneExtension: payload.phoneExtension,
       faxNumber: payload.faxNumber,
       signatureBlockName: payload.signatureBlockName,
+      signerEligible: payload.signerEligible,
       locked: payload.locked,
       inactive: payload.inactive,
       twoFactorPhone: payload.twoFactorPhone,
@@ -303,6 +309,7 @@ export async function PATCH(req: NextRequest) {
         phoneExtension: payload.phoneExtension,
         faxNumber: payload.faxNumber,
         signatureBlockName: payload.signatureBlockName,
+        signerEligible: payload.signerEligible,
         locked: payload.locked,
         inactive: payload.inactive,
         twoFactorPhone: payload.twoFactorPhone,
@@ -316,6 +323,7 @@ export async function PATCH(req: NextRequest) {
         username: true,
         locked: true,
         inactive: true,
+        signerEligible: true,
         twoFactorDisabled: true,
         twoFactorPendingSetup: true,
       },

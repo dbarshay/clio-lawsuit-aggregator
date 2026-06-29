@@ -17,6 +17,7 @@ export type AdminUserSignerProfileWriteInputPhase7 = {
   phoneExtension?: string | null;
   faxNumber?: string | null;
   signatureBlockName?: string | null;
+  signerEligible?: boolean | null;
   locked?: boolean | null;
   inactive?: boolean | null;
   twoFactorPhone?: string | null;
@@ -35,6 +36,7 @@ export type AdminUserSignerProfileWritePayloadPhase7 = {
   phoneExtension: string | null;
   faxNumber: string | null;
   signatureBlockName: string | null;
+  signerEligible: boolean;
   locked: boolean;
   inactive: boolean;
   twoFactorPhone: string | null;
@@ -54,6 +56,7 @@ export const ADMIN_USER_SIGNER_PROFILE_PHASE7_WRITE_FIELDS = [
   "phoneExtension",
   "faxNumber",
   "signatureBlockName",
+  "signerEligible",
   "locked",
   "inactive",
   "twoFactorPhone",
@@ -108,6 +111,7 @@ export function buildAdminUserSignerProfileWritePayloadPhase7(
     phoneExtension: payloadBase.phoneExtension ?? null,
     faxNumber: payloadBase.faxNumber ?? null,
     signatureBlockName: payloadBase.signatureBlockName ?? null,
+    signerEligible: input.signerEligible !== false,
     locked: cleanBoolean(input.locked),
     inactive: cleanBoolean(input.inactive),
     twoFactorPhone: payloadBase.twoFactorPhone ?? null,

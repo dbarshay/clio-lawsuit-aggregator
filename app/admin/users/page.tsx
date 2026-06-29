@@ -92,6 +92,7 @@ const ADMIN_USERS_PHASE12_SIGNER_PROFILE_FIELDS = [
   "phoneExtension",
   "faxNumber",
   "signatureBlockName",
+  "signerEligible",
   "locked",
   "inactive",
   "twoFactorPhone",
@@ -111,6 +112,7 @@ function adminUsersPhase12SignerProfilePayload(form: Record<string, unknown>, ac
     phoneExtension: form.phoneExtension ?? "",
     faxNumber: form.faxNumber ?? "",
     signatureBlockName: form.signatureBlockName ?? "",
+    signerEligible: form.signerEligible !== false,
     locked: form.locked === true,
     inactive: form.inactive === true,
     twoFactorPhone: form.twoFactorPhone ?? "",
@@ -189,6 +191,7 @@ export default function AdminUsersPlanningPage() {
   const [createPhoneExtension, setCreatePhoneExtension] = useState("");
   const [createFaxNumber, setCreateFaxNumber] = useState("");
   const [createSignatureBlockName, setCreateSignatureBlockName] = useState("");
+  const [createSignerEligible, setCreateSignerEligible] = useState(true);
   const [createLocked, setCreateLocked] = useState(false);
   const [createInactive, setCreateInactive] = useState(false);
   const [createTwoFactorPhone, setCreateTwoFactorPhone] = useState("");
@@ -240,6 +243,7 @@ export default function AdminUsersPlanningPage() {
   const [editPhoneExtension, setEditPhoneExtension] = useState("");
   const [editFaxNumber, setEditFaxNumber] = useState("");
   const [editSignatureBlockName, setEditSignatureBlockName] = useState("");
+  const [editSignerEligible, setEditSignerEligible] = useState(true);
   const [editTwoFactorPhone, setEditTwoFactorPhone] = useState("");
   const [editTwoFactorDisabled, setEditTwoFactorDisabled] = useState(false);
   const [editTwoFactorPendingSetup, setEditTwoFactorPendingSetup] = useState(false);
@@ -583,6 +587,7 @@ export default function AdminUsersPlanningPage() {
     setEditPhoneExtension(String(user?.phoneExtension || ""));
     setEditFaxNumber(String(user?.faxNumber || ""));
     setEditSignatureBlockName(String(user?.signatureBlockName || user?.displayName || ""));
+    setEditSignerEligible(user?.signerEligible !== false);
     setEditTwoFactorPhone(String(user?.twoFactorPhone || ""));
     setEditTwoFactorDisabled(Boolean(user?.twoFactorDisabled));
     setEditTwoFactorPendingSetup(Boolean(user?.twoFactorPendingSetup));
@@ -620,6 +625,7 @@ export default function AdminUsersPlanningPage() {
         phoneExtension: editPhoneExtension,
         faxNumber: editFaxNumber,
         signatureBlockName: editSignatureBlockName,
+        signerEligible: editSignerEligible,
         locked: editLocked,
         inactive: editInactive,
         twoFactorPhone: editTwoFactorPhone,
@@ -903,6 +909,7 @@ export default function AdminUsersPlanningPage() {
           phoneExtension: createPhoneExtension,
           faxNumber: createFaxNumber,
           signatureBlockName: createSignatureBlockName,
+          signerEligible: createSignerEligible,
           locked: createLocked,
           inactive: createInactive,
           twoFactorPhone: createTwoFactorPhone,
@@ -1215,6 +1222,10 @@ export default function AdminUsersPlanningPage() {
               Signature Block Name
               <input data-barsh-admin-users-create-signature-block-name="true" value={createSignatureBlockName} onChange={(event) => { setCreateSignatureBlockName(event.target.value); setCreateResult(null); }} style={inputStyle} placeholder="Jane Doe" />
             </label>
+            <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 850 }}>
+              <input data-barsh-admin-users-create-signer-eligible="true" type="checkbox" checked={createSignerEligible} onChange={(event) => { setCreateSignerEligible(event.target.checked); setCreateResult(null); }} />
+              Eligible signer for document generation
+            </label>
             <label style={{ fontSize: 12, fontWeight: 900, color: "#334155" }}>
               Status
               <select data-barsh-admin-users-create-status="true" value={createStatus} onChange={(event) => { setCreateStatus(event.target.value); setCreateInactive(event.target.value !== "active"); setCreateResult(null); }} style={inputStyle}>
@@ -1253,7 +1264,6 @@ export default function AdminUsersPlanningPage() {
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
-                      <p data-barsh-admin-users-signer-eligibility-note="true" style={{ margin: "12px 0 0", color: "#7c2d12", lineHeight: 1.45, fontWeight: 800 }}>Signer eligibility is not yet a separate schema/UI setting. It remains a later approved phase before document generation relies on selectable eligible signers.</p>
             <button data-barsh-admin-users-create-preview-button="true" type="button" onClick={() => void submitCreateAdminUser(false)} disabled={createBusy} style={{ ...secondaryButtonStyle, opacity: createBusy ? 0.7 : 1 }}>
               {createBusy ? "Working..." : "Preview Create User"}
             </button>
@@ -1290,6 +1300,7 @@ export default function AdminUsersPlanningPage() {
             <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>Phone Extension<input data-barsh-admin-users-edit-phone-extension="true" value={editPhoneExtension} onChange={(event) => setEditPhoneExtension(event.target.value)} style={inputStyle} /></label>
             <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>Fax Number<input data-barsh-admin-users-edit-fax-number="true" value={editFaxNumber} onChange={(event) => setEditFaxNumber(event.target.value)} style={inputStyle} /></label>
             <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>Signature Block Name<input data-barsh-admin-users-edit-signature-block-name="true" value={editSignatureBlockName} onChange={(event) => setEditSignatureBlockName(event.target.value)} style={inputStyle} /></label>
+            <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 850 }}><input data-barsh-admin-users-edit-signer-eligible="true" type="checkbox" checked={editSignerEligible} onChange={(event) => setEditSignerEligible(event.target.checked)} />Eligible signer for document generation</label>
             <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>2FA Phone<input data-barsh-admin-users-edit-two-factor-phone="true" value={editTwoFactorPhone} onChange={(event) => setEditTwoFactorPhone(event.target.value)} style={inputStyle} /></label>
             <label style={{ display: "grid", gap: 6, fontWeight: 850 }}>
               Role to Assign

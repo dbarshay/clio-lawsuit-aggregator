@@ -4031,6 +4031,9 @@ function openClaimAmountEditDialog() {
     setFinalizeUploadResult(null);
 
     try {
+      const directMatterDisplayNumber =
+        textValue(matter?.displayNumber || matter?.display_number) ||
+        (directMatterNumericIdForDocuments() ? `BRL${directMatterNumericIdForDocuments()}` : "");
       const res = await fetch("/api/documents/finalize", {
         method: "POST",
         headers: {
@@ -4040,9 +4043,7 @@ function openClaimAmountEditDialog() {
           masterLawsuitId,
           uploadTargetMode: "direct-matter",
           directMatterId: /^BRL_/i.test(directMatterDisplayNumber) ? null : directMatterNumericIdForDocuments(),
-          directMatterDisplayNumber:
-            textValue(matter?.displayNumber || matter?.display_number) ||
-            (directMatterNumericIdForDocuments() ? `BRL${directMatterNumericIdForDocuments()}` : ""),
+          directMatterDisplayNumber,
           confirmUpload: true,
           documentKeys: uploadableDocuments.map((doc: any) => textValue(doc.key)).filter(Boolean),
         }),
@@ -6736,8 +6737,8 @@ function openClaimAmountEditDialog() {
                     type="button"
                     onClick={saveFinalizedDocumentLocallyForDelivery}
                     style={{
-                      border: "1px solid #16a34a",
-                      background: "#16a34a",
+                      border: "1px solid #1e3a8a",
+                      background: "#1e3a8a",
                       color: "#ffffff",
                       borderRadius: 12,
                       padding: "10px 14px",
@@ -6752,9 +6753,9 @@ function openClaimAmountEditDialog() {
                     type="button"
                     onClick={printFinalizedDocumentForDelivery}
                     style={{
-                      border: "1px solid #15803d",
-                      background: "#ffffff",
-                      color: "#166534",
+                      border: "1px solid #1e3a8a",
+                      background: "#1e3a8a",
+                      color: "#ffffff",
                       borderRadius: 12,
                       padding: "10px 14px",
                       fontWeight: 950,
@@ -6768,9 +6769,9 @@ function openClaimAmountEditDialog() {
                     type="button"
                     onClick={emailFinalizedDocumentForDelivery}
                     style={{
-                      border: "1px solid #15803d",
-                      background: "#ffffff",
-                      color: "#166534",
+                      border: "1px solid #1e3a8a",
+                      background: "#1e3a8a",
+                      color: "#ffffff",
                       borderRadius: 12,
                       padding: "10px 14px",
                       fontWeight: 950,
@@ -6793,8 +6794,8 @@ function openClaimAmountEditDialog() {
                       setFinalizeUploadResult(null);
                     }}
                     style={{
-                      border: "1px solid #16a34a",
-                      background: "#16a34a",
+                      border: "1px solid #1e3a8a",
+                      background: "#1e3a8a",
                       color: "#ffffff",
                       borderRadius: 12,
                       padding: "10px 14px",

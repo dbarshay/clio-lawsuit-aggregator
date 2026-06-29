@@ -595,6 +595,8 @@ export async function POST(req: NextRequest) {
             key: "blank-letterhead",
             label: clean(body?.selectedDocumentLabel) || "Blank Letterhead",
             filename: "Blank Letterhead.docx",
+            sourceEndpoint: "barsh-matters-db",
+            status: "available-now",
             wouldGenerate: true,
             wouldUploadToClio: true,
             availableNow: true,

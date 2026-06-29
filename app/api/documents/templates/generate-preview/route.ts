@@ -85,6 +85,7 @@ async function resolveSigner(req: NextRequest): Promise<{ signer: ResolvedSigner
       faxNumber: "(516) 706-5055",
       signerEligible: true,
       signerProfileStatus: "Complete",
+      signerMissingFields: [],
       signatureImageUrl: "",
       signatureImageDataUrl: "",
       signatureText: "Barsh Rizzo & Lopez PLLC",

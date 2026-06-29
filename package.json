@@ -738,7 +738,8 @@
     "verify:admin-users-phase-w8-enforcement-kill-switch-scaffold": "node scripts/verify-admin-users-phase-w8-enforcement-kill-switch-scaffold.mjs",
     "verify:admin-users-phase-w9-route-guard-package": "node scripts/verify-admin-users-phase-w9-route-guard-package.mjs",
     "build:admin-users-phase-w10-guard-dry-run-smoke": "node scripts/build-admin-users-phase-w10-guard-dry-run-smoke.mjs",
-    "verify:admin-users-phase-w10-guard-dry-run-smoke": "node scripts/verify-admin-users-phase-w10-guard-dry-run-smoke.mjs"
+    "verify:admin-users-phase-w10-guard-dry-run-smoke": "node scripts/verify-admin-users-phase-w10-guard-dry-run-smoke.mjs",
+    "verify:direct-matter-header-locked": "node scripts/verify-direct-matter-header-locked.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

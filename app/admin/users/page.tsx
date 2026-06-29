@@ -1179,7 +1179,8 @@ export default function AdminUsersPlanningPage() {
       const response = await fetch(ADMIN_USERS_PHASE12_SIGNER_PROFILE_UPDATE_ROUTE, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(buildAdminUsersPhase12SignerProfilePayload({
+        body: JSON.stringify({
+          actorEmail: ownerAdminActorEmail,
           targetEmail: signerProfileUser.email,
           email: signerProfileEmail,
           phoneExtension: signerProfilePhoneExtension,
@@ -1188,7 +1189,8 @@ export default function AdminUsersPlanningPage() {
           signerEligible: signerProfileEligible,
           preview: false,
           apply: true,
-        })),
+          reason: "Signer profile updated from Admin Users signer-profile popup.",
+        }),
       });
       const data = await readAdminUsersJsonResponse(response, "Save signer profile");
       setSignerProfileResult(data);

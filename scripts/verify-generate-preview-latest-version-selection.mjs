@@ -6,24 +6,31 @@ const must = (condition, message) => { if (!condition) failures.push(message); }
 
 const templateNullIndex = route.indexOf('if (!template) {');
 const selectedIndex = route.indexOf('let selectedVersionForGeneration: any = null;');
+const metadataIndex = route.indexOf('const metadata = template.metadata');
 
-must(route.includes('const versionId = searchParams.get("versionId")'), "generate-preview must read optional versionId query param");
+must(route.includes('const searchParams = req.nextUrl.searchParams'), "generate-preview must use req.nextUrl.searchParams");
+must(route.includes('const key = clean(searchParams.get("key"))'), "generate-preview must read key from searchParams");
+must(route.includes('const versionId = clean(searchParams.get("versionId"))'), "generate-preview must read optional versionId query param");
+must(route.includes("currentVersion: true"), "generate-preview must include currentVersion compatibility fallback");
 must(route.includes("versions: {"), "generate-preview must include template versions");
 must(route.includes('where: { storageKind: "db-docx-base64" }'), "latest selection must only consider stored DB DOCX versions");
 must(route.includes('orderBy: [{ versionNumber: "desc" }, { createdAt: "desc" }]'), "latest selection must order versions newest-first");
-must(route.includes("currentVersion: true"), "generate-preview must include currentVersion compatibility fallback");
-must(selectedIndex > templateNullIndex && templateNullIndex >= 0, "selected version logic must run after template null check");
-must(route.includes("versionId ?") || route.includes("if (versionId)"), "explicit versionId must remain supported");
+must(templateNullIndex >= 0, "template null check must exist");
+must(selectedIndex > templateNullIndex, "selected version logic must run after template null check");
+must(metadataIndex > selectedIndex, "production-ready metadata check must run after selected version is resolved");
+must(route.includes("if (versionId)"), "explicit versionId must remain supported");
 must(route.includes("template.versions[0]"), "default generation must use latest stored DOCX version");
-must(route.includes("template.currentVersion = selectedVersionForGeneration"), "selected version must override template.currentVersion for generation");
-must(route.includes('"x-barsh-matters-selected-version-id"'), "response must expose selected version id");
-must(route.includes('"x-barsh-matters-requested-version-id"'), "response must expose requested version id");
-must(route.includes('"x-barsh-matters-latest-version-default"'), "response must expose latest-version default flag");
+must(route.includes("const currentVersion = selectedVersionForGeneration"), "generation must use selected version");
+must(route.includes("Buffer.from(currentVersion.contentText"), "DOCX source must come from selected version");
+must(route.includes('"X-Barsh-Matters-Selected-Version-Id"'), "response must expose selected version id");
+must(route.includes('"X-Barsh-Matters-Requested-Version-Id"'), "response must expose requested version id");
+must(route.includes('"X-Barsh-Matters-Latest-Version-Default"'), "response must expose latest-version default flag");
 must(route.includes("clioWrites: false"), "generation safety must still block Clio writes");
 must(route.includes("graphWrites: false"), "generation safety must still block Graph writes");
 must(route.includes("emailsSent: false"), "generation safety must still block emails");
 must(route.includes("printQueued: false"), "generation safety must still block print queue");
 must(route.includes("draftsCreated: false"), "generation safety must still block drafts");
+must(!route.includes("if (versionId) {\\n      selectedVersionForGeneration") || selectedIndex > templateNullIndex, "versionId logic must not execute before template null check");
 
 if (failures.length) {
   console.error("FAILURES=" + failures.length);

@@ -292,7 +292,9 @@ async function replaceTokensInDocx(buffer: Buffer, tokenValues: Record<string, s
 
 export async function GET(req: NextRequest) {
   try {
-    const key = clean(req.nextUrl.searchParams.get("key"));
+    const searchParams = req.nextUrl.searchParams;
+    const key = clean(searchParams.get("key"));
+    const versionId = clean(searchParams.get("versionId"));
 
     if (!key) {
       return NextResponse.json(
@@ -301,16 +303,24 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    let template = await prisma.documentTemplate.findUnique({
+    const template = await prisma.documentTemplate.findUnique({
       where: { key },
       include: {
+        currentVersion: true,
         versions: {
+          where: { storageKind: "db-docx-base64" },
           orderBy: [{ versionNumber: "desc" }, { createdAt: "desc" }],
         },
       },
     });
 
-    
+    if (!template) {
+      return NextResponse.json(
+        { ok: false, action: "document-template-generate-preview", error: "Template not found." },
+        { status: 404 }
+      );
+    }
+
     let selectedVersionForGeneration: any = null;
 
     if (versionId) {
@@ -320,8 +330,12 @@ export async function GET(req: NextRequest) {
 
       if (!selectedVersionForGeneration || selectedVersionForGeneration.templateId !== template.id) {
         return NextResponse.json(
-          { ok: false, error: "Requested template version was not found for this template." },
-          { status: 404 },
+          {
+            ok: false,
+            action: "document-template-generate-preview",
+            error: "Requested template version was not found for this template.",
+          },
+          { status: 404 }
         );
       }
     } else {
@@ -333,35 +347,29 @@ export async function GET(req: NextRequest) {
 
     if (!selectedVersionForGeneration) {
       return NextResponse.json(
-        { ok: false, error: "Template has no stored DOCX version available for generation." },
-        { status: 404 },
+        {
+          ok: false,
+          action: "document-template-generate-preview",
+          error: "Template has no stored DB DOCX version available for generation.",
+        },
+        { status: 409 }
       );
     }
 
     if (selectedVersionForGeneration.storageKind !== "db-docx-base64" || !selectedVersionForGeneration.contentText) {
       return NextResponse.json(
-        { ok: false, error: "Selected template version does not have stored DOCX content." },
-        { status: 400 },
-      );
-    }
-
-    template.currentVersion = selectedVersionForGeneration;
-
-if (!template) {
-      return NextResponse.json(
-        { ok: false, action: "document-template-generate-preview", error: "Template not found." },
-        { status: 404 }
+        {
+          ok: false,
+          action: "document-template-generate-preview",
+          error: "Selected template version does not have stored DB DOCX content.",
+        },
+        { status: 409 }
       );
     }
 
     const metadata = template.metadata && typeof template.metadata === "object" && !Array.isArray(template.metadata)
       ? template.metadata as Record<string, any>
       : {};
-
-    const currentVersion =
-      template.versions.find((version) => clean(version.id) === clean(template.currentVersionId)) ||
-      template.versions[0] ||
-      null;
 
     if (!template.enabled || metadata.deleted === true || metadata.archived === true || metadata.productionTemplateReady !== true) {
       return NextResponse.json(
@@ -381,16 +389,7 @@ if (!template) {
       );
     }
 
-    if (!currentVersion || currentVersion.storageKind !== "db-docx-base64" || !currentVersion.contentText) {
-      return NextResponse.json(
-        {
-          ok: false,
-          action: "document-template-generate-preview",
-          error: "Template does not have a stored DB DOCX current version.",
-        },
-        { status: 409 }
-      );
-    }
+    const currentVersion = selectedVersionForGeneration;
 
     const resolvedSigner = await resolveSigner(req);
     if (resolvedSigner.error || !resolvedSigner.signer) {
@@ -409,9 +408,9 @@ if (!template) {
             printQueued: false,
             emailsSent: false,
             draftsCreated: false,
-          signerResolvedFromAdminUser: true,
-          wetSignatureRequired: false,
-          wetSignatureStored: false,
+            signerResolvedFromAdminUser: true,
+            wetSignatureRequired: false,
+            wetSignatureStored: false,
           },
         },
         { status: resolvedSigner.status || 409 }
@@ -431,6 +430,9 @@ if (!template) {
         "X-Barsh-Matters-Action": "document-template-generate-preview",
         "X-Barsh-Matters-Template-Key": template.key,
         "X-Barsh-Matters-Template-Version": String(currentVersion.versionNumber),
+        "X-Barsh-Matters-Selected-Version-Id": String(currentVersion.id || ""),
+        "X-Barsh-Matters-Requested-Version-Id": versionId || "",
+        "X-Barsh-Matters-Latest-Version-Default": versionId ? "false" : "true",
         "X-Barsh-Matters-Signer": encodeURIComponent(JSON.stringify({
           id: resolvedSigner.signer.id,
           email: resolvedSigner.signer.email,
@@ -469,3 +471,4 @@ if (!template) {
     );
   }
 }
+

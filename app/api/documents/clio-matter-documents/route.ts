@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { clioFetch } from "@/lib/clio";
 import { listClioFolderDocuments, listClioMatterDocuments } from "@/lib/clioDocumentUpload";
+import { findExactClioChildFolderByNameWithGuard } from "@/lib/clioFolderResolverExecutor";
+import { buildClioStorageTargetPlan, type ClioStorageTargetInput } from "@/lib/clioStoragePlan";
 
 function clean(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -147,28 +149,65 @@ function sourceLabel(displayNumber: string, role: "lawsuit" | "bill") {
   return `${normalizeBrl(displayNumber)}- ${role === "lawsuit" ? "Lawsuit" : "Bill"}`;
 }
 
-function findPositiveNumberByKey(value: any, keys: string[]): number | null {
-  if (!value || typeof value !== "object") return null;
+async function resolveExistingSingleMasterFolderForDocuments(input: ClioStorageTargetInput) {
+  const targetPlan = buildClioStorageTargetPlan(input);
+  const rootFolderId = numberOrNull(
+    process.env.CLIO_SINGLE_MASTER_ROOT_FOLDER_ID || process.env.CLIO_DOCUMENTS_ROOT_FOLDER_ID
+  );
 
-  for (const key of keys) {
-    const found = numberOrNull(value?.[key]);
-    if (found) return found;
+  if (!rootFolderId) {
+    throw new Error("[CLIO_STORAGE] Missing or invalid CLIO_SINGLE_MASTER_ROOT_FOLDER_ID for read-only document listing.");
   }
 
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const found = findPositiveNumberByKey(item, keys);
-      if (found) return found;
+  const configuredSegments =
+    Array.isArray(targetPlan.folderSegments) && targetPlan.folderSegments.length
+      ? targetPlan.folderSegments
+      : [targetPlan.bucketFolderName, targetPlan.matterFolderName];
+
+  const folderSegments: any[] = [];
+  let parentId = rootFolderId;
+
+  for (const segmentName of configuredSegments) {
+    const folderName = clean(segmentName);
+    if (!folderName) {
+      throw new Error("[CLIO_STORAGE] Empty folder segment in read-only document listing.");
     }
-    return null;
+
+    const found = await findExactClioChildFolderByNameWithGuard({
+      matterId: targetPlan.masterMatterId,
+      parentId,
+      folderName,
+    });
+
+    if (!found?.id) {
+      return {
+        ok: false as const,
+        targetPlan,
+        folderId: null,
+        folderSegments,
+        missingFolderName: folderName,
+        missingParentId: parentId,
+        createdFolderCount: 0,
+        reusedFolderCount: folderSegments.length,
+      };
+    }
+
+    folderSegments.push(found);
+    parentId = Number(found.id);
   }
 
-  for (const item of Object.values(value)) {
-    const found = findPositiveNumberByKey(item, keys);
-    if (found) return found;
-  }
+  const finalFolder = folderSegments[folderSegments.length - 1];
 
-  return null;
+  return {
+    ok: true as const,
+    targetPlan,
+    bucketFolderId: Number(folderSegments[0]?.id || finalFolder?.id || 0),
+    matterFolderId: Number(finalFolder?.id || 0),
+    folderId: Number(finalFolder?.id || 0),
+    folderSegments,
+    createdFolderCount: 0,
+    reusedFolderCount: folderSegments.length,
+  };
 }
 
 export async function GET(req: NextRequest) {
@@ -214,24 +253,17 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      const resolverUrl = new URL("/api/documents/clio-folder-resolver-dry-run", url.origin);
-      resolverUrl.searchParams.set("uploadTargetMode", "direct-matter");
-      resolverUrl.searchParams.set("singleMasterDirectStorage", "1");
-      resolverUrl.searchParams.set("useSingleMasterClioStorage", "1");
-      resolverUrl.searchParams.set("directMatterDisplayNumber", directMatterDisplayNumber);
-      resolverUrl.searchParams.set("displayNumber", directMatterDisplayNumber);
+      const targetInput: ClioStorageTargetInput = {
+        storageTargetKind: "individual_matter",
+        bmMatterId: directMatterDisplayNumber,
+        displayNumber: directMatterDisplayNumber,
+        directMatterFileNumber: directMatterDisplayNumber,
+      };
 
-      const resolverResponse = await fetch(resolverUrl.toString(), { cache: "no-store" });
-      const resolverJson = await resolverResponse.json().catch(() => null);
-      const folderId = findPositiveNumberByKey(resolverJson, [
-        "folderId",
-        "clioFolderId",
-        "targetFolderId",
-        "uploadFolderId",
-        "singleMasterUploadFolderId",
-      ]);
+      const folderResolution = await resolveExistingSingleMasterFolderForDocuments(targetInput);
+      const folderId = Number(folderResolution?.folderId);
 
-      if (!resolverResponse.ok || !folderId) {
+      if (!folderResolution.ok || !Number.isFinite(folderId) || folderId <= 0) {
         return NextResponse.json(
           {
             ok: false,
@@ -249,20 +281,20 @@ export async function GET(req: NextRequest) {
             matterId: null,
             localMatterId: null,
             clioMatterId: null,
-            clioFolderId: folderId,
+            clioFolderId: null,
             directMatterDisplayNumber,
             error:
-              resolverJson?.error ||
-              resolverJson?.message ||
-              `Could not resolve Barsh Matters Master Repository direct folder for ${directMatterDisplayNumber}.`,
+              folderResolution?.missingFolderName
+                ? `Could not resolve existing Barsh Matters Master Repository direct folder for ${directMatterDisplayNumber}; missing folder segment "${folderResolution.missingFolderName}".`
+                : `Could not resolve existing Barsh Matters Master Repository direct folder for ${directMatterDisplayNumber}.`,
             localSource: {
-              source: "single-master-direct-folder-resolver",
+              source: "single-master-direct-folder-read-only-exact-lookup",
               mappingRequired: false,
               directMatterDisplayNumber,
-              resolver: resolverJson,
+              folderResolution,
             },
           },
-          { status: resolverResponse.ok ? 409 : resolverResponse.status || 409 }
+          { status: 404 }
         );
       }
 
@@ -314,10 +346,10 @@ export async function GET(req: NextRequest) {
         directMatterDisplayNumber,
         clioDisplayNumber: directMatterDisplayNumber,
         localSource: {
-          source: "single-master-direct-folder-resolver",
+          source: "single-master-direct-folder-read-only-exact-lookup",
           mappingRequired: false,
           directMatterDisplayNumber,
-          resolver: resolverJson,
+          folderResolution,
         },
         documents: normalizedDocuments,
         sourceSummaries,
@@ -334,7 +366,9 @@ export async function GET(req: NextRequest) {
         safety: {
           routeIsReadOnly: true,
           usesExistingListHelper: true,
+          usesReadOnlyExactFolderLookup: true,
           usesFolderDocumentListing: true,
+          noFolderCreation: true,
           noClioWrites: true,
           noDatabaseWrites: true,
           noUploads: true,
@@ -664,6 +698,7 @@ export async function GET(req: NextRequest) {
       safety: {
         routeIsReadOnly: true,
         usesExistingListHelper: true,
+          usesReadOnlyExactFolderLookup: true,
         noClioWrites: true,
         noDatabaseWrites: true,
         noUploads: true,

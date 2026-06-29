@@ -99,6 +99,7 @@ const routeNormalizerBody = functionBody(route, "function normalizeDirectMatterD
 const directSingleMasterIndex = route.indexOf('uploadTargetMode === "direct-matter" && singleMasterDirectStorage');
 const legacyMatterResolutionIndex = route.indexOf("resolveClioMatterByDisplayNumber(localDisplayNumber)");
 const legacyMatterConflictIndex = route.indexOf("if (matterId && masterLawsuitId)");
+const readonlyResolverBody = functionBody(route, "async function resolveExistingSingleMasterFolderForDocuments(");
 
 const checks = [
   ["page normalizer exists", Boolean(pageNormalizerBody)],
@@ -119,15 +120,23 @@ const checks = [
   ["direct View Documents path does not send matterId", !/params\.set\(["']matterId["']/.test(loadBody) && !/matterId=\$\{/.test(loadBody) && !/matterId=\$\{encodeURIComponent/.test(loadBody)],
   ["direct View Documents path does not send clioMatterId", !/params\.set\(["']clioMatterId["']/.test(loadBody) && !/clioMatterId=/.test(loadBody)],
   ["route imports listClioFolderDocuments", route.includes("listClioFolderDocuments")],
+  ["route imports exact read-only folder lookup helper", route.includes("findExactClioChildFolderByNameWithGuard")],
+  ["route imports Clio storage planner", route.includes("buildClioStorageTargetPlan") && route.includes("ClioStorageTargetInput")],
   ["route accepts uploadTargetMode", route.includes("uploadTargetMode")],
   ["route accepts singleMasterDirectStorage", route.includes("singleMasterDirectStorage")],
   ["route accepts useSingleMasterClioStorage", route.includes("useSingleMasterClioStorage")],
   ["route accepts directMatterDisplayNumber", route.includes("directMatterDisplayNumber")],
   ["route resolves direct single-master folder before legacy matterId conflict path", directSingleMasterIndex > 0 && legacyMatterConflictIndex > 0 && directSingleMasterIndex < legacyMatterConflictIndex],
   ["route resolves direct single-master folder before legacy Clio matter lookup", directSingleMasterIndex > 0 && legacyMatterResolutionIndex > 0 && directSingleMasterIndex < legacyMatterResolutionIndex],
-  ["route uses existing folder resolver endpoint", route.includes("/api/documents/clio-folder-resolver-dry-run")],
+  ["route does not use dry-run folder resolver endpoint", !route.includes("/api/documents/clio-folder-resolver-dry-run")],
+  ["route resolves existing single-master folder read-only", Boolean(readonlyResolverBody) && route.includes("single-master-direct-folder-read-only-exact-lookup")],
+  ["route read-only resolver uses exact child lookup", readonlyResolverBody.includes("findExactClioChildFolderByNameWithGuard")],
+  ["route read-only resolver does not create folders", !route.includes("createClioFolderWithGuard") && !route.includes("resolveClioMatterFolderWithGuard")],
+  ["route read-only resolver reports zero created folders", route.includes("createdFolderCount: 0")],
   ["route lists Clio folder documents for direct single-master storage", route.includes("listClioFolderDocuments(folderId)")],
   ["route response marks single-master direct storage", route.includes('sourceStorageMode: "single-master-direct-folder"') && route.includes("singleMasterDirectStorage: true") && route.includes("useSingleMasterClioStorage: true")],
+  ["route response reports no folder creation", route.includes("noFolderCreation: true") && route.includes("usesReadOnlyExactFolderLookup: true")],
+  ["route has no stale dry-run resolver artifacts", !route.includes("findPositiveNumberByKey") && !route.includes("resolverJson") && !route.includes("resolverResponse")],
 ];
 
 for (const [message, ok] of checks) {

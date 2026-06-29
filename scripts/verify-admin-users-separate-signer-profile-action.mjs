@@ -17,6 +17,11 @@ must(!page.includes("body: JSON.stringify(buildAdminUsersPhase12SignerProfilePay
 must(page.includes('reason: "Signer profile updated from Admin Users signer-profile popup."'), "popup save missing direct signer-profile payload reason");
 must(page.includes("actorEmail: ownerAdminActorEmail"), "popup save missing actorEmail payload");
 must(page.includes("userId: signerProfileUser.id"), "popup save missing userId payload");
+must(page.includes("twoFactorDisabled: signerProfileUser.twoFactorDisabled === true"), "popup save must preserve twoFactorDisabled");
+must(page.includes("twoFactorPendingSetup: signerProfileUser.twoFactorPendingSetup === true"), "popup save must preserve twoFactorPendingSetup");
+must(page.includes('twoFactorPhone: signerProfileUser.twoFactorPhone || ""'), "popup save must preserve twoFactorPhone");
+must(page.includes("locked: signerProfileUser.locked === true"), "popup save must preserve locked state");
+must(page.includes("inactive: signerProfileUser.inactive === true"), "popup save must preserve inactive state");
 must(page.includes('data-barsh-admin-users-signer-profile-modal="true"'), "missing signer profile modal");
 must(page.includes('data-barsh-admin-users-signer-profile-only-fields="true"'), "missing signer-only fields anchor");
 must(page.includes('data-barsh-admin-users-signer-profile-email="true"'), "missing signer profile email field");

@@ -118,6 +118,7 @@ export async function POST(req: NextRequest) {
     const singleMasterDirectStorage = body?.singleMasterDirectStorage === true || body?.useSingleMasterClioStorage === true;
     const requestedKeys = asStringArray(body?.documentKeys);
     const signerEmail = clean(body?.signerEmail || body?.signerEmailAddress || body?.signer?.email);
+    const resolvedSignerEmail = signerEmail || "dbarshay@brlfirm.com";
     const confirmCreate = body?.confirmCreate === true;
 
     if (!masterLawsuitId && uploadTargetMode !== "direct-matter") {
@@ -185,7 +186,7 @@ export async function POST(req: NextRequest) {
             label: "Blank Letterhead",
             description: "Current stored DOCX template from the local Barsh Matters template repository.",
             filename: "Blank Letterhead.docx",
-            sourceEndpoint: "/api/documents/templates/generate-preview?key=blank-letterhead",
+            sourceEndpoint: "/api/documents/templates/generate-preview?key=blank-letterhead&signerEmail=dbarshay%40brlfirm.com",
             wouldGenerate: true,
             availableNow: true,
             templateSource: "barsh-matters-db-template-repository",

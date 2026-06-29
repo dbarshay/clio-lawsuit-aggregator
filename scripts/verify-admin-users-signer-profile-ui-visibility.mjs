@@ -18,7 +18,10 @@ must(page.includes('data-barsh-admin-users-table-signer-profile-status="true"'),
 must(page.includes('data-barsh-admin-users-table-signature-name="true"'), "missing signature name table cell");
 must(page.includes('data-barsh-admin-users-table-signer-contact="true"'), "missing signer contact table cell");
 
-must(page.includes("Edit / Signer Profile"), "missing discoverable edit/signer-profile action label");
+must(page.includes('data-barsh-admin-users-edit-row-button="true"'), "missing discoverable Edit action");
+must(page.includes('data-barsh-admin-users-signer-profile-row-button="true"'), "missing discoverable Signer Profile action");
+must(page.includes(">Edit</button><button data-barsh-admin-users-signer-profile-row-button"), "Edit and Signer Profile actions are not split");
+must(!page.includes(">Edit / Signer Profile</button>"), "combined Edit / Signer Profile action should not remain");
 must(page.includes("signerEligible"), "missing signerEligible UI/source reference");
 must(page.includes("signatureBlockName"), "missing signatureBlockName UI/source reference");
 must(page.includes("phoneExtension"), "missing phoneExtension UI/source reference");

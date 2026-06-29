@@ -72,8 +72,23 @@ async function loadFinalizePreview(req: NextRequest, params: {
   return previewJson;
 }
 
-async function generateDocumentBuffer(req: NextRequest, document: any) {
+async function generateDocumentBuffer(
+  req: NextRequest,
+  document: any,
+  context: { directMatterDisplayNumber?: string; masterLawsuitId?: string; signerEmail?: string },
+) {
   const sourceUrl = new URL(document.sourceEndpoint, req.nextUrl.origin);
+
+  // Thread matter/lawsuit/signer context so generate-preview can resolve data tokens.
+  if (clean(context.directMatterDisplayNumber) && !sourceUrl.searchParams.has("directMatterDisplayNumber")) {
+    sourceUrl.searchParams.set("directMatterDisplayNumber", clean(context.directMatterDisplayNumber));
+  }
+  if (clean(context.masterLawsuitId) && !sourceUrl.searchParams.has("masterLawsuitId")) {
+    sourceUrl.searchParams.set("masterLawsuitId", clean(context.masterLawsuitId));
+  }
+  if (clean(context.signerEmail) && !sourceUrl.searchParams.has("signerEmail")) {
+    sourceUrl.searchParams.set("signerEmail", clean(context.signerEmail));
+  }
 
   const docRes = await fetch(sourceUrl, {
     method: "GET",
@@ -248,7 +263,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const buffer = await generateDocumentBuffer(req, selectedDocument);
+    const buffer = await generateDocumentBuffer(req, selectedDocument, {
+      directMatterDisplayNumber,
+      masterLawsuitId,
+      signerEmail: resolvedSignerEmail,
+    });
     const sourceDocxSha256 = sha256Hex(buffer);
     const graphTokenResult = await requestMicrosoftGraphAppToken();
 

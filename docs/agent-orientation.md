@@ -119,3 +119,66 @@ reads `uploaded[].clioDocumentId` / duplicate `existingClioDocuments[].id`):
 - Work historically proceeded in tightly-scoped numbered "phases" with docs in `docs/`.
 - Locked: document header/letterhead formatting. Don't reintroduce legacy per-direct-matter
   Clio matter lookups into the read-only View Documents path.
+
+## Template token data model (domain)
+
+There are two matter levels:
+
+- **Individual claim/matter** — BM-generated file number `BRL_YYYYNNNNN`. Holds the claim
+  data (provider, patient, insurer, claim number, dates, amounts).
+- **Lawsuit matter** — created by **aggregating one or more individual claims**; on
+  aggregation it gets a file number `YYYY.MM.NNNNNN` (the master lawsuit id). Holds the
+  litigation data the user enters during lawsuit generation (index number, court,
+  adversary, lawsuit amount, costs, balance, date filed).
+
+Generation tokens resolve from whichever level holds the data, plus reference tables,
+the signer profile, and (future) the settlement dialog. Token → source mapping:
+
+**Signer** (from the selected `AdminUser` signer profile; firm option = Barsh Rizzo & Lopez):
+`signer.email/fax/extension/displayName/signatureName/title`.
+
+**Matter + Claim** (from the **individual** BRL_ matter — claims index, with UI-edited
+fields as fallback):
+- `matter.fileNumber` = the BRL_ display number
+- `matter.providerName` (case-normalized), `matter.patientName`
+- `matter.billedAmount` = the individual matter's **Claim Amount** (`claimAmount`)
+- `claim.number`, `claim.dateOfLoss`, `claim.denialReason`
+- `claim.dateOfService` = a single date OR a `dosStart – dosEnd` range when both exist
+- `claim.payments` = total **voluntary payments** for the individual claim (UI "Payments")
+- `claim.balance` = Claim Amount − payments (UI "Balance")
+
+**Provider**: `provider.taxId` from the **provider reference table** (`ReferenceEntity`
+type provider, `details.taxId`) — **not yet populated** in data, so expect blank.
+
+**Insurer**: `insurer.name` from the individual matter; `insurer.street/city/state/zipcode/
+fullAddressBlock` from the **insurer reference table** (`ReferenceEntity` type insurer,
+`details.addressLine1/city/state/zip`), matched by insurer name. Address is per-insurer
+(some insurers may share an address).
+
+**Lawsuit / Court / Adversary / Costs** (from the **lawsuit** `YYYY.MM.NNNNNN` record,
+user-entered during lawsuit generation; addresses from reference tables by name):
+- `lawsuit.amount` = UI "Lawsuit Amount"
+- `cost.indexFee`, `cost.serviceFee`, `cost.otherCourtCosts`; `cost.total` / `lawsuit.costs`
+  = sum of those three (UI "Costs")
+- `lawsuit.balance` = Lawsuit Amount + Costs − payments posted on the lawsuit file (post-filing)
+- `lawsuit.indexNumber`, `lawsuit.dateFiled`, `lawsuit.adversaryAttorney`
+- `adversaryAttorney.street/city/state/zipcode`, `adversary.fullAddressBlock` (adversary
+  reference table by name)
+- `court.name/longName1/longName2/street/city/state/zipcode` (court reference table)
+
+**Settlement** (principal, interest, costs, attorney fees) come from the **settlement
+dialog** the user enters. No canonical `settlement.*` tokens exist yet — future category.
+
+Reference entity addresses live in `ReferenceEntity.details` JSON (structured keys:
+`addressLine1/addressLine2/city/state/zip/phone/fax/email/taxId/...`). The
+`/api/reference-data/contact-search` API only surfaces a single `address` string; the
+token resolver should read `details` directly for structured components.
+
+### Fill engine (generate-preview)
+
+`app/api/documents/templates/generate-preview/route.ts` (GET) is the docx token-fill
+engine (JSZip, replaces tokens across Word `<w:t>` run boundaries, per-paragraph). Token
+syntax `{{namespace.field|modifier|...}}`; modifiers: `upper/lower/title`,
+`date:MM/DD/YYYY`, `date:Month D, YYYY`, `currency` (text-formatting modifiers
+bold/italic/underline are catalogued but require run-property edits — not yet applied).
+Generation must NOT silently blank unresolved tokens — report them.

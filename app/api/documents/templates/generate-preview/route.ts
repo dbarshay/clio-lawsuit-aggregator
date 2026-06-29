@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import JSZip from "jszip";
 import { prisma } from "@/lib/prisma";
+import { resolveTemplateTokenBaseValues } from "@/lib/documents/templateTokenResolver";
+import { extractTemplateTokens, parseTemplateToken, formatTokenValue } from "@/lib/documents/templateTokenFormat";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -298,6 +300,30 @@ async function replaceTokensInDocx(buffer: Buffer, tokenValues: Record<string, s
   return { buffer: Buffer.from(generated), replacements };
 }
 
+async function scanDocxTokens(buffer: Buffer): Promise<string[]> {
+  const zip = await JSZip.loadAsync(buffer);
+  const partNames = Object.keys(zip.files).filter(docxTextPartName);
+  const tokens = new Set<string>();
+
+  for (const partName of partNames) {
+    const file = zip.file(partName);
+    if (!file) continue;
+
+    const xml = await file.async("string");
+    const textNodeRegex = /<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g;
+    let match: RegExpExecArray | null;
+    let combined = "";
+
+    while ((match = textNodeRegex.exec(xml)) !== null) {
+      combined += xmlUnescape(match[1] || "");
+    }
+
+    for (const token of extractTemplateTokens(combined)) tokens.add(token);
+  }
+
+  return Array.from(tokens);
+}
+
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -425,7 +451,50 @@ export async function GET(req: NextRequest) {
     }
 
     const sourceBuffer = Buffer.from(currentVersion.contentText, "base64");
-    const tokenValues = buildTokenValuesFromSigner(resolvedSigner.signer);
+
+    const baseResolution = await resolveTemplateTokenBaseValues({
+      directMatterDisplayNumber: clean(searchParams.get("directMatterDisplayNumber")),
+      masterLawsuitId: clean(searchParams.get("masterLawsuitId")),
+      signer: {
+        email: resolvedSigner.signer.email,
+        faxNumber: resolvedSigner.signer.faxNumber,
+        phoneExtension: resolvedSigner.signer.phoneExtension,
+        displayName: resolvedSigner.signer.displayName,
+        signatureBlockName: resolvedSigner.signer.signatureBlockName,
+      },
+    });
+
+    const docTokens = await scanDocxTokens(sourceBuffer);
+    const tokenValues: Record<string, string> = {};
+    const filledTokens: string[] = [];
+    const emptyTokens: string[] = [];
+    const unrecognizedTokens: string[] = [];
+
+    for (const token of docTokens) {
+      const { base, modifiers } = parseTemplateToken(token);
+      const entry = baseResolution.values[base];
+      if (!entry) {
+        // Not a known canonical/custom field we can resolve. Leave the token visible
+        // so the author notices it (no silent blanking).
+        unrecognizedTokens.push(token);
+        continue;
+      }
+      const formatted = formatTokenValue(entry, modifiers);
+      tokenValues[token] = formatted;
+      if (clean(formatted)) filledTokens.push(token);
+      else emptyTokens.push(token);
+    }
+
+    const tokenReport = {
+      hasClaim: baseResolution.context.hasClaim,
+      hasLawsuit: baseResolution.context.hasLawsuit,
+      masterLawsuitId: baseResolution.context.masterLawsuitId,
+      directMatterDisplayNumber: baseResolution.context.displayNumber,
+      filledTokens,
+      emptyTokens,
+      unrecognizedTokens,
+    };
+
     const generated = await replaceTokensInDocx(sourceBuffer, tokenValues);
     const filename = `${safeFilename(template.label || template.key)} - Generated Preview.docx`;
 
@@ -452,6 +521,7 @@ export async function GET(req: NextRequest) {
           wetSignatureStored: false,
         })),
         "X-Barsh-Matters-Replacements": encodeURIComponent(JSON.stringify(generated.replacements)),
+        "X-Barsh-Matters-Token-Report": encodeURIComponent(JSON.stringify(tokenReport)),
         "X-Barsh-Matters-Safety": encodeURIComponent(JSON.stringify({
           localFirst: true,
           templateRepositoryWrites: false,

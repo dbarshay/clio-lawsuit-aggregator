@@ -1,0 +1,281 @@
+import { prisma } from "@/lib/prisma";
+import { getMatter } from "@/lib/claimIndex";
+import { normalizeProviderName } from "@/lib/providerNameCase";
+
+// Server-side resolution of canonical template merge-field tokens.
+//
+// Returns a base-field -> { raw, type } map. The fill engine
+// (app/api/documents/templates/generate-preview/route.ts) scans the docx for
+// {{base|modifier}} tokens, looks up the base value here, and applies modifiers.
+//
+// Data layers (see docs/agent-orientation.md "Template token data model"):
+//   1. Individual claim/matter (BRL_) via the claims index (getMatter).
+//   2. Lawsuit (YYYY.MM.NNNNNN) via prisma.lawsuit (+ lawsuitOptions JSON).
+//   3. Reference tables (ReferenceEntity.details) for insurer/provider/adversary/court.
+//   4. Signer profile (resolved upstream and passed in).
+
+export type TokenValueType = "text" | "date" | "currency";
+export type TokenBaseValue = { raw: string | number | null; type: TokenValueType };
+
+export type ResolvedTokenSigner = {
+  email?: string | null;
+  faxNumber?: string | null;
+  phoneExtension?: string | null;
+  displayName?: string | null;
+  signatureBlockName?: string | null;
+};
+
+export type TemplateTokenContext = {
+  hasClaim: boolean;
+  hasLawsuit: boolean;
+  masterLawsuitId: string;
+  displayNumber: string;
+};
+
+function clean(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+function numOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || clean(value) === "") return null;
+  const parsed = Number(String(value).replace(/[$,\s]/g, ""));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function detailsObject(value: unknown): Record<string, any> {
+  if (!value) return {};
+  if (typeof value === "object" && !Array.isArray(value)) return value as Record<string, any>;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+function pick(details: Record<string, any>, keys: string[]): string {
+  for (const key of keys) {
+    const v = clean(details[key]);
+    if (v) return v;
+  }
+  return "";
+}
+
+function normalizeName(value: unknown): string {
+  return clean(value).toLowerCase().replace(/\s+/g, " ");
+}
+
+function joinNonEmpty(parts: Array<string | null | undefined>, sep: string): string {
+  return parts.map((p) => clean(p)).filter(Boolean).join(sep);
+}
+
+// Single-line address (street, city, state zip). Template authors compose multi-line
+// addressee blocks by placing the structured tokens on separate lines.
+function composeAddress(details: Record<string, any>): string {
+  const street = joinNonEmpty(
+    [pick(details, ["addressLine1", "street", "address"]), pick(details, ["addressLine2"])],
+    ", ",
+  );
+  const city = pick(details, ["city"]);
+  const state = pick(details, ["state"]);
+  const zip = pick(details, ["zip", "zipcode", "zipCode", "postalCode"]);
+  const cityStateZip = joinNonEmpty([city, joinNonEmpty([state, zip], " ")], ", ");
+  return joinNonEmpty([street, cityStateZip], ", ");
+}
+
+async function findReferenceEntityByName(types: string[], name: string) {
+  const normalized = normalizeName(name);
+  if (!normalized) return null;
+  try {
+    return await prisma.referenceEntity.findFirst({
+      where: {
+        active: true,
+        type: { in: types },
+        OR: [
+          { normalizedName: normalized },
+          { displayName: { equals: clean(name), mode: "insensitive" } },
+          { aliases: { some: { normalizedAlias: normalized } } },
+        ],
+      },
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function resolveTemplateTokenBaseValues(params: {
+  directMatterDisplayNumber?: string | null;
+  masterLawsuitId?: string | null;
+  signer?: ResolvedTokenSigner | null;
+}): Promise<{ values: Record<string, TokenBaseValue>; context: TemplateTokenContext }> {
+  const values: Record<string, TokenBaseValue> = {};
+  const text = (key: string, raw: unknown) => {
+    values[key] = { raw: clean(raw) || null, type: "text" };
+  };
+  const date = (key: string, raw: unknown) => {
+    values[key] = { raw: clean(raw) || null, type: "date" };
+  };
+  const money = (key: string, raw: unknown) => {
+    const n = numOrNull(raw);
+    values[key] = { raw: n, type: "currency" };
+  };
+
+  // 1. Signer (resolved upstream)
+  const signer = params.signer || {};
+  text("signer.email", signer.email);
+  text("signer.fax", signer.faxNumber);
+  text("signer.extension", signer.phoneExtension);
+  text("signer.displayName", signer.displayName);
+  text("signer.signatureName", signer.signatureBlockName);
+  text("signer.title", "");
+
+  const displayNumber = clean(params.directMatterDisplayNumber);
+  let masterLawsuitId = clean(params.masterLawsuitId);
+
+  // 2. Individual claim / matter (claims index). The reliable key is display_number
+  // (e.g. "BRL_202600001"); fall back to matter_id by the numeric portion.
+  let claim: any = null;
+  if (displayNumber) {
+    const numericPart = displayNumber.replace(/[^0-9]/g, "");
+    const displayVariants = Array.from(
+      new Set([displayNumber, displayNumber.replace(/_/g, ""), numericPart].filter(Boolean)),
+    );
+    try {
+      claim = await prisma.claimIndex.findFirst({ where: { display_number: { in: displayVariants } } });
+    } catch {
+      claim = null;
+    }
+    if (!claim) {
+      const numericId = Number(numericPart);
+      if (Number.isFinite(numericId) && numericId > 0) {
+        claim = await getMatter(numericId).catch(() => null);
+      }
+    }
+  }
+
+  text("matter.fileNumber", claim?.display_number || displayNumber);
+
+  if (claim) {
+    if (!masterLawsuitId) masterLawsuitId = clean(claim.master_lawsuit_id);
+
+    text("matter.providerName", normalizeProviderName(claim.client_name || claim.provider_name));
+    text("matter.patientName", claim.patient_name);
+    money("matter.billedAmount", claim.claim_amount);
+
+    text("claim.number", claim.claim_number_raw || claim.claim_number_normalized);
+    date("claim.dateOfLoss", claim.date_of_loss);
+
+    const dosStart = clean(claim.dos_start);
+    const dosEnd = clean(claim.dos_end);
+    if (dosStart && dosEnd && dosStart !== dosEnd) {
+      // A range is pre-formatted text; date modifiers do not apply.
+      values["claim.dateOfService"] = { raw: `${dosStart} – ${dosEnd}`, type: "text" };
+    } else {
+      date("claim.dateOfService", dosStart || dosEnd);
+    }
+
+    text("claim.denialReason", claim.denial_reason);
+    money("claim.balance", claim.balance_presuit);
+    money("claim.payments", claim.payment_voluntary);
+
+    text("insurer.name", claim.insurer_name);
+
+    // 3a. Insurer reference address (by insurer name)
+    const insurerEntity = await findReferenceEntityByName(
+      ["insurer", "insurer_company", "company"],
+      claim.insurer_name,
+    );
+    const insurerDetails = detailsObject(insurerEntity?.details);
+    text("insurer.street", joinNonEmpty([pick(insurerDetails, ["addressLine1", "street", "address"]), pick(insurerDetails, ["addressLine2"])], ", "));
+    text("insurer.city", pick(insurerDetails, ["city"]));
+    text("insurer.state", pick(insurerDetails, ["state"]));
+    text("insurer.zipcode", pick(insurerDetails, ["zip", "zipcode", "zipCode", "postalCode"]));
+    text("insurer.fullAddressBlock", composeAddress(insurerDetails));
+
+    // 3b. Provider reference tax id (by provider name)
+    const providerEntity = await findReferenceEntityByName(
+      ["provider", "client", "company"],
+      claim.client_name || claim.provider_name,
+    );
+    const providerDetails = detailsObject(providerEntity?.details);
+    text("provider.taxId", pick(providerDetails, ["taxId", "tax_id", "federalTaxId", "ein", "EIN"]));
+  }
+
+  // 4. Lawsuit (YYYY.MM.NNNNNN)
+  let lawsuit: any = null;
+  if (masterLawsuitId) {
+    lawsuit = await prisma.lawsuit.findUnique({ where: { masterLawsuitId } }).catch(() => null);
+  }
+
+  if (lawsuit) {
+    const opts = detailsObject(lawsuit.lawsuitOptions);
+
+    text("lawsuit.indexNumber", lawsuit.indexAaaNumber || opts.indexAaaNumber);
+    date("lawsuit.dateFiled", opts.dateFiled);
+    money("lawsuit.amount", lawsuit.amountSought);
+
+    const indexFee = numOrNull(opts.indexFee ?? opts.filingFee);
+    const serviceFee = numOrNull(opts.serviceFee);
+    const otherCosts = numOrNull(opts.otherCourtCosts ?? opts.otherCourtFees);
+    money("cost.indexFee", indexFee);
+    money("cost.serviceFee", serviceFee);
+    money("cost.otherCourtCosts", otherCosts);
+
+    const anyCost = indexFee !== null || serviceFee !== null || otherCosts !== null;
+    const totalCosts = (indexFee || 0) + (serviceFee || 0) + (otherCosts || 0);
+    values["cost.total"] = { raw: anyCost ? totalCosts : null, type: "currency" };
+    values["lawsuit.costs"] = { raw: anyCost ? totalCosts : null, type: "currency" };
+
+    const lawsuitAmount = numOrNull(lawsuit.amountSought) || 0;
+    const postFilingPayments = numOrNull(opts.postFilingPayments ?? opts.lawsuitPayments) || 0;
+    values["lawsuit.balance"] = { raw: lawsuitAmount + totalCosts - postFilingPayments, type: "currency" };
+
+    // Adversary attorney (name + address)
+    const adversaryName = clean(opts.adversaryAttorney);
+    text("lawsuit.adversaryAttorney", adversaryName);
+    let adversaryDetails =
+      opts.selectedAdversaryAttorneyDetails && typeof opts.selectedAdversaryAttorneyDetails === "object"
+        ? (opts.selectedAdversaryAttorneyDetails as Record<string, any>)
+        : null;
+    if (!adversaryDetails && adversaryName) {
+      const adversaryEntity = await findReferenceEntityByName(
+        ["adversary_attorney", "attorney", "adversary"],
+        adversaryName,
+      );
+      adversaryDetails = detailsObject(adversaryEntity?.details);
+    }
+    const adv = adversaryDetails || {};
+    text("adversaryAttorney.street", joinNonEmpty([pick(adv, ["addressLine1", "street", "address"]), pick(adv, ["addressLine2"])], ", "));
+    text("adversaryAttorney.city", pick(adv, ["city"]));
+    text("adversaryAttorney.state", pick(adv, ["state"]));
+    text("adversaryAttorney.zipcode", pick(adv, ["zip", "zipcode", "zipCode", "postalCode"]));
+    text("adversary.fullAddressBlock", composeAddress(adv));
+
+    // Court (best-effort from a court reference entity keyed by venue/court name)
+    const courtName = clean(lawsuit.venue || lawsuit.venueSelection || opts.venue || opts.courtName);
+    if (courtName) {
+      const courtEntity = await findReferenceEntityByName(["court", "venue"], courtName);
+      const courtDetails = detailsObject(courtEntity?.details);
+      text("court.name", pick(courtDetails, ["shortName", "name"]) || courtName);
+      text("court.longName1", pick(courtDetails, ["longName1", "longName"]));
+      text("court.longName2", pick(courtDetails, ["longName2"]));
+      text("court.street", joinNonEmpty([pick(courtDetails, ["addressLine1", "street", "address"]), pick(courtDetails, ["addressLine2"])], ", "));
+      text("court.city", pick(courtDetails, ["city"]));
+      text("court.state", pick(courtDetails, ["state"]));
+      text("court.zipcode", pick(courtDetails, ["zip", "zipcode", "zipCode", "postalCode"]));
+    }
+  }
+
+  return {
+    values,
+    context: {
+      hasClaim: Boolean(claim),
+      hasLawsuit: Boolean(lawsuit),
+      masterLawsuitId,
+      displayNumber,
+    },
+  };
+}

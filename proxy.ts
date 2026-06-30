@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveAccess, roleEnforcementEnabled } from "@/lib/admin-permissions/resolveAccess";
+import { adminPermissionKeysForTier } from "@/lib/admin-permissions/catalog";
 
 const ADMIN_COOKIE_NAME = "barsh_admin_gate";
 const OWNER_ADMIN_EMAIL = "dbarshay15@gmail.com";
@@ -130,7 +132,29 @@ export async function proxy(req: NextRequest) {
   if (!identityEmail) return NextResponse.next();
 
   const identityRoleKeys = Array.isArray(gate.identity?.roleKeys) ? gate.identity.roleKeys.map(clean) : [];
-  if (identityEmail === OWNER_ADMIN_EMAIL || identityRoleKeys.includes("owner_admin")) return NextResponse.next();
+  const isOwner =
+    identityEmail === OWNER_ADMIN_EMAIL ||
+    identityRoleKeys.includes("owner_admin") ||
+    identityRoleKeys.includes("owner");
+  if (isOwner) return NextResponse.next();
+
+  // Role-based access is ONLY consulted when enforcement is explicitly enabled. With the flag off
+  // (default), behavior is unchanged: any non-owner on an admin surface is blocked, exactly as before.
+  if (roleEnforcementEnabled()) {
+    // v1 is all-or-nothing for admin functions: an Administrator role carries every admin-tier
+    // grant. Per-card grants (carried in the signed identity) are the planned fast-follow.
+    const grantedAdminPermissionKeys = identityRoleKeys.includes("administrator")
+      ? adminPermissionKeysForTier("admin")
+      : [];
+    const decision = resolveAccess({
+      isOwner: false,
+      roleKeys: identityRoleKeys,
+      grantedAdminPermissionKeys,
+      pathname,
+      method: req.method,
+    });
+    if (decision.allowed) return NextResponse.next();
+  }
 
   return blockedResponse(req);
 }

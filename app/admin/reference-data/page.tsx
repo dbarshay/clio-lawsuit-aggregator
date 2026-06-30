@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
+import BarshHeader from "@/app/components/BarshHeader";
 
 type EmailAutomationStatusLog = {
   id: string;
@@ -1378,6 +1379,7 @@ return (
         color: "#0f172a",
       }}
     >
+      <BarshHeader />
       {renderEmailAutomationStatusPanel()}
       <div style={{ maxWidth: 1320, margin: "0 auto" }}>
         <header

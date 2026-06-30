@@ -6,12 +6,15 @@ import BarshHeaderActions from "@/app/components/BarshHeaderActions";
 
 // Single source of truth for the standard Barsh Matters page header.
 //
-// Layout is a 3-column grid:
-//   - Column 1 (left, anchored):  BRL logo + quick-nav search
-//   - Column 2 (center, flexible): page-specific content (e.g. file number / matter info)
-//   - Column 3 (right, anchored): header actions + Barsh Matters logo (links home)
+// Layout is a flex row with three clusters:
+//   - left (anchored):   BRL logo + quick-nav search
+//   - center (flexible): page-specific content (e.g. file number / matter info)
+//   - right (anchored):  header actions tucked next to the Barsh Matters logo (links home)
 //
-// The left and right clusters stay anchored on every page; only the `center` slot varies.
+// Flexbox (justify-content: space-between) keeps the three clusters in their own space, so
+// the center content can never overlap the left/right clusters. The header is sticky: it
+// stays pinned to the top of the viewport while page content scrolls underneath it.
+//
 // Pass `center` for page-specific middle content, and `onAdministratorClick` when a page
 // wants to intercept the Administrator action (otherwise it navigates to /admin).
 
@@ -21,43 +24,49 @@ type BarshHeaderProps = {
 };
 
 const headerStyle: React.CSSProperties = {
-  position: "relative",
-  zIndex: 10,
+  position: "sticky",
+  top: 0,
+  zIndex: 1000,
   isolation: "isolate",
-  display: "grid",
-  gridTemplateColumns: "500px minmax(0, 1fr) 330px",
-  alignItems: "start",
-  gap: 16,
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: 24,
   minHeight: 124,
-  padding: "6px 0 4px",
+  padding: "6px 8px 8px",
   marginBottom: 6,
+  // Opaque background + shadow so scrolled content passes cleanly underneath.
   background: "#f8fafc",
-  boxShadow: "none",
-  borderBottom: "none",
+  boxShadow: "0 6px 16px rgba(15, 23, 42, 0.10)",
 };
 
-const leftLogoWrapStyle: React.CSSProperties = {
-  gridColumn: "1",
+const leftWrapStyle: React.CSSProperties = {
   display: "flex",
-  justifyContent: "flex-start",
   alignItems: "flex-start",
+  flexShrink: 0,
 };
 
+// Absolutely centered against the header's true horizontal center, so the file-number /
+// matter info sits dead-center regardless of the (uneven) left vs right cluster widths.
+// The header is position: sticky (a positioned element), so this is centered relative to it.
 const centerSlotStyle: React.CSSProperties = {
-  gridColumn: "2",
-  minWidth: 0,
+  position: "absolute",
+  left: "50%",
+  top: 0,
+  bottom: 0,
+  transform: "translateX(-50%)",
   display: "flex",
-  alignItems: "flex-start",
+  alignItems: "center",
   justifyContent: "center",
 };
 
-const rightTopWrapStyle: React.CSSProperties = {
-  gridColumn: "3",
-  justifySelf: "end",
-  position: "relative",
-  width: 520,
-  height: 132,
-  display: "block",
+// Right cluster: actions sit immediately to the left of the Barsh Matters logo.
+const rightWrapStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "flex-end",
+  gap: 10,
+  flexShrink: 0,
 };
 
 const brlLogoStyle: React.CSSProperties = {
@@ -67,30 +76,12 @@ const brlLogoStyle: React.CSSProperties = {
   display: "block",
 };
 
-const printButtonRowStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 0,
-  right: 304,
-  display: "flex",
-  justifyContent: "flex-end",
-  alignItems: "center",
-  gap: 8,
-  flexWrap: "nowrap",
-  zIndex: 2,
-};
-
 const bmLogoLinkStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 0,
-  right: 0,
   display: "inline-flex",
   alignItems: "flex-start",
   justifyContent: "flex-end",
   textDecoration: "none",
-  width: 292,
-  height: 132,
   flexShrink: 0,
-  zIndex: 1,
 };
 
 const bmLogoStyle: React.CSSProperties = {
@@ -106,7 +97,7 @@ const bmLogoStyle: React.CSSProperties = {
 export default function BarshHeader({ center, onAdministratorClick }: BarshHeaderProps) {
   return (
     <section style={headerStyle} data-barsh-standard-header="true">
-      <div style={leftLogoWrapStyle}>
+      <div style={leftWrapStyle}>
         <img src="/brl-logo.png" alt="BRL Logo" style={brlLogoStyle} />
         <div style={{ paddingTop: 8 }}>
           <BarshHeaderQuickNav />
@@ -117,8 +108,8 @@ export default function BarshHeader({ center, onAdministratorClick }: BarshHeade
         {center}
       </div>
 
-      <div style={rightTopWrapStyle}>
-        <div style={{ ...printButtonRowStyle, position: "relative" }}>
+      <div style={rightWrapStyle}>
+        <div style={{ display: "flex", alignItems: "center", paddingTop: 4 }}>
           <BarshHeaderActions onAdministratorClick={onAdministratorClick} />
         </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import BarshHeader from "@/app/components/BarshHeader";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -206,6 +207,7 @@ export default function AdminClientsPage() {
 
   return (
     <main style={pageStyle}>
+      <BarshHeader />
       <div style={{ marginBottom: 18 }}>
         <Link href="/admin" style={{ color: "#2563eb", fontWeight: 700, textDecoration: "none" }}>
           ← Admin

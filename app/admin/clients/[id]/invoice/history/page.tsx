@@ -1,5 +1,6 @@
 "use client";
 
+import BarshHeader from "@/app/components/BarshHeader";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -258,6 +259,7 @@ export default function ClientInvoiceHistoryPage() {
 
   return (
     <main style={pageStyle}>
+      <BarshHeader />
       <div style={{ display: "flex", gap: 14, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
         <Link href={id ? `/admin/clients/${encodeURIComponent(id)}/invoice` : "/admin/clients"} style={{ color: "#2563eb", fontWeight: 900, textDecoration: "none" }}>
           ← Back to Invoice Workflow

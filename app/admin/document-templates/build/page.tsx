@@ -2,6 +2,7 @@
 import TemplateDocxCompatibilityUpload from "../../../../components/templates/TemplateDocxCompatibilityUpload";
 
 import { useEffect, useMemo, useState } from "react";
+import BarshHeader from "@/app/components/BarshHeader";
 import {
   TEMPLATE_BUILDER_CANONICAL_MERGE_FIELDS,
   TEMPLATE_BUILDER_CUSTOM_PLACEHOLDER_FIELDS,
@@ -245,6 +246,7 @@ export default function BuildTemplatePage() {
 
   return (
     <main style={{ padding: "24px 28px", width: "100%", maxWidth: "none", margin: 0, boxSizing: "border-box" }}>
+      <BarshHeader />
       <a href="/admin/document-templates" style={{ color: "#1e3a8a", fontWeight: 700 }}>Back to Document Templates</a>
       <h1 style={{ margin: "18px 0 18px", fontSize: "30px", color: "#0f172a" }}>Build Template</h1>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import BarshHeader from "@/app/components/BarshHeader";
 import { formatDateOnlyForDisplay } from "@/lib/dateOnlyDisplay";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -82,6 +83,7 @@ export default function AdminInvoiceSearchPage() {
 
   return (
     <main style={pageStyle}>
+      <BarshHeader />
       <div style={{ marginBottom: 18, display: "flex", gap: 16, flexWrap: "wrap" }}>
         <Link href="/admin/clients" style={{ color: "#2563eb", fontWeight: 800, textDecoration: "none" }}>
           ← Clients

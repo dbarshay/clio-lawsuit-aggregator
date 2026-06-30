@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import BarshHeader from "@/app/components/BarshHeader";
 
 type AuditEntry = {
   id?: string;
@@ -80,6 +81,7 @@ export default function AdminAuditHistoryPage() {
         boxSizing: "border-box",
       }}
     >
+      <BarshHeader />
       <div style={{ maxWidth: 1240, margin: "0 auto", display: "grid", gap: 18 }}>
         <header
           style={{

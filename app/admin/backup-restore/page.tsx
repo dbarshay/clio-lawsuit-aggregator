@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import BarshHeader from "@/app/components/BarshHeader";
 
 type BackupRow = {
   name: string;
@@ -974,6 +975,7 @@ export default function AdminBackupRestorePage() {
         boxSizing: "border-box",
       }}
     >
+      <BarshHeader />
       <div style={{ maxWidth: 1180, margin: "0 auto", display: "grid", gap: 18 }}>
         <header style={{ ...cardStyle, display: "grid", gap: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 950, color: "#4f46e5", textTransform: "uppercase", letterSpacing: "0.08em" }}>

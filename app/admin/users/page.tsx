@@ -33,6 +33,7 @@ Signer Profile Phase 1 UI contract:
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import BarshHeader from "@/app/components/BarshHeader";
 
 const cardStyle = {
   background: "#fff",
@@ -1220,6 +1221,7 @@ export default function AdminUsersPlanningPage() {
 
   return (
     <main data-barsh-admin-users-planning-page="phase3-guarded" data-barsh-admin-users-browser-back-action-history="true" data-barsh-admin-users-audit-history-back-live-reload="true" data-barsh-admin-users-audit-history-back-always-live="true" data-barsh-admin-users-audit-history-back-hard-refresh="true" data-barsh-admin-users-audit-history-back-cache-bust="true" style={{ minHeight: "100vh", background: "#f8fafc", color: "#0f172a", padding: 30, boxSizing: "border-box" }}>
+      <BarshHeader />
       <div style={{ width: "100%", maxWidth: "none", margin: 0, display: "grid", gap: 18 }}>
         <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 24, padding: 22 }}>
           <h1 style={{ margin: 0, fontSize: 30 }}>Users & Roles</h1>

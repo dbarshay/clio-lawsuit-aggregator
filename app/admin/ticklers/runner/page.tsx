@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import BarshHeader from "@/app/components/BarshHeader";
 
 type RunnerResponse = {
   ok?: boolean;
@@ -219,6 +220,7 @@ export default function AdminTicklerRunnerPage() {
 
   return (
     <main style={{ padding: 24, maxWidth: 1280, margin: "0 auto" }}>
+      <BarshHeader />
       <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start" }}>
         <div>
           <h1 style={{ margin: 0 }}>Admin Tickler Bulk Runner</h1>

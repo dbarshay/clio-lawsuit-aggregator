@@ -1,5 +1,6 @@
 "use client";
 
+import BarshHeader from "@/app/components/BarshHeader";
 import { formatDateOnlyForDisplay } from "@/lib/dateOnlyDisplay";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -838,6 +839,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
 
   return (
     <main style={pageStyle}>
+      <BarshHeader />
       <div style={{ marginBottom: 18, display: "flex", gap: 16, flexWrap: "wrap" }}>
         <Link href="/admin/clients" style={{ color: "#2563eb", fontWeight: 700, textDecoration: "none" }}>
           ← Clients

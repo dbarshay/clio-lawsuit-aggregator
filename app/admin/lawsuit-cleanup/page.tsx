@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import BarshHeader from "@/app/components/BarshHeader";
 
 type CleanupChild = {
   displayNumber: string;
@@ -179,6 +180,7 @@ export default function AdminLawsuitCleanupPage() {
 
   return (
     <main style={pageStyle}>
+      <BarshHeader />
       <section style={heroStyle}>
         <div>
           <div style={eyebrowStyle}>Administrator</div>

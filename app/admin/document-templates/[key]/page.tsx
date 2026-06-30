@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import BarshHeader from "@/app/components/BarshHeader";
 
 type EditState = {
   label: string;
@@ -248,6 +249,7 @@ export default function AdminDocumentTemplateDetailPage() {
         fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       }}
     >
+      <BarshHeader />
       <div style={{ display: "grid", gap: 18, width: "100%" }}>
         <section style={{ ...cardStyle(), display: "grid", gap: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>

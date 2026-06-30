@@ -1,5 +1,6 @@
 "use client";
 
+import BarshHeader from "@/app/components/BarshHeader";
 import { formatDateOnlyForDisplay } from "@/lib/dateOnlyDisplay";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -1404,6 +1405,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
 
   return (
     <main style={pageStyle}>
+      <BarshHeader />
       <div style={{ marginBottom: 18, display: "flex", gap: 16, flexWrap: "wrap" }}>
         <Link href={id ? `/admin/clients/${encodeURIComponent(id)}` : "/admin/clients"} style={{ color: "#2563eb", fontWeight: 800, textDecoration: "none" }}>
           ← Main Client Info Page

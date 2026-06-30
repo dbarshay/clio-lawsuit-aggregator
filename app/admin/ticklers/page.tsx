@@ -1,6 +1,7 @@
 "use client";
 
 import { formatDateOnlyForDisplay } from "@/lib/dateOnlyDisplay";
+import BarshHeader from "@/app/components/BarshHeader";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
@@ -725,6 +726,7 @@ export default function AdminTicklersPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#f8fafc", color: "#0f172a", padding: 32 }}>
+      <BarshHeader />
       <details
         data-barsh-admin-duplicate-settlement-tickler-compact-panel="true"
         style={{

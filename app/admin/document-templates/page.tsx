@@ -1,6 +1,9 @@
+import BarshHeader from "@/app/components/BarshHeader";
+
 export default function DocumentTemplatesPage() {
   return (
     <main style={{ padding: "32px 48px", color: "#1f2937" }}>
+      <BarshHeader />
       <div style={{ maxWidth: "1056px", margin: "0 auto" }}>
         <h1 style={{ margin: "0 0 16px", fontSize: "30px", fontWeight: 700, color: "#111827" }}>
           Document Templates

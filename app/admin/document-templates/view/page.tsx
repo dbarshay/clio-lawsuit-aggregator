@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import BarshHeader from "@/app/components/BarshHeader";
 
 type TemplateRow = {
   key: string;
@@ -178,6 +179,7 @@ export default function ViewTemplatesPage() {
 
   return (
     <main style={{ padding: "32px 40px", width: "100%", maxWidth: "none", margin: "0" }}>
+      <BarshHeader />
       <a href="/admin/document-templates" style={{ color: "#1e3a8a", fontWeight: 700 }}>Back to Document Templates</a>
       <h1 style={{ margin: "18px 0 10px", fontSize: "30px", color: "#0f172a" }}>View Templates</h1>
       <section

@@ -6,6 +6,7 @@ import { BARSH_MATTER_STATUS_OPTIONS } from "@/lib/matterStatusOptions";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
 import BarshHeaderActions from "@/app/components/BarshHeaderActions";
+import BarshHeader from "@/app/components/BarshHeader";
 import { documentDeliverySafetyNote, resolvePrintableUrl, type DocumentDeliveryContext } from "@/lib/documents/delivery";
 
 type FilterKind = "patient" | "provider" | "insurer" | "claim" | "master" | "treatingProvider" | "dateOfLoss";
@@ -9330,18 +9331,12 @@ function masterDocumentPreviewText(value: unknown): string {
   return (
     <main style={pageStyle}>
       <div style={shellStyle}>
-        <section style={topBarStyle}>
-          <div style={leftLogoWrapStyle}>
-            <img src="/brl-logo.png" alt="BRL Logo" style={brlLogoStyle} />
-            <div style={{ paddingTop: 8 }}>
-              <BarshHeaderQuickNav />
-            </div>
-          </div>
-
-            {kind === "master" && value && (
+        <BarshHeader
+          onAdministratorClick={openAdministratorMenu}
+          center={
+            kind === "master" && value ? (
               <div
                 style={{
-                  gridColumn: 2,
                   justifySelf: "center",
                   alignSelf: "center",
                   display: "grid",
@@ -9435,18 +9430,9 @@ function masterDocumentPreviewText(value: unknown): string {
                 </div>
 
               </div>
-            )}
-
-<div style={rightTopWrapStyle}>
-            <div style={{ ...printButtonRowStyle, position: "relative" }}>
-              <BarshHeaderActions onAdministratorClick={openAdministratorMenu} />
-            </div>
-
-            <a href="/" style={bmLogoLinkStyle} title="Return to Barsh Matters entry screen">
-              <img src="/barsh-matters-cropped-transparent.png" alt="Barsh Matters Logo" style={bmLogoStyle} />
-            </a>
-          </div>
-        </section>
+            ) : null
+          }
+        />
 
         <style jsx global>{`
           .barsh-filter-row:hover td {

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
 import BarshHeaderActions from "@/app/components/BarshHeaderActions";
+import BarshHeader from "@/app/components/BarshHeader";
 
 type PrintQueueStatus = "" | "queued" | "printed" | "hold" | "skipped";
 
@@ -358,73 +359,7 @@ export default function PrintQueuePage() {
 
   return (
     <main style={{ padding: 16, width: "100vw", maxWidth: "none", marginLeft: "calc(50% - 50vw)", marginRight: "calc(50% - 50vw)" }}>
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 10000,
-          isolation: "isolate",
-          display: "grid",
-          gridTemplateColumns: "500px minmax(0, 1fr) 330px",
-          alignItems: "start",
-          gap: 16,
-          marginBottom: 14,
-          padding: "8px 0 10px",
-          background: "#f8fafc",
-          boxShadow: "0 8px 24px rgba(15, 23, 42, 0.10)",
-          borderBottom: "1px solid rgba(203, 213, 225, 0.9)",
-        }}
-      >
-        <div style={{ gridColumn: "1", display: "flex", justifyContent: "flex-start", alignItems: "flex-start", gap: 12 }}>
-          <img
-            src="/brl-logo.png"
-            alt="BRL Logo"
-            style={{ width: 216, height: 144, objectFit: "contain", display: "block" }}
-          />
-          <div style={{ paddingTop: 8 }}>
-            <BarshHeaderQuickNav />
-          </div>
-        </div>
-<div
-          style={{
-            gridColumn: "3",
-            justifySelf: "end",
-            position: "relative",
-            width: 330,
-            height: 152,
-            display: "flex",
-            justifyContent: "flex-end",
-            alignItems: "flex-start",
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: -270,
-              display: "flex",
-              justifyContent: "flex-start",
-              alignItems: "center",
-            }}
-          >
-            <BarshHeaderActions />
-          </div>
-
-          <a href="/" title="Return to Barsh Matters entry screen" style={{ display: "inline-flex", textDecoration: "none" }}>
-            <img
-              src="/barsh-matters-cropped-transparent.png"
-              alt="Barsh Matters Logo"
-              style={{
-                width: 330,
-                height: 152,
-                objectFit: "contain",
-                objectPosition: "right top",
-                display: "block",
-              }}
-            />
-          </a>
-        </div>
-      </div>
+      <BarshHeader />
 
 
 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", marginBottom: 12 }}>

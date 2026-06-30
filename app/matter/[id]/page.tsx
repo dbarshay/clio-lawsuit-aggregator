@@ -9,6 +9,7 @@ const DIRECT_MATTER_SETTLEMENTS_ENABLED = false;
 import { Fragment, useEffect, useMemo, useState } from "react";
 import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
 import BarshHeaderActions from "@/app/components/BarshHeaderActions";
+import BarshHeader from "@/app/components/BarshHeader";
 import { documentDeliverySafetyNote, resolvePrintableUrl, type DocumentDeliveryContext } from "@/lib/documents/delivery";
 
 function num(v: any) {
@@ -8297,17 +8298,12 @@ function openClaimAmountEditDialog() {
         minHeight: "100vh",
        }}
     >
-      <div style={bmGlobalTopBarStyle}>
-        <div style={bmGlobalLeftLogoWrapStyle}>
-          <img src="/brl-logo.png" alt="BRL Logo" style={bmGlobalBrlLogoStyle} />
-          <div style={{ paddingTop: 8 }}>
-            <BarshHeaderQuickNav />
-          </div>
-        </div>
-        <div
-          style={{
-            gridColumn: 2,
-            justifySelf: "center",
+      <BarshHeader
+        onAdministratorClick={openAdministratorMenu}
+        center={
+          <div
+            style={{
+              justifySelf: "center",
             alignSelf: "center",
             display: "grid",
             justifyItems: "center",
@@ -8402,16 +8398,8 @@ function openClaimAmountEditDialog() {
             </a>
           )}
 </div>
-<div style={bmGlobalRightWrapStyle}>
-          <div style={{ ...bmGlobalPrintButtonRowStyle, position: "relative" }}>
-            <BarshHeaderActions onAdministratorClick={openAdministratorMenu} />
-          </div>
-
-          <a href="/" title="Return to Barsh Matters entry screen" style={bmGlobalLogoLinkStyle}>
-            <img src="/barsh-matters-cropped-transparent.png" alt="Barsh Matters Logo" style={bmGlobalLogoStyle} />
-          </a>
-        </div>
-      </div>
+        }
+      />
 
 
 {matterAuditHistoryPopupOpen && (

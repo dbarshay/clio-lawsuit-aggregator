@@ -2,6 +2,7 @@
 
 import BarshHeaderActions from "@/app/components/BarshHeaderActions";
 import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
+import BarshHeader from "@/app/components/BarshHeader";
 import { useEffect, useMemo, useState } from "react";
 
 type PermissionCatalogItem = {
@@ -304,10 +305,7 @@ export default function AdminPermissionsPage() {
   return (
     <main data-barsh-admin-permissions-page="read-only" style={{ minHeight: "100vh", background: "#f8fafc", color: "#0f172a", padding: 30, boxSizing: "border-box" }}>
       <div style={{ maxWidth: 1180, margin: "0 auto", display: "grid", gap: 18 }}>
-        <section style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
-          <BarshHeaderQuickNav />
-          <BarshHeaderActions />
-        </section>
+        <BarshHeader />
 
         <header style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 22, padding: 20, boxShadow: "0 14px 32px rgba(15,23,42,.07)" }}>
           <div style={{ fontSize: 13, fontWeight: 950, color: "#4f46e5", textTransform: "uppercase", letterSpacing: ".08em" }}>Administrator</div>

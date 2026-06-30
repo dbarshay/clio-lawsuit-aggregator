@@ -1,5 +1,6 @@
 "use client";
 
+import BarshHeader from "@/app/components/BarshHeader";
 import BarshHeaderActions from "@/app/components/BarshHeaderActions";
 import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
 
@@ -371,10 +372,7 @@ export default function AdminDocumentReadinessAuditPage() {
   return (
     <main data-barsh-admin-document-readiness-audit="read-only" style={pageStyle}>
       <div style={{ maxWidth: 1360, margin: "0 auto", display: "grid", gap: 18 }}>
-        <section style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
-          <BarshHeaderQuickNav />
-          <BarshHeaderActions />
-        </section>
+        <BarshHeader />
 
         <header style={{ ...cardStyle, display: "grid", gap: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 950, color: "#4f46e5", textTransform: "uppercase", letterSpacing: "0.08em" }}>

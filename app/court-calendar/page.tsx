@@ -2,6 +2,7 @@
 
 import BarshHeaderActions from "@/app/components/BarshHeaderActions";
 import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
+import BarshHeader from "@/app/components/BarshHeader";
 import { formatDateOnlyForDisplay } from "@/lib/dateOnlyDisplay";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -784,20 +785,13 @@ export default function CourtCalendarPage() {
 
   return (
     <main style={pageStyle} data-barsh-court-calendar-page="true">
-      <div style={headerRowStyle}>
-        <div style={headerLeftStyle}>
-          <div style={quickNavWrapStyle}>
-            <BarshHeaderQuickNav />
-          </div>
+      <BarshHeader
+        center={
           <div style={{ marginTop: 16 }}>
             <h1 style={{ margin: "4px 0 6px", fontSize: 30, lineHeight: 1.1 }}>Court Calendars</h1>
-            <p style={{ margin: 0, color: "#475569", fontWeight: 750 }}>
-              
-            </p>
           </div>
-        </div>
-        <BarshHeaderActions />
-      </div>
+        }
+      />
 
       <section style={{ ...cardStyle, marginBottom: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>

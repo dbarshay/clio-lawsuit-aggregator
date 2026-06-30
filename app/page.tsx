@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
 import BarshHeaderActions from "@/app/components/BarshHeaderActions";
+import BarshHeader from "@/app/components/BarshHeader";
 
 type SearchKind = "brl_matter" | "numeric_ambiguous" | "master" | "text";
 
@@ -2287,23 +2288,7 @@ export default function Home() {
   return (
     <main style={pageStyle}>
       <div style={shellStyle}>
-        <section style={compactLandingTopBarStyle}>
-          <div style={leftLogoWrapStyle}>
-            <img src="/brl-logo.png" alt="BRL Logo" style={brlLogoStyle} />
-            <div style={{ paddingTop: 8 }}>
-              <BarshHeaderQuickNav />
-            </div>
-          </div>
-<div style={rightTopWrapStyle}>
-            <div style={{ ...printButtonRowStyle, position: "relative" }}>
-              <BarshHeaderActions onAdministratorClick={openAdministratorMenu} />
-            </div>
-
-            <a href="/" style={bmLogoLinkStyle} title="Return to Barsh Matters entry screen">
-              <img src="/barsh-matters-cropped-transparent.png" alt="Barsh Matters Logo" style={bmLogoStyle} />
-            </a>
-          </div>
-        </section>
+        <BarshHeader onAdministratorClick={openAdministratorMenu} />
 
           <style jsx global>{`
             .barsh-suggestion-row:hover {

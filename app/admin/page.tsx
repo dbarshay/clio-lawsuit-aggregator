@@ -11,6 +11,7 @@ ADMIN_USER_SESSION_RUNTIME_PHASE20 Combined Phase 20 session controls contract:
 
 import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
 import BarshHeaderActions from "@/app/components/BarshHeaderActions";
+import BarshHeader from "@/app/components/BarshHeader";
 
 import React, { useEffect, useState } from "react";
 
@@ -160,17 +161,7 @@ export default function AdminHomePage() {
       }}
     >
       <div style={{ maxWidth: 1120, margin: "0 auto", display: "grid", gap: 18 }}>
-        <section
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 16,
-          }}
-        >
-          <BarshHeaderQuickNav />
-          <BarshHeaderActions />
-        </section>
+        <BarshHeader />
         <section data-barsh-admin-session-control="true" style={{ background: "#ffffff", border: "1px solid #dbeafe", borderRadius: 18, padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, boxShadow: "0 10px 24px rgba(15, 23, 42, 0.06)" }}>
           <div style={{ display: "grid", gap: 2 }}>
             <div style={{ fontSize: 12, fontWeight: 950, color: "#4f46e5", textTransform: "uppercase", letterSpacing: "0.08em" }}>Session</div>

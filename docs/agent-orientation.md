@@ -146,6 +146,52 @@ reads `uploaded[].clioDocumentId` / duplicate `existingClioDocuments[].id`):
   Reason: Google Translate wraps text nodes in `<font>` and breaks React text updates
   (symptom: frozen/stale UI values like a "Documents: 0" counter). Do not remove.
 
+## Permissions / RBAC (built, enforcement OFF by default)
+
+Authoritative spec: `docs/permission-model.md`. Activation plan + decisions:
+`docs/permission-enforcement-plan.md`. This subsystem is fully built and committed but
+**not activated** — it changes no behavior until the env flag is flipped.
+
+- **Model — 5 tiers, 5 roles (cumulative ladder).** Tiers: `view < edit < process <
+  admin < security`. Roles → allowed tiers: `owner` = all; `administrator` =
+  view/edit/process/admin (NOT security); `full_user` = view/edit/process; `partial_user`
+  = view/edit; `view_only` = view. `security` (manage users/roles/permissions) is
+  **Owner-only, never grantable**. `admin` functions are grantable to an Administrator
+  **per-card** (per screen). Source of truth: `lib/admin-permissions/catalog.ts` (base
+  perms + 10 `admin.card.*`) and `lib/admin-permissions/roleMatrix.ts`. The old
+  `lib/adminPermissions.ts` env-override model is superseded but still present.
+- **Enforcement = one pure resolver + one central chokepoint.**
+  `lib/admin-permissions/resolveAccess.ts` decides: owner-bypass → never-block
+  (`/admin/permissions`) → default-allow-unmapped → most-restrictive-tier → security
+  owner-only / admin per-grant / view-edit-process role check. It is edge-safe (NOT
+  `server-only`) so the Next middleware `proxy.ts` can import it. `proxy.ts` is the single
+  enforcement point for BOTH admin and operational surfaces.
+- **Kill-switch:** `BARSH_ROLE_ENFORCEMENT_ENABLED` (`1`/`true` = on; default **OFF**).
+  Flag OFF → operational surfaces are pure pass-through and admin surfaces keep the prior
+  owner-only behavior (zero behavior change). Flag ON → resolver gates by tier. Owner
+  always bypasses; `/admin/permissions` is never blocked (lockout safety).
+- **Per-card admin grants.** UI + storage already existed: `app/admin/users` checkboxes →
+  `/api/admin/users/card-grants` → `AdminUserPermissionOverride` (action `grant`). Login
+  reads the granted keys into the signed identity cookie (`lib/adminAuth.ts`); `proxy`
+  consumes them (fallback for a pre-deploy cookie: all-admin-if-administrator). Card→route
+  map: `src/lib/admin-users/admin-users-final-role-model-phase-v1.ts`. Each catalog
+  `admin.card.*` perm scopes a card to its screen + that card's own `/api/admin/*`
+  endpoints; shared operational endpoints a screen also calls are intentionally NOT scoped
+  to the card (the Administrator already reaches them via operational tiers).
+- **Guards:** `verify-permission-model-rework`, `verify-resolve-access-safety`,
+  `verify-admin-per-card-grants-enforcement`, plus reconciled
+  `verify-admin-users-phase14a-admin-function-block-safety` and
+  `verify-admin-users-workflow-phase-r-owner-role-proxy-allow`.
+- **To resume / ACTIVATE:** (1) set `BARSH_ROLE_ENFORCEMENT_ENABLED=1` in a **preview** env
+  only; (2) log in as each role and confirm the decision table (view_only read-only;
+  partial edits; full processes; administrator admin only where granted; security
+  owner-only; `/admin/permissions` never locks out); (3) enable in prod with one-line
+  rollback (unset the flag).
+- **Remaining (not started):** Client Access (off-ladder, per-provider read-only
+  reporting) is a separate later phase. Deferred copy trims on `admin/users` +
+  `admin/permissions` (task #37) come AFTER activation. Optional: finer-than-per-card API
+  action granularity, only if needed.
+
 ## Gotchas / workflow
 
 - **Do not run `npm run build`** unless necessary. Use `npx tsc --noEmit` for type

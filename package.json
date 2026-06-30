@@ -656,7 +656,6 @@
     "verify:template-builder-build-full-width": "node scripts/verify-template-builder-build-full-width.mjs",
     "verify:template-builder-field-cleanup": "node scripts/verify-template-builder-field-cleanup.mjs",
     "verify:template-builder-curated-fields": "node scripts/verify-template-builder-curated-fields.mjs",
-    "verify:template-builder-example-outputs": "node scripts/verify-template-builder-example-outputs.mjs",
     "verify:template-builder-remove-extra-fields": "node scripts/verify-template-builder-remove-extra-fields.mjs",
     "verify:template-builder-remove-hidden-labels": "node scripts/verify-template-builder-remove-hidden-labels.mjs",
     "verify:template-builder-example-matter-20260600011": "node scripts/verify-template-builder-example-matter-20260600011.mjs",

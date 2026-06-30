@@ -82,7 +82,7 @@ export default function AdminAuditHistoryPage() {
       }}
     >
       <BarshHeader />
-      <div style={{ maxWidth: 1240, margin: "0 auto", display: "grid", gap: 18 }}>
+      <div style={{ maxWidth: "none", margin: 0, display: "grid", gap: 18 }}>
         <header
           style={{
             background: "#fff",

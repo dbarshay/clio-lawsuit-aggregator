@@ -371,7 +371,7 @@ export default function AdminDocumentReadinessAuditPage() {
 
   return (
     <main data-barsh-admin-document-readiness-audit="read-only" style={pageStyle}>
-      <div style={{ maxWidth: 1360, margin: "0 auto", display: "grid", gap: 18 }}>
+      <div style={{ maxWidth: "none", margin: 0, display: "grid", gap: 18 }}>
         <BarshHeader />
 
         <header style={{ ...cardStyle, display: "grid", gap: 12 }}>

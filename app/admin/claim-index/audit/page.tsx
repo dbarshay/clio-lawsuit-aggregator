@@ -331,7 +331,7 @@ export default function AdminClaimIndexAuditPage() {
 
   return (
     <main data-barsh-admin-claim-index-audit="read-only" style={pageStyle}>
-      <div style={{ maxWidth: 1360, margin: "0 auto", display: "grid", gap: 18 }}>
+      <div style={{ maxWidth: "none", margin: 0, display: "grid", gap: 18 }}>
         <BarshHeader />
 
         <header style={{ ...cardStyle, display: "grid", gap: 12 }}>

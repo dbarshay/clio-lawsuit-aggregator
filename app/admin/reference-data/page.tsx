@@ -1381,7 +1381,7 @@ return (
     >
       <BarshHeader />
       {renderEmailAutomationStatusPanel()}
-      <div style={{ maxWidth: 1320, margin: "0 auto" }}>
+      <div style={{ maxWidth: "none", margin: 0 }}>
         <header
           style={{
             display: "flex",

@@ -358,7 +358,7 @@ export default function PrintQueuePage() {
   }, []);
 
   return (
-    <main style={{ padding: 16, width: "100vw", maxWidth: "none", marginLeft: "calc(50% - 50vw)", marginRight: "calc(50% - 50vw)" }}>
+    <main style={{ padding: 16, width: "100%", maxWidth: "none", margin: 0 }}>
       <BarshHeader />
 
 

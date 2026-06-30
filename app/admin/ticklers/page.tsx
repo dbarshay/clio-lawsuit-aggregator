@@ -1019,7 +1019,7 @@ export default function AdminTicklersPage() {
         </a>
       </div>
 
-      <div style={{ maxWidth: 1220, margin: "0 auto", display: "grid", gap: 22 }}>
+      <div style={{ maxWidth: "none", margin: 0, display: "grid", gap: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: "0.08em", color: "#475569", fontWeight: 900 }}>

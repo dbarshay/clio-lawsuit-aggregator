@@ -8288,10 +8288,9 @@ function openClaimAmountEditDialog() {
     <main
       style={{
         padding: "12px 14px 30px",
-        width: "100vw",
+        width: "100%",
         maxWidth: "none",
-        marginLeft: "calc(50% - 50vw)",
-        marginRight: "calc(50% - 50vw)",
+        margin: 0,
         fontFamily:
           'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         color: bmColors.ink,

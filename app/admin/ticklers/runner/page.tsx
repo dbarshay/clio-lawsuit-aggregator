@@ -219,7 +219,7 @@ export default function AdminTicklerRunnerPage() {
   }
 
   return (
-    <main style={{ padding: 24, maxWidth: 1280, margin: "0 auto" }}>
+    <main style={{ padding: 24, maxWidth: "none", margin: 0 }}>
       <BarshHeader />
       <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start" }}>
         <div>

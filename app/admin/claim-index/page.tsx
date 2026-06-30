@@ -398,7 +398,7 @@ export default function AdminClaimIndexPage() {
       data-clio-operations-enabled="false"
       style={pageStyle}
     >
-      <div style={{ maxWidth: 1480, margin: "0 auto", display: "grid", gap: 18 }}>
+      <div style={{ maxWidth: "none", margin: 0, display: "grid", gap: 18 }}>
         <BarshHeader />
 
         <header style={{ ...cardStyle, display: "grid", gap: 10 }}>

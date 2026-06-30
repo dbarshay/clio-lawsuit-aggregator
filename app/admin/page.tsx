@@ -160,7 +160,7 @@ export default function AdminHomePage() {
         boxSizing: "border-box",
       }}
     >
-      <div style={{ maxWidth: 1120, margin: "0 auto", display: "grid", gap: 18 }}>
+      <div style={{ maxWidth: "none", margin: 0, display: "grid", gap: 18 }}>
         <BarshHeader />
         <section data-barsh-admin-session-control="true" style={{ background: "#ffffff", border: "1px solid #dbeafe", borderRadius: 18, padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, boxShadow: "0 10px 24px rgba(15, 23, 42, 0.06)" }}>
           <div style={{ display: "grid", gap: 2 }}>

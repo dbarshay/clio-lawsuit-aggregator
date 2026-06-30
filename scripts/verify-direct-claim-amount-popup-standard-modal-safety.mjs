@@ -1,34 +1,36 @@
 import fs from "fs";
 
+// The direct claim-amount popup is now rendered through the shared <BarshModal> (see
+// verify-barsh-modal-standard-safety for the standard chrome: navy header, Esc/Enter,
+// draggable, resizable, footer). This verifier only checks the popup-specific wiring + content.
+
 const page = fs.readFileSync("app/matter/[id]/page.tsx", "utf8");
 const failures = [];
 
-const start = page.indexOf('data-barsh-direct-claim-amount-edit-standard-modal="true"');
+const start = page.indexOf('{directFieldEditModal === "claimAmount" && (');
 const end = page.indexOf('{directFieldEditModal === "dos" && (', start);
 const region = start >= 0 && end > start ? page.slice(start, end) : "";
 
 if (region === "") failures.push("could not isolate direct claim amount popup region");
 
 for (const token of [
+  "<BarshModal",
+  'title="Edit Claim Amount"',
+  'dataModalId="direct-claim-amount-edit"',
+  "submitLabel=",
+  "Confirm Edit",
+  "saveClaimAmountEditDialog",
+  "onClose=",
   'data-barsh-direct-claim-amount-edit-standard-modal="true"',
-  'background: "#1e3a8a"',
-  'color: "#ffffff"',
-  'textAlign: "center"',
-  'Confirm Edit',
-  'type="submit"',
-  'onSubmit={(event) =>',
-  'onKeyDown={(event) => { if (event.key === "Escape")',
-  'borderTop: "1px solid #e2e8f0"',
+  "Claim Amount is ClaimIndex-backed",
+  'data-barsh-direct-claim-amount-current-card="true"',
 ]) {
   if (region.includes(token) === false) failures.push("missing direct claim amount popup token: " + token);
 }
 
 for (const forbidden of [
   "This updates Claim Amount in ClaimIndex",
-  "borderRadius: 22",
-  'border: "1px solid #bfdbfe"',
   'background: "#16a34a"',
-  ">\n                Save\n              </button>",
 ]) {
   if (region.includes(forbidden)) failures.push("direct claim amount popup still has old token: " + forbidden);
 }

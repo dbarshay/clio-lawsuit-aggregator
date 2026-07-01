@@ -24,8 +24,8 @@ for (const token of [
   "data-barsh-standard-modal-close=\"removed\"",
   "data-barsh-standard-modal-current-card=\"true\"",
   "gridTemplateColumns: \"32px minmax(0, 1fr) 32px\"",
-  "background: \"#1e3a8a\"",
-  "borderBottom: \"1px solid #1e3a8a\"",
+  "background: \"#0a1c35\"",
+  "borderBottom: \"1px solid #0a1c35\"",
   "onKeyDown={(event) => { if (event.key === \"Escape\")",
   "Confirm Edit",
 ]) requireToken(dialog, token, "master field edit popup token");

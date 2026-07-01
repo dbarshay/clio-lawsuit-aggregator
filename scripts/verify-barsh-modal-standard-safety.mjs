@@ -9,7 +9,7 @@ const failures = [];
 const must = (cond, msg) => { if (!cond) failures.push(msg); };
 
 // Standard look
-must(src.includes('background: "#1e3a8a"'), "navy (#1e3a8a) header bar");
+must(src.includes('background: "#0a1c35"'), "navy (#0a1c35) header bar");
 must(src.includes('textAlign: "center"'), "centered header title");
 must(src.includes('background: "rgba(15, 23, 42, 0.45)"'), "standard translucent backdrop");
 must(!src.includes("×"), "no top-right close glyph");

@@ -18,9 +18,9 @@ const hasTopRightCloseButton =
 assertOk(chunk.includes('display: "flex"') && chunk.includes('alignItems: "center"') && chunk.includes('justifyContent: "center"'), "Settlement popup uses centered overlay");
 assertOk(chunk.includes('background: "rgba(15, 23, 42, 0.58)"'), "Settlement popup uses standard overlay shade");
 assertOk(chunk.includes('data-barsh-standard-settlement-popup-shell="true"'), "Settlement popup has standard shell marker");
-assertOk(chunk.includes('border: "1px solid #1e3a8a"') && chunk.includes('boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)"'), "Settlement popup uses standard shell styling");
+assertOk(chunk.includes('border: "1px solid #0a1c35"') && chunk.includes('boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)"'), "Settlement popup uses standard shell styling");
 assertOk(!chunk.includes('resize: "both"') && !chunk.includes("translateX(-50%)"), "Settlement popup no longer uses old draggable/resizable shell");
-assertOk(chunk.includes('data-barsh-standard-settlement-popup-header="true"') && chunk.includes('background: "#1e3a8a"'), "Settlement popup has navy header");
+assertOk(chunk.includes('data-barsh-standard-settlement-popup-header="true"') && chunk.includes('background: "#0a1c35"'), "Settlement popup has navy header");
 assertOk(chunk.includes("Record Settlement") && chunk.includes('color: "#ffffff"'), "Settlement popup title is centered white Record Settlement");
 assertOk(!chunk.includes("data-barsh-draggable-settlement-popup") && !chunk.includes("onPointerDown={beginMasterSettlementPopupDrag}") && !chunk.includes("masterSettlementPopupDragging"), "Settlement popup drag behavior removed");
 assertOk(chunk.includes('data-barsh-standard-modal-close="removed"') && !hasTopRightCloseButton, "Settlement popup has no top-right close button");

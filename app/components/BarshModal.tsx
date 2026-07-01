@@ -6,7 +6,7 @@ import React, { useEffect, useRef, useState } from "react";
 //
 // Standard look (previously duplicated inline across pages):
 //   - dark translucent backdrop, modal centered
-//   - navy (#1e3a8a) header bar with a centered title, NO top-right close glyph
+//   - navy (#0a1c35) header bar with a centered title, NO top-right close glyph
 //   - white rounded card body
 //   - footer with an explicit Close/Cancel button and an optional primary action button
 //
@@ -54,7 +54,7 @@ const headerStyle: React.CSSProperties = {
   justifyContent: "center",
   gap: 8,
   padding: "12px 16px",
-  background: "#1e3a8a",
+  background: "#0a1c35",
   color: "#ffffff",
   fontSize: 16,
   fontWeight: 800,
@@ -81,12 +81,13 @@ const footerStyle: React.CSSProperties = {
   flexShrink: 0,
 };
 
+// Close / Cancel = red (uniform across all standard modals).
 const closeButtonStyle: React.CSSProperties = {
   padding: "8px 16px",
   borderRadius: 8,
-  border: "1px solid #cbd5e1",
-  background: "#f8fafc",
-  color: "#334155",
+  border: "1px solid #dc2626",
+  background: "#dc2626",
+  color: "#ffffff",
   fontSize: 13,
   fontWeight: 800,
   cursor: "pointer",
@@ -96,8 +97,8 @@ const closeButtonStyle: React.CSSProperties = {
 const submitButtonStyle: React.CSSProperties = {
   padding: "8px 16px",
   borderRadius: 8,
-  border: "1px solid #1e3a8a",
-  background: "#1e3a8a",
+  border: "1px solid #0a1c35",
+  background: "#0a1c35",
   color: "#ffffff",
   fontSize: 13,
   fontWeight: 800,

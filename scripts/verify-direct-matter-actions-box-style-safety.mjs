@@ -47,7 +47,7 @@ for (const token of [
   'onClick={() => setDirectPaymentsPanelOpen((open) => !open)}',
   '{directPaymentsPanelOpen && (',
   'className="barsh-direct-payment-receipts"',
-  'color: "#1e3a8a"',
+  'color: "#0a1c35"',
   'marginBottom: 8',
 ]) {
   if (!page.includes(token)) failures.push(`missing direct matter master-style Actions token: ${token}`);

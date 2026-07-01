@@ -61,7 +61,7 @@ const colors = {
   page: "#eef2f7",
   panel: "#ffffff",
   blue: "#3157d5",
-  blueDark: "#1e3a8a",
+  blueDark: "#0a1c35",
   errorBg: "#fef2f2",
   errorBorder: "#fecaca",
 };
@@ -2299,7 +2299,7 @@ export default function Home() {
             }
 
             .barsh-field-link:hover {
-              color: #1e3a8a !important;
+              color: #0a1c35 !important;
               text-decoration-thickness: 2px !important;
             }
 
@@ -3554,7 +3554,7 @@ const advancedSearchButtonStyle: React.CSSProperties = {
   border: "1px solid #bfdbfe",
   borderRadius: 16,
   background: "#eff6ff",
-  color: "#1e3a8a",
+  color: "#0a1c35",
   padding: "12px 16px",
   fontSize: 14,
   fontWeight: 900,
@@ -3846,7 +3846,7 @@ const homeResultsTdStyle: React.CSSProperties = {
 };
 
 const homeResultsMatterLinkStyle: React.CSSProperties = {
-  color: "#1e3a8a",
+  color: "#0a1c35",
   font: "inherit",
   fontSize: "inherit",
   fontWeight: 850,
@@ -3857,7 +3857,7 @@ const homeResultsFieldButtonStyle: React.CSSProperties = {
   appearance: "none",
   border: 0,
   background: "transparent",
-  color: "#1e3a8a",
+  color: "#0a1c35",
   cursor: "pointer",
   font: "inherit",
   fontSize: "inherit",

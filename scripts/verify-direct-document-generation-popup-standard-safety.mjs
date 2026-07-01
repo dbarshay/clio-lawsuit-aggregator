@@ -26,7 +26,7 @@ if (end < 0) fail("Document Generation popup end not found");
 const popup = src.slice(start, end);
 
 requireIncludes(popup, 'data-barsh-direct-document-generation-header-standard="true"', "standard navy header marker");
-requireIncludes(popup, 'background: "#1e3a8a"', "navy header/action color");
+requireIncludes(popup, 'background: "#0a1c35"', "navy header/action color");
 requireIncludes(popup, "Document Generation", "centered title");
 requireNotIncludes(popup, "Select a document, preview the PDF, edit in Word if needed", "old subtitle");
 requireNotIncludes(popup, ">\\n              Close\\n            </button>\\n          </div>\\n\\n          <div style={{ padding: 24", "old top-right Close");
@@ -35,8 +35,8 @@ requireIncludes(popup, 'border: complete ? "1px solid #16a34a" : "1px solid #bbf
 requireIncludes(popup, 'background: complete ? "#16a34a" : "#dcfce7"', "green progress background");
 requireIncludes(popup, 'background: complete ? "#15803d" : "#bbf7d0"', "green progress bubble number");
 
-requireIncludes(popup, 'border: disabled ? "1px solid #d1d5db" : "1px solid #1e3a8a"', "navy action border");
-requireIncludes(popup, 'background: disabled ? "#f3f4f6" : "#1e3a8a"', "navy action background");
+requireIncludes(popup, 'border: disabled ? "1px solid #d1d5db" : "1px solid #0a1c35"', "navy action border");
+requireIncludes(popup, 'background: disabled ? "#f3f4f6" : "#0a1c35"', "navy action background");
 
 requireIncludes(popup, 'data-barsh-direct-document-generation-footer-actions="true"', "footer marker");
 requireIncludes(popup, "Back", "Back footer button");

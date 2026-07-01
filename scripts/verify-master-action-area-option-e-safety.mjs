@@ -13,7 +13,7 @@ for (const token of [
   'background: "transparent"',
   'boxShadow: "none"',
   '{ key: "payments", label: "Payments", fill: "#16a34a", soft: "#f0fdf4", text: "#166534" }',
-  '{ key: "settlement", label: "Settlement", fill: "#1e3a8a", soft: "#eff6ff", text: "#1e3a8a" }',
+  '{ key: "settlement", label: "Settlement", fill: "#0a1c35", soft: "#eff6ff", text: "#0a1c35" }',
   '{ key: "documents", label: "Documents", fill: "#8b5e3c", soft: "#f8efe7", text: "#7c4a22" }',
   '{ key: "court_dates", label: "Court Dates", fill: "#ea580c", soft: "#fff7ed", text: "#c2410c" }',
   'data-barsh-master-action-tab={key}',

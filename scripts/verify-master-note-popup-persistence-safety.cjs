@@ -9,7 +9,7 @@ const delStart = s.indexOf("{masterNoteDeleteTarget && activeMasterWorkspaceTab 
 const delEnd = s.indexOf("{masterNoteDialogOpen && activeMasterWorkspaceTab === \"payments\" && (", delStart);
 const del = s.slice(delStart, delEnd);
 assertOk(noteStart >= 0 && noteEnd > noteStart, "Add/Edit Note popup boundaries found");
-assertOk(note.includes("background: \"#1e3a8a\"") && note.includes("{masterNoteEditingId ? \"Edit Note\" : \"Add Note\"}</h2>"), "Add/Edit Note popup has navy centered header");
+assertOk(note.includes("background: \"#0a1c35\"") && note.includes("{masterNoteEditingId ? \"Edit Note\" : \"Add Note\"}</h2>"), "Add/Edit Note popup has navy centered header");
 assertOk(!note.includes("×") && !note.includes("Close note popup"), "Add/Edit Note popup has no top-right close glyph");
 assertOk(note.includes("event.key === \"Escape\"") && note.includes("closeMasterNoteDialog()"), "Add/Edit Note popup supports Escape close");
 assertOk(note.includes("onClick={closeMasterNoteDialog}") && note.includes("event.stopPropagation()"), "Add/Edit Note popup supports overlay close without inner click propagation");
@@ -19,7 +19,7 @@ assertOk(note.includes("borderTop: \"1px solid #e2e8f0\"") && note.includes("Can
 assertOk(note.includes("background: \"#dc2626\""), "Add/Edit Note Cancel button is red");
 assertOk(note.includes("background: clean(masterNoteDraft) ? \"#16a34a\" : \"#bbf7d0\""), "Add/Edit Note save button is green when enabled");
 assertOk(delStart >= 0 && delEnd > delStart, "Delete Note popup boundaries found");
-assertOk(del.includes("background: \"#1e3a8a\"") && del.includes("Delete Note?</h2>"), "Delete Note popup has navy centered header");
+assertOk(del.includes("background: \"#0a1c35\"") && del.includes("Delete Note?</h2>"), "Delete Note popup has navy centered header");
 assertOk(!del.includes("×"), "Delete Note popup has no top-right close glyph");
 assertOk(del.includes("event.key === \"Escape\"") && del.includes("closeDeleteMasterNoteDialog()"), "Delete Note popup supports Escape close");
 assertOk(del.includes("onClick={closeDeleteMasterNoteDialog}") && del.includes("event.stopPropagation()"), "Delete Note popup supports overlay close without inner click propagation");

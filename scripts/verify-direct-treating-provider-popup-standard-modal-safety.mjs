@@ -13,7 +13,7 @@ for (const token of [
   'data-barsh-direct-treating-provider-edit-standard-modal="true"',
   'data-barsh-direct-treating-provider-current-card="true"',
   'localTreatingProviderName() || "—"',
-  'background: "#1e3a8a"',
+  'background: "#0a1c35"',
   'color: "#ffffff"',
   'textAlign: "center"',
   'Confirm Edit',

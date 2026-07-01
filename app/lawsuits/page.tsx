@@ -972,8 +972,8 @@ export default function LawsuitsPage() {
             type="button"
             onClick={exportSearchResultsXlsx}
             style={{
-              border: "1px solid #1e3a8a",
-              background: "#1e3a8a",
+              border: "1px solid #0a1c35",
+              background: "#0a1c35",
               color: "#fff",
               borderRadius: 999,
               padding: "8px 12px",
@@ -1117,7 +1117,7 @@ export default function LawsuitsPage() {
                                 style={{
                                   border: 0,
                                   background: "transparent",
-                                  color: "#1e3a8a",
+                                  color: "#0a1c35",
                                   cursor: "pointer",
                                   padding: 0,
                                   font: "inherit",
@@ -1136,7 +1136,7 @@ export default function LawsuitsPage() {
                                 style={{
                                   border: 0,
                                   background: "transparent",
-                                  color: "#1e3a8a",
+                                  color: "#0a1c35",
                                   cursor: "pointer",
                                   padding: 0,
                                   font: "inherit",
@@ -1488,7 +1488,7 @@ const tdRight: React.CSSProperties = {
 };
 
 const fieldAnchor: React.CSSProperties = {
-  color: "#1e3a8a",
+  color: "#0a1c35",
   textDecoration: "underline",
   textUnderlineOffset: 2,
   fontWeight: 700,
@@ -1499,7 +1499,7 @@ const fieldTextFilterLink: React.CSSProperties = {
   background: "transparent",
   padding: 0,
   margin: 0,
-  color: "#1e3a8a",
+  color: "#0a1c35",
   cursor: "pointer",
   font: "inherit",
   fontWeight: 700,
@@ -1510,7 +1510,7 @@ const fieldTextFilterLink: React.CSSProperties = {
 const fieldLinkButton: React.CSSProperties = {
   border: 0,
   background: "transparent",
-  color: "#1e3a8a",
+  color: "#0a1c35",
   padding: 0,
   margin: 0,
   font: "inherit",

@@ -67,7 +67,7 @@ const cardStyle: React.CSSProperties = {
 };
 
 const headerStyle: React.CSSProperties = {
-  background: "#1e3a8a",
+  background: "#0a1c35",
   color: "#ffffff",
   padding: "22px 24px",
   textAlign: "center",
@@ -99,9 +99,9 @@ const inputStyle: React.CSSProperties = {
 };
 
 const primaryButtonStyle: React.CSSProperties = {
-  border: "1px solid #1e3a8a",
+  border: "1px solid #0a1c35",
   borderRadius: 12,
-  background: "#1e3a8a",
+  background: "#0a1c35",
   color: "#ffffff",
   fontWeight: 900,
   fontSize: 15,

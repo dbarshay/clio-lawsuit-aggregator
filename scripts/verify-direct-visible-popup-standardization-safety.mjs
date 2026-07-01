@@ -21,7 +21,7 @@ const ranges = {
   claimAmount: sliceBetween("claimAmount", "data-barsh-direct-claim-amount-edit-standard-modal", "{directFieldEditModal === \"dos\""),
 };
 for (const [name, chunk] of Object.entries({ audit: ranges.audit, docActivity: ranges.docActivity, viewEmails: ranges.viewEmails, docGeneration: ranges.docGeneration, metadata: ranges.metadata })) {
-  assertOk(chunk.includes("background: \"#1e3a8a\""), name + " has navy centered header");
+  assertOk(chunk.includes("background: \"#0a1c35\""), name + " has navy centered header");
   assertOk(!chunk.includes("×"), name + " has no top-right close glyph");
   assertOk(chunk.includes("event.key === \"Escape\""), name + " supports Escape close");
   assertOk(chunk.includes("Close") || chunk.includes("Cancel"), name + " has explicit footer action");

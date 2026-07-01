@@ -103,7 +103,7 @@ export default function AdminPermissionsPage() {
         <BarshHeader />
 
         <header style={cardStyle}>
-          <div style={{ fontSize: 13, fontWeight: 900, color: "#1e3a8a", textTransform: "uppercase", letterSpacing: ".08em" }}>Administrator</div>
+          <div style={{ fontSize: 13, fontWeight: 900, color: "#0a1c35", textTransform: "uppercase", letterSpacing: ".08em" }}>Administrator</div>
           <h1 style={{ margin: "8px 0", fontSize: 32 }}>Permissions</h1>
           <p style={{ margin: 0, color: "#475569", lineHeight: 1.45 }}>
             Five permission tiers and the five roles built from them. {catalog.length} permissions · {roles.length} roles.

@@ -122,8 +122,8 @@ const cardStyle: React.CSSProperties = {
 };
 
 const buttonStyle: React.CSSProperties = {
-  border: "1px solid #1e3a8a",
-  background: "#1e3a8a",
+  border: "1px solid #0a1c35",
+  background: "#0a1c35",
   color: "#fff",
   borderRadius: 12,
   padding: "10px 14px",
@@ -189,7 +189,7 @@ function severityStyle(severity: Severity): React.CSSProperties {
   if (severity === "warning") {
     return { color: "#92400e", background: "#fef3c7", border: "1px solid #fde68a" };
   }
-  return { color: "#1e3a8a", background: "#eff6ff", border: "1px solid #bfdbfe" };
+  return { color: "#0a1c35", background: "#eff6ff", border: "1px solid #bfdbfe" };
 }
 
 function statusText(check: AuditCheck): string {
@@ -375,7 +375,7 @@ export default function AdminDocumentReadinessAuditPage() {
         <BarshHeader />
 
         <header style={{ ...cardStyle, display: "grid", gap: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 950, color: "#1e3a8a", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          <div style={{ fontSize: 13, fontWeight: 950, color: "#0a1c35", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Administrator
           </div>
           <h1 style={{ margin: 0, fontSize: 32, lineHeight: 1.1 }}>Document Generation Readiness Audit</h1>

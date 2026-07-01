@@ -374,7 +374,7 @@ const bmColors = {
   softLine: "#e5e7eb",
   panel: "#ffffff",
   page: "#f8fafc",
-  blue: "#1e3a8a",
+  blue: "#0a1c35",
   blueSoft: "#eff6ff",
   green: "#16a34a",
   red: "#dc2626",
@@ -909,8 +909,8 @@ const activeGroupKey =
         tabIndex={-1}
         style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
       >
-        <div onClick={(event) => event.stopPropagation()} style={{ width: "min(920px, 96vw)", maxHeight: "88vh", overflow: "hidden", border: "1px solid #1e3a8a", borderRadius: 18, background: "#ffffff", boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)", display: "flex", flexDirection: "column" }}>
-          <div data-barsh-direct-view-documents-header-standard="true" style={{ display: "grid", gridTemplateColumns: "90px minmax(0, 1fr) 90px", alignItems: "center", gap: 14, padding: "16px 20px", background: "#1e3a8a", color: "#ffffff", textAlign: "center", borderBottom: "1px solid #1e3a8a", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
+        <div onClick={(event) => event.stopPropagation()} style={{ width: "min(920px, 96vw)", maxHeight: "88vh", overflow: "hidden", border: "1px solid #0a1c35", borderRadius: 18, background: "#ffffff", boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)", display: "flex", flexDirection: "column" }}>
+          <div data-barsh-direct-view-documents-header-standard="true" style={{ display: "grid", gridTemplateColumns: "90px minmax(0, 1fr) 90px", alignItems: "center", gap: 14, padding: "16px 20px", background: "#0a1c35", color: "#ffffff", textAlign: "center", borderBottom: "1px solid #0a1c35", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
             <div aria-hidden="true" />
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 950, color: "#ffffff" }}>View Documents</h2>
             <div aria-hidden="true" />
@@ -966,8 +966,8 @@ const activeGroupKey =
           </div>
 
           <div data-barsh-direct-view-documents-footer-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 20px 18px", borderTop: "1px solid #e2e8f0", background: "#ffffff" }}>
-            <button type="button" onClick={closeMatterViewDocumentsPopup} style={{ minWidth: 96, height: 40, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#334155", fontWeight: 900, cursor: "pointer" }}>Close</button>
-            <button type="button" onClick={() => void loadMatterClioDocuments()} disabled={matterClioDocumentsLoading} style={{ minWidth: 138, height: 40, border: "1px solid #1e3a8a", borderRadius: 10, background: matterClioDocumentsLoading ? "#dbeafe" : "#1e3a8a", color: "#ffffff", fontWeight: 950, cursor: matterClioDocumentsLoading ? "not-allowed" : "pointer" }}>{matterClioDocumentsLoading ? "Refreshing..." : "Refresh Documents"}</button>
+            <button type="button" onClick={closeMatterViewDocumentsPopup} style={{ minWidth: 96, height: 40, border: "1px solid #dc2626", borderRadius: 10, background: "#dc2626", color: "#ffffff", fontWeight: 900, cursor: "pointer" }}>Close</button>
+            <button type="button" onClick={() => void loadMatterClioDocuments()} disabled={matterClioDocumentsLoading} style={{ minWidth: 138, height: 40, border: "1px solid #0a1c35", borderRadius: 10, background: matterClioDocumentsLoading ? "#dbeafe" : "#0a1c35", color: "#ffffff", fontWeight: 950, cursor: matterClioDocumentsLoading ? "not-allowed" : "pointer" }}>{matterClioDocumentsLoading ? "Refreshing..." : "Refresh Documents"}</button>
           </div>
         </div>
       </div>
@@ -1112,11 +1112,11 @@ const activeGroupKey =
             minHeight: 460,
             background: "#ffffff",
             borderRadius: 18,
-            border: "1px solid #1e3a8a",
+            border: "1px solid #0a1c35",
             boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
           }}
         >
-          <div style={{ padding: "16px 20px", background: "#1e3a8a", color: "#ffffff", textAlign: "center", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
+          <div style={{ padding: "16px 20px", background: "#0a1c35", color: "#ffffff", textAlign: "center", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
             <div style={{ fontSize: 20, fontWeight: 950 }}>
               Document Activity
             </div>
@@ -1252,8 +1252,8 @@ const activeGroupKey =
               borderBottomRightRadius: 18,
             }}
           >
-            <button type="button" onClick={closeMatterDocumentActivityPopup} style={{ minWidth: 96, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#334155", fontWeight: 900, cursor: "pointer" }}>Close</button>
-            <button type="button" onClick={() => void loadMatterDocumentActivity()} disabled={matterDocumentActivityLoading} style={{ minWidth: 104, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: matterDocumentActivityLoading ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: matterDocumentActivityLoading ? "not-allowed" : "pointer" }}>{matterDocumentActivityLoading ? "Loading..." : "Refresh"}</button>
+            <button type="button" onClick={closeMatterDocumentActivityPopup} style={{ minWidth: 96, height: 38, border: "1px solid #dc2626", borderRadius: 10, background: "#dc2626", color: "#ffffff", fontWeight: 900, cursor: "pointer" }}>Close</button>
+            <button type="button" onClick={() => void loadMatterDocumentActivity()} disabled={matterDocumentActivityLoading} style={{ minWidth: 104, height: 38, border: "1px solid #0a1c35", borderRadius: 10, background: matterDocumentActivityLoading ? "#93c5fd" : "#0a1c35", color: "#ffffff", fontWeight: 900, cursor: matterDocumentActivityLoading ? "not-allowed" : "pointer" }}>{matterDocumentActivityLoading ? "Loading..." : "Refresh"}</button>
           </div>
         </div>
       </div>
@@ -1297,8 +1297,8 @@ const activeGroupKey =
             onClick={() => void loadMatterClioDocuments()}
             disabled={matterClioDocumentsLoading}
             style={{
-              border: "1px solid #1e3a8a",
-              background: matterClioDocumentsLoading ? "#dbeafe" : "#1e3a8a",
+              border: "1px solid #0a1c35",
+              background: matterClioDocumentsLoading ? "#dbeafe" : "#0a1c35",
               color: "#ffffff",
               borderRadius: 999,
               padding: "8px 12px",
@@ -2313,7 +2313,7 @@ const activeGroupKey =
     border: "1px solid #93c5fd",
     borderRadius: 999,
     background: "#eff6ff",
-    color: "#1e3a8a",
+    color: "#0a1c35",
     fontSize: 11,
     fontWeight: 900,
     padding: "3px 8px",
@@ -5549,8 +5549,8 @@ function openClaimAmountEditDialog() {
                 minWidth: 118,
                 height: 38,
                 padding: "7px 12px",
-                border: "1px solid #1e3a8a",
-                background: emailThreadPreviewLoading ? "#f3f4f6" : "#1e3a8a",
+                border: "1px solid #0a1c35",
+                background: emailThreadPreviewLoading ? "#f3f4f6" : "#0a1c35",
                 color: "#ffffff",
                 borderRadius: 10,
                 cursor: emailThreadPreviewLoading ? "not-allowed" : "pointer",
@@ -5567,9 +5567,9 @@ function openClaimAmountEditDialog() {
             disabled={submitting || matterIsClosedForPayment() || alreadyAggregated}
             title={alreadyAggregated ? "This matter is already assigned to a lawsuit." : "Create a lawsuit from this individual matter."}
             style={{
-              border: "1px solid #1e3a8a",
+              border: "1px solid #0a1c35",
               background: alreadyAggregated ? "#e2e8f0" : "#eff6ff",
-              color: alreadyAggregated ? "#64748b" : "#1e3a8a",
+              color: alreadyAggregated ? "#64748b" : "#0a1c35",
               borderRadius: 999,
               padding: "8px 12px",
               fontWeight: 950,
@@ -6197,8 +6197,8 @@ function openClaimAmountEditDialog() {
         onClick={closeEmailDeliveryPopup}
         style={{ position: "fixed", inset: 0, zIndex: 10001, background: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
       >
-        <div onClick={(event) => event.stopPropagation()} style={{ width: "min(620px, 96vw)", maxHeight: "88vh", overflow: "hidden", border: "1px solid #1e3a8a", borderRadius: 18, background: "#ffffff", boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)", display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: "16px 20px", background: "#1e3a8a", color: "#ffffff", textAlign: "center" }}>
+        <div onClick={(event) => event.stopPropagation()} style={{ width: "min(620px, 96vw)", maxHeight: "88vh", overflow: "hidden", border: "1px solid #0a1c35", borderRadius: 18, background: "#ffffff", boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)", display: "flex", flexDirection: "column" }}>
+          <div style={{ padding: "16px 20px", background: "#0a1c35", color: "#ffffff", textAlign: "center" }}>
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 950 }}>Email Finalized Document</h2>
           </div>
           <div style={{ padding: 20, display: "grid", gap: 14, overflowY: "auto" }}>
@@ -6222,7 +6222,7 @@ function openClaimAmountEditDialog() {
                 placeholder="Search settled-with contacts and adversary attorneys"
                 style={{ flex: 1, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, padding: "0 12px", fontSize: 13 }}
               />
-              <button type="button" onClick={() => void searchEmailDeliveryContacts()} disabled={emailDeliveryContactLoading} style={{ minWidth: 90, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: emailDeliveryContactLoading ? "not-allowed" : "pointer" }}>{emailDeliveryContactLoading ? "..." : "Search"}</button>
+              <button type="button" onClick={() => void searchEmailDeliveryContacts()} disabled={emailDeliveryContactLoading} style={{ minWidth: 90, height: 38, border: "1px solid #0a1c35", borderRadius: 10, background: "#0a1c35", color: "#ffffff", fontWeight: 900, cursor: emailDeliveryContactLoading ? "not-allowed" : "pointer" }}>{emailDeliveryContactLoading ? "..." : "Search"}</button>
             </div>
             {emailDeliveryContactResults.length > 0 && (
               <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, maxHeight: 220, overflowY: "auto" }}>
@@ -6236,8 +6236,8 @@ function openClaimAmountEditDialog() {
             )}
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 20px 18px", borderTop: "1px solid #e2e8f0" }}>
-            <button type="button" onClick={closeEmailDeliveryPopup} style={{ minWidth: 90, height: 40, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#334155", fontWeight: 900, cursor: "pointer" }}>Cancel</button>
-            <button type="button" onClick={() => void submitEmailDeliveryDraft()} disabled={emailDeliverySending} style={{ minWidth: 150, height: 40, border: "1px solid #1e3a8a", borderRadius: 10, background: emailDeliverySending ? "#dbeafe" : "#1e3a8a", color: "#ffffff", fontWeight: 950, cursor: emailDeliverySending ? "not-allowed" : "pointer" }}>{emailDeliverySending ? "Creating..." : "Create Outlook Draft"}</button>
+            <button type="button" onClick={closeEmailDeliveryPopup} style={{ minWidth: 90, height: 40, border: "1px solid #dc2626", borderRadius: 10, background: "#dc2626", color: "#ffffff", fontWeight: 900, cursor: "pointer" }}>Cancel</button>
+            <button type="button" onClick={() => void submitEmailDeliveryDraft()} disabled={emailDeliverySending} style={{ minWidth: 150, height: 40, border: "1px solid #0a1c35", borderRadius: 10, background: emailDeliverySending ? "#dbeafe" : "#0a1c35", color: "#ffffff", fontWeight: 950, cursor: emailDeliverySending ? "not-allowed" : "pointer" }}>{emailDeliverySending ? "Creating..." : "Create Outlook Draft"}</button>
           </div>
         </div>
       </div>
@@ -6344,14 +6344,14 @@ function openClaimAmountEditDialog() {
         disabled={disabled}
         title={title}
         style={{
-          border: disabled ? "1px solid #d1d5db" : "1px solid #1e3a8a",
-          background: disabled ? "#f3f4f6" : "#1e3a8a",
+          border: disabled ? "1px solid #d1d5db" : "1px solid #0a1c35",
+          background: disabled ? "#f3f4f6" : "#0a1c35",
           color: disabled ? "#6b7280" : "#fff",
           borderRadius: 12,
           padding: "10px 14px",
           fontWeight: 900,
           cursor: disabled ? "not-allowed" : "pointer",
-          boxShadow: disabled ? "none" : "0 10px 18px rgba(30, 58, 138, 0.18)",
+          boxShadow: disabled ? "none" : "0 10px 18px rgba(10, 28, 53, 0.18)",
         }}
       >
         {label}
@@ -6638,8 +6638,8 @@ function openClaimAmountEditDialog() {
               alignItems: "center",
               gap: 14,
               padding: "16px 20px",
-              borderBottom: "1px solid #1e3a8a",
-              background: "#1e3a8a",
+              borderBottom: "1px solid #0a1c35",
+              background: "#0a1c35",
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
             }}
@@ -6683,7 +6683,7 @@ function openClaimAmountEditDialog() {
 
                 <label
                   data-barsh-direct-document-generation-template-dropdown="true"
-                  style={{ display: "grid", gap: 8, fontSize: 12, fontWeight: 950, color: "#1e3a8a" }}
+                  style={{ display: "grid", gap: 8, fontSize: 12, fontWeight: 950, color: "#0a1c35" }}
                 >
                   Document
                   <select
@@ -6746,7 +6746,7 @@ function openClaimAmountEditDialog() {
                     background: "#eff6ff",
                   }}
                 >
-                  <label style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 950, color: "#1e3a8a" }}>
+                  <label style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 950, color: "#0a1c35" }}>
                     Signer
                     <select
                       value={matterDocumentSignerEmail}
@@ -6781,8 +6781,8 @@ function openClaimAmountEditDialog() {
                     data-barsh-direct-document-generation-continue-to-actions="true"
                     onClick={confirmSignerAndContinue}
                     style={{
-                      border: "1px solid #1e3a8a",
-                      background: "#1e3a8a",
+                      border: "1px solid #0a1c35",
+                      background: "#0a1c35",
                       color: "#ffffff",
                       borderRadius: 12,
                       padding: "10px 14px",
@@ -6905,8 +6905,8 @@ function openClaimAmountEditDialog() {
                       }}
                       disabled={!matterDocumentFinalizationResult?.workingDocument?.webUrl}
                       style={{
-                        border: "1px solid #1e3a8a",
-                        background: matterDocumentFinalizationResult?.workingDocument?.webUrl ? "#1e3a8a" : "#f3f4f6",
+                        border: "1px solid #0a1c35",
+                        background: matterDocumentFinalizationResult?.workingDocument?.webUrl ? "#0a1c35" : "#f3f4f6",
                         color: matterDocumentFinalizationResult?.workingDocument?.webUrl ? "#ffffff" : "#6b7280",
                         borderRadius: 12,
                         padding: "10px 14px",
@@ -7006,8 +7006,8 @@ function openClaimAmountEditDialog() {
                     type="button"
                     onClick={sendFinalizedDocumentToPrintQueueForDelivery}
                     style={{
-                      border: "1px solid #1e3a8a",
-                      background: "#1e3a8a",
+                      border: "1px solid #0a1c35",
+                      background: "#0a1c35",
                       color: "#ffffff",
                       borderRadius: 12,
                       padding: "10px 14px",
@@ -7022,8 +7022,8 @@ function openClaimAmountEditDialog() {
                     type="button"
                     onClick={saveFinalizedDocumentLocallyForDelivery}
                     style={{
-                      border: "1px solid #1e3a8a",
-                      background: "#1e3a8a",
+                      border: "1px solid #0a1c35",
+                      background: "#0a1c35",
                       color: "#ffffff",
                       borderRadius: 12,
                       padding: "10px 14px",
@@ -7038,8 +7038,8 @@ function openClaimAmountEditDialog() {
                     type="button"
                     onClick={printFinalizedDocumentForDelivery}
                     style={{
-                      border: "1px solid #1e3a8a",
-                      background: "#1e3a8a",
+                      border: "1px solid #0a1c35",
+                      background: "#0a1c35",
                       color: "#ffffff",
                       borderRadius: 12,
                       padding: "10px 14px",
@@ -7054,8 +7054,8 @@ function openClaimAmountEditDialog() {
                     type="button"
                     onClick={emailFinalizedDocumentForDelivery}
                     style={{
-                      border: "1px solid #1e3a8a",
-                      background: "#1e3a8a",
+                      border: "1px solid #0a1c35",
+                      background: "#0a1c35",
                       color: "#ffffff",
                       borderRadius: 12,
                       padding: "10px 14px",
@@ -7079,8 +7079,8 @@ function openClaimAmountEditDialog() {
                       setFinalizeUploadResult(null);
                     }}
                     style={{
-                      border: "1px solid #1e3a8a",
-                      background: "#1e3a8a",
+                      border: "1px solid #0a1c35",
+                      background: "#0a1c35",
                       color: "#ffffff",
                       borderRadius: 12,
                       padding: "10px 14px",
@@ -7201,8 +7201,8 @@ function openClaimAmountEditDialog() {
               alignItems: "center",
               gap: 14,
               padding: "16px 20px",
-              borderBottom: "1px solid #1e3a8a",
-              background: "#1e3a8a",
+              borderBottom: "1px solid #0a1c35",
+              background: "#0a1c35",
               borderTopLeftRadius: 22,
               borderTopRightRadius: 22,
             }}
@@ -7291,7 +7291,7 @@ function openClaimAmountEditDialog() {
               borderRadius: 999,
               padding: "10px 16px",
               fontWeight: 900,
-              background: matterDocumentDataPreviewLoading ? "#e5e7eb" : "#1e3a8a",
+              background: matterDocumentDataPreviewLoading ? "#e5e7eb" : "#0a1c35",
               color: matterDocumentDataPreviewLoading ? "#64748b" : "#fff",
               cursor: matterDocumentDataPreviewLoading ? "not-allowed" : "pointer",
               whiteSpace: "nowrap",
@@ -7844,7 +7844,7 @@ function openClaimAmountEditDialog() {
         <span
           aria-hidden="true"
           style={{
-            color: active ? "#1e3a8a" : "#94a3b8",
+            color: active ? "#0a1c35" : "#94a3b8",
             fontSize: 12,
             fontWeight: 650,
           }}
@@ -8255,8 +8255,8 @@ function openClaimAmountEditDialog() {
   };
 
   const startLawsuitPrimaryButtonStyle: React.CSSProperties = {
-    border: "1px solid #1e3a8a",
-    background: "#1e3a8a",
+    border: "1px solid #0a1c35",
+    background: "#0a1c35",
     color: "#fff",
     borderRadius: 999,
     padding: "9px 14px",
@@ -8413,7 +8413,7 @@ function openClaimAmountEditDialog() {
               width: "min(1120px, 96vw)",
               maxHeight: "calc(100vh - 178px)",
               overflow: "hidden",
-              border: "1px solid #1e3a8a",
+              border: "1px solid #0a1c35",
               borderRadius: 18,
               background: "#ffffff",
               boxShadow: "0 30px 90px rgba(15, 23, 42, 0.38)",
@@ -8422,7 +8422,7 @@ function openClaimAmountEditDialog() {
             <div
               style={{
                 padding: "16px 20px",
-                background: "#1e3a8a",
+                background: "#0a1c35",
                 color: "#ffffff",
                 textAlign: "center",
                 borderTopLeftRadius: 18,
@@ -8607,8 +8607,8 @@ function openClaimAmountEditDialog() {
                 borderBottomRightRadius: 18,
               }}
             >
-              <button type="button" onClick={closeMatterAuditHistoryPopup} style={{ minWidth: 96, height: 38, border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#334155", fontWeight: 900, cursor: "pointer" }}>Close</button>
-              <button type="button" onClick={loadMatterAuditHistory} disabled={matterAuditHistoryLoading} style={{ minWidth: 104, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: matterAuditHistoryLoading ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: matterAuditHistoryLoading ? "not-allowed" : "pointer" }}>{matterAuditHistoryLoading ? "Loading..." : "Refresh"}</button>
+              <button type="button" onClick={closeMatterAuditHistoryPopup} style={{ minWidth: 96, height: 38, border: "1px solid #dc2626", borderRadius: 10, background: "#dc2626", color: "#ffffff", fontWeight: 900, cursor: "pointer" }}>Close</button>
+              <button type="button" onClick={loadMatterAuditHistory} disabled={matterAuditHistoryLoading} style={{ minWidth: 104, height: 38, border: "1px solid #0a1c35", borderRadius: 10, background: matterAuditHistoryLoading ? "#93c5fd" : "#0a1c35", color: "#ffffff", fontWeight: 900, cursor: matterAuditHistoryLoading ? "not-allowed" : "pointer" }}>{matterAuditHistoryLoading ? "Loading..." : "Refresh"}</button>
             </div>
           </div>
         </div>
@@ -8681,11 +8681,11 @@ function openClaimAmountEditDialog() {
               overflow: "hidden",
               border: "1px solid transparent",
               borderRadius: 18,
-              background: "#1e3a8a",
+              background: "#0a1c35",
               boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
             }}
           >
-            <h2 style={{ margin: 0, padding: "12px 14px", background: "#1e3a8a", color: "#ffffff", textAlign: "center", fontSize: 17, fontWeight: 950, lineHeight: 1.15 }}>
+            <h2 style={{ margin: 0, padding: "12px 14px", background: "#0a1c35", color: "#ffffff", textAlign: "center", fontSize: 17, fontWeight: 950, lineHeight: 1.15 }}>
               Edit Date of Service
             </h2>
 
@@ -8713,7 +8713,7 @@ function openClaimAmountEditDialog() {
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 16px 16px", borderTop: "1px solid #e2e8f0", background: "#ffffff" }}>
               <button type="button" onClick={() => { setDirectFieldEditModal(null); setDirectFieldEditResult(null); }} disabled={directFieldEditLoading} style={{ minWidth: 96, height: 38, border: "1px solid #dc2626", borderRadius: 10, background: directFieldEditLoading ? "#fecaca" : "#dc2626", color: "#ffffff", fontWeight: 900, cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}>Cancel</button>
-              <button type="submit" disabled={directFieldEditLoading} style={{ minWidth: 118, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: directFieldEditLoading ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}>{directFieldEditLoading ? "Saving..." : "Confirm Edit"}</button>
+              <button type="submit" disabled={directFieldEditLoading} style={{ minWidth: 118, height: 38, border: "1px solid #0a1c35", borderRadius: 10, background: directFieldEditLoading ? "#93c5fd" : "#0a1c35", color: "#ffffff", fontWeight: 900, cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}>{directFieldEditLoading ? "Saving..." : "Confirm Edit"}</button>
             </div>
           </form>
         </div>
@@ -8748,11 +8748,11 @@ function openClaimAmountEditDialog() {
               overflow: "hidden",
               border: "1px solid transparent",
               borderRadius: 18,
-              background: "#1e3a8a",
+              background: "#0a1c35",
               boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
             }}
           >
-            <h2 style={{ margin: 0, padding: "12px 14px", background: "#1e3a8a", color: "#ffffff", textAlign: "center", fontSize: 17, fontWeight: 950, lineHeight: 1.15 }}>
+            <h2 style={{ margin: 0, padding: "12px 14px", background: "#0a1c35", color: "#ffffff", textAlign: "center", fontSize: 17, fontWeight: 950, lineHeight: 1.15 }}>
               Edit {directPicklistFieldLabel(directFieldEditModal)}
             </h2>
 
@@ -8804,7 +8804,7 @@ function openClaimAmountEditDialog() {
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 16px 16px", borderTop: "1px solid #e2e8f0", background: "#ffffff" }}>
               <button type="button" onClick={() => { setDirectFieldEditModal(null); setDirectFieldEditResult(null); }} disabled={directFieldEditLoading} style={{ minWidth: 96, height: 38, border: "1px solid #dc2626", borderRadius: 10, background: directFieldEditLoading ? "#fecaca" : "#dc2626", color: "#ffffff", fontWeight: 900, cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}>Cancel</button>
-              <button type="submit" disabled={directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal)} style={{ minWidth: 118, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal) ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal) ? "not-allowed" : "pointer" }}>{directFieldEditLoading ? "Saving..." : "Confirm Edit"}</button>
+              <button type="submit" disabled={directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal)} style={{ minWidth: 118, height: 38, border: "1px solid #0a1c35", borderRadius: 10, background: directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal) ? "#93c5fd" : "#0a1c35", color: "#ffffff", fontWeight: 900, cursor: directFieldEditLoading || directFieldPicklistsLoading || !directPicklistInputValue(directFieldEditModal) ? "not-allowed" : "pointer" }}>{directFieldEditLoading ? "Saving..." : "Confirm Edit"}</button>
             </div>
           </form>
         </div>
@@ -8838,13 +8838,13 @@ function openClaimAmountEditDialog() {
               width: "min(560px, calc(100vw - 48px))",
               maxHeight: "calc(100vh - 48px)",
               overflow: "hidden",
-              background: "#1e3a8a",
+              background: "#0a1c35",
               border: "1px solid transparent",
               borderRadius: 18,
               boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
             }}
           >
-            <h2 style={{ margin: 0, padding: "12px 14px", background: "#1e3a8a", color: "#ffffff", textAlign: "center", fontSize: 17, fontWeight: 950, lineHeight: 1.15 }}>
+            <h2 style={{ margin: 0, padding: "12px 14px", background: "#0a1c35", color: "#ffffff", textAlign: "center", fontSize: 17, fontWeight: 950, lineHeight: 1.15 }}>
               Edit {identityFieldEditLabel(identityFieldEditModal)}
             </h2>
 
@@ -8904,7 +8904,7 @@ function openClaimAmountEditDialog() {
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 16px 16px", borderTop: "1px solid #e2e8f0", background: "#ffffff" }}>
               <button type="button" onClick={closeIdentityFieldEditDialog} disabled={identityFieldEditLoading} style={{ minWidth: 96, height: 38, border: "1px solid #dc2626", borderRadius: 10, background: identityFieldEditLoading ? "#fecaca" : "#dc2626", color: "#ffffff", fontWeight: 900, cursor: identityFieldEditLoading ? "not-allowed" : "pointer" }}>Cancel</button>
-              <button type="submit" disabled={identityFieldEditLoading || !textValue(identityFieldEditInput)} style={{ minWidth: 118, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: identityFieldEditLoading || !textValue(identityFieldEditInput) ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: identityFieldEditLoading || !textValue(identityFieldEditInput) ? "not-allowed" : "pointer" }}>{identityFieldEditLoading ? "Saving..." : "Confirm Edit"}</button>
+              <button type="submit" disabled={identityFieldEditLoading || !textValue(identityFieldEditInput)} style={{ minWidth: 118, height: 38, border: "1px solid #0a1c35", borderRadius: 10, background: identityFieldEditLoading || !textValue(identityFieldEditInput) ? "#93c5fd" : "#0a1c35", color: "#ffffff", fontWeight: 900, cursor: identityFieldEditLoading || !textValue(identityFieldEditInput) ? "not-allowed" : "pointer" }}>{identityFieldEditLoading ? "Saving..." : "Confirm Edit"}</button>
             </div>
           </form>
         </div>
@@ -8938,13 +8938,13 @@ function openClaimAmountEditDialog() {
               width: "min(560px, calc(100vw - 48px))",
               maxHeight: "calc(100vh - 48px)",
               overflow: "hidden",
-              background: "#1e3a8a",
+              background: "#0a1c35",
               border: "1px solid transparent",
               borderRadius: 18,
               boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
             }}
           >
-            <h2 style={{ margin: 0, padding: "12px 14px", background: "#1e3a8a", color: "#ffffff", textAlign: "center", fontSize: 17, fontWeight: 950, lineHeight: 1.15 }}>
+            <h2 style={{ margin: 0, padding: "12px 14px", background: "#0a1c35", color: "#ffffff", textAlign: "center", fontSize: 17, fontWeight: 950, lineHeight: 1.15 }}>
               Edit Treating Provider
             </h2>
 
@@ -8965,7 +8965,7 @@ function openClaimAmountEditDialog() {
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 16px 16px", borderTop: "1px solid #e2e8f0", background: "#ffffff" }}>
               <button type="button" onClick={closeTreatingProviderEditDialog} disabled={treatingProviderSaving} style={{ minWidth: 96, height: 38, border: "1px solid #dc2626", borderRadius: 10, background: treatingProviderSaving ? "#fecaca" : "#dc2626", color: "#ffffff", fontWeight: 900, cursor: treatingProviderSaving ? "not-allowed" : "pointer" }}>Cancel</button>
-              <button type="submit" disabled={treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput} style={{ minWidth: 118, height: 38, border: "1px solid #1e3a8a", borderRadius: 10, background: treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput ? "#93c5fd" : "#1e3a8a", color: "#ffffff", fontWeight: 900, cursor: treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput ? "not-allowed" : "pointer" }}>{treatingProviderSaving ? "Saving..." : "Confirm Edit"}</button>
+              <button type="submit" disabled={treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput} style={{ minWidth: 118, height: 38, border: "1px solid #0a1c35", borderRadius: 10, background: treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput ? "#93c5fd" : "#0a1c35", color: "#ffffff", fontWeight: 900, cursor: treatingProviderSaving || treatingProviderOptionsLoading || !treatingProviderInput ? "not-allowed" : "pointer" }}>{treatingProviderSaving ? "Saving..." : "Confirm Edit"}</button>
             </div>
           </form>
         </div>
@@ -8979,7 +8979,7 @@ function openClaimAmountEditDialog() {
             border: "1px solid " + (matterHydrationError ? "#fecaca" : "#bfdbfe"),
             borderRadius: 14,
             background: matterHydrationError ? "#fef2f2" : "#eff6ff",
-            color: matterHydrationError ? "#991b1b" : "#1e3a8a",
+            color: matterHydrationError ? "#991b1b" : "#0a1c35",
             fontSize: 13,
             fontWeight: 650,
           }}
@@ -9108,7 +9108,7 @@ function openClaimAmountEditDialog() {
                         border: "1px solid #93c5fd",
                         borderRadius: 999,
                         background: "#eff6ff",
-                        color: "#1e3a8a",
+                        color: "#0a1c35",
                         fontSize: 11,
                         fontWeight: 900,
                         padding: "3px 8px",
@@ -9125,7 +9125,7 @@ function openClaimAmountEditDialog() {
                       href={`/matters?treatingProvider=${encodeURIComponent(localTreatingProviderName())}`}
                       title="Open all matters for this treating provider"
                       style={{
-                        color: "#1e3a8a",
+                        color: "#0a1c35",
                         textDecoration: "underline",
                         textUnderlineOffset: 3,
                         fontWeight: 900,
@@ -9227,7 +9227,7 @@ function openClaimAmountEditDialog() {
                       <a
                         href={`/matters?dateOfLoss=${encodeURIComponent(textValue(matter?.dateOfLoss || matter?.date_of_loss))}`}
                         className="barsh-filter-field-link"
-                        style={{ color: "#1e3a8a", textDecoration: "underline", textUnderlineOffset: 2 }}
+                        style={{ color: "#0a1c35", textDecoration: "underline", textUnderlineOffset: 2 }}
                       >
                         {formatDate(matter?.dateOfLoss || matter?.date_of_loss) || "—"}
                       </a>
@@ -9260,7 +9260,7 @@ function openClaimAmountEditDialog() {
                         border: "1px solid #93c5fd",
                         borderRadius: 999,
                         background: "#eff6ff",
-                        color: "#1e3a8a",
+                        color: "#0a1c35",
                         fontSize: 11,
                         fontWeight: 900,
                         padding: "3px 8px",
@@ -9295,7 +9295,7 @@ function openClaimAmountEditDialog() {
                         border: "1px solid #93c5fd",
                         borderRadius: 999,
                         background: "#eff6ff",
-                        color: "#1e3a8a",
+                        color: "#0a1c35",
                         fontSize: 11,
                         fontWeight: 900,
                         padding: "3px 8px",
@@ -9321,7 +9321,7 @@ function openClaimAmountEditDialog() {
                       onClick={() => openPicklistEditDialog("denialReason")}
                       disabled={directFieldEditLoading}
                       title="Edit Denial Reason."
-                      style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#1e3a8a", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
+                      style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#0a1c35", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
                     >
                       Edit
                     </button>
@@ -9387,7 +9387,7 @@ function openClaimAmountEditDialog() {
                       onClick={() => openPicklistEditDialog("status")}
                       disabled={directFieldEditLoading}
                       title="Edit Status."
-                      style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#1e3a8a", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
+                      style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#0a1c35", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
                     >
                       Edit
                     </button>
@@ -9448,7 +9448,7 @@ function openClaimAmountEditDialog() {
                     fontWeight: 950,
                     letterSpacing: "0.08em",
                     textTransform: "uppercase",
-                    color: "#1e3a8a",
+                    color: "#0a1c35",
                     marginBottom: 8,
                   }}
                 >
@@ -9769,8 +9769,8 @@ function openClaimAmountEditDialog() {
                         alignItems: "center",
                         justifyContent: "center",
                         padding: "16px 18px",
-                        borderBottom: "1px solid #1e3a8a",
-                        background: "#1e3a8a",
+                        borderBottom: "1px solid #0a1c35",
+                        background: "#0a1c35",
                       }}
                     >
                       <div
@@ -10103,8 +10103,8 @@ function openClaimAmountEditDialog() {
                           alignItems: "center",
                           gap: 10,
                           padding: "16px 18px",
-                          borderBottom: "1px solid #1e3a8a",
-                          background: "#1e3a8a",
+                          borderBottom: "1px solid #0a1c35",
+                          background: "#0a1c35",
                         }}
                       >
                         <div aria-hidden="true" />
@@ -10654,8 +10654,8 @@ function openClaimAmountEditDialog() {
                 disabled={packetLoading}
                 style={{
                   padding: "8px 12px",
-                  border: "1px solid #1e3a8a",
-                  background: packetLoading ? "#f3f4f6" : "#1e3a8a",
+                  border: "1px solid #0a1c35",
+                  background: packetLoading ? "#f3f4f6" : "#0a1c35",
                   color: packetLoading ? "#666" : "#fff",
                   borderRadius: 4,
                   cursor: packetLoading ? "not-allowed" : "pointer",
@@ -10888,7 +10888,7 @@ function openClaimAmountEditDialog() {
                   padding: "6px 10px",
                   border: "1px solid #bfdbfe",
                   background: "#eff6ff",
-                  color: "#1e3a8a",
+                  color: "#0a1c35",
                   borderRadius: 999,
                   fontSize: 12,
                   fontWeight: 900,
@@ -11019,8 +11019,8 @@ function openClaimAmountEditDialog() {
                 disabled={currentSettlementValuesLoading || !tabMasterLawsuitId}
                 style={{
                   padding: "7px 10px",
-                  border: "1px solid #1e3a8a",
-                  background: currentSettlementValuesLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#1e3a8a",
+                  border: "1px solid #0a1c35",
+                  background: currentSettlementValuesLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#0a1c35",
                   color: currentSettlementValuesLoading || !tabMasterLawsuitId ? "#666" : "#fff",
                   borderRadius: 4,
                   cursor: currentSettlementValuesLoading || !tabMasterLawsuitId ? "not-allowed" : "pointer",
@@ -11196,8 +11196,8 @@ function openClaimAmountEditDialog() {
                   disabled={settlementDocumentsPreviewLoading || !tabMasterLawsuitId}
                   style={{
                     padding: "7px 10px",
-                    border: "1px solid #1e3a8a",
-                    background: settlementDocumentsPreviewLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#1e3a8a",
+                    border: "1px solid #0a1c35",
+                    background: settlementDocumentsPreviewLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#0a1c35",
                     color: settlementDocumentsPreviewLoading || !tabMasterLawsuitId ? "#666" : "#fff",
                     borderRadius: 4,
                     cursor: settlementDocumentsPreviewLoading || !tabMasterLawsuitId ? "not-allowed" : "pointer",
@@ -11296,9 +11296,9 @@ function openClaimAmountEditDialog() {
                                   style={{
                                     display: "inline-block",
                                     padding: "5px 8px",
-                                    border: "1px solid #1e3a8a",
+                                    border: "1px solid #0a1c35",
                                     background: "#eff6ff",
-                                    color: "#1e3a8a",
+                                    color: "#0a1c35",
                                     borderRadius: 4,
                                     fontWeight: 700,
                                     textDecoration: "none",
@@ -11372,7 +11372,7 @@ function openClaimAmountEditDialog() {
             </div>
 
             <div style={{ fontWeight: 800, marginBottom: 6 }}>Settlement Inputs</div>
-              <ul style={{ margin: "0 0 0 18px", padding: 0, color: "#1e3a8a", fontSize: 13, lineHeight: 1.5 }}>
+              <ul style={{ margin: "0 0 0 18px", padding: 0, color: "#0a1c35", fontSize: 13, lineHeight: 1.5 }}>
                 <li>Gross settlement amount</li>
                 <li>Settled with / adjuster or defense contact</li>
                 <li>Settlement date and payment expected date</li>
@@ -11491,8 +11491,8 @@ function openClaimAmountEditDialog() {
                     disabled={settledWithContactLoading}
                     style={{
                       padding: "8px 10px",
-                      border: "1px solid #1e3a8a",
-                      background: settledWithContactLoading ? "#f3f4f6" : "#1e3a8a",
+                      border: "1px solid #0a1c35",
+                      background: settledWithContactLoading ? "#f3f4f6" : "#0a1c35",
                       color: settledWithContactLoading ? "#666" : "#fff",
                       borderRadius: 4,
                       cursor: settledWithContactLoading ? "not-allowed" : "pointer",
@@ -11708,7 +11708,7 @@ function openClaimAmountEditDialog() {
             >
               <div>
                 <div style={{ fontWeight: 800 }}>Provider Fee Defaults</div>
-                <div style={{ color: "#1e3a8a", fontSize: 12 }}>
+                <div style={{ color: "#0a1c35", fontSize: 12 }}>
                   Provider defaults are handled from the Master Lawsuit settlement workflow.
                 </div>
               </div>
@@ -11828,7 +11828,7 @@ function openClaimAmountEditDialog() {
                     : "No local contact selected"}
                 </div>
               </div>
-              <div style={{ marginTop: 6, color: "#1e3a8a", fontSize: 12 }}>
+              <div style={{ marginTop: 6, color: "#0a1c35", fontSize: 12 }}>
                 SETTLED_WITH selection is handled from the Master Lawsuit page.
               </div>
             </div>
@@ -11839,9 +11839,9 @@ function openClaimAmountEditDialog() {
               disabled={settlementPreviewLoading || !tabMasterLawsuitId}
               style={{
                 padding: "8px 12px",
-                border: "1px solid #1e3a8a",
+                border: "1px solid #0a1c35",
                 background:
-                  settlementPreviewLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#1e3a8a",
+                  settlementPreviewLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#0a1c35",
                 color: settlementPreviewLoading || !tabMasterLawsuitId ? "#666" : "#fff",
                 borderRadius: 4,
                 cursor:
@@ -12631,8 +12631,8 @@ function openClaimAmountEditDialog() {
                 disabled={settlementHistoryLoading || !tabMasterLawsuitId}
                 style={{
                   padding: "7px 10px",
-                  border: "1px solid #1e3a8a",
-                  background: settlementHistoryLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#1e3a8a",
+                  border: "1px solid #0a1c35",
+                  background: settlementHistoryLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#0a1c35",
                   color: settlementHistoryLoading || !tabMasterLawsuitId ? "#666" : "#fff",
                   borderRadius: 4,
                   cursor: settlementHistoryLoading || !tabMasterLawsuitId ? "not-allowed" : "pointer",
@@ -13020,8 +13020,8 @@ function openClaimAmountEditDialog() {
                   disabled={printQueueListLoading}
                   style={{
                     padding: "7px 10px",
-                    border: "1px solid #1e3a8a",
-                    background: printQueueListLoading ? "#f3f4f6" : "#1e3a8a",
+                    border: "1px solid #0a1c35",
+                    background: printQueueListLoading ? "#f3f4f6" : "#0a1c35",
                     color: printQueueListLoading ? "#666" : "#fff",
                     borderRadius: 4,
                     cursor: printQueueListLoading ? "not-allowed" : "pointer",
@@ -13300,8 +13300,8 @@ function openClaimAmountEditDialog() {
               disabled={matterAuditHistoryLoading}
               style={{
                 padding: "7px 10px",
-                border: "1px solid #1e3a8a",
-                background: matterAuditHistoryLoading ? "#f3f4f6" : "#1e3a8a",
+                border: "1px solid #0a1c35",
+                background: matterAuditHistoryLoading ? "#f3f4f6" : "#0a1c35",
                 color: matterAuditHistoryLoading ? "#666" : "#fff",
                 borderRadius: 4,
                 cursor: matterAuditHistoryLoading ? "not-allowed" : "pointer",
@@ -13657,8 +13657,8 @@ function openClaimAmountEditDialog() {
                             disabled={packetLoading}
                             style={{
                               padding: "3px 8px",
-                              border: "1px solid #1e3a8a",
-                              background: packetLoading ? "#f3f4f6" : "#1e3a8a",
+                              border: "1px solid #0a1c35",
+                              background: packetLoading ? "#f3f4f6" : "#0a1c35",
                               color: packetLoading ? "#666" : "#fff",
                               borderRadius: 4,
                               cursor: packetLoading ? "not-allowed" : "pointer",
@@ -13830,12 +13830,12 @@ function openClaimAmountEditDialog() {
             maxHeight: "calc(100vh - 64px)",
             overflow: "hidden",
             background: "#ffffff",
-            border: "1px solid #1e3a8a",
+            border: "1px solid #0a1c35",
             borderRadius: 18,
             boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
           }}
         >
-          <h2 style={{ margin: 0, padding: "14px 18px", background: "#1e3a8a", color: "#ffffff", textAlign: "center", fontSize: 20, fontWeight: 950, lineHeight: 1.15 }}>
+          <h2 style={{ margin: 0, padding: "14px 18px", background: "#0a1c35", color: "#ffffff", textAlign: "center", fontSize: 20, fontWeight: 950, lineHeight: 1.15 }}>
             Edit Lawsuit Metadata
           </h2>
 
@@ -14049,13 +14049,13 @@ function openClaimAmountEditDialog() {
               style={{
                 minWidth: 118,
                 height: 38,
-                border: "1px solid #1e3a8a",
+                border: "1px solid #0a1c35",
                 background:
                   metadataSaving ||
                   (metadataEdit.amountSoughtMode === "custom" &&
                     parseMoneyInput(metadataEdit.customAmountSought) === null)
                     ? "#93c5fd"
-                    : "#1e3a8a",
+                    : "#0a1c35",
                 color:
                   metadataSaving ||
                   (metadataEdit.amountSoughtMode === "custom" &&
@@ -14359,13 +14359,13 @@ function openClaimAmountEditDialog() {
           style={{
             width: "min(520px, calc(100vw - 48px))",
             overflow: "hidden",
-            background: "#1e3a8a",
+            background: "#0a1c35",
             border: "1px solid transparent",
             borderRadius: 18,
             boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
           }}
         >
-          <h2 style={{ margin: 0, padding: "12px 14px", background: "#1e3a8a", color: "#ffffff", textAlign: "center", fontSize: 17, fontWeight: 950, lineHeight: 1.15 }}>
+          <h2 style={{ margin: 0, padding: "12px 14px", background: "#0a1c35", color: "#ffffff", textAlign: "center", fontSize: 17, fontWeight: 950, lineHeight: 1.15 }}>
             Close Matter
           </h2>
 

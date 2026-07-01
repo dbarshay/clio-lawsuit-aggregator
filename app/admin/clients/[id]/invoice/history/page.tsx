@@ -41,12 +41,12 @@ const tdStyle: React.CSSProperties = {
 const primaryButtonStyle: React.CSSProperties = {
   padding: "8px 12px",
   borderRadius: 10,
-  border: "1px solid #1e3a8a",
-  background: "#1e3a8a",
+  border: "1px solid #0a1c35",
+  background: "#0a1c35",
   color: "#ffffff",
   fontWeight: 900,
   cursor: "pointer",
-  boxShadow: "0 2px 6px rgba(30, 58, 138, 0.25)",
+  boxShadow: "0 2px 6px rgba(10, 28, 53, 0.25)",
 };
 
 const secondaryButtonStyle: React.CSSProperties = {
@@ -261,16 +261,16 @@ export default function ClientInvoiceHistoryPage() {
     <main style={pageStyle}>
       <BarshHeader />
       <div style={{ display: "flex", gap: 14, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
-        <Link href={id ? `/admin/clients/${encodeURIComponent(id)}/invoice` : "/admin/clients"} style={{ color: "#1e3a8a", fontWeight: 900, textDecoration: "none" }}>
+        <Link href={id ? `/admin/clients/${encodeURIComponent(id)}/invoice` : "/admin/clients"} style={{ color: "#0a1c35", fontWeight: 900, textDecoration: "none" }}>
           ← Back to Invoice Workflow
         </Link>
-        <Link href={id ? `/admin/clients/${encodeURIComponent(id)}` : "/admin/clients"} style={{ color: "#1e3a8a", fontWeight: 900, textDecoration: "none" }}>
+        <Link href={id ? `/admin/clients/${encodeURIComponent(id)}` : "/admin/clients"} style={{ color: "#0a1c35", fontWeight: 900, textDecoration: "none" }}>
           Main Client Info Page
         </Link>
-        <Link href="/admin/invoices" style={{ color: "#1e3a8a", fontWeight: 900, textDecoration: "none" }}>
+        <Link href="/admin/invoices" style={{ color: "#0a1c35", fontWeight: 900, textDecoration: "none" }}>
           Global Invoice Search
         </Link>
-        <Link href="/admin" style={{ color: "#1e3a8a", fontWeight: 900, textDecoration: "none" }}>
+        <Link href="/admin" style={{ color: "#0a1c35", fontWeight: 900, textDecoration: "none" }}>
           Admin Home
         </Link>
       </div>

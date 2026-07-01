@@ -454,7 +454,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
     if (!href || !label) return label || "—";
 
     return (
-      <Link href={href} style={{ color: "#1e3a8a", fontWeight: 800, textDecoration: "none" }}>
+      <Link href={href} style={{ color: "#0a1c35", fontWeight: 800, textDecoration: "none" }}>
         {label}
       </Link>
     );
@@ -764,7 +764,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
           type="button"
           disabled={savingClient}
           onClick={saveClientDefaults}
-          style={{ padding: "1px 6px", borderRadius: 6, border: "1px solid #1e3a8a", background: "#1e3a8a", color: "#fff", fontSize: 12, fontWeight: 800, lineHeight: 1.1, alignSelf: "start", marginTop: 0 }}
+          style={{ padding: "1px 6px", borderRadius: 6, border: "1px solid #0a1c35", background: "#0a1c35", color: "#fff", fontSize: 12, fontWeight: 800, lineHeight: 1.1, alignSelf: "start", marginTop: 0 }}
         >
           {savingClient ? "Saving..." : "Save"}
         </button>
@@ -841,13 +841,13 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
     <main style={pageStyle}>
       <BarshHeader />
       <div style={{ marginBottom: 18, display: "flex", gap: 16, flexWrap: "wrap" }}>
-        <Link href="/admin/clients" style={{ color: "#1e3a8a", fontWeight: 700, textDecoration: "none" }}>
+        <Link href="/admin/clients" style={{ color: "#0a1c35", fontWeight: 700, textDecoration: "none" }}>
           ← Clients
         </Link>
-        <Link href="/admin" style={{ color: "#1e3a8a", fontWeight: 700, textDecoration: "none" }}>
+        <Link href="/admin" style={{ color: "#0a1c35", fontWeight: 700, textDecoration: "none" }}>
           Admin Home
         </Link>
-        <Link href="/admin/invoices" style={{ color: "#1e3a8a", fontWeight: 700, textDecoration: "none" }}>
+        <Link href="/admin/invoices" style={{ color: "#0a1c35", fontWeight: 700, textDecoration: "none" }}>
           Global Invoice Search
         </Link>
       </div>
@@ -882,7 +882,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
                   type="button"
                   disabled={savingClient}
                   onClick={saveClientDefaults}
-                  style={{ padding: "1px 6px", borderRadius: 6, border: "1px solid #1e3a8a", background: "#1e3a8a", color: "#fff", fontSize: 12, fontWeight: 800, lineHeight: 1.1 }}
+                  style={{ padding: "1px 6px", borderRadius: 6, border: "1px solid #0a1c35", background: "#0a1c35", color: "#fff", fontSize: 12, fontWeight: 800, lineHeight: 1.1 }}
                 >
                   {savingClient ? "Saving..." : "Save"}
                 </button>
@@ -933,7 +933,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
                   type="button"
                   disabled={savingClient}
                   onClick={saveClientDefaults}
-                  style={{ padding: "1px 6px", borderRadius: 6, border: "1px solid #1e3a8a", background: "#1e3a8a", color: "#fff", fontSize: 12, fontWeight: 800, lineHeight: 1.1, alignSelf: "start", marginTop: 0 }}
+                  style={{ padding: "1px 6px", borderRadius: 6, border: "1px solid #0a1c35", background: "#0a1c35", color: "#fff", fontSize: 12, fontWeight: 800, lineHeight: 1.1, alignSelf: "start", marginTop: 0 }}
                 >
                   {savingClient ? "Saving..." : "Save"}
                 </button>
@@ -1063,7 +1063,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
           <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
             <Link
               href={`/admin/clients/${encodeURIComponent(id)}/invoice`}
-              style={{ ...providerHubButtonBaseStyle, border: "1px solid #1e3a8a", background: "linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%)", color: "#0f172a", textDecoration: "none" }}
+              style={{ ...providerHubButtonBaseStyle, border: "1px solid #0a1c35", background: "linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%)", color: "#0f172a", textDecoration: "none" }}
               data-barsh-provider-invoice-workflow-link="true"
             >
               Invoicing / Remittance
@@ -1104,7 +1104,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
               <button
                 type="button"
                 onClick={startAddNote}
-                style={{ padding: "3px 8px", borderRadius: 7, border: "1px solid #1e3a8a", background: "#1e3a8a", color: "#ffffff", fontSize: 12, fontWeight: 900, lineHeight: 1.1 }}
+                style={{ padding: "3px 8px", borderRadius: 7, border: "1px solid #0a1c35", background: "#0a1c35", color: "#ffffff", fontSize: 12, fontWeight: 900, lineHeight: 1.1 }}
               >
                 Add Note
               </button>
@@ -1135,7 +1135,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
                 <button type="button" disabled={savingClient} onClick={cancelEdit} style={{ padding: "7px 11px", borderRadius: 8, border: "1px solid #cbd5e1", background: "#ffffff", fontWeight: 850 }}>
                   Cancel
                 </button>
-                <button type="button" disabled={savingClient || !clientForm.notes.trim()} onClick={saveClientDefaults} style={{ padding: "7px 11px", borderRadius: 8, border: "1px solid #1e3a8a", background: "#1e3a8a", color: "#ffffff", fontWeight: 900 }}>
+                <button type="button" disabled={savingClient || !clientForm.notes.trim()} onClick={saveClientDefaults} style={{ padding: "7px 11px", borderRadius: 8, border: "1px solid #0a1c35", background: "#0a1c35", color: "#ffffff", fontWeight: 900 }}>
                   {savingClient ? "Saving..." : "Save New Note"}
                 </button>
               </div>
@@ -1169,7 +1169,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
                 <button type="button" disabled={savingClient} onClick={cancelEdit} style={{ padding: "7px 11px", borderRadius: 8, border: "1px solid #cbd5e1", background: "#ffffff", fontWeight: 850 }}>
                   Cancel
                 </button>
-                <button type="button" disabled={savingClient} onClick={saveClientDefaults} style={{ padding: "7px 11px", borderRadius: 8, border: "1px solid #1e3a8a", background: "#1e3a8a", color: "#ffffff", fontWeight: 900 }}>
+                <button type="button" disabled={savingClient} onClick={saveClientDefaults} style={{ padding: "7px 11px", borderRadius: 8, border: "1px solid #0a1c35", background: "#0a1c35", color: "#ffffff", fontWeight: 900 }}>
                   {savingClient ? "Saving..." : "Save Note Edits"}
                 </button>
               </div>
@@ -1253,7 +1253,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
                     <tr key={row.id || row.matter}>
                       <td style={tdStyle}>
                         {matterHref ? (
-                          <Link href={matterHref} style={{ color: "#1e3a8a", fontWeight: 800, textDecoration: "none" }}>
+                          <Link href={matterHref} style={{ color: "#0a1c35", fontWeight: 800, textDecoration: "none" }}>
                             {row.matter}
                           </Link>
                         ) : (
@@ -1265,7 +1265,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
                       <td style={tdStyle}>{providerIndexedLink("insurer", row.insurer)}</td>
                       <td style={tdStyle}>
                         {lawsuitHref ? (
-                          <Link href={lawsuitHref} style={{ color: "#1e3a8a", fontWeight: 800, textDecoration: "none" }}>
+                          <Link href={lawsuitHref} style={{ color: "#0a1c35", fontWeight: 800, textDecoration: "none" }}>
                             {row.lawsuit}
                           </Link>
                         ) : (
@@ -1356,7 +1356,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
                     <tr key={`attorney-fee-${row.id || row.matter}-${row.checkNumber}-${row.amount}`}>
                       <td style={tdStyle}>
                         {matterHref ? (
-                          <Link href={matterHref} style={{ color: "#1e3a8a", fontWeight: 800, textDecoration: "none" }}>
+                          <Link href={matterHref} style={{ color: "#0a1c35", fontWeight: 800, textDecoration: "none" }}>
                             {row.matter}
                           </Link>
                         ) : (
@@ -1368,7 +1368,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
                       <td style={tdStyle}>{row.insurer || "—"}</td>
                       <td style={tdStyle}>
                         {lawsuitHref ? (
-                          <Link href={lawsuitHref} style={{ color: "#1e3a8a", fontWeight: 800, textDecoration: "none" }}>
+                          <Link href={lawsuitHref} style={{ color: "#0a1c35", fontWeight: 800, textDecoration: "none" }}>
                             {row.lawsuit}
                           </Link>
                         ) : (
@@ -1456,7 +1456,7 @@ export default function AdminClientDetailPage({ params }: { params: Promise<{ id
                     <tr key={row.lawsuit}>
                       <td style={tdStyle}>
                         {lawsuitHref ? (
-                          <Link href={lawsuitHref} style={{ color: "#1e3a8a", fontWeight: 800, textDecoration: "none" }}>
+                          <Link href={lawsuitHref} style={{ color: "#0a1c35", fontWeight: 800, textDecoration: "none" }}>
                             {row.lawsuit}
                           </Link>
                         ) : (

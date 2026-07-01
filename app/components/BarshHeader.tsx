@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import BarshHeaderQuickNav from "@/app/components/BarshHeaderQuickNav";
 import BarshHeaderActions from "@/app/components/BarshHeaderActions";
 
@@ -33,8 +33,13 @@ const headerStyle: React.CSSProperties = {
   justifyContent: "space-between",
   gap: 24,
   minHeight: 124,
-  padding: "6px 8px 8px",
+  padding: "6px 20px 8px",
   marginBottom: 6,
+  // Full-bleed: cancel the parent container's horizontal padding so the navy bar spans the entire
+  // viewport width (edge to edge), while the page content underneath stays padded. This is done in
+  // the shared header so every page gets it, regardless of its own <main> padding.
+  marginLeft: "calc(50% - 50vw)",
+  marginRight: "calc(50% - 50vw)",
   // Opaque system-navy bar (follows BRAND_NAVY / set-system-blue) + shadow so scrolled content
   // passes cleanly underneath.
   background: "#00346e",
@@ -100,8 +105,24 @@ const bmLogoStyle: React.CSSProperties = {
 };
 
 export default function BarshHeader({ center, onAdministratorClick }: BarshHeaderProps) {
+  const sectionRef = useRef<HTMLElement>(null);
+  // Pull the header up by the wrapping element's top padding so the navy bar is flush to the very
+  // top of the viewport on EVERY page, regardless of that page's own <main> top padding. Measuring
+  // the parent keeps this uniform without editing each page individually.
+  const [pullUpTop, setPullUpTop] = useState(0);
+  useLayoutEffect(() => {
+    const parent = sectionRef.current?.parentElement;
+    if (!parent) return;
+    const paddingTop = parseFloat(window.getComputedStyle(parent).paddingTop) || 0;
+    setPullUpTop(paddingTop);
+  }, []);
+
   return (
-    <section style={headerStyle} data-barsh-standard-header="true">
+    <section
+      ref={sectionRef}
+      style={{ ...headerStyle, marginTop: -pullUpTop }}
+      data-barsh-standard-header="true"
+    >
       <div style={leftWrapStyle}>
         <img src="/brl-logo-navy.png" alt="Barshay, Rizzo & Lopez, PLLC" style={brlLogoStyle} />
         <div style={{ paddingTop: 8 }}>

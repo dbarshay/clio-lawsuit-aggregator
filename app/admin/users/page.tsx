@@ -1313,8 +1313,8 @@ export default function AdminUsersPlanningPage() {
               </select>
             </label>
             <label style={{ fontSize: 12, fontWeight: 900, color: "#334155" }}>
-              2FA Phone
-              <input data-barsh-admin-users-create-two-factor-phone="true" value={createTwoFactorPhone} onChange={(event) => { setCreateTwoFactorPhone(event.target.value); setCreateResult(null); }} style={inputStyle} placeholder="Expected format: (631) 555-1234" />
+              Cell Phone (required) <span style={{ color: "#dc2626" }}>*</span>
+              <input data-barsh-admin-users-create-two-factor-phone="true" required value={createTwoFactorPhone} onChange={(event) => { setCreateTwoFactorPhone(event.target.value); setCreateResult(null); }} style={inputStyle} placeholder="Expected format: (631) 555-1234" />
             </label>
             <label style={{ fontSize: 12, fontWeight: 900, color: "#334155", display: "flex", alignItems: "center", gap: 8, paddingTop: 24 }}>
               <input data-barsh-admin-users-create-locked="true" type="checkbox" checked={createLocked} onChange={(event) => { setCreateLocked(event.target.checked); setCreateResult(null); }} />

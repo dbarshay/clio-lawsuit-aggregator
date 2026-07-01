@@ -136,6 +136,10 @@ export default function LoginPage() {
   const [alreadyAuthenticated, setAlreadyAuthenticated] = useState(false);
   const returnTo = useMemo(() => safeReturnToFromSearch(), []);
 
+  // Second-factor (SMS) step. When active, the password step succeeded and a code was sent.
+  const [twoFactor, setTwoFactor] = useState<{ active: boolean; email: string; maskedPhone: string; returnTo: string; info: string } | null>(null);
+  const [code, setCode] = useState("");
+
   useEffect(() => {
     let cancelled = false;
 
@@ -179,6 +183,20 @@ export default function LoginPage() {
       });
       const json = await response.json().catch(() => null);
 
+      // 2FA required: password was accepted; a code was sent. Move to the code-entry step.
+      if (response.ok && json?.ok && adminUsersQaPhase2LoginNeedsTwoFactor(json)) {
+        setTwoFactor({
+          active: true,
+          email: adminUsersQaPhase2LoginEmail(json),
+          maskedPhone: clean(json?.maskedPhone),
+          returnTo: clean(json?.returnTo) || returnTo,
+          info: clean(json?.deliveryError) || (clean(json?.maskedPhone) ? `We sent a verification code to ${clean(json?.maskedPhone)}.` : "We sent you a verification code."),
+        });
+        setCode("");
+        setStatus("");
+        return;
+      }
+
       if (!response.ok || !json?.ok || !json?.authenticated) {
         setStatus(json?.error || "Administrator login failed.");
         return;
@@ -189,25 +207,68 @@ export default function LoginPage() {
         return;
       }
 
-      if (adminUsersQaPhase2LoginNeedsTwoFactor(json)) {
-        const twoFactorEmail = adminUsersQaPhase2LoginEmail(json);
-        if (twoFactorEmail) {
-          await fetch(ADMIN_USERS_QA_PHASE2_TWO_FACTOR_CHALLENGE_ROUTE, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: twoFactorEmail }),
-          }).catch(() => null);
-        }
-        window.location.href = `/login?twoFactor=required&email=${encodeURIComponent(twoFactorEmail)}&verify=${encodeURIComponent(ADMIN_USERS_QA_PHASE2_TWO_FACTOR_VERIFY_ROUTE)}`;
-        return;
-      }
-
       window.location.href = clean(json.returnTo) || returnTo;
     } catch (error: any) {
       setStatus(error?.message || "Administrator login failed.");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleVerifyCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setStatus("");
+    const trimmedCode = clean(code);
+    if (!trimmedCode) {
+      setStatus("Enter the verification code.");
+      return;
+    }
+    try {
+      setBusy(true);
+      const response = await fetch(ADMIN_USERS_QA_PHASE2_TWO_FACTOR_VERIFY_ROUTE, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: trimmedCode, returnTo: twoFactor?.returnTo || returnTo }),
+      });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json?.ok || !json?.authenticated) {
+        setStatus(json?.error || "Verification failed.");
+        return;
+      }
+      window.location.href = clean(json.returnTo) || twoFactor?.returnTo || returnTo;
+    } catch (error: any) {
+      setStatus(error?.message || "Verification failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resendCode() {
+    setStatus("");
+    try {
+      setBusy(true);
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: clean(username) || undefined, password: clean(password), action: "Login", returnTo }),
+      });
+      const json = await response.json().catch(() => null);
+      if (response.ok && json?.ok && adminUsersQaPhase2LoginNeedsTwoFactor(json)) {
+        setStatus(clean(json?.maskedPhone) ? `New code sent to ${clean(json?.maskedPhone)}.` : "New code sent.");
+      } else {
+        setStatus(json?.error || "Could not resend the code. Sign in again.");
+      }
+    } catch (error: any) {
+      setStatus(error?.message || "Could not resend the code.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function cancelTwoFactor() {
+    setTwoFactor(null);
+    setCode("");
+    setStatus("");
   }
 
   async function handleLogout() {
@@ -235,6 +296,45 @@ export default function LoginPage() {
           <h1 style={{ margin: "8px 0 0", fontSize: 26, lineHeight: 1.1 }}>Login</h1>
         </header>
 
+        {twoFactor?.active ? (
+          <form data-barsh-login-2fa-form="true" onSubmit={handleVerifyCode} style={bodyStyle}>
+            <p style={{ margin: 0, color: "#475569", fontSize: 14, lineHeight: 1.5 }}>{twoFactor.info}</p>
+
+            <label style={labelStyle}>
+              Verification code
+              <input
+                data-barsh-login-2fa-code="true"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                placeholder="123456"
+                autoFocus
+                style={{ ...inputStyle, letterSpacing: "0.4em", fontSize: 20, textAlign: "center" }}
+              />
+            </label>
+
+            {status ? (
+              <div data-barsh-login-status="true" style={{ ...statusStyle, background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b" }}>
+                {status}
+              </div>
+            ) : null}
+
+            <button data-barsh-login-2fa-submit="true" type="submit" disabled={busy} style={{ ...primaryButtonStyle, opacity: busy ? 0.7 : 1 }}>
+              {busy ? "Verifying..." : "Verify & sign in"}
+            </button>
+
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+              <button type="button" onClick={resendCode} disabled={busy} style={{ ...secondaryButtonStyle, flex: 1, cursor: busy ? "default" : "pointer" }}>
+                Resend code
+              </button>
+              <button type="button" onClick={cancelTwoFactor} disabled={busy} style={{ ...secondaryButtonStyle, flex: 1, cursor: busy ? "default" : "pointer" }}>
+                Back
+              </button>
+            </div>
+          </form>
+        ) : (
         <form data-barsh-login-form="true" onSubmit={handleSubmit} style={bodyStyle}>
           <p style={{ margin: 0, color: "#475569", fontSize: 14, lineHeight: 1.5 }}>
             Sign in with your username and password. During rollout, the legacy admin password still works if the username field is left blank.
@@ -285,6 +385,7 @@ export default function LoginPage() {
 
 
         </form>
+        )}
       </section>
     </main>
   );

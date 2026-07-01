@@ -5,6 +5,7 @@ import { isAdminRequestAuthorized } from "@/lib/adminAuth";
 import { createMatterAuditLogEntry } from "@/lib/auditLog";
 import { prisma } from "@/lib/prisma";
 import { buildAdminUserSignerProfileWritePayloadPhase7 } from "@/src/lib/admin-users/admin-user-signer-profile-write-contract-phase7";
+import { normalizeE164Phone } from "@/src/lib/auth/twilio-verify-2fa";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -184,6 +185,24 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // A cell phone is mandatory so SMS 2FA always works. Normalize + persist in E.164.
+    const phoneCheck = normalizeE164Phone(signerProfilePayload.twoFactorPhone);
+    if (!phoneCheck.ok || !phoneCheck.e164) {
+      return NextResponse.json(
+        {
+          ok: false,
+          action: "admin-user-create",
+          mode: apply ? "apply-blocked" : "preview-blocked",
+          error: `A valid mobile phone is required for two-factor sign-in. ${phoneCheck.reason || ""}`.trim(),
+          field: "twoFactorPhone",
+          actorEmail,
+          enforcementChanged: false,
+        },
+        { status: 400 }
+      );
+    }
+    signerProfilePayload.twoFactorPhone = phoneCheck.e164;
 
     const existing = await prisma.adminUser.findUnique({ where: { email } });
     if (existing) {

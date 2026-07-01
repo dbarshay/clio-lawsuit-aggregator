@@ -192,6 +192,37 @@ Authoritative spec: `docs/permission-model.md`. Activation plan + decisions:
   `admin/permissions` (task #37) come AFTER activation. Optional: finer-than-per-card API
   action granularity, only if needed.
 
+## SMS Two-Factor Auth (Twilio Verify) (built, flag OFF)
+
+Admin login can require an SMS one-time code. Built and guarded but **not activated** until the
+env flag is set. Superseded the earlier "Phase 21" hash-based OTP for the login path.
+
+- **Provider = Twilio Verify** (not raw Programmable Messaging). Verify owns code
+  generation/delivery/expiry and is exempt from A2P 10DLC registration for OTP use. Core client:
+  `src/lib/auth/twilio-verify-2fa.ts` (fetch + Basic auth, no SDK). The old
+  `admin-user-two-factor-runtime-phase21.ts` hash logic is retained ONLY for the admin/users phone
+  setup-verification panel; the login path no longer uses it.
+- **Login is two-step.** `/api/auth/login` validates username+password; if 2FA is enabled AND
+  required for the user it does NOT create a session — it calls `startVerification` (sends the SMS)
+  and sets a short-lived HMAC-signed `barsh_2fa_pending` cookie (10 min; proves the password step
+  passed). `/api/auth/2fa/verify` reads that cookie, checks the code via Twilio `VerificationCheck`
+  (or the Owner break-glass code), then sets the real gate + identity cookies (roleKeys + grants).
+  Module: `src/lib/auth/two-factor-pending.ts`.
+- **Who:** every active admin user; Owner can exempt a specific user via `twoFactorDisabled`. A cell
+  phone is **mandatory at user creation** — `/api/admin/users/create` validates + stores E.164.
+- **Recovery:** (1) Owner env break-glass `BARSH_2FA_OWNER_BREAKGLASS_CODE` — env-only, owner-only,
+  constant-time compare, only reachable after password success, audited as
+  `auth-2fa-owner-break-glass-used`; (2) Owner/Admin can re-point a user's phone / toggle
+  `twoFactorDisabled` on `admin/users`. The legacy blank-username admin-password path is unchanged.
+- **Kill-switch:** `BARSH_2FA_ENABLED` (default OFF → login behaves exactly as before).
+- **Env vars:** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID` (`VA…`),
+  `BARSH_2FA_ENABLED`, `BARSH_2FA_OWNER_BREAKGLASS_CODE`.
+- **Guard:** `verify-sms-2fa-twilio-verify-safety`. Pure helpers (E.164, break-glass, pending token)
+  are unit-tested.
+- **To activate:** create a Twilio Verify Service (Verify → Services → Create → `VA…` SID), set the
+  five env vars in a preview env, log in as a user with a phone → confirm the SMS step, test Owner
+  break-glass, then enable in prod (unset the flag = rollback).
+
 ## Gotchas / workflow
 
 - **Do not run `npm run build`** unless necessary. Use `npx tsc --noEmit` for type

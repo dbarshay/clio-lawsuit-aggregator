@@ -22,6 +22,18 @@ import {
   setAdminGateCookie,
   setAdminIdentityCookie,
 } from "@/lib/adminAuth";
+import {
+  twilioVerifyEnabled,
+  twoFactorRequiredForUser,
+  startVerification,
+  maskE164Phone,
+  normalizeE164Phone,
+} from "@/src/lib/auth/twilio-verify-2fa";
+import {
+  createTwoFactorPendingToken,
+  TWO_FACTOR_PENDING_COOKIE,
+  TWO_FACTOR_PENDING_TTL_SECONDS,
+} from "@/src/lib/auth/two-factor-pending";
 
 const { Pool } = require("pg") as { Pool: any };
 
@@ -39,6 +51,8 @@ type AdminCredentialUser = {
   bootstrapSafe: boolean;
   passwordChangeRequired: boolean;
   twoFactorRequired: boolean;
+  twoFactorPhone: string | null;
+  twoFactorDisabled: boolean;
   roleKeys: string[];
   grantedAdminPermissionKeys: string[];
   failedLoginCount: number | null;
@@ -95,6 +109,8 @@ async function findAdminCredentialUser(normalizedUsername: string): Promise<Admi
         u."bootstrapSafe",
         u."passwordChangeRequired",
         u."twoFactorRequired",
+        u."twoFactorPhone",
+        u."twoFactorDisabled",
         u."failedLoginCount",
         u."failedLoginLockedAt",
         u."lastFailedLoginAt",
@@ -289,6 +305,50 @@ export async function POST(req: NextRequest) {
       }
 
       const user = credentialResult.user;
+
+      // --- SMS 2FA gate (Twilio Verify) ---------------------------------------------------
+      // When 2FA is enabled and required for this user, the password step alone does NOT create a
+      // session. Instead we send a code via Twilio Verify and issue a short-lived signed
+      // "2FA-pending" cookie; /api/auth/2fa/verify completes login after the code (or Owner
+      // break-glass). With BARSH_2FA_ENABLED off (default), this block is skipped entirely and
+      // login behaves exactly as before.
+      if (twilioVerifyEnabled() && twoFactorRequiredForUser(user)) {
+        const phone = normalizeE164Phone(user.twoFactorPhone);
+        const start = phone.ok && phone.e164 ? await startVerification(phone.e164) : { ok: false, status: null, error: phone.reason };
+
+        const pendingResponse = NextResponse.json({
+          ok: true,
+          action: "auth-login",
+          authenticated: false,
+          twoFactorRequired: true,
+          twoFactorMethod: "sms",
+          credentialMode: "username-password",
+          email: user.email,
+          returnTo,
+          maskedPhone: maskE164Phone(phone.e164),
+          codeSent: start.ok,
+          // A delivery failure still lets the Owner enter their break-glass code at the next step.
+          deliveryError: start.ok ? null : "Verification code could not be sent. If you are the Owner, you can use your recovery code.",
+          note: "Password accepted. Enter the code sent to your phone to finish signing in.",
+        });
+
+        const pendingToken = createTwoFactorPendingToken({ userId: user.id, email: user.email });
+        if (!pendingToken) {
+          return NextResponse.json(
+            { ok: false, action: "auth-login", authenticated: false, error: "Could not start two-factor verification. Session secret is not configured." },
+            { status: 503 }
+          );
+        }
+        pendingResponse.cookies.set(TWO_FACTOR_PENDING_COOKIE, pendingToken, {
+          httpOnly: true,
+          sameSite: "lax",
+          secure: process.env.NODE_ENV === "production",
+          path: "/",
+          maxAge: TWO_FACTOR_PENDING_TTL_SECONDS,
+        });
+        return pendingResponse;
+      }
+
       const response = NextResponse.json({
         ok: true,
         action: "auth-login",
@@ -313,9 +373,8 @@ export async function POST(req: NextRequest) {
         devFallback: adminPassword.devFallback,
         twoFactorRequired: false,
         twoFactorMethod: null,
-        twoFactorPlanned: "SMS or phone push 2FA is planned for a later auth phase.",
         passwordChangeRequired: user.passwordChangeRequired,
-        note: "Username/password accepted for active AdminUser. Phase 13C allows active non-owner credential login with signed AdminUser identity; permission enforcement remains disabled.",
+        note: "Username/password accepted for active AdminUser.",
       });
 
       const identityCookieInput = {

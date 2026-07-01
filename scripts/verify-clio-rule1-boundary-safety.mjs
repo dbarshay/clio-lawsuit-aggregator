@@ -105,20 +105,20 @@ for (const file of blockedRoutes) {
 }
 
 const matterClose = read("app/api/matters/close/route.ts");
-mustContain("matter close", matterClose, "syncClioMatterClosed");
-mustContain("matter close", matterClose, "clioCloseSync");
-// Temporary current-state marker: close decision is local-first today.
-// The Golden Rule requires future guarded Clio close sync from Barsh Matters close workflows.
-pass("matter close implements guarded Clio close sync under The Golden Rule.");
+mustNotContain("matter close", matterClose, "syncClioMatterClosed");
+mustNotContain("matter close", matterClose, "clioCloseSync");
+mustContain("matter close", matterClose, "clioWrite: false");
+// Clio is a document repository only: closing a matter is LOCAL ONLY and never writes matter status to Clio.
+pass("matter close is local-only; Clio is never written for status.");
 
 const settlementClose = read("app/api/settlements/close/route.ts");
 mustContain("settlement close shortcut", settlementClose, "legacyClioOperationalRouteBlocked");
 pass("settlement close shortcut remains blocked; close sync belongs in guarded Close Matter / Close Lawsuit workflows.");
 
 console.log("");
-console.log("GOLDEN_RULE_CLIO_BOUNDARY=Clio owns IDs/numbers/document vault/MailDrop/operational close status; Barsh Matters owns workflows/local records/templates.");
-console.log("ALLOWED_CLIO_SCOPE=matter shell creation, lawsuit shell creation, document storage/retrieval, MailDrop, guarded close-status sync.");
-console.log("BLOCKED_CLIO_SCOPE=legacy hidden aggregation/deaggregation, generic hidden matter mutation, ClaimIndex hydration dependency, settlement close shortcut.");
+console.log("GOLDEN_RULE_CLIO_BOUNDARY=Clio is a document repository (IDs/numbers/document vault/MailDrop); Barsh Matters owns workflows/local records/templates/status.");
+console.log("ALLOWED_CLIO_SCOPE=matter shell creation, lawsuit shell creation, document storage/retrieval, MailDrop.");
+console.log("BLOCKED_CLIO_SCOPE=legacy hidden aggregation/deaggregation, generic hidden matter mutation, ClaimIndex hydration dependency, settlement close shortcut, matter/lawsuit status writes.");
 console.log("DOCUMENT_TEMPLATE_SOURCE_OF_TRUTH=Barsh Matters local DocumentTemplate tables and DB-stored DOCX versions.");
 console.log("MAILDROP_RECIPIENT_RULE=MailDrop belongs in visible CC, not hidden BCC, so reply threads preserve the filing address.");
 

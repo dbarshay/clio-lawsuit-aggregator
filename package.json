@@ -172,6 +172,7 @@
     "verify:legacy-clio-settlement-routes-disabled-safety": "node scripts/verify-legacy-clio-settlement-routes-disabled-safety.mjs",
     "verify:legacy-operational-clio-modules-deleted": "node scripts/verify-legacy-operational-clio-modules-deleted.mjs",
     "verify:local-close-workflows-safety": "node scripts/verify-local-close-workflows-safety.mjs",
+    "verify:reopen-and-close-guard-safety": "node scripts/verify-reopen-and-close-guard-safety.mjs",
     "verify:local-document-packet-safety": "node scripts/verify-local-document-packet-safety.mjs",
     "verify:local-first-payment-safety": "node scripts/verify-local-first-payment-safety.mjs",
     "verify:local-first-settlement-preview-safety": "node scripts/verify-local-first-settlement-preview-safety.mjs",

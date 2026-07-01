@@ -587,6 +587,7 @@ export default function FilteredMattersPage() {
   const [masterPaymentsPanelOpen, setMasterPaymentsPanelOpen] = useState(false);
   const [masterCloseReason, setMasterCloseReason] = useState("");
   const [masterClosing, setMasterClosing] = useState(false);
+  const [masterReopening, setMasterReopening] = useState(false);
   const [masterCloseResult, setMasterCloseResult] = useState<any>(null);
 
   const fallbackMasterPaymentTransactionTypeOptions = [
@@ -2192,6 +2193,40 @@ function masterMetadataMoneyDisplayValue(field: "filingFee" | "serviceFee" | "ot
     } finally {
       setMasterClosing(false);
     }
+  }
+
+  // Admin-only: reopen a closed lawsuit; cascades child matters back to Open (local only, no Clio write).
+  function handleMasterReopenLawsuit() {
+    const masterLawsuitId = currentMasterLawsuitIdForDocumentPreview();
+    if (!masterLawsuitId || masterReopening) return;
+    void runAdministratorGate("Reopen Lawsuit", async () => {
+      if (
+        !window.confirm(
+          "Reopen this lawsuit? Its child matters will also be reopened (marked Open). This is a local-only change; Clio is not affected."
+        )
+      ) {
+        return;
+      }
+      setMasterReopening(true);
+      try {
+        const response = await fetch("/api/lawsuits/reopen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ masterLawsuitId }),
+        });
+        const json = await response.json().catch(() => ({ ok: false }));
+        if (!response.ok || !json?.ok) {
+          alert(json?.error || "Reopen Lawsuit failed.");
+          return;
+        }
+        await loadMasterLawsuitMetadata();
+        window.location.reload();
+      } catch (error: any) {
+        alert(error?.message || "Reopen Lawsuit failed.");
+      } finally {
+        setMasterReopening(false);
+      }
+    });
   }
 
   const masterCloseReasonOptions = [
@@ -11048,6 +11083,30 @@ function masterDocumentPreviewText(value: unknown): string {
                     >
                       {masterClosing ? "Closing..." : "Close Lawsuit"}
                     </button>
+
+                    {masterFinalStatusDisplayValue() === "Closed" && (
+                      <button
+                        type="button"
+                        onClick={handleMasterReopenLawsuit}
+                        disabled={masterReopening || !currentMasterLawsuitIdForDocumentPreview()}
+                        title="Admin: reopen this lawsuit and reopen its child matters (local only)."
+                        style={{
+                          width: "100%",
+                          minWidth: 0,
+                          height: 42,
+                          marginTop: 8,
+                          border: "1px solid #00346e",
+                          borderRadius: 999,
+                          background: masterReopening || !currentMasterLawsuitIdForDocumentPreview() ? "#c7d2e4" : "#00346e",
+                          color: "#ffffff",
+                          fontSize: 12,
+                          fontWeight: 950,
+                          cursor: masterReopening || !currentMasterLawsuitIdForDocumentPreview() ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {masterReopening ? "Reopening…" : "Reopen Lawsuit (Admin)"}
+                      </button>
+                    )}
                   </div>
 
                   {masterPaymentsPanelOpen && (

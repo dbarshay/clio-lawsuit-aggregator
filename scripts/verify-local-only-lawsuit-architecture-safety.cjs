@@ -128,10 +128,7 @@ for (const hit of clioFetchHits) {
     hit.rel.includes("/api/graph/") ||
     hit.rel === "lib/graph/maildropForDraft.ts" ||
     hit.rel.includes("lib/clio") ||
-    hit.rel.includes("lib/settlementClioWriteback") ||
-    hit.rel.includes("lib/clioCloseSync") ||
-    hit.rel.includes("lib/claimIndexUpsert") ||
-    hit.rel.includes("app/api/admin/lawsuits/cleanup-confirm/route.ts");
+    hit.rel.includes("lib/claimIndexUpsert");
 
   if (allowed) allowedClioReads.push(hit);
   else fail(`unexpected clioFetch outside allowed document/admin storage contexts: ${hit.rel}:${hit.line}`);

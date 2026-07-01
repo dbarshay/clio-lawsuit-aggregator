@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { clioFetch } from "@/lib/clio";
 
 export const dynamic = "force-dynamic";
 
 const KEEP_MASTER = "2026.05.00001";
-const APPROVED_CLIO_SHELL_MAPPING_SOURCE = "barsh-matters-create-lawsuit-confirm";
 
 function text(value: unknown) {
   return value == null ? "" : String(value).trim();
@@ -27,22 +25,6 @@ function claimIndexRow(row: any) {
     claimNumber: text(row.claim_number_raw || row.claim_number_normalized),
     claimAmount: money(row.claim_amount),
     balancePresuit: money(row.balance_presuit || row.balance_amount),
-  };
-}
-
-async function deleteMappedClioShell(clioMatterId: number) {
-  const response = await clioFetch(`/api/v4/matters/${encodeURIComponent(String(clioMatterId))}.json`, {
-    method: "DELETE",
-  });
-
-  const bodyText = await response.text().catch(() => "");
-
-  return {
-    clioMatterId,
-    status: response.status,
-    ok: response.ok || response.status === 404,
-    alreadyGone: response.status === 404,
-    body: bodyText.slice(0, 500),
   };
 }
 
@@ -119,80 +101,13 @@ export async function POST(request: Request) {
     orderBy: [{ display_number: "asc" }, { matter_id: "asc" }],
   });
 
+  // Clio is a document repository only. Any clioMaster* fields are stale LOCAL metadata from the
+  // legacy per-matter-shell era; there is no per-lawsuit Clio matter to delete. Cleanup is purely
+  // local: we clear child links and delete the local Lawsuit row (which drops the stale metadata).
+  // No Clio call is made here, regardless of the deleteClioShell request flag.
   const clioMasterMatterId = typeof lawsuit.clioMasterMatterId === "number" ? lawsuit.clioMasterMatterId : null;
   const clioMasterDisplayNumber = text(lawsuit.clioMasterDisplayNumber);
   const clioMasterMappingSource = text(lawsuit.clioMasterMappingSource);
-  const hasClioShell = Boolean(clioMasterMatterId || clioMasterDisplayNumber);
-
-  if (hasClioShell && !deleteClioShell) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "This lawsuit has legacy Clio shell metadata. Legacy shell cleanup is blocked under the current single-repository architecture.",
-        masterLawsuitId,
-        clioMasterMatterId,
-        clioMasterDisplayNumber,
-        writesLocalDb: false,
-        writesClio: false,
-        deletesClio: false,
-      },
-      { status: 409 }
-    );
-  }
-
-  if (hasClioShell && clioMasterMappingSource !== APPROVED_CLIO_SHELL_MAPPING_SOURCE) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "Legacy Clio storage reference was not created by the approved Create Lawsuit workflow.  Refusing Clio deletion.",
-        masterLawsuitId,
-        clioMasterMatterId,
-        clioMasterDisplayNumber,
-        clioMasterMappingSource,
-        requiredMappingSource: APPROVED_CLIO_SHELL_MAPPING_SOURCE,
-        writesLocalDb: false,
-        writesClio: false,
-        deletesClio: false,
-      },
-      { status: 409 }
-    );
-  }
-
-  if (hasClioShell && !clioMasterMatterId) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "Legacy Clio storage reference display number exists, but clioMasterMatterId is missing.  Refusing cleanup to avoid an orphan Clio shell.",
-        masterLawsuitId,
-        clioMasterDisplayNumber,
-        writesLocalDb: false,
-        writesClio: false,
-        deletesClio: false,
-      },
-      { status: 409 }
-    );
-  }
-
-  let clioDeleteResult: Awaited<ReturnType<typeof deleteMappedClioShell>> | null = null;
-
-  if (hasClioShell && clioMasterMatterId) {
-    clioDeleteResult = await deleteMappedClioShell(clioMasterMatterId);
-
-    if (!clioDeleteResult.ok) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "Clio master shell deletion failed.  Local deaggregation was not performed.",
-          masterLawsuitId,
-          clioDeleteResult,
-          writesLocalDb: false,
-          writesClio: true,
-          deletesClio: true,
-        },
-        { status: 502 }
-      );
-    }
-  }
 
   const childSnapshot = (childRows as any[]).map(claimIndexRow);
 
@@ -223,14 +138,16 @@ export async function POST(request: Request) {
           children: childSnapshot,
           clioShell: {
             deleteRequested: deleteClioShell,
-            deleted: Boolean(clioDeleteResult?.ok),
+            deleted: false,
+            clioWrite: false,
+            note: "No Clio call made. Clio is a document repository; stale clioMaster* metadata was cleared locally only.",
             clioMasterMatterId,
             clioMasterDisplayNumber,
             clioMasterMappingSource,
-            result: clioDeleteResult,
           },
           safety: {
             keepMasterProtected: KEEP_MASTER,
+            noClioWrite: true,
             noChildClioMatterDeletion: true,
             noDocumentUpload: true,
             noEmail: true,
@@ -257,14 +174,14 @@ export async function POST(request: Request) {
     masterLawsuitId,
     childCount: childSnapshot.length,
     children: childSnapshot,
-    clioDeleteResult,
+    clioDeleteResult: null,
     localResult,
     writesLocalDb: true,
-    writesClio: Boolean(clioDeleteResult),
-    deletesClio: Boolean(clioDeleteResult),
-    deletedClioShellOnly: Boolean(clioDeleteResult),
+    writesClio: false,
+    deletesClio: false,
+    deletedClioShellOnly: false,
     deletedChildClioMatters: false,
     safetyDecision:
-      "Completed guarded Admin Lawsuit Cleanup. Cleared local child lawsuit links, deleted the local Lawsuit row, left repository storage untouched, and wrote an AuditLog entry.",
+      "Completed local-only Admin Lawsuit Cleanup. Cleared local child lawsuit links, deleted the local Lawsuit row, made no Clio call, and wrote an AuditLog entry.",
   });
 }

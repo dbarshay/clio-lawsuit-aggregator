@@ -609,6 +609,7 @@ const activeGroupKey =
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [closeReason, setCloseReason] = useState("");
   const [closing, setClosing] = useState(false);
+  const [reopening, setReopening] = useState(false);
   const [closeMatterTarget, setCloseMatterTarget] = useState<any>(null);
   const [showClosed, setShowClosed] = useState(true);
   const [matterSort, setMatterSort] = useState<MatterSortConfig | null>(null);
@@ -3134,6 +3135,35 @@ function openClaimAmountEditDialog() {
     } finally {
       setClosing(false);
     }
+  }
+
+  // Admin-only: reopen a closed standalone matter (local only, no Clio write).
+  // Matters aggregated into a lawsuit are reopened by reopening the lawsuit.
+  function handleReopenMatter() {
+    void runAdministratorGate("Reopen Matter", async () => {
+      if (!matter?.id || reopening) return;
+      if (!window.confirm("Reopen this matter? It will be marked Open. This is a local-only change; Clio is not affected.")) {
+        return;
+      }
+      setReopening(true);
+      try {
+        const res = await fetch("/api/matters/reopen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ matterId: Number(matter.id) }),
+        });
+        const json = await res.json().catch(() => ({ ok: false }));
+        if (!json.ok) {
+          alert(json.error || "Reopen failed");
+          return;
+        }
+        window.location.reload();
+      } catch (err) {
+        alert("Reopen failed");
+      } finally {
+        setReopening(false);
+      }
+    });
   }
 
   async function previewStartLawsuitFromMatter() {
@@ -9729,6 +9759,29 @@ function openClaimAmountEditDialog() {
                   {matterIsClosedForPayment() ? "Matter Closed" : "Close Matter"}
                 </button>
 
+                {directMatterIsClosedForDisplay() && !alreadyAggregated && (
+                  <button
+                    type="button"
+                    onClick={handleReopenMatter}
+                    disabled={reopening}
+                    title="Admin: reopen this closed matter (local only)"
+                    style={{
+                      width: "100%",
+                      minHeight: 42,
+                      marginTop: 8,
+                      border: "1px solid #00346e",
+                      borderRadius: 999,
+                      background: reopening ? "#c7d2e4" : "#00346e",
+                      color: "#ffffff",
+                      fontSize: 13,
+                      fontWeight: 950,
+                      cursor: reopening ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {reopening ? "Reopening…" : "Reopen Matter (Admin)"}
+                  </button>
+                )}
+
 
                 {paymentFormOpen && (
                   <div
@@ -12496,7 +12549,7 @@ function openClaimAmountEditDialog() {
                   </button>
 
                   <div style={{ marginTop: 8, color: "#7f1d1d", fontSize: 12 }}>
-                    Use only after payment is confirmed. This runs the guarded Close Lawsuit workflow. Clio close sync must succeed before local close records are committed. Documents and print queue records are not changed.
+                    Use only after payment is confirmed. This closes the lawsuit locally in Barsh Matters. Clio is not changed — documents and print queue records are unaffected.
                   </div>
                 </div>
               )}

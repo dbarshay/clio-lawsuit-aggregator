@@ -21,13 +21,14 @@ function mustNotContain(label, haystack, needle) {
 }
 
 mustContain("confirm route imports prisma", route, 'import { prisma } from "@/lib/prisma";');
-mustContain("confirm route imports clioFetch", route, 'import { clioFetch } from "@/lib/clio";');
+mustNotContain("confirm route makes no Clio call (no clioFetch import)", route, 'import { clioFetch } from "@/lib/clio";');
 mustContain("confirm route exports POST", route, "export async function POST");
 mustContain("confirm route protects keep master", route, 'const KEEP_MASTER = "2026.05.00001"');
 mustContain("confirm route requires exact confirmation", route, "DEAGGREGATE AND DELETE");
-mustContain("confirm route limits Clio shell mapping source", route, "barsh-matters-create-lawsuit-confirm");
-mustContain("confirm route requires deleteClioShell when shell exists", route, "deleteClioShell=true is required");
-mustContain("confirm route deletes Clio matter shell endpoint", route, "/api/v4/matters/");
+mustNotContain("confirm route does not delete a Clio matter shell endpoint", route, "/api/v4/matters/");
+mustNotContain("confirm route no longer calls the Clio shell delete helper", route, "deleteMappedClioShell");
+mustContain("confirm route reports no Clio write", route, "writesClio: false");
+mustContain("confirm route reports no Clio delete", route, "deletesClio: false");
 mustContain("confirm route clears ClaimIndex master link", route, "master_lawsuit_id: null");
 mustContain("confirm route deletes local Lawsuit row", route, "tx.lawsuit.delete");
 mustContain("confirm route writes audit log", route, "tx.auditLog.create");

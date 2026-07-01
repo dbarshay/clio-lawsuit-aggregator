@@ -374,7 +374,7 @@ const bmColors = {
   softLine: "#e5e7eb",
   panel: "#ffffff",
   page: "#f8fafc",
-  blue: "#2563eb",
+  blue: "#1e3a8a",
   blueSoft: "#eff6ff",
   green: "#16a34a",
   red: "#dc2626",
@@ -1297,8 +1297,8 @@ const activeGroupKey =
             onClick={() => void loadMatterClioDocuments()}
             disabled={matterClioDocumentsLoading}
             style={{
-              border: "1px solid #1d4ed8",
-              background: matterClioDocumentsLoading ? "#dbeafe" : "#2563eb",
+              border: "1px solid #1e3a8a",
+              background: matterClioDocumentsLoading ? "#dbeafe" : "#1e3a8a",
               color: "#ffffff",
               borderRadius: 999,
               padding: "8px 12px",
@@ -2313,7 +2313,7 @@ const activeGroupKey =
     border: "1px solid #93c5fd",
     borderRadius: 999,
     background: "#eff6ff",
-    color: "#1d4ed8",
+    color: "#1e3a8a",
     fontSize: 11,
     fontWeight: 900,
     padding: "3px 8px",
@@ -7291,7 +7291,7 @@ function openClaimAmountEditDialog() {
               borderRadius: 999,
               padding: "10px 16px",
               fontWeight: 900,
-              background: matterDocumentDataPreviewLoading ? "#e5e7eb" : "#2563eb",
+              background: matterDocumentDataPreviewLoading ? "#e5e7eb" : "#1e3a8a",
               color: matterDocumentDataPreviewLoading ? "#64748b" : "#fff",
               cursor: matterDocumentDataPreviewLoading ? "not-allowed" : "pointer",
               whiteSpace: "nowrap",
@@ -9108,7 +9108,7 @@ function openClaimAmountEditDialog() {
                         border: "1px solid #93c5fd",
                         borderRadius: 999,
                         background: "#eff6ff",
-                        color: "#1d4ed8",
+                        color: "#1e3a8a",
                         fontSize: 11,
                         fontWeight: 900,
                         padding: "3px 8px",
@@ -9125,7 +9125,7 @@ function openClaimAmountEditDialog() {
                       href={`/matters?treatingProvider=${encodeURIComponent(localTreatingProviderName())}`}
                       title="Open all matters for this treating provider"
                       style={{
-                        color: "#1d4ed8",
+                        color: "#1e3a8a",
                         textDecoration: "underline",
                         textUnderlineOffset: 3,
                         fontWeight: 900,
@@ -9227,7 +9227,7 @@ function openClaimAmountEditDialog() {
                       <a
                         href={`/matters?dateOfLoss=${encodeURIComponent(textValue(matter?.dateOfLoss || matter?.date_of_loss))}`}
                         className="barsh-filter-field-link"
-                        style={{ color: "#1d4ed8", textDecoration: "underline", textUnderlineOffset: 2 }}
+                        style={{ color: "#1e3a8a", textDecoration: "underline", textUnderlineOffset: 2 }}
                       >
                         {formatDate(matter?.dateOfLoss || matter?.date_of_loss) || "—"}
                       </a>
@@ -9260,7 +9260,7 @@ function openClaimAmountEditDialog() {
                         border: "1px solid #93c5fd",
                         borderRadius: 999,
                         background: "#eff6ff",
-                        color: "#1d4ed8",
+                        color: "#1e3a8a",
                         fontSize: 11,
                         fontWeight: 900,
                         padding: "3px 8px",
@@ -9295,7 +9295,7 @@ function openClaimAmountEditDialog() {
                         border: "1px solid #93c5fd",
                         borderRadius: 999,
                         background: "#eff6ff",
-                        color: "#1d4ed8",
+                        color: "#1e3a8a",
                         fontSize: 11,
                         fontWeight: 900,
                         padding: "3px 8px",
@@ -9321,7 +9321,7 @@ function openClaimAmountEditDialog() {
                       onClick={() => openPicklistEditDialog("denialReason")}
                       disabled={directFieldEditLoading}
                       title="Edit Denial Reason."
-                      style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
+                      style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#1e3a8a", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
                     >
                       Edit
                     </button>
@@ -9387,7 +9387,7 @@ function openClaimAmountEditDialog() {
                       onClick={() => openPicklistEditDialog("status")}
                       disabled={directFieldEditLoading}
                       title="Edit Status."
-                      style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
+                      style={{ border: "1px solid #93c5fd", borderRadius: 999, background: "#eff6ff", color: "#1e3a8a", fontSize: 11, fontWeight: 900, padding: "3px 8px", cursor: directFieldEditLoading ? "not-allowed" : "pointer" }}
                     >
                       Edit
                     </button>
@@ -10654,8 +10654,8 @@ function openClaimAmountEditDialog() {
                 disabled={packetLoading}
                 style={{
                   padding: "8px 12px",
-                  border: "1px solid #2563eb",
-                  background: packetLoading ? "#f3f4f6" : "#2563eb",
+                  border: "1px solid #1e3a8a",
+                  background: packetLoading ? "#f3f4f6" : "#1e3a8a",
                   color: packetLoading ? "#666" : "#fff",
                   borderRadius: 4,
                   cursor: packetLoading ? "not-allowed" : "pointer",
@@ -11019,8 +11019,8 @@ function openClaimAmountEditDialog() {
                 disabled={currentSettlementValuesLoading || !tabMasterLawsuitId}
                 style={{
                   padding: "7px 10px",
-                  border: "1px solid #2563eb",
-                  background: currentSettlementValuesLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#2563eb",
+                  border: "1px solid #1e3a8a",
+                  background: currentSettlementValuesLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#1e3a8a",
                   color: currentSettlementValuesLoading || !tabMasterLawsuitId ? "#666" : "#fff",
                   borderRadius: 4,
                   cursor: currentSettlementValuesLoading || !tabMasterLawsuitId ? "not-allowed" : "pointer",
@@ -11196,8 +11196,8 @@ function openClaimAmountEditDialog() {
                   disabled={settlementDocumentsPreviewLoading || !tabMasterLawsuitId}
                   style={{
                     padding: "7px 10px",
-                    border: "1px solid #2563eb",
-                    background: settlementDocumentsPreviewLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#2563eb",
+                    border: "1px solid #1e3a8a",
+                    background: settlementDocumentsPreviewLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#1e3a8a",
                     color: settlementDocumentsPreviewLoading || !tabMasterLawsuitId ? "#666" : "#fff",
                     borderRadius: 4,
                     cursor: settlementDocumentsPreviewLoading || !tabMasterLawsuitId ? "not-allowed" : "pointer",
@@ -11296,9 +11296,9 @@ function openClaimAmountEditDialog() {
                                   style={{
                                     display: "inline-block",
                                     padding: "5px 8px",
-                                    border: "1px solid #2563eb",
+                                    border: "1px solid #1e3a8a",
                                     background: "#eff6ff",
-                                    color: "#1d4ed8",
+                                    color: "#1e3a8a",
                                     borderRadius: 4,
                                     fontWeight: 700,
                                     textDecoration: "none",
@@ -11491,8 +11491,8 @@ function openClaimAmountEditDialog() {
                     disabled={settledWithContactLoading}
                     style={{
                       padding: "8px 10px",
-                      border: "1px solid #2563eb",
-                      background: settledWithContactLoading ? "#f3f4f6" : "#2563eb",
+                      border: "1px solid #1e3a8a",
+                      background: settledWithContactLoading ? "#f3f4f6" : "#1e3a8a",
                       color: settledWithContactLoading ? "#666" : "#fff",
                       borderRadius: 4,
                       cursor: settledWithContactLoading ? "not-allowed" : "pointer",
@@ -11839,9 +11839,9 @@ function openClaimAmountEditDialog() {
               disabled={settlementPreviewLoading || !tabMasterLawsuitId}
               style={{
                 padding: "8px 12px",
-                border: "1px solid #2563eb",
+                border: "1px solid #1e3a8a",
                 background:
-                  settlementPreviewLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#2563eb",
+                  settlementPreviewLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#1e3a8a",
                 color: settlementPreviewLoading || !tabMasterLawsuitId ? "#666" : "#fff",
                 borderRadius: 4,
                 cursor:
@@ -12631,8 +12631,8 @@ function openClaimAmountEditDialog() {
                 disabled={settlementHistoryLoading || !tabMasterLawsuitId}
                 style={{
                   padding: "7px 10px",
-                  border: "1px solid #2563eb",
-                  background: settlementHistoryLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#2563eb",
+                  border: "1px solid #1e3a8a",
+                  background: settlementHistoryLoading || !tabMasterLawsuitId ? "#f3f4f6" : "#1e3a8a",
                   color: settlementHistoryLoading || !tabMasterLawsuitId ? "#666" : "#fff",
                   borderRadius: 4,
                   cursor: settlementHistoryLoading || !tabMasterLawsuitId ? "not-allowed" : "pointer",
@@ -13020,8 +13020,8 @@ function openClaimAmountEditDialog() {
                   disabled={printQueueListLoading}
                   style={{
                     padding: "7px 10px",
-                    border: "1px solid #2563eb",
-                    background: printQueueListLoading ? "#f3f4f6" : "#2563eb",
+                    border: "1px solid #1e3a8a",
+                    background: printQueueListLoading ? "#f3f4f6" : "#1e3a8a",
                     color: printQueueListLoading ? "#666" : "#fff",
                     borderRadius: 4,
                     cursor: printQueueListLoading ? "not-allowed" : "pointer",
@@ -13300,8 +13300,8 @@ function openClaimAmountEditDialog() {
               disabled={matterAuditHistoryLoading}
               style={{
                 padding: "7px 10px",
-                border: "1px solid #2563eb",
-                background: matterAuditHistoryLoading ? "#f3f4f6" : "#2563eb",
+                border: "1px solid #1e3a8a",
+                background: matterAuditHistoryLoading ? "#f3f4f6" : "#1e3a8a",
                 color: matterAuditHistoryLoading ? "#666" : "#fff",
                 borderRadius: 4,
                 cursor: matterAuditHistoryLoading ? "not-allowed" : "pointer",
@@ -13657,8 +13657,8 @@ function openClaimAmountEditDialog() {
                             disabled={packetLoading}
                             style={{
                               padding: "3px 8px",
-                              border: "1px solid #2563eb",
-                              background: packetLoading ? "#f3f4f6" : "#2563eb",
+                              border: "1px solid #1e3a8a",
+                              background: packetLoading ? "#f3f4f6" : "#1e3a8a",
                               color: packetLoading ? "#666" : "#fff",
                               borderRadius: 4,
                               cursor: packetLoading ? "not-allowed" : "pointer",

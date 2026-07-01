@@ -1217,13 +1217,13 @@ export default function AdminReferenceDataPage() {
           padding: 18,
           marginBottom: 20,
           background: "#eff6ff",
-          boxShadow: "0 10px 30px rgba(30, 64, 175, 0.08)",
+          boxShadow: "0 10px 30px rgba(30, 58, 138, 0.08)",
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", marginBottom: 14 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 22, color: "#1e3a8a" }}>Email Automation Status</h2>
-            <p style={{ margin: "6px 0 0", color: "#1e40af", fontSize: 14 }}>
+            <p style={{ margin: "6px 0 0", color: "#1e3a8a", fontSize: 14 }}>
               Observability for Graph background sync, MailDrop discovery, and the MailDrop registry.
             </p>
           </div>
@@ -1232,9 +1232,9 @@ export default function AdminReferenceDataPage() {
             onClick={loadEmailAutomationStatus}
             disabled={emailAutomationStatusLoading}
             style={{
-              border: "1px solid #2563eb",
-              background: emailAutomationStatusLoading ? "#dbeafe" : "#2563eb",
-              color: emailAutomationStatusLoading ? "#1e40af" : "white",
+              border: "1px solid #1e3a8a",
+              background: emailAutomationStatusLoading ? "#dbeafe" : "#1e3a8a",
+              color: emailAutomationStatusLoading ? "#1e3a8a" : "white",
               borderRadius: 999,
               padding: "9px 14px",
               fontWeight: 700,
@@ -1253,7 +1253,7 @@ export default function AdminReferenceDataPage() {
         )}
 
         {!emailAutomationStatus && !emailAutomationStatusError && (
-          <div style={{ color: "#1e40af", fontSize: 14 }}>
+          <div style={{ color: "#1e3a8a", fontSize: 14 }}>
             {emailAutomationStatusLoading ? "Loading email automation status..." : "No status loaded yet."}
           </div>
         )}
@@ -1392,7 +1392,7 @@ return (
           }}
         >
           <div>
-            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.6, color: "#1d4ed8" }}>
+            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.6, color: "#1e3a8a" }}>
               BARSH MATTERS ADMIN
             </div>
             <h1 style={{ margin: "4px 0 8px", fontSize: 34, lineHeight: 1.1 }}>
@@ -1409,7 +1409,7 @@ return (
               textDecoration: "none",
               border: "1px solid #bfdbfe",
               background: "#ffffff",
-              color: "#1d4ed8",
+              color: "#1e3a8a",
               fontWeight: 900,
               borderRadius: 14,
               padding: "11px 14px",
@@ -1520,7 +1520,7 @@ return (
                   void loadReferenceImportFile(event.dataTransfer.files?.[0] || null);
                 }}
                 style={{
-                  border: `2px dashed ${importDragActive ? "#2563eb" : "#bfdbfe"}`,
+                  border: `2px dashed ${importDragActive ? "#1e3a8a" : "#bfdbfe"}`,
                   background: importDragActive ? "#eff6ff" : "#f8fafc",
                   borderRadius: 16,
                   padding: 14,
@@ -1550,7 +1550,7 @@ return (
                   style={{
                     border: "1px solid #bfdbfe",
                     background: "#ffffff",
-                    color: "#1d4ed8",
+                    color: "#1e3a8a",
                     borderRadius: 12,
                     padding: "9px 12px",
                     fontWeight: 900,
@@ -1836,7 +1836,7 @@ return (
                               row.classification === "create"
                                 ? "#166534"
                                 : row.classification === "update"
-                                  ? "#1d4ed8"
+                                  ? "#1e3a8a"
                                   : row.classification === "invalid"
                                     ? "#991b1b"
                                     : "#92400e",
@@ -2011,7 +2011,7 @@ return (
                           style={{
                             border: "1px solid #bfdbfe",
                             background: "#eff6ff",
-                            color: "#1d4ed8",
+                            color: "#1e3a8a",
                             borderRadius: 10,
                             padding: "7px 10px",
                             fontWeight: 900,
@@ -2066,7 +2066,7 @@ return (
               style={{
                 border: "1px solid #bfdbfe",
                 background: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "#e2e8f0" : "#eff6ff",
-                color: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "#64748b" : "#1d4ed8",
+                color: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "#64748b" : "#1e3a8a",
                 borderRadius: 10,
                 padding: "8px 11px",
                 fontWeight: 900,
@@ -2116,7 +2116,7 @@ return (
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 900, color: "#1d4ed8", letterSpacing: 1.2 }}>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: "#1e3a8a", letterSpacing: 1.2 }}>
                     REFERENCE DETAIL
                   </div>
                   <h2 style={{ margin: "4px 0 6px", fontSize: 24 }}>{selectedReferenceDetailRow.displayName}</h2>
@@ -2264,7 +2264,7 @@ return (
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 900, color: "#1d4ed8", letterSpacing: 1.2 }}>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: "#1e3a8a", letterSpacing: 1.2 }}>
                     IMPORT DETAIL
                   </div>
                   <h2 style={{ margin: "4px 0 6px", fontSize: 24 }}>Reference Import Detail</h2>
@@ -2774,7 +2774,7 @@ return (
               style={{
                 width: "100%",
                 border: 0,
-                background: loading ? "#94a3b8" : "#2563eb",
+                background: loading ? "#94a3b8" : "#1e3a8a",
                 color: "#ffffff",
                 borderRadius: 14,
                 padding: "12px 14px",
@@ -3078,7 +3078,7 @@ return (
                         style={{
                           border: "1px solid #bfdbfe",
                           background: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "#e2e8f0" : "#ffffff",
-                          color: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "#64748b" : "#1d4ed8",
+                          color: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "#64748b" : "#1e3a8a",
                           borderRadius: 10,
                           padding: "7px 10px",
                           fontWeight: 900,
@@ -3114,7 +3114,7 @@ return (
                         disabled={saving}
                         style={{
                           border: 0,
-                          background: saving ? "#94a3b8" : "#2563eb",
+                          background: saving ? "#94a3b8" : "#1e3a8a",
                           color: "#ffffff",
                           borderRadius: 12,
                           padding: "10px 13px",

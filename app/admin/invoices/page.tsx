@@ -85,10 +85,10 @@ export default function AdminInvoiceSearchPage() {
     <main style={pageStyle}>
       <BarshHeader />
       <div style={{ marginBottom: 18, display: "flex", gap: 16, flexWrap: "wrap" }}>
-        <Link href="/admin/clients" style={{ color: "#2563eb", fontWeight: 800, textDecoration: "none" }}>
+        <Link href="/admin/clients" style={{ color: "#1e3a8a", fontWeight: 800, textDecoration: "none" }}>
           ← Clients
         </Link>
-        <Link href="/admin" style={{ color: "#2563eb", fontWeight: 800, textDecoration: "none" }}>
+        <Link href="/admin" style={{ color: "#1e3a8a", fontWeight: 800, textDecoration: "none" }}>
           Admin Home
         </Link>
       </div>
@@ -132,7 +132,7 @@ export default function AdminInvoiceSearchPage() {
             <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} style={{ display: "block", width: "100%", padding: 8, marginTop: 4 }} />
           </label>
 
-          <button type="button" onClick={search} disabled={loading} style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid #2563eb", background: "#2563eb", color: "#fff", fontWeight: 900 }}>
+          <button type="button" onClick={search} disabled={loading} style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid #1e3a8a", background: "#1e3a8a", color: "#fff", fontWeight: 900 }}>
             {loading ? "Searching..." : "Search"}
           </button>
         </div>
@@ -171,7 +171,7 @@ export default function AdminInvoiceSearchPage() {
                     <td style={{ ...tdStyle, textAlign: "right" }}>{money(invoice.invoicePackageTotal)}</td>
                     <td style={tdStyle}>
                       {clientId ? (
-                        <Link href={`/admin/clients/${encodeURIComponent(clientId)}/invoice`} style={{ color: "#2563eb", fontWeight: 900, textDecoration: "none" }}>
+                        <Link href={`/admin/clients/${encodeURIComponent(clientId)}/invoice`} style={{ color: "#1e3a8a", fontWeight: 900, textDecoration: "none" }}>
                           Client Invoice Page
                         </Link>
                       ) : "—"}

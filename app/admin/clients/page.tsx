@@ -209,7 +209,7 @@ export default function AdminClientsPage() {
     <main style={pageStyle}>
       <BarshHeader />
       <div style={{ marginBottom: 18 }}>
-        <Link href="/admin" style={{ color: "#2563eb", fontWeight: 700, textDecoration: "none" }}>
+        <Link href="/admin" style={{ color: "#1e3a8a", fontWeight: 700, textDecoration: "none" }}>
           ← Admin
         </Link>
       </div>
@@ -302,7 +302,7 @@ export default function AdminClientsPage() {
                   <td style={tdStyle}>
                     <Link
                       href={`/admin/clients/${encodeURIComponent(row.id)}`}
-                      style={{ color: "#2563eb", fontWeight: 800, textDecoration: "none" }}
+                      style={{ color: "#1e3a8a", fontWeight: 800, textDecoration: "none" }}
                     >
                       {row.displayName || "(Unnamed client)"}
                     </Link>

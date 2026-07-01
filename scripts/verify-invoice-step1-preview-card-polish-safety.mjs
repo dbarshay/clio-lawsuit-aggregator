@@ -41,7 +41,7 @@ mustContain("invoice page", page, 'border: "1px solid #dbeafe"');
 mustContain("invoice page", page, 'background: "#f8fbff"');
 mustContain("invoice page", page, 'gridTemplateColumns: "minmax(190px, 1fr) minmax(220px, 1fr) minmax(180px, 0.9fr) minmax(180px, 0.9fr)"');
 mustContain("invoice page", page, "Previewing does not create, finalize, email, print, queue, or mark invoice source rows.");
-mustContain("invoice page", page, 'boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)"');
+mustContain("invoice page", page, 'boxShadow: "0 2px 6px rgba(30, 58, 138, 0.25)"');
 mustContain("invoice page", page, "statusFilter");
 mustContain("invoice page", page, "transactionType");
 mustContain("invoice page", page, "setTransactionType");

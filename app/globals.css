@@ -88,7 +88,7 @@ body {
 }
 
 .barsh-direct-summary-link-card .barsh-direct-summary-value {
-  color: #1d4ed8;
+  color: #1e3a8a;
   text-decoration: underline;
   text-decoration-thickness: 1.5px;
   text-underline-offset: 3px;
@@ -384,8 +384,8 @@ body {
 }
 
 .barsh-direct-payment-field input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  border-color: #1e3a8a;
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.12);
 }
 
 .barsh-direct-payment-preview {
@@ -470,10 +470,10 @@ body {
 }
 
 .barsh-direct-launch-button.active {
-  border-color: #1d4ed8;
-  background: #1d4ed8;
+  border-color: #1e3a8a;
+  background: #1e3a8a;
   color: #ffffff;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 8px 18px rgba(30, 58, 138, 0.22);
 }
 
 .barsh-direct-launch-table-section {
@@ -570,7 +570,7 @@ body {
 }
 
 .barsh-direct-launch-table a {
-  color: #1d4ed8;
+  color: #1e3a8a;
   font-weight: 900;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -738,8 +738,8 @@ body {
 [data-barsh-standard-modal-overlay="true"] input:focus,
 [data-barsh-standard-modal-overlay="true"] select:focus,
 [data-barsh-standard-modal-overlay="true"] textarea:focus {
-  border-color: #2563eb !important;
-  outline: 2px solid rgba(37, 99, 235, 0.14) !important;
+  border-color: #1e3a8a !important;
+  outline: 2px solid rgba(30, 58, 138, 0.14) !important;
   outline-offset: 0 !important;
 }
 

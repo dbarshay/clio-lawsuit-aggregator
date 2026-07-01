@@ -1,0 +1,16 @@
+// Single source of truth for Barsh Matters brand colors.
+//
+// There is ONE navy for interactive UI (buttons, banners, primary actions). Do not introduce other
+// blues/indigos (#2563eb / #1d4ed8 / #4f46e5 etc. were unified into this value). New code should reference
+// BRAND_NAVY rather than hardcoding the hex, so the palette can never drift again. To change the
+// app-wide navy, update BRAND_NAVY here and find/replace the literal "#1e3a8a".
+
+export const BRAND_NAVY = "#1e3a8a"; // primary navy — buttons, banners, primary actions
+export const BRAND_NAVY_DARK = "#14213d"; // darker navy for header chrome (BRL logo bar) — provisional until the BRL logo hex is sampled
+export const BRAND_GOLD = "#bf9b4f"; // accent gold (Barsh Matters mark) — active states / highlights only
+
+export const BARSH_BRAND = {
+  navy: BRAND_NAVY,
+  navyDark: BRAND_NAVY_DARK,
+  gold: BRAND_GOLD,
+} as const;

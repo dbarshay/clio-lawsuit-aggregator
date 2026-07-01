@@ -3243,7 +3243,7 @@ function masterMetadataMoneyDisplayValue(field: "filingFee" | "serviceFee" | "ot
                 style={{
                   border: "1px solid #bfdbfe",
                   background: masterDocumentHistoryLoading ? "#eff6ff" : "#dbeafe",
-                  color: "#1d4ed8",
+                  color: "#1e3a8a",
                   borderRadius: 999,
                   padding: "9px 14px",
                   fontSize: 13,
@@ -4929,7 +4929,7 @@ function renderDirectMatterSingleMasterDryRunControl(params: DirectMatterSingleM
         style={{
           border: "1px solid #bfdbfe",
           background: "#eff6ff",
-          color: "#1d4ed8",
+          color: "#1e3a8a",
           borderRadius: 999,
           padding: "8px 12px",
           fontSize: 12,
@@ -7000,8 +7000,8 @@ function masterDocumentPreviewText(value: unknown): string {
             disabled={masterEmailThreadPreviewLoading || masterGraphThreadSyncPreviewLoading || masterGraphThreadSyncLoading}
             style={{
               padding: "8px 11px",
-              border: "1px solid #2563eb",
-              background: masterEmailThreadPreviewLoading ? "#f3f4f6" : "#2563eb",
+              border: "1px solid #1e3a8a",
+              background: masterEmailThreadPreviewLoading ? "#f3f4f6" : "#1e3a8a",
               color: masterEmailThreadPreviewLoading ? "#666" : "#fff",
               borderRadius: 8,
               cursor: masterEmailThreadPreviewLoading ? "not-allowed" : "pointer",
@@ -7770,7 +7770,7 @@ function masterDocumentPreviewText(value: unknown): string {
                       background: "#eef2ff",
                       borderRadius: 14,
                       padding: 14,
-                      color: "#3730a3",
+                      color: "#1e3a8a",
                       lineHeight: 1.4,
                     }}
                   >
@@ -8255,8 +8255,8 @@ function masterDocumentPreviewText(value: unknown): string {
                         title="Create an Outlook draft with the finalized settlement PDF attached from the Barsh Matters Master Repository storage."
                         style={{
                           border: "none",
-                          background: masterDocumentFinalizationResult?.finalizationRecord?.id ? "#4f46e5" : "#c7d2fe",
-                          boxShadow: "0 10px 25px rgba(79,70,229,0.18)",
+                          background: masterDocumentFinalizationResult?.finalizationRecord?.id ? "#1e3a8a" : "#c7d2fe",
+                          boxShadow: "0 10px 25px rgba(30, 58, 138,0.18)",
                           color: "#fff",
                           borderRadius: 14,
                           padding: "12px 16px",
@@ -8519,7 +8519,7 @@ function masterDocumentPreviewText(value: unknown): string {
                 style={{
                   border: "1px solid #bfdbfe",
                   background: "#eff6ff",
-                  color: "#1d4ed8",
+                  color: "#1e3a8a",
                   borderRadius: 16,
                   padding: 14,
                   fontWeight: 850,
@@ -8672,8 +8672,8 @@ function masterDocumentPreviewText(value: unknown): string {
               onClick={() => void createMasterDocumentOutlookDraft()}
               disabled={!readyForGraphDraftCreate || masterDocumentDraftCreateLoading || Boolean(previewState?.draftCreated)}
               style={{
-                border: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated ? "1px solid #cbd5e1" : "1px solid #2563eb",
-                background: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated ? "#f8fafc" : "#2563eb",
+                border: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated ? "1px solid #cbd5e1" : "1px solid #1e3a8a",
+                background: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated ? "#f8fafc" : "#1e3a8a",
                 color: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated ? "#94a3b8" : "#ffffff",
                 borderRadius: 999,
                 padding: "10px 16px",
@@ -8766,14 +8766,14 @@ function masterDocumentPreviewText(value: unknown): string {
       null;
 
     const deliveryButtonStyle: React.CSSProperties = {
-      border: "1px solid #4f46e5",
-      background: "#4f46e5",
+      border: "1px solid #1e3a8a",
+      background: "#1e3a8a",
       color: "#fff",
       borderRadius: 12,
       padding: "10px 14px",
       fontWeight: 900,
       cursor: "pointer",
-      boxShadow: "0 10px 20px rgba(79, 70, 229, 0.18)",
+      boxShadow: "0 10px 20px rgba(30, 58, 138, 0.18)",
     };
 
     const pendingButtonStyle: React.CSSProperties = {
@@ -9067,7 +9067,7 @@ function masterDocumentPreviewText(value: unknown): string {
                           rel="noreferrer"
                           style={{
                             fontWeight: 950,
-                            color: "#1d4ed8",
+                            color: "#1e3a8a",
                           }}
                         >
                           Open Outlook Draft in Web
@@ -9083,10 +9083,10 @@ function masterDocumentPreviewText(value: unknown): string {
                           style={{
                             border: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated
                               ? "1px solid #d1d5db"
-                              : "1px solid #2563eb",
+                              : "1px solid #1e3a8a",
                             background: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated
                               ? "#f3f4f6"
-                              : "#2563eb",
+                              : "#1e3a8a",
                             color: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated
                               ? "#6b7280"
                               : "#fff",
@@ -9150,7 +9150,7 @@ function masterDocumentPreviewText(value: unknown): string {
               borderRadius: 999,
               padding: "10px 16px",
               fontWeight: 900,
-              background: masterDocumentDataPreviewLoading || !previewMasterLawsuitId ? "#e5e7eb" : "#2563eb",
+              background: masterDocumentDataPreviewLoading || !previewMasterLawsuitId ? "#e5e7eb" : "#1e3a8a",
               color: masterDocumentDataPreviewLoading || !previewMasterLawsuitId ? "#64748b" : "#fff",
               cursor: masterDocumentDataPreviewLoading || !previewMasterLawsuitId ? "not-allowed" : "pointer",
               whiteSpace: "nowrap",
@@ -10193,7 +10193,7 @@ function masterDocumentPreviewText(value: unknown): string {
                             ...masterInfoCardEditButtonStyle,
                             borderColor: "#93c5fd",
                             background: "#ffffff",
-                            color: "#1d4ed8",
+                            color: "#1e3a8a",
                             cursor: "pointer",
                           }}
                         >
@@ -10212,7 +10212,7 @@ function masterDocumentPreviewText(value: unknown): string {
                             ...masterInfoCardEditButtonStyle,
                             borderColor: "#93c5fd",
                             background: "#ffffff",
-                            color: "#1d4ed8",
+                            color: "#1e3a8a",
                             cursor: "pointer",
                           }}
                         >
@@ -10252,7 +10252,7 @@ function masterDocumentPreviewText(value: unknown): string {
                             ...masterInfoCardEditButtonStyle,
                             borderColor: "#93c5fd",
                             background: "#ffffff",
-                            color: "#1d4ed8",
+                            color: "#1e3a8a",
                             cursor: "pointer",
                           }}
                         >
@@ -10271,7 +10271,7 @@ function masterDocumentPreviewText(value: unknown): string {
                             ...masterInfoCardEditButtonStyle,
                             borderColor: "#93c5fd",
                             background: "#ffffff",
-                            color: "#1d4ed8",
+                            color: "#1e3a8a",
                             cursor: "pointer",
                           }}
                         >
@@ -10380,7 +10380,7 @@ function masterDocumentPreviewText(value: unknown): string {
                               ...masterInfoCardEditButtonStyle,
                               borderColor: "#93c5fd",
                               background: "#ffffff",
-                              color: "#1d4ed8",
+                              color: "#1e3a8a",
                               cursor: "pointer",
                             }}
                           >
@@ -10440,10 +10440,10 @@ function masterDocumentPreviewText(value: unknown): string {
                           title="Add a note to this Master Lawsuit."
                           style={{
                             width: "fit-content",
-                            border: "1px solid #2563eb",
+                            border: "1px solid #1e3a8a",
                             borderRadius: 999,
                             background: "#eff6ff",
-                            color: "#1d4ed8",
+                            color: "#1e3a8a",
                             fontSize: 12,
                             fontWeight: 950,
                             padding: "7px 13px",
@@ -10492,7 +10492,7 @@ function masterDocumentPreviewText(value: unknown): string {
                                       border: "1px solid #cbd5e1",
                                       borderRadius: 999,
                                       background: "#f8fafc",
-                                      color: "#1d4ed8",
+                                      color: "#1e3a8a",
                                       cursor: "pointer",
                                       fontSize: 14,
                                       fontWeight: 950,
@@ -10601,7 +10601,7 @@ function masterDocumentPreviewText(value: unknown): string {
                             ...masterInfoCardEditButtonStyle,
                             borderColor: "#93c5fd",
                             background: "#ffffff",
-                            color: "#1d4ed8",
+                            color: "#1e3a8a",
                             cursor: "pointer",
                           }}
                         >
@@ -11877,7 +11877,7 @@ function masterDocumentPreviewText(value: unknown): string {
             padding: 16,
             marginTop: 18,
             marginBottom: 18,
-            boxShadow: "0 10px 24px rgba(30, 64, 175, 0.08)",
+            boxShadow: "0 10px 24px rgba(30, 58, 138, 0.08)",
           }}
         >
           <div style={{ display: "flex", justifyContent: "center", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
@@ -12541,13 +12541,13 @@ function masterDocumentPreviewText(value: unknown): string {
                                 <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 900 }}>
                                   {money(billAmount)}
                                 </td>
-                                <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950, color: "#1d4ed8" }}>
+                                <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950, color: "#1e3a8a" }}>
                                   {money(settledPrincipal)}
                                 </td>
-                                <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950, color: "#1d4ed8" }}>
+                                <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950, color: "#1e3a8a" }}>
                                   {money(settledInterest)}
                                 </td>
-                                <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950, color: "#1d4ed8" }}>
+                                <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950, color: "#1e3a8a" }}>
                                   {money(settledCosts)}
                                 </td>
                                 <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "right" }}>
@@ -12573,7 +12573,7 @@ function masterDocumentPreviewText(value: unknown): string {
                                       padding: "6px 8px",
                                       textAlign: "right",
                                       fontWeight: 900,
-                                      color: "#1d4ed8",
+                                      color: "#1e3a8a",
                                     }}
                                   />
                                 </td>
@@ -12706,7 +12706,7 @@ function masterDocumentPreviewText(value: unknown): string {
                             gap: 6,
                           }}
                         >
-                          <div style={{ fontWeight: 950, color: masterSettlementRecordSave.ok ? "#1d4ed8" : "#991b1b" }}>
+                          <div style={{ fontWeight: 950, color: masterSettlementRecordSave.ok ? "#1e3a8a" : "#991b1b" }}>
                             Local Settlement Save Result
                           </div>
                           {masterSettlementRecordSave.error && (
@@ -12887,7 +12887,7 @@ function masterDocumentPreviewText(value: unknown): string {
                         style={{
                           fontSize: 18,
                           fontWeight: 950,
-                          color: "#1d4ed8",
+                          color: "#1e3a8a",
                         }}
                       >
                         Matter-Specific Audit / History
@@ -12897,7 +12897,7 @@ function masterDocumentPreviewText(value: unknown): string {
                           marginTop: 3,
                           fontSize: 12,
                           fontWeight: 800,
-                          color: "#1e40af",
+                          color: "#1e3a8a",
                         }}
                       >
                         Master Lawsuit {clean(value) || "—"} · Local database audit log.
@@ -12915,7 +12915,7 @@ function masterDocumentPreviewText(value: unknown): string {
                           border: "1px solid #bfdbfe",
                           borderRadius: 999,
                           background: "#ffffff",
-                          color: "#1d4ed8",
+                          color: "#1e3a8a",
                           fontWeight: 900,
                           cursor: masterAuditHistoryLoading ? "default" : "pointer",
                         }}
@@ -13026,7 +13026,7 @@ function masterDocumentPreviewText(value: unknown): string {
                                   borderRadius: 999,
                                   border: "1px solid #bfdbfe",
                                   background: "#eff6ff",
-                                  color: "#1d4ed8",
+                                  color: "#1e3a8a",
                                   fontSize: 12,
                                   fontWeight: 900,
                                   whiteSpace: "nowrap",
@@ -14746,8 +14746,8 @@ const masterSettlementGhostButtonStyle: React.CSSProperties = {
 
 const masterSettlementPrimaryButtonStyle: React.CSSProperties = {
   ...masterSettlementGhostButtonStyle,
-  background: "#2563eb",
-  borderColor: "#2563eb",
+  background: "#1e3a8a",
+  borderColor: "#1e3a8a",
   opacity: 0.65,
 };
 
@@ -14766,7 +14766,7 @@ const workflowBannerStyle: React.CSSProperties = {
 
 const workflowBannerEyebrowStyle: React.CSSProperties = {
   marginBottom: 4,
-  color: "#1d4ed8",
+  color: "#1e3a8a",
   fontSize: 12,
   fontWeight: 950,
   letterSpacing: "0.08em",
@@ -14786,7 +14786,7 @@ const workflowBannerPillStyle: React.CSSProperties = {
   borderRadius: 999,
   background: "#ffffff",
   border: "1px solid #bfdbfe",
-  color: "#1d4ed8",
+  color: "#1e3a8a",
   fontSize: 12,
   fontWeight: 900,
   whiteSpace: "nowrap",
@@ -14800,7 +14800,7 @@ const actionStackStyle: React.CSSProperties = {
 };
 
 const secondaryActionLinkStyle: React.CSSProperties = {
-  color: "#1d4ed8",
+  color: "#1e3a8a",
   textDecoration: "none",
   fontWeight: 850,
   fontSize: 12,

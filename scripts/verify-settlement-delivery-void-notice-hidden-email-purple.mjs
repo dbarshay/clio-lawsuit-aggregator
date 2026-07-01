@@ -12,9 +12,9 @@ function mustNotInclude(label, needle) {
 }
 
 mustInclude("Email Finalized Document button", "Email Finalized Document");
-mustInclude("email button purple background", 'background: masterDocumentFinalizationResult?.finalizationRecord?.id ? "#4f46e5" : "#c7d2fe"');
+mustInclude("email button navy background", 'background: masterDocumentFinalizationResult?.finalizationRecord?.id ? "#1e3a8a" : "#c7d2fe"');
 mustInclude("email button white text", 'color: "#fff"');
-mustInclude("email button purple shadow", 'boxShadow: "0 10px 25px rgba(79,70,229,0.18)"');
+mustInclude("email button navy shadow", 'boxShadow: "0 10px 25px rgba(30, 58, 138,0.18)"');
 mustInclude("email button title retained", 'title="Create an Outlook draft with the finalized settlement PDF attached from the mapped master Clio matter."');
 
 mustNotInclude("delivery panel void notice display", "{masterSettlementVoidNotice && (");

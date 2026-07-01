@@ -281,8 +281,8 @@ const cardStyle: React.CSSProperties = {
 };
 
 const buttonStyle: React.CSSProperties = {
-  border: "1px solid #1d4ed8",
-  background: "#1d4ed8",
+  border: "1px solid #1e3a8a",
+  background: "#1e3a8a",
   color: "#fff",
   borderRadius: 14,
   padding: "11px 15px",
@@ -978,7 +978,7 @@ export default function AdminBackupRestorePage() {
       <BarshHeader />
       <div style={{ maxWidth: "none", margin: 0, display: "grid", gap: 18 }}>
         <header style={{ ...cardStyle, display: "grid", gap: 10 }}>
-          <div style={{ fontSize: 13, fontWeight: 950, color: "#4f46e5", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          <div style={{ fontSize: 13, fontWeight: 950, color: "#1e3a8a", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Administrator
           </div>
           <h1 style={{ margin: 0, fontSize: 32, lineHeight: 1.1 }}>Backup / Restore</h1>
@@ -1286,7 +1286,7 @@ export default function AdminBackupRestorePage() {
               style={{
                 border: "1px solid #e0e7ff",
                 background: "#eef2ff",
-                color: "#3730a3",
+                color: "#1e3a8a",
                 borderRadius: 16,
                 padding: 13,
                 lineHeight: 1.45,
@@ -1860,7 +1860,7 @@ export default function AdminBackupRestorePage() {
               }}
             >
               <header style={{ display: "grid", gap: 8 }}>
-                <div style={{ fontSize: 13, fontWeight: 950, color: "#4f46e5", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                <div style={{ fontSize: 13, fontWeight: 950, color: "#1e3a8a", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                   Backup Manifest Detail
                 </div>
                 <h2 style={{ margin: 0, fontSize: 26 }}>Backup Manifest Inspector</h2>

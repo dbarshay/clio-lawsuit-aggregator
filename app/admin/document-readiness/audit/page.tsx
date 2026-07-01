@@ -122,8 +122,8 @@ const cardStyle: React.CSSProperties = {
 };
 
 const buttonStyle: React.CSSProperties = {
-  border: "1px solid #4f46e5",
-  background: "#4f46e5",
+  border: "1px solid #1e3a8a",
+  background: "#1e3a8a",
   color: "#fff",
   borderRadius: 12,
   padding: "10px 14px",
@@ -375,7 +375,7 @@ export default function AdminDocumentReadinessAuditPage() {
         <BarshHeader />
 
         <header style={{ ...cardStyle, display: "grid", gap: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 950, color: "#4f46e5", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          <div style={{ fontSize: 13, fontWeight: 950, color: "#1e3a8a", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Administrator
           </div>
           <h1 style={{ margin: 0, fontSize: 32, lineHeight: 1.1 }}>Document Generation Readiness Audit</h1>

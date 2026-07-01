@@ -512,7 +512,7 @@ const heroStyle: React.CSSProperties = {
 };
 
 const eyebrowStyle: React.CSSProperties = {
-  color: "#1d4ed8",
+  color: "#1e3a8a",
   fontWeight: 900,
   textTransform: "uppercase",
   letterSpacing: "0.08em",
@@ -693,7 +693,7 @@ const tdRightStyle: React.CSSProperties = {
 };
 
 const linkStyle: React.CSSProperties = {
-  color: "#1d4ed8",
+  color: "#1e3a8a",
   fontWeight: 900,
   textDecoration: "none",
 };

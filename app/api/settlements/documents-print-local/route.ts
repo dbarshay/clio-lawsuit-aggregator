@@ -124,8 +124,8 @@ export async function GET(req: NextRequest) {
       cursor: pointer;
     }
     button.primary {
-      border-color: #4f46e5;
-      background: #4f46e5;
+      border-color: #1e3a8a;
+      background: #1e3a8a;
       color: #ffffff;
     }
     .page {

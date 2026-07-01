@@ -3846,7 +3846,7 @@ const homeResultsTdStyle: React.CSSProperties = {
 };
 
 const homeResultsMatterLinkStyle: React.CSSProperties = {
-  color: "#2563eb",
+  color: "#1e3a8a",
   font: "inherit",
   fontSize: "inherit",
   fontWeight: 850,
@@ -3857,7 +3857,7 @@ const homeResultsFieldButtonStyle: React.CSSProperties = {
   appearance: "none",
   border: 0,
   background: "transparent",
-  color: "#2563eb",
+  color: "#1e3a8a",
   cursor: "pointer",
   font: "inherit",
   fontSize: "inherit",

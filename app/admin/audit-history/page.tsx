@@ -96,7 +96,7 @@ export default function AdminAuditHistoryPage() {
         >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 950, color: "#4f46e5", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              <div style={{ fontSize: 13, fontWeight: 950, color: "#1e3a8a", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                 Admin
               </div>
               <h1 style={{ margin: "4px 0 0", fontSize: 30, lineHeight: 1.1 }}>

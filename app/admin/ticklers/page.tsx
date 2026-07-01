@@ -102,7 +102,7 @@ function ticklerMasterHref(tickler: any): string {
 }
 
 const linkStyle = {
-  color: "#1d4ed8",
+  color: "#1e3a8a",
   fontWeight: 900,
   textDecoration: "underline",
   textUnderlineOffset: 3,
@@ -1032,7 +1032,7 @@ export default function AdminTicklersPage() {
             style={{
               border: "1px solid #cbd5e1",
               background: "#fff",
-              color: "#1d4ed8",
+              color: "#1e3a8a",
               borderRadius: 999,
               padding: "10px 14px",
               fontWeight: 900,
@@ -1191,7 +1191,7 @@ export default function AdminTicklersPage() {
               disabled={loading}
               style={{
                 border: "none",
-                background: loading ? "#94a3b8" : "#4f46e5",
+                background: loading ? "#94a3b8" : "#1e3a8a",
                 color: "#fff",
                 borderRadius: 14,
                 padding: "12px 16px",
@@ -1270,8 +1270,8 @@ export default function AdminTicklersPage() {
                   type="button"
                   onClick={exportTicklerResultsXlsx}
                   style={{
-                    border: "1px solid #4f46e5",
-                    background: "#4f46e5",
+                    border: "1px solid #1e3a8a",
+                    background: "#1e3a8a",
                     color: "#fff",
                     borderRadius: 999,
                     padding: "8px 12px",

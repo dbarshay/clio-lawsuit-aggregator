@@ -701,10 +701,10 @@ const inputStyle: React.CSSProperties = {
 const smallActionButtonStyle: React.CSSProperties = {
   fontSize: 11,
   padding: "3px 7px",
-  border: "1px solid #2563eb",
+  border: "1px solid #1e3a8a",
   borderRadius: 5,
   background: "#eff6ff",
-  color: "#1d4ed8",
+  color: "#1e3a8a",
   fontWeight: 800,
   cursor: "pointer",
 };

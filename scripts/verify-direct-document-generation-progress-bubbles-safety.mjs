@@ -29,6 +29,6 @@ requireIncludes(popup, 'border: complete ? "1px solid #16a34a" : "1px solid #bbf
 requireIncludes(popup, 'background: complete ? "#16a34a" : "#dcfce7"', "solid green complete/light green pending background");
 requireIncludes(popup, 'color: complete ? "#ffffff" : "#166534"', "white complete/dark green pending text");
 requireIncludes(popup, 'background: complete ? "#15803d" : "#bbf7d0"', "inner number bubble green backgrounds");
-requireIncludes(popup, 'color: completed ? "#16a34a" : "#94a3b8"', "completed arrow green");
+requireIncludes(popup, 'color: completed ? "#16a34a" : "#385a83"', "completed arrow green");
 
 console.log("PASS: direct Document Generation progress bubbles safety verifier passed");

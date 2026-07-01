@@ -36,7 +36,7 @@ mustNotContain("direct payment popup", matter, "This posts only to BRL");
 mustContain("direct payment popup header", matter, "Post Individual Matter Payment");
 mustContain("direct payment popup header centered", matter, 'justifyContent: "center"');
 mustContain("direct payment popup header centered", matter, 'textAlign: "center"');
-mustContain("direct payment popup header navy", matter, 'background: "#0a1c35"');
+mustContain("direct payment popup header navy", matter, 'background: "#00346e"');
 mustNotContain("direct payment popup header", matter, ">Post Payment<");
 
 mustNotContain(

@@ -29,7 +29,7 @@ mustContain("shared header displays Create Lawsuits", actions, "Create Lawsuits"
 mustContain("shared header actions do not wrap", actions, 'flexWrap: "nowrap"');
 mustNotContain("shared header actions no longer shift right", actions, 'transform: "translateX(48px)"');
 mustNotContain("Create Lawsuits must not use navy-only style", actions, "createLawsuitStyle");
-mustNotContain("Create Lawsuits must not use navy background", actions, 'background: "#0a1c35"');
+mustNotContain("Create Lawsuits must not use navy background", actions, 'background: "#00346e"');
 mustNotContain("old singular Create Lawsuit label removed from shared actions", actions, ">Create Lawsuit<");
 
 const pages = [

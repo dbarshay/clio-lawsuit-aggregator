@@ -319,7 +319,7 @@ function renderMaildropDiscoveryDiagnostics(log: EmailAutomationStatusLog | null
 
   return (
     <details style={{ marginTop: 12, border: "1px solid #bfdbfe", borderRadius: 12, background: "#eff6ff", padding: 12 }}>
-      <summary style={{ cursor: "pointer", fontWeight: 850, color: "#0a1c35" }}>Latest MailDrop discovery diagnostics</summary>
+      <summary style={{ cursor: "pointer", fontWeight: 850, color: "#00346e" }}>Latest MailDrop discovery diagnostics</summary>
 
       <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
         {diagnosticRows.map(([label, value]) => (
@@ -332,22 +332,22 @@ function renderMaildropDiscoveryDiagnostics(log: EmailAutomationStatusLog | null
 
       <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
         <div style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "white", padding: 10 }}>
-          <div style={{ fontSize: 12, color: "#0a1c35", fontWeight: 900, textTransform: "uppercase" }}>Known MailDrop samples</div>
+          <div style={{ fontSize: 12, color: "#00346e", fontWeight: 900, textTransform: "uppercase" }}>Known MailDrop samples</div>
           <pre style={{ margin: "8px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 11, color: "#334155" }}>{renderSmallJson(knownMaildropSamples.slice(0, 10))}</pre>
         </div>
 
         <div style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "white", padding: 10 }}>
-          <div style={{ fontSize: 12, color: "#0a1c35", fontWeight: 900, textTransform: "uppercase" }}>Duplicate MailDrop address samples</div>
+          <div style={{ fontSize: 12, color: "#00346e", fontWeight: 900, textTransform: "uppercase" }}>Duplicate MailDrop address samples</div>
           <pre style={{ margin: "8px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 11, color: "#334155" }}>{renderSmallJson(duplicateKnownMaildropSamples.slice(0, 10))}</pre>
         </div>
 
         <div style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "white", padding: 10 }}>
-          <div style={{ fontSize: 12, color: "#0a1c35", fontWeight: 900, textTransform: "uppercase" }}>Scanned Graph message samples</div>
+          <div style={{ fontSize: 12, color: "#00346e", fontWeight: 900, textTransform: "uppercase" }}>Scanned Graph message samples</div>
           <pre style={{ margin: "8px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 11, color: "#334155" }}>{renderSmallJson(scannedMessageSamples.slice(0, 10))}</pre>
         </div>
 
         <div style={{ border: "1px solid #dbeafe", borderRadius: 10, background: "white", padding: 10 }}>
-          <div style={{ fontSize: 12, color: "#0a1c35", fontWeight: 900, textTransform: "uppercase" }}>Matched MailDrop samples</div>
+          <div style={{ fontSize: 12, color: "#00346e", fontWeight: 900, textTransform: "uppercase" }}>Matched MailDrop samples</div>
           <pre style={{ margin: "8px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 11, color: "#334155" }}>{renderSmallJson(matchedMaildropSamples.slice(0, 10))}</pre>
         </div>
       </div>
@@ -1217,13 +1217,13 @@ export default function AdminReferenceDataPage() {
           padding: 18,
           marginBottom: 20,
           background: "#eff6ff",
-          boxShadow: "0 10px 30px rgba(10, 28, 53, 0.08)",
+          boxShadow: "0 10px 30px rgba(0, 52, 110, 0.08)",
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", marginBottom: 14 }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 22, color: "#0a1c35" }}>Email Automation Status</h2>
-            <p style={{ margin: "6px 0 0", color: "#0a1c35", fontSize: 14 }}>
+            <h2 style={{ margin: 0, fontSize: 22, color: "#00346e" }}>Email Automation Status</h2>
+            <p style={{ margin: "6px 0 0", color: "#00346e", fontSize: 14 }}>
               Observability for Graph background sync, MailDrop discovery, and the MailDrop registry.
             </p>
           </div>
@@ -1232,9 +1232,9 @@ export default function AdminReferenceDataPage() {
             onClick={loadEmailAutomationStatus}
             disabled={emailAutomationStatusLoading}
             style={{
-              border: "1px solid #0a1c35",
-              background: emailAutomationStatusLoading ? "#dbeafe" : "#0a1c35",
-              color: emailAutomationStatusLoading ? "#0a1c35" : "white",
+              border: "1px solid #00346e",
+              background: emailAutomationStatusLoading ? "#dbeafe" : "#00346e",
+              color: emailAutomationStatusLoading ? "#00346e" : "white",
               borderRadius: 999,
               padding: "9px 14px",
               fontWeight: 700,
@@ -1253,7 +1253,7 @@ export default function AdminReferenceDataPage() {
         )}
 
         {!emailAutomationStatus && !emailAutomationStatusError && (
-          <div style={{ color: "#0a1c35", fontSize: 14 }}>
+          <div style={{ color: "#00346e", fontSize: 14 }}>
             {emailAutomationStatusLoading ? "Loading email automation status..." : "No status loaded yet."}
           </div>
         )}
@@ -1293,7 +1293,7 @@ export default function AdminReferenceDataPage() {
             </div>
 
             <details style={{ background: "white", border: "1px solid #dbeafe", borderRadius: 14, padding: 14, marginBottom: 12 }}>
-              <summary style={{ cursor: "pointer", fontWeight: 800, color: "#0a1c35" }}>Recent MailDrop registry addresses</summary>
+              <summary style={{ cursor: "pointer", fontWeight: 800, color: "#00346e" }}>Recent MailDrop registry addresses</summary>
               <div style={{ overflowX: "auto", marginTop: 12 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
@@ -1327,7 +1327,7 @@ export default function AdminReferenceDataPage() {
             </details>
 
             <details style={{ background: "white", border: "1px solid #dbeafe", borderRadius: 14, padding: 14 }}>
-              <summary style={{ cursor: "pointer", fontWeight: 800, color: "#0a1c35" }}>Recent email automation logs</summary>
+              <summary style={{ cursor: "pointer", fontWeight: 800, color: "#00346e" }}>Recent email automation logs</summary>
               <div style={{ overflowX: "auto", marginTop: 12 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
@@ -1392,7 +1392,7 @@ return (
           }}
         >
           <div>
-            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.6, color: "#0a1c35" }}>
+            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.6, color: "#00346e" }}>
               BARSH MATTERS ADMIN
             </div>
             <h1 style={{ margin: "4px 0 8px", fontSize: 34, lineHeight: 1.1 }}>
@@ -1409,7 +1409,7 @@ return (
               textDecoration: "none",
               border: "1px solid #bfdbfe",
               background: "#ffffff",
-              color: "#0a1c35",
+              color: "#00346e",
               fontWeight: 900,
               borderRadius: 14,
               padding: "11px 14px",
@@ -1447,7 +1447,7 @@ return (
                   borderRadius: 14,
                   padding: 12,
                   fontWeight: 800,
-                  color: "#0a1c35",
+                  color: "#00346e",
                 }}
               >
                 {item}
@@ -1520,7 +1520,7 @@ return (
                   void loadReferenceImportFile(event.dataTransfer.files?.[0] || null);
                 }}
                 style={{
-                  border: `2px dashed ${importDragActive ? "#0a1c35" : "#bfdbfe"}`,
+                  border: `2px dashed ${importDragActive ? "#00346e" : "#bfdbfe"}`,
                   background: importDragActive ? "#eff6ff" : "#f8fafc",
                   borderRadius: 16,
                   padding: 14,
@@ -1532,7 +1532,7 @@ return (
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: 900, color: "#0a1c35", marginBottom: 3 }}>
+                  <div style={{ fontWeight: 900, color: "#00346e", marginBottom: 3 }}>
                     Drop .xlsx, .xls, or .csv file here
                   </div>
                   <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.4 }}>
@@ -1550,7 +1550,7 @@ return (
                   style={{
                     border: "1px solid #bfdbfe",
                     background: "#ffffff",
-                    color: "#0a1c35",
+                    color: "#00346e",
                     borderRadius: 12,
                     padding: "9px 12px",
                     fontWeight: 900,
@@ -1802,7 +1802,7 @@ return (
                           textAlign: "left",
                           padding: "10px 8px",
                           borderBottom: "1px solid #bfdbfe",
-                          color: "#0a1c35",
+                          color: "#00346e",
                           fontSize: 12,
                           fontWeight: 900,
                         }}
@@ -1836,7 +1836,7 @@ return (
                               row.classification === "create"
                                 ? "#166534"
                                 : row.classification === "update"
-                                  ? "#0a1c35"
+                                  ? "#00346e"
                                   : row.classification === "invalid"
                                     ? "#991b1b"
                                     : "#92400e",
@@ -1972,7 +1972,7 @@ return (
                           textAlign: "left",
                           padding: "10px 8px",
                           borderBottom: "1px solid #bfdbfe",
-                          color: "#0a1c35",
+                          color: "#00346e",
                           fontSize: 12,
                           fontWeight: 900,
                         }}
@@ -2011,7 +2011,7 @@ return (
                           style={{
                             border: "1px solid #bfdbfe",
                             background: "#eff6ff",
-                            color: "#0a1c35",
+                            color: "#00346e",
                             borderRadius: 10,
                             padding: "7px 10px",
                             fontWeight: 900,
@@ -2066,7 +2066,7 @@ return (
               style={{
                 border: "1px solid #bfdbfe",
                 background: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "#e2e8f0" : "#eff6ff",
-                color: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "#64748b" : "#0a1c35",
+                color: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "#64748b" : "#00346e",
                 borderRadius: 10,
                 padding: "8px 11px",
                 fontWeight: 900,
@@ -2116,7 +2116,7 @@ return (
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 900, color: "#0a1c35", letterSpacing: 1.2 }}>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: "#00346e", letterSpacing: 1.2 }}>
                     REFERENCE DETAIL
                   </div>
                   <h2 style={{ margin: "4px 0 6px", fontSize: 24 }}>{selectedReferenceDetailRow.displayName}</h2>
@@ -2171,7 +2171,7 @@ return (
                               textAlign: "left",
                               padding: "10px 8px",
                               borderBottom: "1px solid #bfdbfe",
-                              color: "#0a1c35",
+                              color: "#00346e",
                               fontSize: 12,
                               fontWeight: 900,
                             }}
@@ -2264,7 +2264,7 @@ return (
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 900, color: "#0a1c35", letterSpacing: 1.2 }}>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: "#00346e", letterSpacing: 1.2 }}>
                     IMPORT DETAIL
                   </div>
                   <h2 style={{ margin: "4px 0 6px", fontSize: 24 }}>Reference Import Detail</h2>
@@ -2385,7 +2385,7 @@ return (
                                 textAlign: "left",
                                 padding: "9px 8px",
                                 borderBottom: "1px solid #bfdbfe",
-                                color: "#0a1c35",
+                                color: "#00346e",
                                 fontSize: 12,
                                 fontWeight: 900,
                               }}
@@ -2774,7 +2774,7 @@ return (
               style={{
                 width: "100%",
                 border: 0,
-                background: loading ? "#94a3b8" : "#0a1c35",
+                background: loading ? "#94a3b8" : "#00346e",
                 color: "#ffffff",
                 borderRadius: 14,
                 padding: "12px 14px",
@@ -3064,7 +3064,7 @@ return (
                         marginBottom: 12,
                       }}
                     >
-                      <div style={{ fontSize: 12, fontWeight: 900, color: "#0a1c35", marginBottom: 4 }}>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: "#00346e", marginBottom: 4 }}>
                         Stored Reference Details
                       </div>
                       <div style={{ color: "#475569", fontSize: 12, lineHeight: 1.45, marginBottom: 8 }}>
@@ -3078,7 +3078,7 @@ return (
                         style={{
                           border: "1px solid #bfdbfe",
                           background: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "#e2e8f0" : "#ffffff",
-                          color: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "#64748b" : "#0a1c35",
+                          color: selectedVisibleDetailCount + selectedHiddenDetailCount === 0 ? "#64748b" : "#00346e",
                           borderRadius: 10,
                           padding: "7px 10px",
                           fontWeight: 900,
@@ -3114,7 +3114,7 @@ return (
                         disabled={saving}
                         style={{
                           border: 0,
-                          background: saving ? "#94a3b8" : "#0a1c35",
+                          background: saving ? "#94a3b8" : "#00346e",
                           color: "#ffffff",
                           borderRadius: 12,
                           padding: "10px 13px",

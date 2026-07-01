@@ -80,34 +80,43 @@ def main():
         "public/barsh-matters-cropped-transparent.png",
     ]
 
-    def lum(r, g, b):
-        return 0.299 * r + 0.587 * g + 0.114 * b
+    try:
+        import numpy as np
+    except Exception:
+        np = None
 
     for fp in logos:
         if not os.path.exists(fp):
             continue
         im = Image.open(fp).convert("RGBA")
-        px = im.load()
-        w, h = im.size
-        for y in range(h):
-            for x in range(w):
-                r, g, b, a = px[x, y]
-                if a == 0:
-                    continue
-                if r > g > b and (r - b) > 28 and r > 110:  # keep gold
-                    continue
-                L = lum(r, g, b)
-                if L < 150:  # navy / dark -> new
-                    px[x, y] = (nr, ng, nb, a)
-                elif L < 236:  # anti-aliased edge -> blend toward white
-                    t = (236 - L) / (236 - 150)
-                    px[x, y] = (
-                        round(nr * t + 255 * (1 - t)),
-                        round(ng * t + 255 * (1 - t)),
-                        round(nb * t + 255 * (1 - t)),
-                        a,
-                    )
-        im.save(fp)
+        if np is not None:
+            a = np.asarray(im).astype(np.float64).copy()
+            r, g, b, al = a[..., 0], a[..., 1], a[..., 2], a[..., 3]
+            L = 0.299 * r + 0.587 * g + 0.114 * b
+            gold = (r > g) & (g > b) & ((r - b) > 28) & (r > 110)
+            op = al > 0
+            dark = op & (~gold) & (L < 150)
+            edge = op & (~gold) & (L >= 150) & (L < 236)
+            t = np.clip((236 - L) / (236 - 150), 0, 1)
+            for ch, val in enumerate((nr, ng, nb)):
+                a[..., ch] = np.where(dark, val, a[..., ch])
+                a[..., ch] = np.where(edge, np.round(val * t + 255 * (1 - t)), a[..., ch])
+            Image.fromarray(a.astype("uint8"), "RGBA").save(fp)
+        else:  # pure-python fallback (slow)
+            px = im.load()
+            w, h = im.size
+            for y in range(h):
+                for x in range(w):
+                    r, g, b, a2 = px[x, y]
+                    if a2 == 0 or (r > g > b and (r - b) > 28 and r > 110):
+                        continue
+                    L = 0.299 * r + 0.587 * g + 0.114 * b
+                    if L < 150:
+                        px[x, y] = (nr, ng, nb, a2)
+                    elif L < 236:
+                        t = (236 - L) / (236 - 150)
+                        px[x, y] = (round(nr * t + 255 * (1 - t)), round(ng * t + 255 * (1 - t)), round(nb * t + 255 * (1 - t)), a2)
+            im.save(fp)
         print("re-tinted", fp)
     print(f"Done. System blue is now {new}.")
 

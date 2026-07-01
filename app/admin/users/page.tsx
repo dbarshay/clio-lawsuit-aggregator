@@ -54,8 +54,8 @@ const inputStyle = {
 } as const;
 
 const primaryButtonStyle = {
-  border: "1px solid #0a1c35",
-  background: "#0a1c35",
+  border: "1px solid #00346e",
+  background: "#00346e",
   color: "#ffffff",
   borderRadius: 999,
   padding: "10px 14px",
@@ -427,7 +427,7 @@ export default function AdminUsersPlanningPage() {
         {grantedCards.length > 0 ? (
           <div data-barsh-admin-users-phase-v4e-admin-card-labels="true" style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
             {grantedCards.map((label) => (
-              <span key={label} data-barsh-admin-users-phase-v4e-admin-card-label="true" style={{ border: "1px solid #bfdbfe", background: "#eff6ff", color: "#0a1c35", borderRadius: 999, padding: "3px 7px", fontSize: 11, fontWeight: 850 }}>
+              <span key={label} data-barsh-admin-users-phase-v4e-admin-card-label="true" style={{ border: "1px solid #bfdbfe", background: "#eff6ff", color: "#00346e", borderRadius: 999, padding: "3px 7px", fontSize: 11, fontWeight: 850 }}>
                 {label}
               </span>
             ))}
@@ -1259,7 +1259,7 @@ export default function AdminUsersPlanningPage() {
             <a href="/admin/audit-history" data-barsh-admin-users-audit-history-top-link="true" onClick={markAdminUsersAuditHistoryNavigation} style={{ ...primaryButtonStyle, display: "inline-flex", textDecoration: "none", color: "#ffffff" }}>Open Audit History</a>
             <button data-barsh-admin-users-create-top-button="true" type="button" onClick={openCreateUserAction} style={primaryButtonStyle}>Create User</button>
           </div>
-          <div data-barsh-admin-users-phase-v2-final-role-model-note="true" style={{ width: "100%", border: "1px solid #dbeafe", background: "#eff6ff", color: "#0a1c35", borderRadius: 12, padding: 10, fontWeight: 850 }}>
+          <div data-barsh-admin-users-phase-v2-final-role-model-note="true" style={{ width: "100%", border: "1px solid #dbeafe", background: "#eff6ff", color: "#00346e", borderRadius: 12, padding: 10, fontWeight: 850 }}>
             Administrator Admin-card access can be previewed and saved. Permission enforcement is not active yet.
           </div>
           {adminUsersRowMessage ? <div data-barsh-admin-users-row-action-message="true" style={{ width: "100%", color: adminUsersRowMessage.toLowerCase().includes("failed") ? "#991b1b" : "#166534", fontWeight: 900 }}>{adminUsersRowMessage}</div> : null}
@@ -1280,7 +1280,7 @@ export default function AdminUsersPlanningPage() {
 
         
 
-        {adminUsersAction === "create" ? (<section data-barsh-admin-users-create-user-control="phase3-guarded" style={{ ...cardStyle, border: "1px solid #bfdbfe", boxShadow: "0 12px 26px rgba(10, 28, 53, 0.08)" }}>
+        {adminUsersAction === "create" ? (<section data-barsh-admin-users-create-user-control="phase3-guarded" style={{ ...cardStyle, border: "1px solid #bfdbfe", boxShadow: "0 12px 26px rgba(0, 52, 110, 0.08)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14, flexWrap: "wrap" }}>
             <div>
               <h2 style={{ margin: 0 }}>Create User</h2>
@@ -1385,7 +1385,7 @@ export default function AdminUsersPlanningPage() {
         
 
         
-        {editUser ? (<section data-barsh-admin-users-edit-panel="true" style={{ ...cardStyle, border: "1px solid #bfdbfe", boxShadow: "0 12px 26px rgba(10, 28, 53, 0.08)" }}>
+        {editUser ? (<section data-barsh-admin-users-edit-panel="true" style={{ ...cardStyle, border: "1px solid #bfdbfe", boxShadow: "0 12px 26px rgba(0, 52, 110, 0.08)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <h2 style={{ margin: 0 }}>Edit User</h2>
             <button data-barsh-admin-users-edit-cancel-button="true" type="button" onClick={closeEditAdminUserPanel} disabled={editBusy} style={secondaryButtonStyle}>Cancel</button>
@@ -1430,11 +1430,11 @@ export default function AdminUsersPlanningPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
                   <div>
                     <h3 style={{ margin: "0 0 6px", fontSize: 16 }}>Administrator Admin Cards</h3>
-                    <p style={{ margin: 0, color: "#0a1c35", lineHeight: 1.45, fontWeight: 800 }}>
+                    <p style={{ margin: 0, color: "#00346e", lineHeight: 1.45, fontWeight: 800 }}>
                       Select which Admin cards this Administrator can access. Permission enforcement is not active yet.
                     </p>
                   </div>
-                  <span data-barsh-admin-users-phase-v2-admin-card-mode="true" style={{ border: "1px solid #93c5fd", background: "#ffffff", color: "#0a1c35", borderRadius: 999, padding: "7px 10px", fontWeight: 950, fontSize: 12 }}>
+                  <span data-barsh-admin-users-phase-v2-admin-card-mode="true" style={{ border: "1px solid #93c5fd", background: "#ffffff", color: "#00346e", borderRadius: 999, padding: "7px 10px", fontWeight: 950, fontSize: 12 }}>
                     {phaseV2AdministratorCardPlanningMode}
                   </span>
                 </div>
@@ -1504,7 +1504,7 @@ export default function AdminUsersPlanningPage() {
           ) : null}
         </section>) : null}
 
-        {twoFactorSetupUser ? (<section data-barsh-admin-users-2fa-setup-panel="true" style={{ ...cardStyle, border: "1px solid #bfdbfe", boxShadow: "0 12px 26px rgba(10, 28, 53, 0.08)" }}>
+        {twoFactorSetupUser ? (<section data-barsh-admin-users-2fa-setup-panel="true" style={{ ...cardStyle, border: "1px solid #bfdbfe", boxShadow: "0 12px 26px rgba(0, 52, 110, 0.08)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div>
               <h2 style={{ margin: 0 }}>Start 2FA Setup</h2>
@@ -1564,7 +1564,7 @@ export default function AdminUsersPlanningPage() {
                 Each signer profile is stored directly on the Admin User record. A signer is usable for template generation only when eligible, active, unlocked, and complete.
               </p>
             </div>
-            <span data-barsh-admin-users-signer-profile-token-note="true" style={{ border: "1px solid #bfdbfe", background: "#eff6ff", color: "#0a1c35", borderRadius: 999, padding: "7px 10px", fontWeight: 950, fontSize: 12 }}>
+            <span data-barsh-admin-users-signer-profile-token-note="true" style={{ border: "1px solid #bfdbfe", background: "#eff6ff", color: "#00346e", borderRadius: 999, padding: "7px 10px", fontWeight: 950, fontSize: 12 }}>
               Required for signer.* tokens
             </span>
           </div>
@@ -1654,7 +1654,7 @@ export default function AdminUsersPlanningPage() {
           }}
         >
           <div style={{ width: "min(560px, 100%)", background: "#ffffff", borderRadius: 14, boxShadow: "0 24px 60px rgba(15, 23, 42, 0.28)", overflow: "hidden", border: "1px solid #cbd5e1" }}>
-            <div style={{ background: "#0a1c35", color: "#ffffff", padding: "16px 20px", textAlign: "center" }}>
+            <div style={{ background: "#00346e", color: "#ffffff", padding: "16px 20px", textAlign: "center" }}>
               <h2 id="password-reset-one-time-title" style={{ margin: 0, fontSize: 20, fontWeight: 950 }}>Temporary Password</h2>
             </div>
             <div style={{ padding: 20 }}>
@@ -1682,7 +1682,7 @@ export default function AdminUsersPlanningPage() {
       {signerProfileUser ? (
         <div data-barsh-admin-users-signer-profile-modal="true" role="dialog" aria-modal="true" aria-label="Signer Profile" style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.45)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
           <section style={{ width: "min(760px, 100%)", maxHeight: "90vh", overflow: "auto", background: "#ffffff", borderRadius: 22, border: "1px solid #cbd5e1", boxShadow: "0 24px 80px rgba(15, 23, 42, 0.25)" }}>
-            <div style={{ background: "#0a1c35", color: "#ffffff", padding: "16px 20px", borderTopLeftRadius: 22, borderTopRightRadius: 22, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div style={{ background: "#00346e", color: "#ffffff", padding: "16px 20px", borderTopLeftRadius: 22, borderTopRightRadius: 22, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: 20 }}>Signer Profile</h2>
                 <p style={{ margin: "4px 0 0", opacity: 0.9, fontSize: 13 }}>{signerProfileUser.displayName || signerProfileUser.email}</p>

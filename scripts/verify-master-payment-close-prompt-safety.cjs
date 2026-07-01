@@ -17,7 +17,7 @@ assertOk(chunk.includes("openMasterCloseLawsuitDialog()"), "Yes opens Close Laws
 assertOk(!chunk.includes('setActiveMasterWorkspaceTab("close_paid_settlements")'), "Yes no longer switches to close_paid_settlements tab");
 assertOk(chunk.includes('display: "flex"') && chunk.includes('alignItems: "center"') && chunk.includes('justifyContent: "center"'), "Prompt uses centered overlay");
 assertOk(chunk.includes('background: "rgba(15, 23, 42, 0.58)"'), "Prompt uses standard overlay shade");
-assertOk(chunk.includes('background: "#0a1c35"'), "Prompt uses navy header");
+assertOk(chunk.includes('background: "#00346e"'), "Prompt uses navy header");
 assertOk(!chunk.includes("×"), "Prompt has no top-right close glyph");
 assertOk(chunk.includes('event.key === "Escape"') && chunk.includes("setMasterPaymentClosePromptOpen(false)"), "Prompt supports Escape close");
 assertOk(chunk.includes("event.stopPropagation()"), "Prompt supports inner click propagation guard");

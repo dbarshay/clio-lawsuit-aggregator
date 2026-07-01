@@ -1152,7 +1152,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     const labelStyle = { color: "#334155", fontWeight: 850 } as const;
     const amountStyle = { color: "#0f172a", fontWeight: 900, whiteSpace: "nowrap" } as const;
     const redAmountStyle = { ...amountStyle, color: "#b91c1c" } as const;
-    const blueAmountStyle = { ...amountStyle, color: "#0a1c35" } as const;
+    const blueAmountStyle = { ...amountStyle, color: "#00346e" } as const;
 
     const Row = ({ label, value, variant = "normal" }: { label: string; value: any; variant?: "normal" | "shaded" | "blue" | "red" }) => {
       const style = variant === "blue" ? blueRowStyle : variant === "shaded" || variant === "red" ? shadedRowStyle : rowBaseStyle;
@@ -1174,7 +1174,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
               Provider net remittance, cost recovery, and negative cost balance impact.
             </p>
           </div>
-          {hasDeduction && <div style={{ padding: "8px 12px", borderRadius: 999, background: "#eff6ff", color: "#0a1c35", fontWeight: 900, whiteSpace: "nowrap" }}>25% cap applied</div>}
+          {hasDeduction && <div style={{ padding: "8px 12px", borderRadius: 999, background: "#eff6ff", color: "#00346e", fontWeight: 900, whiteSpace: "nowrap" }}>25% cap applied</div>}
         </div>
 
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 16, padding: 10, background: "#ffffff" }}>
@@ -1406,13 +1406,13 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
     <main style={pageStyle}>
       <BarshHeader />
       <div style={{ marginBottom: 18, display: "flex", gap: 16, flexWrap: "wrap" }}>
-        <Link href={id ? `/admin/clients/${encodeURIComponent(id)}` : "/admin/clients"} style={{ color: "#0a1c35", fontWeight: 800, textDecoration: "none" }}>
+        <Link href={id ? `/admin/clients/${encodeURIComponent(id)}` : "/admin/clients"} style={{ color: "#00346e", fontWeight: 800, textDecoration: "none" }}>
           ← Main Client Info Page
         </Link>
-        <Link href="/admin/invoices" style={{ color: "#0a1c35", fontWeight: 800, textDecoration: "none" }}>
+        <Link href="/admin/invoices" style={{ color: "#00346e", fontWeight: 800, textDecoration: "none" }}>
           Global Invoice Search
         </Link>
-        <Link href="/admin" style={{ color: "#0a1c35", fontWeight: 800, textDecoration: "none" }}>
+        <Link href="/admin" style={{ color: "#00346e", fontWeight: 800, textDecoration: "none" }}>
           Admin Home
         </Link>
       </div>
@@ -1425,7 +1425,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
       </section>
 
       {error && <section style={{ ...cardStyle, borderColor: "#fecaca", color: "#b91c1c", marginBottom: 18 }}>{error}</section>}
-      {message && <section style={{ ...cardStyle, borderColor: "#bfdbfe", color: "#0a1c35", marginBottom: 18 }}>{message}</section>}
+      {message && <section style={{ ...cardStyle, borderColor: "#bfdbfe", color: "#00346e", marginBottom: 18 }}>{message}</section>}
 
       <section style={{ ...cardStyle, marginBottom: 18 }}>
         <div style={{ display: "flex", gap: 12, alignItems: "baseline", flexWrap: "wrap", marginBottom: 8 }}>
@@ -1521,10 +1521,10 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
                         }}
                         style={{
                           ...secondaryButtonStyle,
-                          border: "1px solid #0a1c35",
-                          background: "#0a1c35",
+                          border: "1px solid #00346e",
+                          background: "#00346e",
                           color: "#ffffff",
-                          boxShadow: "0 2px 6px rgba(10, 28, 53, 0.25)",
+                          boxShadow: "0 2px 6px rgba(0, 52, 110, 0.25)",
                           whiteSpace: "nowrap",
                         }}
                         title="Open the Client Cost Ledger"
@@ -1563,10 +1563,10 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
                         }}
                         style={{
                           ...secondaryButtonStyle,
-                          border: "1px solid #0a1c35",
-                          background: "#0a1c35",
+                          border: "1px solid #00346e",
+                          background: "#00346e",
                           color: "#ffffff",
-                          boxShadow: "0 2px 6px rgba(10, 28, 53, 0.25)",
+                          boxShadow: "0 2px 6px rgba(0, 52, 110, 0.25)",
                           whiteSpace: "nowrap",
                         }}
                         title="Open Invoice History"
@@ -1586,7 +1586,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
       <section id="invoice-step-1" style={{ ...cardStyle, marginBottom: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 14 }}>
           <div>
-            <div style={{ color: "#0a1c35", fontSize: 12, fontWeight: 950, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <div style={{ color: "#00346e", fontSize: 12, fontWeight: 950, textTransform: "uppercase", letterSpacing: "0.05em" }}>
               Step 1
             </div>
             <h2 style={{ margin: "4px 0 4px", fontSize: 22, fontWeight: 950, letterSpacing: "-0.01em" }}>
@@ -1653,11 +1653,11 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
             style={{
               padding: "10px 16px",
               borderRadius: 10,
-              border: "1px solid #0a1c35",
-              background: "#0a1c35",
+              border: "1px solid #00346e",
+              background: "#00346e",
               color: "#fff",
               fontWeight: 950,
-              boxShadow: "0 2px 6px rgba(10, 28, 53, 0.25)",
+              boxShadow: "0 2px 6px rgba(0, 52, 110, 0.25)",
             }}
           >
             {loadingPreview ? "Loading Preview..." : "Preview Invoice"}
@@ -1668,7 +1668,7 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
       <section id="invoice-step-2" style={{ ...cardStyle, marginBottom: 18, display: preview ? undefined : "none" }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 14 }}>
           <div>
-            <div style={{ color: "#0a1c35", fontSize: 12, fontWeight: 950, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <div style={{ color: "#00346e", fontSize: 12, fontWeight: 950, textTransform: "uppercase", letterSpacing: "0.05em" }}>
               Step 2
             </div>
             <h2 style={{ margin: "4px 0 4px", fontSize: 22, fontWeight: 950, letterSpacing: "-0.01em" }}>
@@ -1822,11 +1822,11 @@ export default function ProviderClientInvoiceWorkflowPage({ params }: { params: 
                 style={{
                   padding: "10px 16px",
                   borderRadius: 10,
-                  border: "1px solid #0a1c35",
-                  background: preview ? "#0a1c35" : "#94a3b8",
+                  border: "1px solid #00346e",
+                  background: preview ? "#00346e" : "#94a3b8",
                   color: "#fff",
                   fontWeight: 950,
-                  boxShadow: preview ? "0 2px 6px rgba(10, 28, 53, 0.25)" : undefined,
+                  boxShadow: preview ? "0 2px 6px rgba(0, 52, 110, 0.25)" : undefined,
                   whiteSpace: "nowrap",
                 }}
               >

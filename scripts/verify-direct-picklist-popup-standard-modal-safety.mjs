@@ -15,7 +15,7 @@ for (const token of [
   'Current',
   'optionLabel(currentOption) || currentValue || "—"',
   'picklistOptionsForDirectField(directFieldEditModal).find',
-  'background: "#0a1c35"',
+  'background: "#00346e"',
   'color: "#ffffff"',
   'textAlign: "center"',
   'Confirm Edit',

@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 const inputStyle = { width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: 8 } as const;
-const primaryButtonStyle = { background: "#0a1c35", color: "#ffffff", border: "1px solid #0a1c35", borderRadius: 8, padding: "10px 14px", fontWeight: 900, cursor: "pointer" } as const;
+const primaryButtonStyle = { background: "#00346e", color: "#ffffff", border: "1px solid #00346e", borderRadius: 8, padding: "10px 14px", fontWeight: 900, cursor: "pointer" } as const;
 
 export default function ChangePasswordPage() {
   const [email, setEmail] = useState("");
@@ -39,7 +39,7 @@ export default function ChangePasswordPage() {
   return (
     <main style={{ minHeight: "100vh", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <section data-barsh-change-password-page="true" style={{ width: "min(520px, 100%)", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 14, overflow: "hidden", boxShadow: "0 18px 44px rgba(15, 23, 42, 0.14)" }}>
-        <div style={{ background: "#0a1c35", color: "#ffffff", padding: "16px 20px", textAlign: "center" }}>
+        <div style={{ background: "#00346e", color: "#ffffff", padding: "16px 20px", textAlign: "center" }}>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 950 }}>Change Password</h1>
         </div>
         <div style={{ padding: 22, display: "grid", gap: 12 }}>

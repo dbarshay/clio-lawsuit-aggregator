@@ -91,8 +91,8 @@ const cardStyle: React.CSSProperties = {
 };
 
 const buttonStyle: React.CSSProperties = {
-  border: "1px solid #0a1c35",
-  background: "#0a1c35",
+  border: "1px solid #00346e",
+  background: "#00346e",
   color: "#fff",
   borderRadius: 12,
   padding: "10px 14px",
@@ -204,7 +204,7 @@ function severityBadge(severity: unknown): React.CSSProperties {
   const text = clean(severity).toLowerCase();
   if (text === "critical") return toneStyle("critical");
   if (text === "warning") return toneStyle("warning");
-  return { color: "#0a1c35", background: "#eff6ff", border: "1px solid #bfdbfe" };
+  return { color: "#00346e", background: "#eff6ff", border: "1px solid #bfdbfe" };
 }
 
 function SummaryCard({ label, value, note }: { label: string; value: React.ReactNode; note?: string }) {
@@ -274,7 +274,7 @@ export default function AdminReadinessDashboardPage() {
         <BarshHeader />
 
         <header style={{ ...cardStyle, display: "grid", gap: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 950, color: "#0a1c35", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          <div style={{ fontSize: 13, fontWeight: 950, color: "#00346e", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Administrator
           </div>
           <h1 style={{ margin: 0, fontSize: 32, lineHeight: 1.1 }}>Admin Readiness Dashboard</h1>
@@ -388,7 +388,7 @@ export default function AdminReadinessDashboardPage() {
                     <td style={tdStyle}>{finding.label || finding.id}</td>
                     <td style={{ ...tdStyle, textAlign: "right", fontWeight: 950 }}>{finding.count ?? 0}</td>
                     <td style={tdStyle}>
-                      <a href={finding.detailHref} style={{ color: "#0a1c35", fontWeight: 950 }}>Open detail →</a>
+                      <a href={finding.detailHref} style={{ color: "#00346e", fontWeight: 950 }}>Open detail →</a>
                     </td>
                   </tr>
                 ))}

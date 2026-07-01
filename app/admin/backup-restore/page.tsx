@@ -281,8 +281,8 @@ const cardStyle: React.CSSProperties = {
 };
 
 const buttonStyle: React.CSSProperties = {
-  border: "1px solid #0a1c35",
-  background: "#0a1c35",
+  border: "1px solid #00346e",
+  background: "#00346e",
   color: "#fff",
   borderRadius: 14,
   padding: "11px 15px",
@@ -978,7 +978,7 @@ export default function AdminBackupRestorePage() {
       <BarshHeader />
       <div style={{ maxWidth: "none", margin: 0, display: "grid", gap: 18 }}>
         <header style={{ ...cardStyle, display: "grid", gap: 10 }}>
-          <div style={{ fontSize: 13, fontWeight: 950, color: "#0a1c35", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          <div style={{ fontSize: 13, fontWeight: 950, color: "#00346e", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Administrator
           </div>
           <h1 style={{ margin: 0, fontSize: 32, lineHeight: 1.1 }}>Backup / Restore</h1>
@@ -1082,7 +1082,7 @@ export default function AdminBackupRestorePage() {
             style={{
               border: "1px solid #dbeafe",
               background: "#eff6ff",
-              color: "#0a1c35",
+              color: "#00346e",
               borderRadius: 16,
               padding: 13,
               lineHeight: 1.45,
@@ -1180,7 +1180,7 @@ export default function AdminBackupRestorePage() {
             style={{
               border: "1px solid #dbeafe",
               background: "#eff6ff",
-              color: "#0a1c35",
+              color: "#00346e",
               borderRadius: 16,
               padding: 13,
               lineHeight: 1.45,
@@ -1245,7 +1245,7 @@ export default function AdminBackupRestorePage() {
               style={{
                 border: "1px solid #dbeafe",
                 background: "#eff6ff",
-                color: "#0a1c35",
+                color: "#00346e",
                 borderRadius: 16,
                 padding: 13,
                 fontWeight: 900,
@@ -1286,7 +1286,7 @@ export default function AdminBackupRestorePage() {
               style={{
                 border: "1px solid #e0e7ff",
                 background: "#eef2ff",
-                color: "#0a1c35",
+                color: "#00346e",
                 borderRadius: 16,
                 padding: 13,
                 lineHeight: 1.45,
@@ -1500,7 +1500,7 @@ export default function AdminBackupRestorePage() {
                   style={{
                     border: "1px solid #dbeafe",
                     background: "#eff6ff",
-                    color: "#0a1c35",
+                    color: "#00346e",
                     borderRadius: 14,
                     padding: 12,
                     lineHeight: 1.45,
@@ -1799,7 +1799,7 @@ export default function AdminBackupRestorePage() {
             style={{
               border: actionResult?.ok === false ? "1px solid #fecaca" : "1px solid #bfdbfe",
               background: actionResult?.ok === false ? "#fff1f2" : "#eff6ff",
-              color: actionResult?.ok === false ? "#9f1239" : "#0a1c35",
+              color: actionResult?.ok === false ? "#9f1239" : "#00346e",
               borderRadius: 18,
               padding: 16,
               display: "grid",
@@ -1860,7 +1860,7 @@ export default function AdminBackupRestorePage() {
               }}
             >
               <header style={{ display: "grid", gap: 8 }}>
-                <div style={{ fontSize: 13, fontWeight: 950, color: "#0a1c35", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                <div style={{ fontSize: 13, fontWeight: 950, color: "#00346e", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                   Backup Manifest Detail
                 </div>
                 <h2 style={{ margin: 0, fontSize: 26 }}>Backup Manifest Inspector</h2>
@@ -2000,7 +2000,7 @@ export default function AdminBackupRestorePage() {
           style={{
             border: "1px solid #dbeafe",
             background: "#eff6ff",
-            color: "#0a1c35",
+            color: "#00346e",
             borderRadius: 18,
             padding: 16,
             lineHeight: 1.45,

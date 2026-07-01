@@ -127,9 +127,9 @@ export default function BarshHeaderQuickNav() {
         disabled={loading}
         style={{
           height: 30,
-          border: loading ? "1px solid #bfdbfe" : "1px solid #0a1c35",
+          border: loading ? "1px solid #bfdbfe" : "1px solid #00346e",
           borderRadius: 999,
-          background: loading ? "#bfdbfe" : "#0a1c35",
+          background: loading ? "#bfdbfe" : "#00346e",
           color: "#fff",
           fontSize: 12,
           fontWeight: 900,

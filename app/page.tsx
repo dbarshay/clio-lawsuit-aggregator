@@ -60,8 +60,8 @@ const colors = {
   lineSoft: "#e5e7eb",
   page: "#eef2f7",
   panel: "#ffffff",
-  blue: "#0a1c35",
-  blueDark: "#0a1c35",
+  blue: "#00346e",
+  blueDark: "#00346e",
   errorBg: "#fef2f2",
   errorBorder: "#fecaca",
 };
@@ -2299,7 +2299,7 @@ export default function Home() {
             }
 
             .barsh-field-link:hover {
-              color: #0a1c35 !important;
+              color: #00346e !important;
               text-decoration-thickness: 2px !important;
             }
 
@@ -3223,7 +3223,7 @@ function primaryButtonStyle(disabled: boolean): React.CSSProperties {
     fontWeight: 900,
     fontSize: 18,
     minWidth: 160,
-    boxShadow: disabled ? "none" : "0 10px 18px rgba(10, 28, 53, 0.18)",
+    boxShadow: disabled ? "none" : "0 10px 18px rgba(0, 52, 110, 0.18)",
   };
 }
 
@@ -3554,7 +3554,7 @@ const advancedSearchButtonStyle: React.CSSProperties = {
   border: "1px solid #bfdbfe",
   borderRadius: 16,
   background: "#eff6ff",
-  color: "#0a1c35",
+  color: "#00346e",
   padding: "12px 16px",
   fontSize: 14,
   fontWeight: 900,
@@ -3846,7 +3846,7 @@ const homeResultsTdStyle: React.CSSProperties = {
 };
 
 const homeResultsMatterLinkStyle: React.CSSProperties = {
-  color: "#0a1c35",
+  color: "#00346e",
   font: "inherit",
   fontSize: "inherit",
   fontWeight: 850,
@@ -3857,7 +3857,7 @@ const homeResultsFieldButtonStyle: React.CSSProperties = {
   appearance: "none",
   border: 0,
   background: "transparent",
-  color: "#0a1c35",
+  color: "#00346e",
   cursor: "pointer",
   font: "inherit",
   fontSize: "inherit",

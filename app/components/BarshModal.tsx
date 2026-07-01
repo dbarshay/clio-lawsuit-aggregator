@@ -6,7 +6,7 @@ import React, { useEffect, useRef, useState } from "react";
 //
 // Standard look (previously duplicated inline across pages):
 //   - dark translucent backdrop, modal centered
-//   - navy (#0a1c35) header bar with a centered title, NO top-right close glyph
+//   - navy (#00346e) header bar with a centered title, NO top-right close glyph
 //   - white rounded card body
 //   - footer with an explicit Close/Cancel button and an optional primary action button
 //
@@ -54,7 +54,7 @@ const headerStyle: React.CSSProperties = {
   justifyContent: "center",
   gap: 8,
   padding: "12px 16px",
-  background: "#0a1c35",
+  background: "#00346e",
   color: "#ffffff",
   fontSize: 16,
   fontWeight: 800,
@@ -97,8 +97,8 @@ const closeButtonStyle: React.CSSProperties = {
 const submitButtonStyle: React.CSSProperties = {
   padding: "8px 16px",
   borderRadius: 8,
-  border: "1px solid #0a1c35",
-  background: "#0a1c35",
+  border: "1px solid #00346e",
+  background: "#00346e",
   color: "#ffffff",
   fontSize: 13,
   fontWeight: 800,

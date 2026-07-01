@@ -77,9 +77,9 @@ function lifecycleActionsFor(status: string) {
 
 const liveActionStyle: React.CSSProperties = {
   display: "inline-block",
-  border: "1px solid #0a1c35",
+  border: "1px solid #00346e",
   borderRadius: "8px",
-  background: "#0a1c35",
+  background: "#00346e",
   color: "#ffffff",
   fontWeight: 800,
   padding: "7px 10px",
@@ -89,9 +89,9 @@ const liveActionStyle: React.CSSProperties = {
 };
 
 const lifecycleActionStyle: React.CSSProperties = {
-  border: "1px solid #0a1c35",
+  border: "1px solid #00346e",
   borderRadius: "8px",
-  background: "#0a1c35",
+  background: "#00346e",
   color: "#ffffff",
   fontWeight: 800,
   padding: "7px 10px",
@@ -180,7 +180,7 @@ export default function ViewTemplatesPage() {
   return (
     <main style={{ padding: "32px 40px", width: "100%", maxWidth: "none", margin: "0" }}>
       <BarshHeader />
-      <a href="/admin/document-templates" style={{ color: "#0a1c35", fontWeight: 700 }}>Back to Document Templates</a>
+      <a href="/admin/document-templates" style={{ color: "#00346e", fontWeight: 700 }}>Back to Document Templates</a>
       <h1 style={{ margin: "18px 0 10px", fontSize: "30px", color: "#0f172a" }}>View Templates</h1>
       <section
         data-template-view-repository-status="true"
@@ -190,7 +190,7 @@ export default function ViewTemplatesPage() {
           borderRadius: "10px",
           border: "1px solid " + (error ? "#fecaca" : "#bfdbfe"),
           background: error ? "#fef2f2" : "#eff6ff",
-          color: error ? "#991b1b" : "#0a1c35",
+          color: error ? "#991b1b" : "#00346e",
           fontWeight: 800,
         }}
       >
@@ -200,7 +200,7 @@ export default function ViewTemplatesPage() {
 
       <section style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "18px" }}>
         {filters.map((item) => (
-          <button key={item} type="button" onClick={() => setFilter(item)} style={{ padding: "9px 14px", borderRadius: "999px", border: "1px solid #0a1c35", background: "#0a1c35", color: "#ffffff", fontWeight: 700, opacity: filter === item ? 1 : 0.82 }}>
+          <button key={item} type="button" onClick={() => setFilter(item)} style={{ padding: "9px 14px", borderRadius: "999px", border: "1px solid #00346e", background: "#00346e", color: "#ffffff", fontWeight: 700, opacity: filter === item ? 1 : 0.82 }}>
             {item}
           </button>
         ))}
@@ -208,7 +208,7 @@ export default function ViewTemplatesPage() {
 
       <div style={{ overflowX: "auto", border: "1px solid #cbd5e1", borderRadius: "12px", width: "100%" }}>
         <table style={{ width: "100%", minWidth: "1320px", borderCollapse: "collapse", background: "#ffffff" }}>
-          <thead style={{ background: "#0a1c35", color: "#ffffff" }}>
+          <thead style={{ background: "#00346e", color: "#ffffff" }}>
             <tr>
               <th style={{ padding: "12px", textAlign: "left" }}>Name</th>
               <th style={{ padding: "12px", textAlign: "left" }}>Status</th>
@@ -233,7 +233,7 @@ export default function ViewTemplatesPage() {
               visibleRows.map(({ template, status }) => (
                 <tr key={template.key} data-template-view-row={template.key} style={{ borderTop: "1px solid #e2e8f0" }}>
                   <td style={{ padding: "12px" }}>
-                    <a href={"/admin/document-templates/" + encodeURIComponent(template.key)} style={{ color: "#0a1c35", fontWeight: 800 }}>
+                    <a href={"/admin/document-templates/" + encodeURIComponent(template.key)} style={{ color: "#00346e", fontWeight: 800 }}>
                       {template.label || template.key}
                     </a>
                     <div style={{ marginTop: "4px", color: "#64748b", fontSize: "12px" }}>{template.key}</div>

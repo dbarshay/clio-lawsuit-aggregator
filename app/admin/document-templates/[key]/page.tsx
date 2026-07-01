@@ -22,9 +22,9 @@ function display(value: unknown, fallback = "—"): string {
 
 function buttonStyle(disabled = false): React.CSSProperties {
   return {
-    border: "1px solid #0a1c35",
+    border: "1px solid #00346e",
     borderRadius: "8px",
-    background: "#0a1c35",
+    background: "#00346e",
     color: "#ffffff",
     fontWeight: 900,
     padding: "9px 12px",
@@ -254,7 +254,7 @@ export default function AdminDocumentTemplateDetailPage() {
         <section style={{ ...cardStyle(), display: "grid", gap: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
             <div>
-              <a href="/admin/document-templates/view" style={{ color: "#0a1c35", fontWeight: 900, textDecoration: "none" }}>
+              <a href="/admin/document-templates/view" style={{ color: "#00346e", fontWeight: 900, textDecoration: "none" }}>
                 ← Back to View Templates
               </a>
               <h1 style={{ margin: "12px 0 4px", fontSize: 34, lineHeight: 1.1 }}>
@@ -278,7 +278,7 @@ export default function AdminDocumentTemplateDetailPage() {
 
           {loading && <div style={{ color: "#64748b", fontWeight: 800 }}>Loading template detail…</div>}
           {statusMessage && (
-            <div style={{ border: "1px solid #bfdbfe", background: "#eff6ff", color: "#0a1c35", borderRadius: 12, padding: 12, fontWeight: 900 }}>
+            <div style={{ border: "1px solid #bfdbfe", background: "#eff6ff", color: "#00346e", borderRadius: 12, padding: 12, fontWeight: 900 }}>
               {statusMessage}
             </div>
           )}
@@ -370,8 +370,8 @@ export default function AdminDocumentTemplateDetailPage() {
                     </div>
                   </div>
                   {editTemplateWorkingDoc?.webUrl ? (
-                    <div data-barsh-admin-document-template-edit-template-working-doc="true" style={{ border: "1px solid #bfdbfe", background: "#ffffff", color: "#0a1c35", borderRadius: 12, padding: 10, fontWeight: 850 }}>
-                      Working DOCX: <a href={editTemplateWorkingDoc.webUrl} target="_blank" rel="noreferrer" style={{ color: "#0a1c35", fontWeight: 950 }}>{editTemplateWorkingDoc.name || "Open in Word Online"}</a>
+                    <div data-barsh-admin-document-template-edit-template-working-doc="true" style={{ border: "1px solid #bfdbfe", background: "#ffffff", color: "#00346e", borderRadius: 12, padding: 10, fontWeight: 850 }}>
+                      Working DOCX: <a href={editTemplateWorkingDoc.webUrl} target="_blank" rel="noreferrer" style={{ color: "#00346e", fontWeight: 950 }}>{editTemplateWorkingDoc.name || "Open in Word Online"}</a>
                     </div>
                   ) : null}
                   {editTemplateMessage ? (
@@ -405,7 +405,7 @@ export default function AdminDocumentTemplateDetailPage() {
               <h2 style={{ margin: "0 0 12px", fontSize: 24 }}>Merge Fields</h2>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", minWidth: 900, borderCollapse: "collapse" }}>
-                  <thead style={{ background: "#0a1c35", color: "#ffffff" }}>
+                  <thead style={{ background: "#00346e", color: "#ffffff" }}>
                     <tr>
                       <th style={{ padding: 10, textAlign: "left" }}>Key</th>
                       <th style={{ padding: 10, textAlign: "left" }}>Label</th>
@@ -433,7 +433,7 @@ export default function AdminDocumentTemplateDetailPage() {
               <h2 style={{ margin: "0 0 12px", fontSize: 24 }}>Versions</h2>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", minWidth: 900, borderCollapse: "collapse" }}>
-                  <thead style={{ background: "#0a1c35", color: "#ffffff" }}>
+                  <thead style={{ background: "#00346e", color: "#ffffff" }}>
                     <tr>
                       <th style={{ padding: 10, textAlign: "left" }}>Version</th>
                       <th style={{ padding: 10, textAlign: "left" }}>Status</th>
@@ -449,7 +449,7 @@ export default function AdminDocumentTemplateDetailPage() {
                         <td style={{ padding: 10 }}>{display(version.status)}</td>
                         <td style={{ padding: 10 }}>{display(version.storageKind)}</td>
                         <td style={{ padding: 10 }}>
-                          {version.hasStoredDocx && version.storedDocxUrl ? <a href={version.storedDocxUrl} style={{ color: "#0a1c35", fontWeight: 900 }}>Download</a> : "No"}
+                          {version.hasStoredDocx && version.storedDocxUrl ? <a href={version.storedDocxUrl} style={{ color: "#00346e", fontWeight: 900 }}>Download</a> : "No"}
                         </td>
                         <td style={{ padding: 10 }}>{display(version.createdAt)}</td>
                       </tr>

@@ -129,10 +129,10 @@ if (!page.includes('paddingTop: 6, paddingBottom: 6, lineHeight: 1.15')) failure
 if (!page.includes('text(event.caseData?.adversaryAttorney) || "—"')) failures.push("results UI missing Adversary Attorney body value");
 if (!page.includes('colSpan={10}')) failures.push("results UI empty-state colspan must match added Adversary Attorney column");
 if (!page.includes('const moneyCellStyle') || !page.includes('textAlign: "left"')) failures.push("results UI dollar columns must be left-justified");
-if (!page.includes('background: events.length === 0 ? "#bfdbfe" : "#0a1c35"')) failures.push("Print / Save PDF button must use navy blue emphasis");
-if (!page.includes('background: !events.length ? "#bfdbfe" : "#0a1c35"')) failures.push("Export XLSX button must use navy blue emphasis");
+if (!page.includes('background: events.length === 0 ? "#bfdbfe" : "#00346e"')) failures.push("Print / Save PDF button must use navy blue emphasis");
+if (!page.includes('background: !events.length ? "#bfdbfe" : "#00346e"')) failures.push("Export XLSX button must use navy blue emphasis");
 if (!page.includes('background: events.length === 0 ? "#fed7aa" : "#ea580c"')) failures.push("Print Court Appearance Report button must use orange emphasis");
-if (!page.includes('background: "#eff6ff", color: "#0a1c35"')) failures.push("Import Calendar Numbers button must use blue emphasis");
+if (!page.includes('background: "#eff6ff", color: "#00346e"')) failures.push("Import Calendar Numbers button must use blue emphasis");
 if (page.includes("data-barsh-court-calendar-print-filtered-results=\"true\"") === false) failures.push("page missing printable filtered-results button");
 if (page.includes("Trial Calendar Report") === false) failures.push("page missing Trial Calendar Report printable title");
 if (page.includes("matters from current filtered results") === false) failures.push("page missing current filtered results printable count");

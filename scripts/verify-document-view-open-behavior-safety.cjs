@@ -17,12 +17,12 @@ assertOk(route.includes("function decodeQuotedPrintable"), "EML PDF route suppor
 assertOk(route.includes("Buffer.from(payload.replace(/\\s+/g, \"\"), \"base64\").toString(\"utf8\")"), "EML PDF route supports base64 decoding");
 assertOk(route.includes("contentType.includes(\"text/plain\")"), "EML PDF route prefers text/plain body");
 assertOk(route.includes("contentType.includes(\"text/html\")") && route.includes("stripHtmlForPdf"), "EML PDF route falls back to stripped HTML body");
-assertOk(directPopup.includes("background: \"#0a1c35\"") && directPopup.includes(">View Documents</h2>"), "Direct View Documents uses standard navy header");
+assertOk(directPopup.includes("background: \"#00346e\"") && directPopup.includes(">View Documents</h2>"), "Direct View Documents uses standard navy header");
 assertOk(directPopup.includes("Refresh Documents") && directPopup.lastIndexOf("Refresh Documents") > directPopup.lastIndexOf("borderTop: \"1px solid #e2e8f0\""), "Direct View Documents refresh action is in footer");
 assertOk(direct.includes("params.set(\"mode\", \"email-pdf\")") && direct.includes("lowerFilename.endsWith(\".eml\")"), "Direct EML rows open as generated PDF");
 assertOk(direct.includes("window.location.href = \"ms-word:ofe|u|\" + editUrl"), "Direct DOC/DOCX rows open through Word protocol");
 assertOk(direct.includes("params.set(\"mode\", \"inline\")") && direct.includes("lowerFilename.endsWith(\".pdf\")"), "Direct PDF rows open inline");
-assertOk(masterPopup.includes("background: \"#0a1c35\"") && masterPopup.includes(">View Lawsuit Documents</h2>"), "Master View Documents uses standard navy header");
+assertOk(masterPopup.includes("background: \"#00346e\"") && masterPopup.includes(">View Lawsuit Documents</h2>"), "Master View Documents uses standard navy header");
 assertOk(master.includes("params.set(\"mode\", \"email-pdf\")") && master.includes("Select and open email as PDF."), "Master EML rows open as generated PDF");
 assertOk(master.includes("window.location.href = \"ms-word:ofe|u|\" + editUrl"), "Master DOC/DOCX rows open through Word protocol");
 assertOk(master.includes("params.set(\"mode\", \"inline\")") && master.includes("displayName.toLowerCase().endsWith(\".pdf\")"), "Master PDF rows open inline");

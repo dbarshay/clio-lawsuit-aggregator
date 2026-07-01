@@ -115,8 +115,8 @@ const labelStyle: React.CSSProperties = {
 };
 
 const buttonStyle: React.CSSProperties = {
-  border: "1px solid #0a1c35",
-  background: "#0a1c35",
+  border: "1px solid #00346e",
+  background: "#00346e",
   color: "#fff",
   borderRadius: 12,
   padding: "10px 14px",
@@ -402,7 +402,7 @@ export default function AdminClaimIndexPage() {
         <BarshHeader />
 
         <header style={{ ...cardStyle, display: "grid", gap: 10 }}>
-          <div style={{ fontSize: 13, fontWeight: 950, color: "#0a1c35", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          <div style={{ fontSize: 13, fontWeight: 950, color: "#00346e", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Administrator
           </div>
           <h1 style={{ margin: 0, fontSize: 32, lineHeight: 1.1 }}>ClaimIndex Viewer</h1>

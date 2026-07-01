@@ -63,8 +63,8 @@ const colors = {
   lineSoft: "#e5e7eb",
   page: "#f8fafc",
   panel: "#ffffff",
-  blue: "#0a1c35",
-  blueDark: "#0a1c35",
+  blue: "#00346e",
+  blueDark: "#00346e",
   errorBg: "#fef2f2",
   errorBorder: "#fecaca",
 };
@@ -1485,13 +1485,13 @@ export default function FilteredMattersPage() {
             width: "min(920px, 96vw)",
             maxHeight: "88vh",
             overflow: "hidden",
-            border: "1px solid #0a1c35",
+            border: "1px solid #00346e",
             borderRadius: 18,
             background: "#ffffff",
             boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
           }}
         >
-          <div style={{ padding: "16px 20px", background: "#0a1c35", color: "#ffffff", textAlign: "center", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
+          <div style={{ padding: "16px 20px", background: "#00346e", color: "#ffffff", textAlign: "center", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 950, color: "#ffffff" }}>View Lawsuit Documents</h2>
           </div>
 
@@ -1552,7 +1552,7 @@ export default function FilteredMattersPage() {
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "14px 20px 18px", borderTop: "1px solid #e2e8f0", background: "#ffffff", borderBottomLeftRadius: 18, borderBottomRightRadius: 18 }}>
             <button type="button" onClick={closeMasterViewDocumentsPopup} disabled={masterClioDocumentsLoading} style={{ minWidth: 96, height: 38, border: "1px solid #dc2626", borderRadius: 10, background: masterClioDocumentsLoading ? "#fca5a5" : "#dc2626", color: masterClioDocumentsLoading ? "#ffffff" : "#ffffff", fontWeight: 900, cursor: masterClioDocumentsLoading ? "not-allowed" : "pointer" }}>Close</button>
-            <button type="button" onClick={() => void loadMasterClioDocuments()} disabled={masterClioDocumentsLoading} style={{ minWidth: 148, height: 38, border: "1px solid #0a1c35", borderRadius: 10, background: masterClioDocumentsLoading ? "#93c5fd" : "#0a1c35", color: "#ffffff", fontWeight: 900, cursor: masterClioDocumentsLoading ? "not-allowed" : "pointer" }}>{masterClioDocumentsLoading ? "Refreshing..." : "Refresh Documents"}</button>
+            <button type="button" onClick={() => void loadMasterClioDocuments()} disabled={masterClioDocumentsLoading} style={{ minWidth: 148, height: 38, border: "1px solid #00346e", borderRadius: 10, background: masterClioDocumentsLoading ? "#93c5fd" : "#00346e", color: "#ffffff", fontWeight: 900, cursor: masterClioDocumentsLoading ? "not-allowed" : "pointer" }}>{masterClioDocumentsLoading ? "Refreshing..." : "Refresh Documents"}</button>
           </div>
         </div>
       </div>
@@ -2867,7 +2867,7 @@ function masterMetadataMoneyDisplayValue(field: "filingFee" | "serviceFee" | "ot
         </div>
         <label style={{ display: "grid", gap: 6, fontWeight: 900 }}>Notes<textarea value={form.notes} onChange={(event) => updateMasterEditCourtDateForm(eventKey, "notes", event.target.value)} style={masterCourtDateEditTextareaStyle(courtEvent, "notes")} /></label>
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button type="button" onClick={() => void saveMasterCourtDateEdit(courtEvent)} disabled={saving || !masterEditCourtDateFormReady(eventKey)} style={{ minHeight: 34, border: "1px solid #0a1c35", borderRadius: 999, background: saving || !masterEditCourtDateFormReady(eventKey) ? "#93c5fd" : "#0a1c35", color: "#ffffff", fontWeight: 950, padding: "0 14px", cursor: saving || !masterEditCourtDateFormReady(eventKey) ? "not-allowed" : "pointer" }} data-barsh-master-edit-court-date-save-button="true">{saving ? "Saving..." : "Save Changes"}</button>
+          <button type="button" onClick={() => void saveMasterCourtDateEdit(courtEvent)} disabled={saving || !masterEditCourtDateFormReady(eventKey)} style={{ minHeight: 34, border: "1px solid #00346e", borderRadius: 999, background: saving || !masterEditCourtDateFormReady(eventKey) ? "#93c5fd" : "#00346e", color: "#ffffff", fontWeight: 950, padding: "0 14px", cursor: saving || !masterEditCourtDateFormReady(eventKey) ? "not-allowed" : "pointer" }} data-barsh-master-edit-court-date-save-button="true">{saving ? "Saving..." : "Save Changes"}</button>
         </div>
       </div>
     );
@@ -3243,7 +3243,7 @@ function masterMetadataMoneyDisplayValue(field: "filingFee" | "serviceFee" | "ot
                 style={{
                   border: "1px solid #bfdbfe",
                   background: masterDocumentHistoryLoading ? "#eff6ff" : "#dbeafe",
-                  color: "#0a1c35",
+                  color: "#00346e",
                   borderRadius: 999,
                   padding: "9px 14px",
                   fontSize: 13,
@@ -4929,7 +4929,7 @@ function renderDirectMatterSingleMasterDryRunControl(params: DirectMatterSingleM
         style={{
           border: "1px solid #bfdbfe",
           background: "#eff6ff",
-          color: "#0a1c35",
+          color: "#00346e",
           borderRadius: 999,
           padding: "8px 12px",
           fontSize: 12,
@@ -4954,9 +4954,9 @@ function renderDirectMatterSingleMasterDryRunControl(params: DirectMatterSingleM
         onClick={() => void handleDirectMatterSingleMasterLiveFinalizeControl(params)}
         title="Owner/admin only. Server-side admin authorization is required before direct matter live finalize can upload to Clio storage."
         style={{
-          border: "1px solid #0a1c35",
+          border: "1px solid #00346e",
           borderRadius: 999,
-          background: "#0a1c35",
+          background: "#00346e",
           color: "white",
           fontSize: 12,
           fontWeight: 950,
@@ -7000,8 +7000,8 @@ function masterDocumentPreviewText(value: unknown): string {
             disabled={masterEmailThreadPreviewLoading || masterGraphThreadSyncPreviewLoading || masterGraphThreadSyncLoading}
             style={{
               padding: "8px 11px",
-              border: "1px solid #0a1c35",
-              background: masterEmailThreadPreviewLoading ? "#f3f4f6" : "#0a1c35",
+              border: "1px solid #00346e",
+              background: masterEmailThreadPreviewLoading ? "#f3f4f6" : "#00346e",
               color: masterEmailThreadPreviewLoading ? "#666" : "#fff",
               borderRadius: 8,
               cursor: masterEmailThreadPreviewLoading ? "not-allowed" : "pointer",
@@ -7598,14 +7598,14 @@ function masterDocumentPreviewText(value: unknown): string {
         disabled={disabled}
         title={title}
         style={{
-          border: disabled ? "1px solid #cbd5e1" : "1px solid #0a1c35",
-          background: disabled ? "#f8fafc" : "#0a1c35",
+          border: disabled ? "1px solid #cbd5e1" : "1px solid #00346e",
+          background: disabled ? "#f8fafc" : "#00346e",
           color: disabled ? "#94a3b8" : "#ffffff",
           borderRadius: 12,
           padding: "10px 14px",
           fontWeight: 900,
           cursor: disabled ? "not-allowed" : "pointer",
-          boxShadow: disabled ? "none" : "0 8px 18px rgba(10, 28, 53, 0.22)",
+          boxShadow: disabled ? "none" : "0 8px 18px rgba(0, 52, 110, 0.22)",
         }}
       >
         {label}
@@ -7656,8 +7656,8 @@ function masterDocumentPreviewText(value: unknown): string {
               alignItems: "center",
               gap: 14,
               padding: "16px 20px",
-              borderBottom: "1px solid #0a1c35",
-              background: "#0a1c35",
+              borderBottom: "1px solid #00346e",
+              background: "#00346e",
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
             }}
@@ -7770,7 +7770,7 @@ function masterDocumentPreviewText(value: unknown): string {
                       background: "#eef2ff",
                       borderRadius: 14,
                       padding: 14,
-                      color: "#0a1c35",
+                      color: "#00346e",
                       lineHeight: 1.4,
                     }}
                   >
@@ -7945,8 +7945,8 @@ function masterDocumentPreviewText(value: unknown): string {
                       }}
                       disabled={!masterDocumentFinalizationResult?.workingDocument?.msWordEditUrl}
                       style={{
-                        border: "1px solid #0a1c35",
-                        background: "#0a1c35",
+                        border: "1px solid #00346e",
+                        background: "#00346e",
                         color: "#fff",
                         borderRadius: 12,
                         padding: "10px 14px",
@@ -8195,7 +8195,7 @@ function masterDocumentPreviewText(value: unknown): string {
                   borderRadius: 18,
                   padding: 16,
                   background: "#eff6ff",
-                  color: "#0a1c35",
+                  color: "#00346e",
                   fontWeight: 900,
                   lineHeight: 1.45,
                 }}
@@ -8255,8 +8255,8 @@ function masterDocumentPreviewText(value: unknown): string {
                         title="Create an Outlook draft with the finalized settlement PDF attached from the Barsh Matters Master Repository storage."
                         style={{
                           border: "none",
-                          background: masterDocumentFinalizationResult?.finalizationRecord?.id ? "#0a1c35" : "#c7d2fe",
-                          boxShadow: "0 10px 25px rgba(10, 28, 53,0.18)",
+                          background: masterDocumentFinalizationResult?.finalizationRecord?.id ? "#00346e" : "#c7d2fe",
+                          boxShadow: "0 10px 25px rgba(0, 52, 110,0.18)",
                           color: "#fff",
                           borderRadius: 14,
                           padding: "12px 16px",
@@ -8519,7 +8519,7 @@ function masterDocumentPreviewText(value: unknown): string {
                 style={{
                   border: "1px solid #bfdbfe",
                   background: "#eff6ff",
-                  color: "#0a1c35",
+                  color: "#00346e",
                   borderRadius: 16,
                   padding: 14,
                   fontWeight: 850,
@@ -8672,8 +8672,8 @@ function masterDocumentPreviewText(value: unknown): string {
               onClick={() => void createMasterDocumentOutlookDraft()}
               disabled={!readyForGraphDraftCreate || masterDocumentDraftCreateLoading || Boolean(previewState?.draftCreated)}
               style={{
-                border: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated ? "1px solid #cbd5e1" : "1px solid #0a1c35",
-                background: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated ? "#f8fafc" : "#0a1c35",
+                border: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated ? "1px solid #cbd5e1" : "1px solid #00346e",
+                background: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated ? "#f8fafc" : "#00346e",
                 color: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated ? "#94a3b8" : "#ffffff",
                 borderRadius: 999,
                 padding: "10px 16px",
@@ -8766,14 +8766,14 @@ function masterDocumentPreviewText(value: unknown): string {
       null;
 
     const deliveryButtonStyle: React.CSSProperties = {
-      border: "1px solid #0a1c35",
-      background: "#0a1c35",
+      border: "1px solid #00346e",
+      background: "#00346e",
       color: "#fff",
       borderRadius: 12,
       padding: "10px 14px",
       fontWeight: 900,
       cursor: "pointer",
-      boxShadow: "0 10px 20px rgba(10, 28, 53, 0.18)",
+      boxShadow: "0 10px 20px rgba(0, 52, 110, 0.18)",
     };
 
     const pendingButtonStyle: React.CSSProperties = {
@@ -8971,7 +8971,7 @@ function masterDocumentPreviewText(value: unknown): string {
                   </div>
 
                   {masterDocumentDeliveryPreviewLoading && (
-                    <div style={{ fontWeight: 900, color: "#0a1c35" }}>
+                    <div style={{ fontWeight: 900, color: "#00346e" }}>
                       Building delivery preview...
                     </div>
                   )}
@@ -9067,7 +9067,7 @@ function masterDocumentPreviewText(value: unknown): string {
                           rel="noreferrer"
                           style={{
                             fontWeight: 950,
-                            color: "#0a1c35",
+                            color: "#00346e",
                           }}
                         >
                           Open Outlook Draft in Web
@@ -9083,10 +9083,10 @@ function masterDocumentPreviewText(value: unknown): string {
                           style={{
                             border: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated
                               ? "1px solid #d1d5db"
-                              : "1px solid #0a1c35",
+                              : "1px solid #00346e",
                             background: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated
                               ? "#f3f4f6"
-                              : "#0a1c35",
+                              : "#00346e",
                             color: !readyForGraphDraftCreate || masterDocumentDraftCreateLoading || previewState?.draftCreated
                               ? "#6b7280"
                               : "#fff",
@@ -9150,7 +9150,7 @@ function masterDocumentPreviewText(value: unknown): string {
               borderRadius: 999,
               padding: "10px 16px",
               fontWeight: 900,
-              background: masterDocumentDataPreviewLoading || !previewMasterLawsuitId ? "#e5e7eb" : "#0a1c35",
+              background: masterDocumentDataPreviewLoading || !previewMasterLawsuitId ? "#e5e7eb" : "#00346e",
               color: masterDocumentDataPreviewLoading || !previewMasterLawsuitId ? "#64748b" : "#fff",
               cursor: masterDocumentDataPreviewLoading || !previewMasterLawsuitId ? "not-allowed" : "pointer",
               whiteSpace: "nowrap",
@@ -9422,7 +9422,7 @@ function masterDocumentPreviewText(value: unknown): string {
           }
 
           .barsh-filter-field-link:hover {
-            color: #0a1c35 !important;
+            color: #00346e !important;
             text-decoration-thickness: 2px !important;
           }
 
@@ -9447,7 +9447,7 @@ function masterDocumentPreviewText(value: unknown): string {
                         ...filterBadgeStyle,
                         borderColor: "#bfdbfe",
                         background: "#eff6ff",
-                        color: "#0a1c35",
+                        color: "#00346e",
                       }
                     : filterBadgeStyle
                 }
@@ -10060,7 +10060,7 @@ function masterDocumentPreviewText(value: unknown): string {
                         fontWeight: 950,
                         letterSpacing: "0.08em",
                         textTransform: "uppercase",
-                        color: "#0a1c35",
+                        color: "#00346e",
                       }}
                     >
                       Claim Information
@@ -10168,7 +10168,7 @@ function masterDocumentPreviewText(value: unknown): string {
                         fontWeight: 950,
                         letterSpacing: "0.08em",
                         textTransform: "uppercase",
-                        color: "#0a1c35",
+                        color: "#00346e",
                       }}
                     >
                       Lawsuit Information
@@ -10193,7 +10193,7 @@ function masterDocumentPreviewText(value: unknown): string {
                             ...masterInfoCardEditButtonStyle,
                             borderColor: "#93c5fd",
                             background: "#ffffff",
-                            color: "#0a1c35",
+                            color: "#00346e",
                             cursor: "pointer",
                           }}
                         >
@@ -10212,7 +10212,7 @@ function masterDocumentPreviewText(value: unknown): string {
                             ...masterInfoCardEditButtonStyle,
                             borderColor: "#93c5fd",
                             background: "#ffffff",
-                            color: "#0a1c35",
+                            color: "#00346e",
                             cursor: "pointer",
                           }}
                         >
@@ -10252,7 +10252,7 @@ function masterDocumentPreviewText(value: unknown): string {
                             ...masterInfoCardEditButtonStyle,
                             borderColor: "#93c5fd",
                             background: "#ffffff",
-                            color: "#0a1c35",
+                            color: "#00346e",
                             cursor: "pointer",
                           }}
                         >
@@ -10271,7 +10271,7 @@ function masterDocumentPreviewText(value: unknown): string {
                             ...masterInfoCardEditButtonStyle,
                             borderColor: "#93c5fd",
                             background: "#ffffff",
-                            color: "#0a1c35",
+                            color: "#00346e",
                             cursor: "pointer",
                           }}
                         >
@@ -10307,7 +10307,7 @@ function masterDocumentPreviewText(value: unknown): string {
                         fontWeight: 950,
                         letterSpacing: "0.08em",
                         textTransform: "uppercase",
-                        color: "#0a1c35",
+                        color: "#00346e",
                       }}
                     >
                       Costs
@@ -10380,7 +10380,7 @@ function masterDocumentPreviewText(value: unknown): string {
                               ...masterInfoCardEditButtonStyle,
                               borderColor: "#93c5fd",
                               background: "#ffffff",
-                              color: "#0a1c35",
+                              color: "#00346e",
                               cursor: "pointer",
                             }}
                           >
@@ -10410,7 +10410,7 @@ function masterDocumentPreviewText(value: unknown): string {
                         fontWeight: 950,
                         letterSpacing: "0.08em",
                         textTransform: "uppercase",
-                        color: "#0a1c35",
+                        color: "#00346e",
                       }}
                     >
                       Notes
@@ -10440,10 +10440,10 @@ function masterDocumentPreviewText(value: unknown): string {
                           title="Add a note to this Master Lawsuit."
                           style={{
                             width: "fit-content",
-                            border: "1px solid #0a1c35",
+                            border: "1px solid #00346e",
                             borderRadius: 999,
                             background: "#eff6ff",
-                            color: "#0a1c35",
+                            color: "#00346e",
                             fontSize: 12,
                             fontWeight: 950,
                             padding: "7px 13px",
@@ -10492,7 +10492,7 @@ function masterDocumentPreviewText(value: unknown): string {
                                       border: "1px solid #cbd5e1",
                                       borderRadius: 999,
                                       background: "#f8fafc",
-                                      color: "#0a1c35",
+                                      color: "#00346e",
                                       cursor: "pointer",
                                       fontSize: 14,
                                       fontWeight: 950,
@@ -10576,7 +10576,7 @@ function masterDocumentPreviewText(value: unknown): string {
                         fontWeight: 950,
                         letterSpacing: "0.08em",
                         textTransform: "uppercase",
-                        color: "#0a1c35",
+                        color: "#00346e",
                       }}
                     >
                       Lawsuit Status
@@ -10601,7 +10601,7 @@ function masterDocumentPreviewText(value: unknown): string {
                             ...masterInfoCardEditButtonStyle,
                             borderColor: "#93c5fd",
                             background: "#ffffff",
-                            color: "#0a1c35",
+                            color: "#00346e",
                             cursor: "pointer",
                           }}
                         >
@@ -10670,7 +10670,7 @@ function masterDocumentPreviewText(value: unknown): string {
                       fontWeight: 950,
                       letterSpacing: "0.08em",
                       textTransform: "uppercase",
-                      color: "#0a1c35",
+                      color: "#00346e",
                       marginBottom: 8,
                     }}
                   >
@@ -10700,7 +10700,7 @@ function masterDocumentPreviewText(value: unknown): string {
                     >
                       {[
                         { key: "payments", label: "Payments", fill: "#16a34a", soft: "#f0fdf4", text: "#166534" },
-                        { key: "settlement", label: "Settlement", fill: "#0a1c35", soft: "#eff6ff", text: "#0a1c35" },
+                        { key: "settlement", label: "Settlement", fill: "#00346e", soft: "#eff6ff", text: "#00346e" },
                         { key: "documents", label: "Documents", fill: "#8b5e3c", soft: "#f8efe7", text: "#7c4a22" },
                         { key: "court_dates", label: "Court Dates", fill: "#ea580c", soft: "#fff7ed", text: "#c2410c" },
                       ].map(({ key, label, fill, soft, text }) => (
@@ -10738,9 +10738,9 @@ function masterDocumentPreviewText(value: unknown): string {
 
                       {masterActionGroup === "settlement" && (
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }} data-barsh-master-action-section="record-settlement">
-                          <button type="button" onClick={() => { if (masterHasActiveRecordedSettlement) { openVoidActiveSettlementAdminFlow(); return; } resetMasterSettlementPreviewForm(); setMasterSettlementFormOpen(true); }} title={masterHasActiveRecordedSettlement ? "" : "Open settlement preview popup."} style={{ minHeight: 36, border: "1px solid #0a1c35", borderRadius: 999, background: "#eff6ff", color: "#0a1c35", fontSize: 12, fontWeight: 950, cursor: "pointer", padding: "0 14px" }}>{masterHasActiveRecordedSettlement ? "Settlement Recorded" : "Record Settlement"}</button>
-                          <button type="button" onClick={() => setActiveMasterWorkspaceTab("settlement")} title="View settlement workspace for this lawsuit." style={{ minHeight: 36, border: "1px solid #0a1c35", borderRadius: 999, background: "#eff6ff", color: "#0a1c35", fontSize: 12, fontWeight: 950, cursor: "pointer", padding: "0 14px" }} data-barsh-master-view-settlements-button="true">View Settlements</button>
-                          {masterHasActiveRecordedSettlement && (<button type="button" onClick={() => void openTemporaryNoPasswordVoidSettlementFlow()} disabled={masterSettlementVoidLoading || !activeMasterSettlementRecordForVoid()?.id} title="Temporary local-development shortcut: void the active local settlement without the administrator password gate." style={{ minHeight: 36, border: "1px solid #0a1c35", borderRadius: 999, background: masterSettlementVoidLoading || !activeMasterSettlementRecordForVoid()?.id ? "#f8fafc" : "#fff7ed", color: masterSettlementVoidLoading || !activeMasterSettlementRecordForVoid()?.id ? "#94a3b8" : "#9a3412", fontSize: 12, fontWeight: 950, cursor: masterSettlementVoidLoading || !activeMasterSettlementRecordForVoid()?.id ? "not-allowed" : "pointer", padding: "0 14px" }}>{masterSettlementVoidLoading ? "Voiding..." : "Temporary Void Settlement"}</button>)}
+                          <button type="button" onClick={() => { if (masterHasActiveRecordedSettlement) { openVoidActiveSettlementAdminFlow(); return; } resetMasterSettlementPreviewForm(); setMasterSettlementFormOpen(true); }} title={masterHasActiveRecordedSettlement ? "" : "Open settlement preview popup."} style={{ minHeight: 36, border: "1px solid #00346e", borderRadius: 999, background: "#eff6ff", color: "#00346e", fontSize: 12, fontWeight: 950, cursor: "pointer", padding: "0 14px" }}>{masterHasActiveRecordedSettlement ? "Settlement Recorded" : "Record Settlement"}</button>
+                          <button type="button" onClick={() => setActiveMasterWorkspaceTab("settlement")} title="View settlement workspace for this lawsuit." style={{ minHeight: 36, border: "1px solid #00346e", borderRadius: 999, background: "#eff6ff", color: "#00346e", fontSize: 12, fontWeight: 950, cursor: "pointer", padding: "0 14px" }} data-barsh-master-view-settlements-button="true">View Settlements</button>
+                          {masterHasActiveRecordedSettlement && (<button type="button" onClick={() => void openTemporaryNoPasswordVoidSettlementFlow()} disabled={masterSettlementVoidLoading || !activeMasterSettlementRecordForVoid()?.id} title="Temporary local-development shortcut: void the active local settlement without the administrator password gate." style={{ minHeight: 36, border: "1px solid #00346e", borderRadius: 999, background: masterSettlementVoidLoading || !activeMasterSettlementRecordForVoid()?.id ? "#f8fafc" : "#fff7ed", color: masterSettlementVoidLoading || !activeMasterSettlementRecordForVoid()?.id ? "#94a3b8" : "#9a3412", fontSize: 12, fontWeight: 950, cursor: masterSettlementVoidLoading || !activeMasterSettlementRecordForVoid()?.id ? "not-allowed" : "pointer", padding: "0 14px" }}>{masterSettlementVoidLoading ? "Voiding..." : "Temporary Void Settlement"}</button>)}
                         </div>
                       )}
 
@@ -10769,7 +10769,7 @@ function masterDocumentPreviewText(value: unknown): string {
                       {masterEditCourtDatesDialogOpen && (
                         <div role="dialog" aria-modal="true" aria-label="Edit Court Dates" onClick={closeMasterEditCourtDatesDialog} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeMasterEditCourtDatesDialog(); } }} tabIndex={-1} style={{ position: "fixed", inset: 0, zIndex: 50000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "rgba(15, 23, 42, 0.58)" }} data-barsh-master-edit-court-dates-popup="true">
                           <div onClick={(event) => event.stopPropagation()} style={{ width: "min(920px, calc(100vw - 48px))", maxHeight: "88vh", overflow: "auto", borderRadius: 18, background: "#ffffff", boxShadow: "0 28px 80px rgba(15, 23, 42, 0.35)", boxSizing: "border-box" }}>
-                            <div style={{ background: "#0a1c35", color: "#ffffff", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <div style={{ background: "#00346e", color: "#ffffff", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                               <h2 style={{ margin: 0, fontSize: 20, fontWeight: 950, color: "#ffffff" }}>Edit Court Dates</h2>
                             </div>
                             <div style={{ padding: 18, display: "grid", gap: 14 }}>
@@ -10792,11 +10792,11 @@ function masterDocumentPreviewText(value: unknown): string {
                                   {renderMasterEditCourtDateRow(selectedMasterEditCourtDate())}
                                 </div>
                               ) : (
-                                <div style={{ border: "1px solid #fecaca", borderRadius: 12, background: "#fef2f2", color: "#991b1b", padding: 12, fontWeight: 900, display: "grid", gap: 10 }}><div>Selected Court Date could not be found.</div><button type="button" onClick={() => { setMasterEditCourtDatesSelectedId(""); setMasterEditCourtDatesSelectedEvent(null); setMasterEditCourtDatesResult(null); }} style={{ minHeight: 32, border: "1px solid #0a1c35", borderRadius: 999, background: "#eff6ff", color: "#0a1c35", fontWeight: 950, padding: "0 12px", cursor: "pointer" }}>Choose Court Date</button></div>
+                                <div style={{ border: "1px solid #fecaca", borderRadius: 12, background: "#fef2f2", color: "#991b1b", padding: 12, fontWeight: 900, display: "grid", gap: 10 }}><div>Selected Court Date could not be found.</div><button type="button" onClick={() => { setMasterEditCourtDatesSelectedId(""); setMasterEditCourtDatesSelectedEvent(null); setMasterEditCourtDatesResult(null); }} style={{ minHeight: 32, border: "1px solid #00346e", borderRadius: 999, background: "#eff6ff", color: "#00346e", fontWeight: 950, padding: "0 12px", cursor: "pointer" }}>Choose Court Date</button></div>
                               )}
                             </div>
                             <div style={{ padding: "0 18px 18px", display: "flex", justifyContent: masterEditCourtDatesSelectedId ? "space-between" : "flex-end", gap: 10 }}>
-                              {masterEditCourtDatesSelectedId && (<button type="button" onClick={() => { setMasterEditCourtDatesSelectedId(""); setMasterEditCourtDatesSelectedEvent(null); setMasterEditCourtDatesResult(null); }} disabled={masterEditCourtDatesSavingId !== null} style={{ minHeight: 38, border: "1px solid #0a1c35", borderRadius: 999, background: "#eff6ff", color: "#0a1c35", fontWeight: 950, padding: "0 16px", cursor: masterEditCourtDatesSavingId !== null ? "not-allowed" : "pointer" }} data-barsh-master-edit-court-date-back-button="true">Back</button>)}
+                              {masterEditCourtDatesSelectedId && (<button type="button" onClick={() => { setMasterEditCourtDatesSelectedId(""); setMasterEditCourtDatesSelectedEvent(null); setMasterEditCourtDatesResult(null); }} disabled={masterEditCourtDatesSavingId !== null} style={{ minHeight: 38, border: "1px solid #00346e", borderRadius: 999, background: "#eff6ff", color: "#00346e", fontWeight: 950, padding: "0 16px", cursor: masterEditCourtDatesSavingId !== null ? "not-allowed" : "pointer" }} data-barsh-master-edit-court-date-back-button="true">Back</button>)}
                               <button type="button" onClick={closeMasterEditCourtDatesDialog} disabled={masterEditCourtDatesSavingId !== null} style={{ minHeight: 38, border: "1px solid #dc2626", borderRadius: 999, background: "#dc2626", color: "#ffffff", fontWeight: 950, padding: "0 16px", cursor: masterEditCourtDatesSavingId !== null ? "not-allowed" : "pointer" }}>Cancel</button>
                             </div>
                           </div>
@@ -10805,8 +10805,8 @@ function masterDocumentPreviewText(value: unknown): string {
 
                       {masterAddCourtDateDialogOpen && (
                         <div role="dialog" aria-modal="true" aria-label="Add New Court Date" onClick={closeMasterAddCourtDateDialog} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeMasterAddCourtDateDialog(); } }} tabIndex={-1} style={{ position: "fixed", inset: 0, zIndex: 50000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "rgba(15, 23, 42, 0.58)" }} data-barsh-master-add-new-court-date-popup="true">
-                          <form onSubmit={(event) => void submitMasterAddCourtDate(event)} onClick={(event) => event.stopPropagation()} style={{ width: "min(500px, calc(100vw - 96px))", maxHeight: "88vh", overflow: "hidden", border: "1px solid #0a1c35", borderRadius: 18, background: "#ffffff", boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
-                            <div style={{ padding: "16px 20px", background: "#0a1c35", color: "#ffffff", textAlign: "center", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
+                          <form onSubmit={(event) => void submitMasterAddCourtDate(event)} onClick={(event) => event.stopPropagation()} style={{ width: "min(500px, calc(100vw - 96px))", maxHeight: "88vh", overflow: "hidden", border: "1px solid #00346e", borderRadius: 18, background: "#ffffff", boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+                            <div style={{ padding: "16px 20px", background: "#00346e", color: "#ffffff", textAlign: "center", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
                               <h2 style={{ margin: 0, fontSize: 20, fontWeight: 950, color: "#ffffff" }}>Add New Court Date</h2>
                             </div>
                             <div style={{ padding: 20, display: "grid", gap: 14, background: "#ffffff", overflowY: "auto" }}>
@@ -10823,7 +10823,7 @@ function masterDocumentPreviewText(value: unknown): string {
                             </div>
                             <div style={{ padding: "14px 20px", borderTop: "1px solid #e5e7eb", display: "flex", gap: 10, justifyContent: "flex-end", background: "#ffffff" }}>
                               <button type="button" onClick={closeMasterAddCourtDateDialog} disabled={masterAddCourtDateSaving} style={{ minHeight: 38, border: "1px solid #dc2626", borderRadius: 999, background: "#dc2626", color: "#ffffff", fontWeight: 950, padding: "0 16px", cursor: masterAddCourtDateSaving ? "not-allowed" : "pointer" }}>Cancel</button>
-                              <button type="submit" disabled={masterAddCourtDateSaving || !masterAddCourtDateReady} style={{ minHeight: 38, border: "1px solid #0a1c35", borderRadius: 999, background: masterAddCourtDateSaving || !masterAddCourtDateReady ? "#93c5fd" : "#0a1c35", color: "#ffffff", fontWeight: 950, padding: "0 16px", cursor: masterAddCourtDateSaving || !masterAddCourtDateReady ? "not-allowed" : "pointer" }} data-barsh-master-court-date-add-button-gated="true">{masterAddCourtDateSaving ? "Adding..." : "Add Court Date"}</button>
+                              <button type="submit" disabled={masterAddCourtDateSaving || !masterAddCourtDateReady} style={{ minHeight: 38, border: "1px solid #00346e", borderRadius: 999, background: masterAddCourtDateSaving || !masterAddCourtDateReady ? "#93c5fd" : "#00346e", color: "#ffffff", fontWeight: 950, padding: "0 16px", cursor: masterAddCourtDateSaving || !masterAddCourtDateReady ? "not-allowed" : "pointer" }} data-barsh-master-court-date-add-button-gated="true">{masterAddCourtDateSaving ? "Adding..." : "Add Court Date"}</button>
                             </div>
                           </form>
                         </div>
@@ -10854,7 +10854,7 @@ function masterDocumentPreviewText(value: unknown): string {
                               width: "min(520px, calc(100vw - 48px))",
                               maxHeight: "88vh",
                               overflow: "hidden",
-                              border: "1px solid #0a1c35",
+                              border: "1px solid #00346e",
                               borderRadius: 18,
                               background: "#ffffff",
                               boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
@@ -10862,7 +10862,7 @@ function masterDocumentPreviewText(value: unknown): string {
                               flexDirection: "column",
                             }}
                           >
-                            <div style={{ padding: "16px 20px", background: "#0a1c35", color: "#ffffff", textAlign: "center", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
+                            <div style={{ padding: "16px 20px", background: "#00346e", color: "#ffffff", textAlign: "center", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
                               <h2 style={{ margin: 0, fontSize: 20, fontWeight: 950, color: "#ffffff" }}>Close Lawsuit</h2>
                             </div>
 
@@ -11160,13 +11160,13 @@ function masterDocumentPreviewText(value: unknown): string {
                     width: "min(520px, calc(100vw - 48px))",
                     maxHeight: "88vh",
                     overflow: "hidden",
-                    border: "1px solid #0a1c35",
+                    border: "1px solid #00346e",
                     borderRadius: 18,
                     background: "#ffffff",
                     boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
                   }}
                 >
-                  <div style={{ padding: "16px 20px", background: "#0a1c35", color: "#ffffff", textAlign: "center", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
+                  <div style={{ padding: "16px 20px", background: "#00346e", color: "#ffffff", textAlign: "center", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
                     <h2 style={{ margin: 0, fontSize: 20, fontWeight: 950, color: "#ffffff" }}>Close After Payment?</h2>
                   </div>
 
@@ -11238,14 +11238,14 @@ function masterDocumentPreviewText(value: unknown): string {
                   onClick={(event) => event.stopPropagation()}
                   style={{
                     width: "min(440px, calc(100vw - 48px))",
-                    border: "1px solid #0a1c35",
+                    border: "1px solid #00346e",
                     borderRadius: 18,
                     background: "#ffffff",
                     boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
                     overflow: "hidden",
                   }}
                 >
-                  <div style={{ padding: "16px 20px", background: "#0a1c35", color: "#ffffff", textAlign: "center", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
+                  <div style={{ padding: "16px 20px", background: "#00346e", color: "#ffffff", textAlign: "center", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
                     <h2 style={{ margin: 0, fontSize: 20, fontWeight: 950, color: "#ffffff" }}>Delete Note?</h2>
                   </div>
 
@@ -11314,7 +11314,7 @@ function masterDocumentPreviewText(value: unknown): string {
                     width: "min(720px, 94vw)",
                     maxHeight: "88vh",
                     overflow: "hidden",
-                    border: "1px solid #0a1c35",
+                    border: "1px solid #00346e",
                     borderRadius: 18,
                     background: "#ffffff",
                     boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
@@ -11322,7 +11322,7 @@ function masterDocumentPreviewText(value: unknown): string {
                     flexDirection: "column",
                   }}
                 >
-                  <div style={{ padding: "16px 20px", background: "#0a1c35", color: "#ffffff", textAlign: "center", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
+                  <div style={{ padding: "16px 20px", background: "#00346e", color: "#ffffff", textAlign: "center", borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
                     <h2 style={{ margin: 0, fontSize: 20, fontWeight: 950, color: "#ffffff" }}>{masterNoteEditingId ? "Edit Note" : "Add Note"}</h2>
                   </div>
 
@@ -11436,7 +11436,7 @@ function masterDocumentPreviewText(value: unknown): string {
                     width: "min(620px, 94vw)",
                     maxHeight: "88vh",
                     overflow: "hidden",
-                    border: "1px solid #0a1c35",
+                    border: "1px solid #00346e",
                     borderRadius: 18,
                     background: "#ffffff",
                     boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
@@ -11453,8 +11453,8 @@ function masterDocumentPreviewText(value: unknown): string {
                       top: 0,
                       zIndex: 1,
                       padding: "12px 14px",
-                      borderBottom: "1px solid #0a1c35",
-                      background: "#0a1c35",
+                      borderBottom: "1px solid #00346e",
+                      background: "#00346e",
                       borderTopLeftRadius: 18,
                       borderTopRightRadius: 18,
                     }}
@@ -11877,7 +11877,7 @@ function masterDocumentPreviewText(value: unknown): string {
             padding: 16,
             marginTop: 18,
             marginBottom: 18,
-            boxShadow: "0 10px 24px rgba(10, 28, 53, 0.08)",
+            boxShadow: "0 10px 24px rgba(0, 52, 110, 0.08)",
           }}
         >
           <div style={{ display: "flex", justifyContent: "center", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
@@ -12071,7 +12071,7 @@ function masterDocumentPreviewText(value: unknown): string {
                     minWidth: 980,
                     maxHeight: "88vh",
                     overflow: "auto",
-                    border: "1px solid #0a1c35",
+                    border: "1px solid #00346e",
                     borderRadius: 18,
                     background: "#ffffff",
                     boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
@@ -12084,8 +12084,8 @@ function masterDocumentPreviewText(value: unknown): string {
                       top: 0,
                       zIndex: 1,
                       padding: "16px 20px",
-                      borderBottom: "1px solid #0a1c35",
-                      background: "#0a1c35",
+                      borderBottom: "1px solid #00346e",
+                      background: "#00346e",
                       borderTopLeftRadius: 18,
                       borderTopRightRadius: 18,
                     }}
@@ -12541,13 +12541,13 @@ function masterDocumentPreviewText(value: unknown): string {
                                 <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 900 }}>
                                   {money(billAmount)}
                                 </td>
-                                <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950, color: "#0a1c35" }}>
+                                <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950, color: "#00346e" }}>
                                   {money(settledPrincipal)}
                                 </td>
-                                <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950, color: "#0a1c35" }}>
+                                <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950, color: "#00346e" }}>
                                   {money(settledInterest)}
                                 </td>
-                                <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950, color: "#0a1c35" }}>
+                                <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "right", fontWeight: 950, color: "#00346e" }}>
                                   {money(settledCosts)}
                                 </td>
                                 <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "right" }}>
@@ -12573,7 +12573,7 @@ function masterDocumentPreviewText(value: unknown): string {
                                       padding: "6px 8px",
                                       textAlign: "right",
                                       fontWeight: 900,
-                                      color: "#0a1c35",
+                                      color: "#00346e",
                                     }}
                                   />
                                 </td>
@@ -12706,7 +12706,7 @@ function masterDocumentPreviewText(value: unknown): string {
                             gap: 6,
                           }}
                         >
-                          <div style={{ fontWeight: 950, color: masterSettlementRecordSave.ok ? "#0a1c35" : "#991b1b" }}>
+                          <div style={{ fontWeight: 950, color: masterSettlementRecordSave.ok ? "#00346e" : "#991b1b" }}>
                             Local Settlement Save Result
                           </div>
                           {masterSettlementRecordSave.error && (
@@ -12887,7 +12887,7 @@ function masterDocumentPreviewText(value: unknown): string {
                         style={{
                           fontSize: 18,
                           fontWeight: 950,
-                          color: "#0a1c35",
+                          color: "#00346e",
                         }}
                       >
                         Matter-Specific Audit / History
@@ -12897,7 +12897,7 @@ function masterDocumentPreviewText(value: unknown): string {
                           marginTop: 3,
                           fontSize: 12,
                           fontWeight: 800,
-                          color: "#0a1c35",
+                          color: "#00346e",
                         }}
                       >
                         Master Lawsuit {clean(value) || "—"} · Local database audit log.
@@ -12915,7 +12915,7 @@ function masterDocumentPreviewText(value: unknown): string {
                           border: "1px solid #bfdbfe",
                           borderRadius: 999,
                           background: "#ffffff",
-                          color: "#0a1c35",
+                          color: "#00346e",
                           fontWeight: 900,
                           cursor: masterAuditHistoryLoading ? "default" : "pointer",
                         }}
@@ -13026,7 +13026,7 @@ function masterDocumentPreviewText(value: unknown): string {
                                   borderRadius: 999,
                                   border: "1px solid #bfdbfe",
                                   background: "#eff6ff",
-                                  color: "#0a1c35",
+                                  color: "#00346e",
                                   fontSize: 12,
                                   fontWeight: 900,
                                   whiteSpace: "nowrap",
@@ -13103,7 +13103,7 @@ function masterDocumentPreviewText(value: unknown): string {
                     width: "min(1080px, 96vw)",
                     maxHeight: "88vh",
                     overflowY: "auto",
-                    border: "1px solid #0a1c35",
+                    border: "1px solid #00346e",
                     borderRadius: 18,
                     background: "#ffffff",
                     boxShadow: "0 28px 90px rgba(15, 23, 42, 0.34)",
@@ -13119,8 +13119,8 @@ function masterDocumentPreviewText(value: unknown): string {
                       top: 0,
                       zIndex: 1,
                       padding: "16px 20px",
-                      borderBottom: "1px solid #0a1c35",
-                      background: "#0a1c35",
+                      borderBottom: "1px solid #00346e",
+                      background: "#00346e",
                       borderTopLeftRadius: 18,
                       borderTopRightRadius: 18,
                     }}
@@ -14294,7 +14294,7 @@ const masterWorkflowButtonStyle: React.CSSProperties = {
   borderColor: "#93b4e8",
   borderRadius: 999,
   background: "#eff6ff",
-  color: "#0a1c35",
+  color: "#00346e",
   padding: "8px 13px",
   fontSize: 13,
   fontWeight: 900,
@@ -14311,8 +14311,8 @@ const masterWorkflowLockedButtonStyle: React.CSSProperties = {
 
 const masterWorkflowActiveButtonStyle: React.CSSProperties = {
   ...masterWorkflowButtonStyle,
-  background: "#0a1c35",
-  borderColor: "#0a1c35",
+  background: "#00346e",
+  borderColor: "#00346e",
   color: "#ffffff",
   opacity: 1,
 };
@@ -14382,7 +14382,7 @@ const masterWorkspaceCardStyle: React.CSSProperties = {
 };
 
 const masterWorkspaceCardLabelStyle: React.CSSProperties = {
-  color: "#0a1c35",
+  color: "#00346e",
   fontSize: 11,
   fontWeight: 900,
   letterSpacing: "0.06em",
@@ -14568,7 +14568,7 @@ const masterSettlementSummaryTitleStyle: React.CSSProperties = {
 const masterSettlementSummaryPillStyle: React.CSSProperties = {
   border: "1px solid #bfdbfe",
   background: "#eff6ff",
-  color: "#0a1c35",
+  color: "#00346e",
   borderRadius: 999,
   padding: "6px 10px",
   fontSize: 12,
@@ -14733,8 +14733,8 @@ const masterSettlementActionRowStyle: React.CSSProperties = {
 };
 
 const masterSettlementGhostButtonStyle: React.CSSProperties = {
-  border: "1px solid #0a1c35",
-  background: "#0a1c35",
+  border: "1px solid #00346e",
+  background: "#00346e",
   color: "#ffffff",
   borderRadius: 4,
   padding: "8px 12px",
@@ -14746,8 +14746,8 @@ const masterSettlementGhostButtonStyle: React.CSSProperties = {
 
 const masterSettlementPrimaryButtonStyle: React.CSSProperties = {
   ...masterSettlementGhostButtonStyle,
-  background: "#0a1c35",
-  borderColor: "#0a1c35",
+  background: "#00346e",
+  borderColor: "#00346e",
   opacity: 0.65,
 };
 
@@ -14766,7 +14766,7 @@ const workflowBannerStyle: React.CSSProperties = {
 
 const workflowBannerEyebrowStyle: React.CSSProperties = {
   marginBottom: 4,
-  color: "#0a1c35",
+  color: "#00346e",
   fontSize: 12,
   fontWeight: 950,
   letterSpacing: "0.08em",
@@ -14786,7 +14786,7 @@ const workflowBannerPillStyle: React.CSSProperties = {
   borderRadius: 999,
   background: "#ffffff",
   border: "1px solid #bfdbfe",
-  color: "#0a1c35",
+  color: "#00346e",
   fontSize: 12,
   fontWeight: 900,
   whiteSpace: "nowrap",
@@ -14800,7 +14800,7 @@ const actionStackStyle: React.CSSProperties = {
 };
 
 const secondaryActionLinkStyle: React.CSSProperties = {
-  color: "#0a1c35",
+  color: "#00346e",
   textDecoration: "none",
   fontWeight: 850,
   fontSize: 12,

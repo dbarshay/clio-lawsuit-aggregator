@@ -218,7 +218,7 @@ export default function BuildTemplatePage() {
     position: "sticky" as const,
     top: 0,
     zIndex: 3,
-    background: "#0a1c35",
+    background: "#00346e",
     color: "#ffffff",
     boxShadow: "0 1px 0 rgba(255,255,255,0.18)",
     whiteSpace: "nowrap" as const,
@@ -247,7 +247,7 @@ export default function BuildTemplatePage() {
   return (
     <main style={{ padding: "24px 28px", width: "100%", maxWidth: "none", margin: 0, boxSizing: "border-box" }}>
       <BarshHeader />
-      <a href="/admin/document-templates" style={{ color: "#0a1c35", fontWeight: 700 }}>Back to Document Templates</a>
+      <a href="/admin/document-templates" style={{ color: "#00346e", fontWeight: 700 }}>Back to Document Templates</a>
       <h1 style={{ margin: "18px 0 18px", fontSize: "30px", color: "#0f172a" }}>Build Template</h1>
 
       
@@ -256,7 +256,7 @@ export default function BuildTemplatePage() {
         <button
           type="button"
           onClick={() => setCustomPlaceholderDialogOpen(true)}
-          style={{ padding: "10px 14px", borderRadius: "10px", border: "1px solid #0a1c35", background: "#ffffff", color: "#0a1c35", fontWeight: 800, cursor: "pointer" }}
+          style={{ padding: "10px 14px", borderRadius: "10px", border: "1px solid #00346e", background: "#ffffff", color: "#00346e", fontWeight: 800, cursor: "pointer" }}
         >
           Add Custom Placeholder
         </button>
@@ -291,10 +291,10 @@ export default function BuildTemplatePage() {
                 onClick={() => toggleFormat(formatValue)}
                 aria-pressed={checked}
                 style={{
-                  border: checked ? "1px solid #0a1c35" : "1px solid #cbd5e1",
+                  border: checked ? "1px solid #00346e" : "1px solid #cbd5e1",
                   borderRadius: "999px",
                   background: checked ? "#dbeafe" : "#ffffff",
-                  color: checked ? "#0a1c35" : "#334155",
+                  color: checked ? "#00346e" : "#334155",
                   padding: "8px 12px",
                   fontWeight: 800,
                   cursor: "pointer",
@@ -410,17 +410,17 @@ export default function BuildTemplatePage() {
       {customPlaceholderDialogOpen ? (
         <div role="dialog" aria-modal="true" aria-labelledby="custom-placeholder-title" style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "20px" }}>
           <section style={{ width: "min(560px, 100%)", borderRadius: "14px", overflow: "hidden", background: "#ffffff", boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)" }}>
-            <header style={{ background: "#0a1c35", padding: "14px 18px" }}>
+            <header style={{ background: "#00346e", padding: "14px 18px" }}>
               <h2 id="custom-placeholder-title" style={{ margin: 0, color: "#ffffff", textAlign: "center", fontSize: "20px" }}>Custom Placeholder</h2>
             </header>
             <div style={{ padding: "18px", color: "#0f172a", lineHeight: 1.55 }}>
               <p style={{ margin: "0 0 12px" }}>Use the Custom Placeholder row when a reviewed template contains a placeholder that has not yet been mapped to a canonical Barsh Matters field.</p>
               <p style={{ margin: 0, color: "#475569" }}>Custom placeholders remain review aids only until they are replaced with canonical tokens during document-by-document template review.</p>
               <div style={{ marginTop: "18px", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-                <button type="button" onClick={() => setCustomPlaceholderDialogOpen(false)} style={{ padding: "10px 14px", borderRadius: "10px", border: "1px solid #0a1c35", background: "#ffffff", color: "#0a1c35", fontWeight: 800, cursor: "pointer" }}>
+                <button type="button" onClick={() => setCustomPlaceholderDialogOpen(false)} style={{ padding: "10px 14px", borderRadius: "10px", border: "1px solid #00346e", background: "#ffffff", color: "#00346e", fontWeight: 800, cursor: "pointer" }}>
                   Cancel
                 </button>
-                <button type="button" onClick={() => setCustomPlaceholderDialogOpen(false)} style={{ padding: "10px 14px", borderRadius: "10px", border: "1px solid #0a1c35", background: "#0a1c35", color: "#ffffff", fontWeight: 800, cursor: "pointer" }}>
+                <button type="button" onClick={() => setCustomPlaceholderDialogOpen(false)} style={{ padding: "10px 14px", borderRadius: "10px", border: "1px solid #00346e", background: "#00346e", color: "#ffffff", fontWeight: 800, cursor: "pointer" }}>
                   Done
                 </button>
               </div>
@@ -432,7 +432,7 @@ export default function BuildTemplatePage() {
       {deleteCandidate ? (
         <div role="dialog" aria-modal="true" aria-labelledby="delete-field-title" style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "20px" }}>
           <section style={{ width: "min(520px, 100%)", borderRadius: "14px", overflow: "hidden", background: "#ffffff", boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)" }}>
-            <header style={{ background: "#0a1c35", padding: "14px 18px" }}>
+            <header style={{ background: "#00346e", padding: "14px 18px" }}>
               <h2 id="delete-field-title" style={{ margin: 0, color: "#ffffff", textAlign: "center", fontSize: "20px" }}>Delete Field</h2>
             </header>
             <div style={{ padding: "18px", color: "#0f172a", lineHeight: 1.55 }}>

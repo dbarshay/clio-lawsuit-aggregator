@@ -96,7 +96,7 @@ export default function AdminAuditHistoryPage() {
         >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 950, color: "#0a1c35", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              <div style={{ fontSize: 13, fontWeight: 950, color: "#00346e", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                 Admin
               </div>
               <h1 style={{ margin: "4px 0 0", fontSize: 30, lineHeight: 1.1 }}>
@@ -149,16 +149,16 @@ export default function AdminAuditHistoryPage() {
             border: "1px solid #bfdbfe",
             borderRadius: 18,
             padding: 18,
-            boxShadow: "0 10px 25px rgba(10, 28, 53, 0.06)",
+            boxShadow: "0 10px 25px rgba(0, 52, 110, 0.06)",
           }}
         >
           <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>Admin Users Audit Focus</h2>
-          <p style={{ margin: "0 0 10px", color: "#0a1c35", lineHeight: 1.5 }}>
+          <p style={{ margin: "0 0 10px", color: "#00346e", lineHeight: 1.5 }}>
             Focused read-only review labels for admin-user-create, admin-user-assign-role, admin-user-remove-role, and admin-user-permission-override audit entries. This page only reads the existing audit-log API and does not enable permission enforcement.
           </p>
           <div data-barsh-admin-users-audit-action-labels="true" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {["admin-user-create", "admin-user-assign-role", "admin-user-remove-role", "admin-user-permission-override"].map((action) => (
-              <span key={action} style={{ border: "1px solid #bfdbfe", background: "#fff", color: "#0a1c35", borderRadius: 999, padding: "6px 10px", fontWeight: 900, fontSize: 12, fontFamily: "monospace" }}>{action}</span>
+              <span key={action} style={{ border: "1px solid #bfdbfe", background: "#fff", color: "#00346e", borderRadius: 999, padding: "6px 10px", fontWeight: 900, fontSize: 12, fontFamily: "monospace" }}>{action}</span>
             ))}
           </div>
         </section>

@@ -22,7 +22,7 @@ for (const token of [
   'data-barsh-direct-close-matter-standard-modal="true"',
   'data-barsh-direct-close-matter-current-card="true"',
   "Current",
-  'background: "#0a1c35"',
+  'background: "#00346e"',
   'color: "#ffffff"',
   'textAlign: "center"',
   'Close Reason',

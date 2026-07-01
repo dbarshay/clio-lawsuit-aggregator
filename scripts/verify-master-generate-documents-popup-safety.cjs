@@ -15,7 +15,7 @@ if (popupJsxStart < 0) { fail("master_popup_jsx_boundary", "Could not find Gener
 const popupJsx = popup.slice(popupJsxStart);
 pass("master_popup_boundaries");
 mustContain("standard_shell", popup, `data-barsh-master-document-generation-header-standard="true"`);
-mustContain("navy_header", popup, `background: "#0a1c35"`);
+mustContain("navy_header", popup, `background: "#00346e"`);
 mustContain("no_top_right_x", popup, `data-barsh-standard-modal-close="removed"`);
 mustNotContain("no_top_right_x_old_button", popup, `aria-label="Close document generation"`);
 mustContain("step1_direct_text", popup, `Select the document template for this matter.`);
@@ -24,8 +24,8 @@ mustContain("badge_completed_active_contract", popup, `const badgeBackground = i
 mustContain("badge_completed_active_contract_circle", popup, `const circleBackground = isComplete ? "#15803d" : isActive ? "#16a34a" : "#bbf7d0";`);
 mustNotContain("no_purple_badges", popupJsx, `#7c3aed`);
 mustNotContain("no_purple_badges_alt", popupJsx, `#8b5cf6`);
-mustContain("action_buttons_navy", popup, `border: disabled ? "1px solid #cbd5e1" : "1px solid #0a1c35"`);
-mustContain("action_buttons_navy_background", popup, `background: disabled ? "#f8fafc" : "#0a1c35"`);
+mustContain("action_buttons_navy", popup, `border: disabled ? "1px solid #cbd5e1" : "1px solid #00346e"`);
+mustContain("action_buttons_navy_background", popup, `background: disabled ? "#f8fafc" : "#00346e"`);
 mustContain("step2_card_preview_pdf", popup, `Preview PDF`);
 mustContain("step2_card_edit_document", popup, `Edit Document`);
 mustContain("step2_card_finalize_document", popup, `Finalize Document`);

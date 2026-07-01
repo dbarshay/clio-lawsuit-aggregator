@@ -216,8 +216,8 @@ const labelStyle: React.CSSProperties = {
 };
 
 const primaryButtonStyle: React.CSSProperties = {
-  border: "1px solid #0a1c35",
-  background: "#0a1c35",
+  border: "1px solid #00346e",
+  background: "#00346e",
   color: "#fff",
   borderRadius: 999,
   padding: "10px 14px",
@@ -917,7 +917,7 @@ export default function CourtCalendarPage() {
               <input value={form.calendarNumber} onChange={(event) => setForm((prev) => ({ ...prev, calendarNumber: event.target.value }))} style={inputStyle} />
               <span style={{ marginTop: 4, color: "#64748b", fontSize: 11, fontWeight: 800, lineHeight: 1.25 }} data-barsh-court-calendar-webcivil-local-helper="true">
                 Confirm manually in WebCivil Local using court, date range, and index number.
-                <a href={WEB_CIVIL_LOCAL_CALENDAR_URL} target="_blank" rel="noreferrer" style={{ color: "#0a1c35", fontWeight: 950, marginLeft: 8 }}>Open WebCivil Local Court Calendars</a>
+                <a href={WEB_CIVIL_LOCAL_CALENDAR_URL} target="_blank" rel="noreferrer" style={{ color: "#00346e", fontWeight: 950, marginLeft: 8 }}>Open WebCivil Local Court Calendars</a>
               </span>
             </label>
             <label style={labelStyle}>Appearance Type<input value={form.appearanceType} onChange={(event) => setForm((prev) => ({ ...prev, appearanceType: event.target.value }))} style={inputStyle} placeholder="In person, virtual, submission..." /></label>
@@ -999,7 +999,7 @@ export default function CourtCalendarPage() {
                     {renderCalendarNumberCell(event)}
                     <td style={{ ...tdStyle, ...compactIdCellStyle }} title={text(event.indexAaaNumber)}>{text(event.indexAaaNumber) || "—"}</td>
                     <td style={{ ...tdStyle, ...compactIdCellStyle }} title={text(event.displayNumber || event.masterLawsuitId)}>
-                      <a href={`/matters?master=${encodeURIComponent(text(event.displayNumber || event.masterLawsuitId))}`} style={{ color: "#0a1c35", fontWeight: 900, textDecoration: "underline", display: "inline-block", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", verticalAlign: "top" }}>
+                      <a href={`/matters?master=${encodeURIComponent(text(event.displayNumber || event.masterLawsuitId))}`} style={{ color: "#00346e", fontWeight: 900, textDecoration: "underline", display: "inline-block", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", verticalAlign: "top" }}>
                         {text(event.displayNumber || event.masterLawsuitId) || "—"}
                       </a>
                     </td>
@@ -1018,14 +1018,14 @@ export default function CourtCalendarPage() {
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", marginTop: 14 }} data-barsh-court-calendar-result-bottom-actions="true">
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-start" }} data-barsh-court-calendar-left-actions="true">
             <button type="button" onClick={printCourtAppearanceReport} style={{ ...secondaryButtonStyle, border: "1px solid #ea580c", background: events.length === 0 ? "#fed7aa" : "#ea580c", color: "#ffffff" }} disabled={events.length === 0} data-barsh-court-calendar-print-appearance-report="true">Print Court Appearance Report</button>
-            <button type="button" onClick={() => setWebCivilImportOpen((open) => !open)} style={{ ...secondaryButtonStyle, border: "1px solid #0a1c35", background: "#eff6ff", color: "#0a1c35" }} data-barsh-court-calendar-webcivil-local-import-toggle="true">Import Calendar Numbers from WebCivil Local</button>
+            <button type="button" onClick={() => setWebCivilImportOpen((open) => !open)} style={{ ...secondaryButtonStyle, border: "1px solid #00346e", background: "#eff6ff", color: "#00346e" }} data-barsh-court-calendar-webcivil-local-import-toggle="true">Import Calendar Numbers from WebCivil Local</button>
             {hasCalendarNumberChanges() && (
               <button type="button" onClick={() => void saveCalendarNumbers()} disabled={calendarNumberSaving} style={{ ...secondaryButtonStyle, border: "1px solid #15803d", background: calendarNumberSaving ? "#bbf7d0" : "#15803d", color: "#ffffff" }} data-barsh-court-calendar-calendar-number-save-all="true">{calendarNumberSaving ? "Saving..." : "Save Calendar Numbers"}</button>
             )}
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }} data-barsh-court-calendar-right-actions="true">
-            <button type="button" onClick={() => printCalendarReport("all")} style={{ ...secondaryButtonStyle, border: "1px solid #0a1c35", background: events.length === 0 ? "#bfdbfe" : "#0a1c35", color: "#ffffff" }} disabled={events.length === 0} data-barsh-court-calendar-print-filtered-results="true">Print / Save PDF</button>
-            <button type="button" onClick={() => exportCalendarReport("all")} style={{ ...secondaryButtonStyle, border: "1px solid #0a1c35", background: !events.length ? "#bfdbfe" : "#0a1c35", color: "#ffffff" }} disabled={!events.length} data-barsh-court-calendar-export-xlsx="true">Export XLSX</button>
+            <button type="button" onClick={() => printCalendarReport("all")} style={{ ...secondaryButtonStyle, border: "1px solid #00346e", background: events.length === 0 ? "#bfdbfe" : "#00346e", color: "#ffffff" }} disabled={events.length === 0} data-barsh-court-calendar-print-filtered-results="true">Print / Save PDF</button>
+            <button type="button" onClick={() => exportCalendarReport("all")} style={{ ...secondaryButtonStyle, border: "1px solid #00346e", background: !events.length ? "#bfdbfe" : "#00346e", color: "#ffffff" }} disabled={!events.length} data-barsh-court-calendar-export-xlsx="true">Export XLSX</button>
           </div>
         </div>
       </section>

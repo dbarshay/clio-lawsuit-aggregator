@@ -13,7 +13,7 @@ for (const token of [
   'data-barsh-direct-identity-edit-standard-modal="true"',
   'data-barsh-direct-identity-current-card="true"',
   'Current',
-  'background: "#0a1c35"',
+  'background: "#00346e"',
   'color: "#ffffff"',
   'textAlign: "center"',
   'Confirm Edit',

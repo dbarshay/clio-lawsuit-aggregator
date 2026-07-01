@@ -35,9 +35,11 @@ const headerStyle: React.CSSProperties = {
   minHeight: 124,
   padding: "6px 8px 8px",
   marginBottom: 6,
-  // Opaque background + shadow so scrolled content passes cleanly underneath.
-  background: "#f8fafc",
-  boxShadow: "0 6px 16px rgba(15, 23, 42, 0.10)",
+  // Opaque system-navy bar (follows BRAND_NAVY / set-system-blue) + shadow so scrolled content
+  // passes cleanly underneath.
+  background: "#00346e",
+  color: "#ffffff",
+  boxShadow: "0 6px 16px rgba(15, 23, 42, 0.18)",
 };
 
 const leftWrapStyle: React.CSSProperties = {
@@ -117,7 +119,7 @@ export default function BarshHeader({ center, onAdministratorClick }: BarshHeade
         </div>
 
         <a href="/" style={bmLogoLinkStyle} title="Return to Barsh Matters entry screen">
-          <img src="/barsh-matters-logo-navy-transparent.png" alt="Barsh Matters" style={bmLogoStyle} />
+          <img src="/barsh-matters-logo-reversed-transparent.png" alt="Barsh Matters" style={bmLogoStyle} />
         </a>
       </div>
     </section>

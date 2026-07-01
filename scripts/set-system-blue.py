@@ -96,6 +96,7 @@ def main():
         "public/brl-logo.png",
         "public/barsh-matters-logo-navy-transparent.png",
         "public/barsh-matters-cropped-transparent.png",
+        "public/barsh-matters-logo-reversed-transparent.png",  # navy "B" re-tints with the navy bar
     ]
 
     try:

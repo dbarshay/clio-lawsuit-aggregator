@@ -22,10 +22,10 @@ const baseActionStyle: React.CSSProperties = {
   gap: 6,
   minHeight: 30,
   padding: "7px 10px",
-  border: "1px solid #cbd5e1",
+  border: "1px solid rgba(255, 255, 255, 0.35)",
   borderRadius: 999,
-  background: "#f8fafc",
-  color: "#385a83",
+  background: "rgba(255, 255, 255, 0.08)",
+  color: "#ffffff",
   fontSize: 12,
   fontWeight: 900,
   textDecoration: "none",
@@ -36,8 +36,8 @@ const baseActionStyle: React.CSSProperties = {
 const signOutActionStyle: React.CSSProperties = {
   ...baseActionStyle,
   border: "1px solid #dc2626",
-  background: "#fef2f2",
-  color: "#991b1b",
+  background: "#dc2626",
+  color: "#ffffff",
 };
 
 export default function BarshHeaderActions({ onAdministratorClick }: BarshHeaderActionsProps) {
